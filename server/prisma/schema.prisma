@@ -1,0 +1,557 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   Int                @id @default(autoincrement())
+  nombre               String
+  email                String             @unique
+  password             String
+  rol                  Role               @default(cajero)
+  sucursal             String
+  turno                Turno              @default(MATUTINO)
+  activo               Boolean            @default(true)
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  quickAccessToken     String?            @unique @map("quick_access_token")
+  importacionesMasivas BulkImport[]       @relation("ImportacionesMasivas")
+  cajasAbiertas        Caja[]             @relation("UsuarioApertura")
+  cajasCerradas        Caja[]             @relation("UsuarioCierre")
+  auditoriaCarrito     CarritoAuditoria[] @relation("AuditoriaCarrito")
+  ventasEnEspera       PendingSale[]      @relation("VentasEnEspera")
+  cambiosProductos     ProductChange[]    @relation("CambiosProductos")
+  productosCreados     Product[]          @relation("ProductosCreados")
+  movimientosStock     StockMovement[]    @relation("MovimientosStock")
+  transaccionesCreadas Transaccion[]      @relation("VentasCreadas")
+  documentosCreados    VentaDocumento[]   @relation("DocumentosCreados")
+
+  @@map("users")
+}
+
+model Caja {
+  id                    Int           @id @default(autoincrement())
+  horaApertura          String?       @map("hora_apertura")
+  montoInicialBs        Decimal       @default(0) @map("monto_inicial_bs") @db.Decimal(12, 2)
+  montoInicialUsd       Decimal       @default(0) @map("monto_inicial_usd") @db.Decimal(12, 2)
+  estado                EstadoCaja    @default(ABIERTA)
+  usuarioAperturaId     Int           @map("usuario_apertura_id")
+  usuarioCierreId       Int?          @map("usuario_cierre_id")
+  horaCierre            String?       @map("hora_cierre")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  fecha                 DateTime      @db.Date
+  totalEgresosBs        Decimal       @default(0) @map("total_egresos_bs") @db.Decimal(12, 2)
+  totalEgresosUsd       Decimal       @default(0) @map("total_egresos_usd") @db.Decimal(12, 2)
+  totalIngresosBs       Decimal       @default(0) @map("total_ingresos_bs") @db.Decimal(12, 2)
+  totalIngresosUsd      Decimal       @default(0) @map("total_ingresos_usd") @db.Decimal(12, 2)
+  montoInicialPagoMovil Decimal       @default(0) @map("monto_inicial_pago_movil") @db.Decimal(12, 2)
+  totalPagoMovil        Decimal       @default(0) @map("total_pago_movil") @db.Decimal(12, 2)
+  imagenApertura        String?       @map("imagen_apertura")
+  imagenCierre          String?       @map("imagen_cierre")
+  montoFinalBs          Decimal?      @map("monto_final_bs") @db.Decimal(12, 2)
+  montoFinalPagoMovil   Decimal?      @map("monto_final_pago_movil") @db.Decimal(12, 2)
+  montoFinalUsd         Decimal?      @map("monto_final_usd") @db.Decimal(12, 2)
+  observacionesApertura String?       @map("observaciones_apertura")
+  observacionesCierre   String?       @map("observaciones_cierre")
+  tasaBcv               Decimal?      @map("tasa_bcv") @db.Decimal(8, 4)
+  tasaParalelo          Decimal?      @map("tasa_paralelo") @db.Decimal(8, 4)
+  fechaAutoCierre       DateTime?
+  motivoAutoCierre      String?
+  requiereConteoFisico  Boolean       @default(false)
+  usuarioResponsableId  Int?
+  arqueos               Arqueo[]
+  usuarioApertura       User          @relation("UsuarioApertura", fields: [usuarioAperturaId], references: [id])
+  usuarioCierre         User?         @relation("UsuarioCierre", fields: [usuarioCierreId], references: [id])
+  ventasEnEspera        PendingSale[] @relation("VentasEnEspera")
+  transacciones         Transaccion[]
+
+  @@map("cajas")
+}
+
+model Arqueo {
+  id            Int              @id @default(autoincrement())
+  cajaId        Int              @map("caja_id")
+  metodoPago    MetodoPagoArqueo @map("metodo_pago")
+  montoSistema  Decimal          @default(0) @map("monto_sistema") @db.Decimal(12, 2)
+  montoContado  Decimal          @default(0) @map("monto_contado") @db.Decimal(12, 2)
+  diferencia    Decimal          @default(0) @db.Decimal(12, 2)
+  observaciones String?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  caja          Caja             @relation(fields: [cajaId], references: [id], onDelete: Cascade)
+
+  @@map("arqueos")
+}
+
+model Transaccion {
+  id                  Int                @id @default(autoincrement())
+  cajaId              Int                @map("caja_id")
+  tipo                TipoTransaccion
+  categoria           String
+  observaciones       String?
+  totalBs             Decimal            @map("total_bs") @db.Decimal(12, 2)
+  totalUsd            Decimal            @map("total_usd") @db.Decimal(12, 2)
+  tasaCambioUsada     Decimal?           @map("tasa_cambio_usada") @db.Decimal(8, 4)
+  fechaHora           DateTime           @default(now()) @map("fecha_hora")
+  usuarioId           Int                @map("usuario_id")
+  clienteId           Int?               @map("cliente_id")
+  clienteNombre       String?            @map("cliente_nombre")
+  codigoVenta         String             @unique @map("codigo_venta")
+  consecutivoDelDia   Int                @map("consecutivo_del_dia")
+  metodoPagoPrincipal String?            @map("metodo_pago_principal")
+  descuentoTotal      Decimal            @default(0) @map("descuento_total") @db.Decimal(12, 2)
+  cantidadItems       Int                @default(0) @map("cantidad_items")
+  ipAddress           String?            @map("ip_address")
+  userAgent           String?            @map("user_agent")
+  sesionId            String?            @map("sesion_id")
+  tiempoServicio      Int?               @map("tiempo_servicio")
+  numeroComprobante   String?            @unique @map("numero_comprobante")
+  requiereFactura     Boolean            @default(false) @map("requiere_factura")
+  facturaGenerada     Boolean            @default(false) @map("factura_generada")
+  reciboGenerado      Boolean            @default(false) @map("recibo_generado")
+  auditoriaCarrito    CarritoAuditoria[] @relation("AuditoriaVentas")
+  pagos               Pago[]
+  movimientosStock    StockMovement[]
+  caja                Caja               @relation(fields: [cajaId], references: [id])
+  cliente             Cliente?           @relation("VentasCliente", fields: [clienteId], references: [id])
+  usuario             User               @relation("VentasCreadas", fields: [usuarioId], references: [id])
+  items               TransactionItem[]
+  documentos          VentaDocumento[]   @relation("DocumentosTransaccion")
+
+  @@map("transacciones")
+}
+
+model Pago {
+  id            Int         @id @default(autoincrement())
+  transaccionId Int         @map("transaccion_id")
+  metodo        String
+  monto         Decimal     @db.Decimal(12, 2)
+  moneda        String
+  banco         String?
+  referencia    String?
+  transaccion   Transaccion @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
+
+  @@map("pagos")
+}
+
+model Product {
+  id                   Int                          @id @default(autoincrement())
+  descripcion          String
+  tipo                 TipoProducto                 @default(PRODUCTO)
+  codigoBarras         String                       @map("codigo_barras")
+  codigoInterno        String                       @map("codigo_interno")
+  categoria            String?
+  precioCosto          Decimal                      @map("precio_costo") @db.Decimal(12, 2)
+  precioVenta          Decimal                      @map("precio_venta") @db.Decimal(12, 2)
+  margenPorcentaje     Decimal?                     @map("margen_porcentaje") @db.Decimal(5, 2)
+  stock                Int                          @default(0)
+  stockDisponible      Int                          @default(0) @map("stock_disponible")
+  stockMinimo          Int                          @default(5) @map("stock_minimo")
+  stockMaximo          Int                          @default(100) @map("stock_maximo")
+  ubicacionFisica      String?                      @map("ubicacion_fisica")
+  imagenUrl            String?                      @map("imagen_url")
+  imagenThumbnail      String?                      @map("imagen_thumbnail")
+  proveedorFacturaIva  Boolean?                     @default(false) @map("proveedor_factura_iva")
+  proveedor            String?
+  telefonoProveedor    String?                      @map("telefono_proveedor")
+  activo               Boolean                      @default(true)
+  observaciones        String?
+  creadoPorId          Int                          @map("creado_por_id")
+  fechaCreacion        DateTime                     @default(now()) @map("fecha_creacion")
+  fechaActualizacion   DateTime                     @updatedAt @map("fecha_actualizacion")
+  ultimaVenta          DateTime?                    @map("ultima_venta")
+  fechaInactivacion    DateTime?                    @map("fecha_inactivacion")
+  motivoInactivacion   String?                      @map("motivo_inactivacion")
+  proveedorId          Int?                         @map("proveedor_id")
+  stockReservado       Int                          @default(0)
+  auditoriasInventario AuditoriaInventarioDetalle[]
+  importacionItems     BulkImportItem[]             @relation("ImportacionItems")
+  auditoriaCarrito     CarritoAuditoria[]           @relation("AuditoriaProductos")
+  itemsEnEspera        PendingSaleItem[]            @relation("ProductosEnEspera")
+  cambiosProducto      ProductChange[]
+  creadoPor            User                         @relation("ProductosCreados", fields: [creadoPorId], references: [id])
+  proveedorRel         Proveedor?                   @relation("ProveedorProductos", fields: [proveedorId], references: [id])
+  movimientosStock     StockMovement[]
+  itemsTransaccion     TransactionItem[]
+
+  @@map("products")
+}
+
+model StockMovement {
+  id            Int            @id @default(autoincrement())
+  productoId    Int            @map("producto_id")
+  tipo          TipoMovimiento
+  cantidad      Int
+  stockAnterior Int            @map("stock_anterior")
+  stockNuevo    Int            @map("stock_nuevo")
+  precio        Decimal?       @db.Decimal(12, 2)
+  transaccionId Int?           @map("transaccion_id")
+  ventaEsperaId Int?           @map("venta_espera_id")
+  importacionId Int?           @map("importacion_id")
+  motivo        String?
+  observaciones String?
+  usuarioId     Int            @map("usuario_id")
+  fecha         DateTime       @default(now())
+  ipAddress     String?        @map("ip_address")
+  importacion   BulkImport?    @relation(fields: [importacionId], references: [id])
+  producto      Product        @relation(fields: [productoId], references: [id])
+  transaccion   Transaccion?   @relation(fields: [transaccionId], references: [id])
+  usuario       User           @relation("MovimientosStock", fields: [usuarioId], references: [id])
+  ventaEspera   PendingSale?   @relation(fields: [ventaEsperaId], references: [id])
+
+  @@map("stock_movements")
+}
+
+model ProductChange {
+  id            Int      @id @default(autoincrement())
+  productoId    Int      @map("producto_id")
+  campo         String
+  valorAnterior String?  @map("valor_anterior")
+  valorNuevo    String?  @map("valor_nuevo")
+  usuarioId     Int      @map("usuario_id")
+  fecha         DateTime @default(now())
+  ipAddress     String?  @map("ip_address")
+  userAgent     String?  @map("user_agent")
+  motivo        String?
+  producto      Product  @relation(fields: [productoId], references: [id])
+  usuario       User     @relation("CambiosProductos", fields: [usuarioId], references: [id])
+
+  @@map("product_changes")
+}
+
+model TransactionItem {
+  id             Int         @id @default(autoincrement())
+  transaccionId  Int         @map("transaccion_id")
+  productoId     Int?        @map("producto_id")
+  descripcion    String
+  codigoBarras   String      @map("codigo_barras")
+  cantidad       Int
+  precioUnitario Decimal     @map("precio_unitario") @db.Decimal(12, 2)
+  precioCosto    Decimal     @map("precio_costo") @db.Decimal(12, 2)
+  descuento      Decimal     @default(0) @db.Decimal(12, 2)
+  subtotal       Decimal     @db.Decimal(12, 2)
+  producto       Product?    @relation(fields: [productoId], references: [id])
+  transaccion    Transaccion @relation(fields: [transaccionId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_items")
+}
+
+model PendingSale {
+  id                Int                @id @default(autoincrement())
+  numeroVenta       String             @unique @map("numero_venta")
+  usuarioId         Int                @map("usuario_id")
+  cajaId            Int                @map("caja_id")
+  clienteId         Int?               @map("cliente_id")
+  clienteNombre     String?            @map("cliente_nombre")
+  subtotal          Decimal            @db.Decimal(12, 2)
+  descuento         Decimal            @default(0) @db.Decimal(12, 2)
+  total             Decimal            @db.Decimal(12, 2)
+  tasaCambio        Decimal            @map("tasa_cambio") @db.Decimal(8, 4)
+  tipoEspera        TipoVentaEspera    @default(INTENCIONAL) @map("tipo_espera")
+  esIntencional     Boolean            @default(true) @map("es_intencional")
+  fechaCreacion     DateTime           @default(now()) @map("fecha_creacion")
+  fechaExpiracion   DateTime           @map("fecha_expiracion")
+  tiempoLimiteMin   Int                @default(120) @map("tiempo_limite_min")
+  ultimaActividad   DateTime           @default(now()) @map("ultima_actividad")
+  sesionActiva      Boolean            @default(true) @map("sesion_activa")
+  estado            EstadoVentaEspera  @default(ACTIVA)
+  observaciones     String?
+  motivoCancelacion String?            @map("motivo_cancelacion")
+  auditoriaCarrito  CarritoAuditoria[] @relation("AuditoriaEspera")
+  items             PendingSaleItem[]
+  caja              Caja               @relation("VentasEnEspera", fields: [cajaId], references: [id])
+  usuario           User               @relation("VentasEnEspera", fields: [usuarioId], references: [id])
+  movimientosStock  StockMovement[]
+
+  @@map("pending_sales")
+}
+
+model PendingSaleItem {
+  id             Int         @id @default(autoincrement())
+  ventaEsperaId  Int         @map("venta_espera_id")
+  productoId     Int         @map("producto_id")
+  descripcion    String
+  codigoBarras   String      @map("codigo_barras")
+  cantidad       Int
+  precioUnitario Decimal     @map("precio_unitario") @db.Decimal(12, 2)
+  descuento      Decimal     @default(0) @db.Decimal(12, 2)
+  subtotal       Decimal     @db.Decimal(12, 2)
+  producto       Product     @relation("ProductosEnEspera", fields: [productoId], references: [id])
+  ventaEspera    PendingSale @relation(fields: [ventaEsperaId], references: [id], onDelete: Cascade)
+
+  @@map("pending_sale_items")
+}
+
+model BulkImport {
+  id                    Int               @id @default(autoincrement())
+  numeroFactura         String            @map("numero_factura")
+  proveedor             String
+  telefono              String?
+  fechaCompra           DateTime          @map("fecha_compra")
+  totalProductos        Int               @map("total_productos")
+  productosCreados      Int               @map("productos_creados")
+  productosActualizados Int               @map("productos_actualizados")
+  montoTotal            Decimal           @map("monto_total") @db.Decimal(12, 2)
+  usuarioId             Int               @map("usuario_id")
+  fechaImportacion      DateTime          @default(now()) @map("fecha_importacion")
+  archivoOriginal       String?           @map("archivo_original")
+  observaciones         String?
+  estado                EstadoImportacion @default(COMPLETADA)
+  items                 BulkImportItem[]
+  usuario               User              @relation("ImportacionesMasivas", fields: [usuarioId], references: [id])
+  movimientosStock      StockMovement[]
+
+  @@map("bulk_imports")
+}
+
+model BulkImportItem {
+  id            Int               @id @default(autoincrement())
+  importacionId Int               @map("importacion_id")
+  productoId    Int?              @map("producto_id")
+  descripcion   String
+  codigoBarras  String            @map("codigo_barras")
+  cantidad      Int
+  precioCosto   Decimal           @map("precio_costo") @db.Decimal(12, 2)
+  precioVenta   Decimal           @map("precio_venta") @db.Decimal(12, 2)
+  accion        AccionImportacion
+  mensajeError  String?           @map("mensaje_error")
+  importacion   BulkImport        @relation(fields: [importacionId], references: [id], onDelete: Cascade)
+  producto      Product?          @relation("ImportacionItems", fields: [productoId], references: [id])
+
+  @@map("bulk_import_items")
+}
+
+model Cliente {
+  id         Int           @id @default(autoincrement())
+  cedula_rif String        @unique
+  nombre     String
+  telefono   String?
+  email      String?
+  direccion  String?
+  tipo       String
+  activo     Boolean       @default(true)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  ventas     Transaccion[] @relation("VentasCliente")
+
+  @@map("clientes")
+}
+
+model Proveedor {
+  id        Int       @id @default(autoincrement())
+  nombre    String
+  contacto  String?
+  telefono  String?
+  email     String?
+  direccion String?
+  rif       String?   @unique
+  activo    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  productos Product[] @relation("ProveedorProductos")
+
+  @@map("proveedores")
+}
+
+model CarritoAuditoria {
+  id                Int           @id @default(autoincrement())
+  sesionId          String        @map("sesion_id")
+  usuarioId         Int           @map("usuario_id")
+  productoId        Int           @map("producto_id")
+  accion            AccionCarrito
+  cantidadAnterior  Int?          @map("cantidad_anterior")
+  cantidadNueva     Int           @map("cantidad_nueva")
+  precioUnitario    Decimal       @map("precio_unitario") @db.Decimal(12, 2)
+  motivoEliminacion String?       @map("motivo_eliminacion")
+  fechaHora         DateTime      @default(now()) @map("fecha_hora")
+  ipAddress         String?       @map("ip_address")
+  userAgent         String?       @map("user_agent")
+  tiempoEnCarrito   Int?          @map("tiempo_en_carrito")
+  fueComprado       Boolean?      @map("fue_comprado")
+  transaccionId     Int?          @map("transaccion_id")
+  ventaEsperaId     Int?          @map("venta_espera_id")
+  producto          Product       @relation("AuditoriaProductos", fields: [productoId], references: [id])
+  transaccion       Transaccion?  @relation("AuditoriaVentas", fields: [transaccionId], references: [id])
+  usuario           User          @relation("AuditoriaCarrito", fields: [usuarioId], references: [id])
+  ventaEspera       PendingSale?  @relation("AuditoriaEspera", fields: [ventaEsperaId], references: [id])
+
+  @@map("carrito_auditoria")
+}
+
+model VentaDocumento {
+  id                Int              @id @default(autoincrement())
+  transaccionId     Int              @map("transaccion_id")
+  tipoDocumento     TipoDocumento    @map("tipo_documento")
+  numeroComprobante String           @map("numero_comprobante")
+  archivoUrl        String           @map("archivo_url")
+  nombreArchivo     String           @map("nombre_archivo")
+  tamaño           Int?             @map("tamaño")
+  hash              String?
+  estado            EstadoDocumento  @default(GENERADO)
+  formatoImpresion  FormatoImpresion @map("formato_impresion")
+  impreso           Boolean          @default(false)
+  fechaImpresion    DateTime?        @map("fecha_impresion")
+  reimpresiones     Int              @default(0)
+  fechaCreacion     DateTime         @default(now()) @map("fecha_creacion")
+  usuarioCreacion   Int              @map("usuario_creacion")
+  observaciones     String?
+  esFiscal          Boolean          @default(false) @map("es_fiscal")
+  numeroFiscal      String?          @map("numero_fiscal")
+  tipoContribuyente String?          @map("tipo_contribuyente")
+  transaccion       Transaccion      @relation("DocumentosTransaccion", fields: [transaccionId], references: [id])
+  usuario           User             @relation("DocumentosCreados", fields: [usuarioCreacion], references: [id])
+
+  @@unique([numeroComprobante, tipoDocumento])
+  @@map("venta_documentos")
+}
+
+model AuditoriaInventario {
+  id                     Int                          @id @default(autoincrement())
+  auditor                String
+  observaciones          String?
+  fechaAuditoria         DateTime                     @default(now()) @map("fecha_auditoria")
+  estado                 EstadoAuditoria              @default(EN_PROGRESO)
+  totalProductos         Int                          @map("total_productos")
+  totalDiferencias       Int                          @default(0) @map("total_diferencias")
+  valorTotalDiferencias  Decimal                      @default(0) @map("valor_total_diferencias") @db.Decimal(12, 2)
+  ajustesAplicados       Boolean                      @default(false) @map("ajustes_aplicados")
+  fechaAplicacionAjustes DateTime?                    @map("fecha_aplicacion_ajustes")
+  createdAt              DateTime                     @default(now()) @map("created_at")
+  updatedAt              DateTime                     @updatedAt @map("updated_at")
+  detalles               AuditoriaInventarioDetalle[]
+
+  @@map("auditorias_inventario")
+}
+
+model AuditoriaInventarioDetalle {
+  id              Int                 @id @default(autoincrement())
+  auditoriaId     Int                 @map("auditoria_id")
+  productoId      Int                 @map("producto_id")
+  stockSistema    Int                 @map("stock_sistema")
+  stockFisico     Int                 @map("stock_fisico")
+  diferencia      Int
+  valorDiferencia Decimal             @map("valor_diferencia") @db.Decimal(12, 2)
+  observaciones   String?
+  createdAt       DateTime            @default(now()) @map("created_at")
+  auditoria       AuditoriaInventario @relation(fields: [auditoriaId], references: [id], onDelete: Cascade)
+  producto        Product             @relation(fields: [productoId], references: [id])
+
+  @@map("auditoria_inventario_detalles")
+}
+
+enum Role {
+  admin
+  supervisor
+  cajero
+  viewer
+}
+
+enum Turno {
+  MATUTINO
+  VESPERTINO
+  NOCTURNO
+}
+
+enum EstadoCaja {
+  ABIERTA
+  CERRADA
+  PENDIENTE_CIERRE_FISICO
+}
+
+enum TipoTransaccion {
+  INGRESO
+  EGRESO
+}
+
+enum MetodoPagoArqueo {
+  EFECTIVO_BS
+  EFECTIVO_USD
+  PAGO_MOVIL
+}
+
+enum TipoProducto {
+  PRODUCTO
+  SERVICIO
+  ELECTROBAR
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  RESERVA
+  LIBERACION
+  AJUSTE_POSITIVO
+  AJUSTE_NEGATIVO
+  TRANSFERENCIA
+  MERMA
+}
+
+enum EstadoVentaEspera {
+  ACTIVA
+  CONFIRMADA
+  CANCELADA
+  EXPIRADA
+}
+
+enum TipoVentaEspera {
+  INTENCIONAL
+  EMERGENCIA
+  DESCONEXION
+}
+
+enum AccionImportacion {
+  CREAR
+  ACTUALIZAR
+  ERROR
+}
+
+enum EstadoImportacion {
+  PROCESANDO
+  COMPLETADA
+  ERROR
+  CANCELADA
+}
+
+enum AccionCarrito {
+  AGREGAR
+  MODIFICAR
+  ELIMINAR
+  PROCESAR
+  CANCELAR
+  GUARDAR_ESPERA
+  RETOMAR_ESPERA
+}
+
+enum TipoDocumento {
+  RECIBO_VENTA
+  FACTURA_NO_FISCAL
+  NOTA_ENTREGA
+  COMPROBANTE_PAGO
+  COTIZACION
+}
+
+enum EstadoDocumento {
+  GENERADO
+  ERROR_GENERACION
+  ELIMINADO
+  REEMPLAZADO
+}
+
+enum FormatoImpresion {
+  TERMICA_58MM
+  TERMICA_80MM
+  A4
+  TICKET
+  MEDIA_CARTA
+}
+
+enum EstadoAuditoria {
+  EN_PROGRESO
+  COMPLETADA
+  CANCELADA
+}

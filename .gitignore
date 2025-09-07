@@ -1,0 +1,45 @@
+# Node
+node_modules/
+npm-debug.log*
+*.log
+
+# Package locks (elige uno si usas varios gestores)
+pnpm-lock.yaml
+yarn.lock
+
+# Builds / artefactos
+client/dist/
+client/.next/
+server/build/
+
+# Env y secretos
+.env
+.env.*
+!.env.example
+client/.env
+client/.env.*
+!client/.env.example
+server/.env
+server/.env.*
+!server/.env.example
+
+# Subidas y datos pesados (ajusta si necesitas versionar algo)
+server/uploads/
+server/temp/
+server/whatsapp-session/
+
+# Certificados locales / dev
+client/localhost+2-key.pem
+client/localhost+2.pem
+client/mkcert.exe
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Otros temporales
+*.cache
+*.tmp
+
