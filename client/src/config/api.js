@@ -3,15 +3,22 @@ import axios from 'axios';
 
 // 🔧 DETECCIÓN AUTOMÁTICA DE IP/HOST
 const getBaseURL = () => {
-  const hostname = window.location.hostname;
-  
-  // Ahora el backend también es HTTPS
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `https://192.168.1.5:3001/api`;
+  // Usar variable de entorno si está disponible
+  const envApiUrl = import.meta.env.VITE_API_URL;
+  if (envApiUrl) {
+    return `${envApiUrl}/api`;
   }
   
-  // Para red local, usar HTTPS también
-  return `https://192.168.1.5:3001/api`;
+  // Fallback: detectar automáticamente basado en hostname
+  const hostname = window.location.hostname;
+  
+  // Para localhost, usar localhost
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `https://localhost:3001/api`;
+  }
+  
+  // Para red local, usar la misma IP del frontend con puerto 3001
+  return `https://${hostname}:3001/api`;
 };
 
 // 🌐 CONFIGURACIÓN PRINCIPAL

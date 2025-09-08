@@ -1,9 +1,26 @@
 import { io } from 'socket.io-client';
 
 // URL del servidor backend
-const SERVER_URL = import.meta.env.DEV 
-  ? 'https://192.168.1.5:3001' 
-  : window.location.origin.replace(/:\d+/, ':3001');
+const getServerURL = () => {
+  // Usar variable de entorno si está disponible
+  const envApiUrl = import.meta.env.VITE_API_URL;
+  if (envApiUrl) {
+    return envApiUrl;
+  }
+  
+  // Fallback: detectar automáticamente
+  const hostname = window.location.hostname;
+  
+  // Para localhost, usar localhost
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'https://localhost:3001';
+  }
+  
+  // Para red local, usar la misma IP del frontend con puerto 3001
+  return `https://${hostname}:3001`;
+};
+
+const SERVER_URL = getServerURL();
 
 let socket = null;
 

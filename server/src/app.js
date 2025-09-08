@@ -34,10 +34,10 @@ const server = https.createServer(httpsOptions, app);
 const socketCorsOrigins = process.env.SOCKET_CORS_ORIGINS 
   ? process.env.SOCKET_CORS_ORIGINS.split(',')
   : [
-      'http://localhost:5173', 
-      'http://192.168.1.5:5173',
+      'https://localhost:5174', 
       'https://localhost:5173',
-      'https://192.168.5.11:5173'
+      'http://localhost:5173',
+      `https://${process.env.LOCAL_IP || '192.168.1.11'}:5174`
     ];
 
 const io = new Server(server, {
@@ -129,21 +129,28 @@ io.use(async (socket, next) => {
 app.use(morgan('combined'));
 
 // 🔧 CORS CONFIGURATION PRINCIPAL - USANDO .ENV
+const localIP = process.env.LOCAL_IP || '192.168.1.11';
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',')
   : [
-      'http://localhost:3000',
+      // Localhost variants
+      'https://localhost:5174',
+      'https://localhost:5173', 
       'http://localhost:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:5173',
-      'http://192.168.1.5:3000',
-      'http://192.168.1.5:5173',
       'https://localhost:3000',
-      'https://localhost:5173',
-      'https://127.0.0.1:3000',
+      'http://localhost:3000',
+      // 127.0.0.1 variants
+      'https://127.0.0.1:5174',
       'https://127.0.0.1:5173',
-      'https://192.168.1.5:3000',
-      'https://192.168.1.5:5173'
+      'http://127.0.0.1:5173',
+      'https://127.0.0.1:3000',
+      'http://127.0.0.1:3000',
+      // Dynamic local IP variants
+      `https://${localIP}:5174`,
+      `https://${localIP}:5173`,
+      `https://${localIP}:3000`,
+      `http://${localIP}:5173`,
+      `http://${localIP}:3000`
     ];
 
 console.log('🔧 CORS - Orígenes permitidos:', allowedOrigins);
@@ -239,7 +246,7 @@ app.get('/', (req, res) => {
     usuarios_bloqueados: global.estadoApp.usuarios_bloqueados,
     motivo_bloqueo: global.estadoApp.motivo_bloqueo,
     servidor: {
-      ip_local: process.env.LOCAL_IP || '192.168.1.5',
+      ip_local: localIP,
       puerto: process.env.PORT || 3001,
       socket_io: 'activo',
       cors_origins: allowedOrigins,

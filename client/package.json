@@ -22,6 +22,7 @@
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.517.0",
+    "mkcert": "^3.2.0",
     "qrcode": "^1.5.4",
     "qz-tray": "^2.2.5",
     "react": "^19.1.0",
