@@ -224,7 +224,7 @@ const useAuthStore = create(
             timestamp: new Date().toLocaleString('es-VE')
           });
 
-          toast.success(`¡Bienvenido ${user.nombre}!`);
+          toast.success(`Bienvenido ${user.nombre}`, { id: 'login-success' });
           
           // 🔧 DEBUG: Verificar si algo va a causar recarga
           console.log('🔧 LOGIN COMPLETADO - NO debería haber recarga ahora');
@@ -282,7 +282,7 @@ const useAuthStore = create(
             timestamp: new Date().toLocaleString('es-VE')
           });
 
-          toast.success(`¡Bienvenido ${userData.nombre}! (Modo Local)`);
+          toast.success(`Bienvenido ${userData.nombre} (Modo Local)`, { id: 'login-success' });
           return usuarioCompleto;
 
         } catch (error) {

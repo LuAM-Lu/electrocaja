@@ -13,11 +13,11 @@ const getServerURL = () => {
   
   // Para localhost, usar localhost
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'https://localhost:3001';
+    return 'https://localhost:3000';
   }
   
-  // Para red local, usar la misma IP del frontend con puerto 3001
-  return `https://${hostname}:3001`;
+  // Para red local, usar la misma IP del frontend con puerto 3000
+  return `https://${hostname}:3000`;
 };
 
 const SERVER_URL = getServerURL();

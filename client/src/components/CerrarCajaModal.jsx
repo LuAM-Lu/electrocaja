@@ -312,7 +312,7 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
         timestamp: new Date().toISOString()
       });
       
-      toast.success('Usuarios bloqueados durante cierre de caja');
+      toast.success('Usuarios bloqueados durante cierre de caja', { id: 'bloqueo-usuarios' });
     }
 
     return () => {
@@ -624,6 +624,7 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
       
       toast.success(mensajeExito, {
         duration: 6000,
+        id: 'caja-cerrada',
         style: { maxWidth: '400px' }
       });
       

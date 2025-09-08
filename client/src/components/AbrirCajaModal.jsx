@@ -291,7 +291,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
       setMontoInicialPagoMovil('');
       setObservacionesApertura('');
       
-      toast.success('✅ Caja abierta correctamente' + (fotoBase64 ? ' con evidencia fotográfica' : ''));
+      toast.success('✅ Caja abierta correctamente' + (fotoBase64 ? ' con evidencia fotográfica' : ''), { id: 'caja-abierta' });
       
       // Cerrar modal después de un momento
       setTimeout(() => {
@@ -316,7 +316,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-70">
       <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full mx-4 overflow-hidden">
         
         {/* 🎨 HEADER MEJORADO */}

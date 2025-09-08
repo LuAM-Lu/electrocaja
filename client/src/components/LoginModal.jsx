@@ -1,6 +1,6 @@
 // components/LoginModal.jsx (FONDO ANIMADO ÉPICO)
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, User, Lock, AlertCircle, QrCode, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, AlertCircle, QrCode, ArrowLeft, Search, Copyright } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
@@ -17,6 +17,8 @@ const LoginModal = ({ isOpen, onClose }) => {
   const [showQuickAccess, setShowQuickAccess] = useState(false);
   const [quickAccessCode, setQuickAccessCode] = useState('');
   const [quickAccessLoading, setQuickAccessLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [hasQuickAccessError, setHasQuickAccessError] = useState(false);
 
   // Ref para auto-focus del input del escáner
   const scannerInputRef = useRef(null);
@@ -40,6 +42,9 @@ const LoginModal = ({ isOpen, onClose }) => {
       clearError();
     }
 
+    // Reset error state
+    setHasError(false);
+
     try {
       const user = await login({
         email: formData.email,
@@ -48,11 +53,16 @@ const LoginModal = ({ isOpen, onClose }) => {
         turno: formData.turno
       });
 
-      toast.success(`¡Bienvenido ${user.nombre}!`);
+      // Toast de bienvenida centralizado en authStore
       onClose();
       
     } catch (error) {
       console.error('Error en login:', error);
+      toast.error(error.message || 'Error de autenticación. Verifica tus credenciales.');
+      
+      // Trigger error animation
+      setHasError(true);
+      setTimeout(() => setHasError(false), 600);
     }
   };
 
@@ -83,12 +93,16 @@ const LoginModal = ({ isOpen, onClose }) => {
         token: code.trim()
       });
 
-      toast.success(`¡Bienvenido ${user.nombre}! 📱`);
+      // Toast de bienvenida centralizado en authStore
       onClose();
       
     } catch (error) {
       console.error('Error en acceso rápido:', error);
-      toast.error(error.message || 'Código inválido');
+      toast.error(error.message || 'Código inválido ❌');
+      
+      // Trigger error animation for quick access
+      setHasQuickAccessError(true);
+      setTimeout(() => setHasQuickAccessError(false), 600);
       
       setTimeout(() => {
         if (scannerInputRef.current) {
@@ -119,70 +133,94 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* 🔌 FONDO CIRCUITO ISOMÉTRICO MINIMALISTA */}
+      {/* 💥 PIXEL BLAST BACKGROUND */}
       <div className="fixed inset-0 z-40">
-        {/* Fondo base sutil */}
-        <div className="absolute inset-0 circuit-background"></div>
+        {/* Fondo base pixel */}
+        <div className="absolute inset-0 pixel-background"></div>
         
-        {/* Circuito PCB isométrico */}
-        <div className="absolute inset-0 pcb-container">
+        {/* Partículas pixel explosivas */}
+        <div className="absolute inset-0 pixel-container">
           
-          {/* Líneas de circuito principales */}
-          <div className="circuit-line circuit-line-1"></div>
-          <div className="circuit-line circuit-line-2"></div>
-          <div className="circuit-line circuit-line-3"></div>
-          <div className="circuit-line circuit-line-4"></div>
+          {/* Pixel explosions principales */}
+          <div className="pixel-blast blast-1"></div>
+          <div className="pixel-blast blast-2"></div>
+          <div className="pixel-blast blast-3"></div>
+          <div className="pixel-blast blast-4"></div>
+          <div className="pixel-blast blast-5"></div>
           
-          {/* Componentes isométricos */}
+          {/* Partículas pequeñas */}
+          {Array.from({ length: 35 }).map((_, i) => (
+            <div
+              key={`pixel-particle-${i}`}
+              className="pixel-particle"
+              style={{
+                '--delay': `${i * 0.15}s`,
+                '--duration': `${2.5 + Math.random() * 2}s`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                '--end-x': `${(Math.random() - 0.5) * 250}px`,
+                '--end-y': `${(Math.random() - 0.5) * 250}px`
+              }}
+            ></div>
+          ))}
           
-          {/* LEDs */}
-          <div className="isometric-led led-1">
-            <div className="led-light"></div>
-          </div>
-          <div className="isometric-led led-2">
-            <div className="led-light"></div>
-          </div>
+          {/* Partículas cuadradas grandes */}
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div
+              key={`square-particle-${i}`}
+              className="square-particle"
+              style={{
+                '--delay': `${i * 0.4}s`,
+                '--duration': `${4 + Math.random() * 2}s`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                '--rotate': `${Math.random() * 360}deg`,
+                '--scale': `${0.5 + Math.random() * 1}`,
+              }}
+            ></div>
+          ))}
           
-          {/* Resistencias */}
-          <div className="isometric-resistor resistor-1">
-            <div className="resistor-band band-1"></div>
-            <div className="resistor-band band-2"></div>
-            <div className="resistor-band band-3"></div>
-          </div>
-          <div className="isometric-resistor resistor-2">
-            <div className="resistor-band band-1"></div>
-            <div className="resistor-band band-2"></div>
-            <div className="resistor-band band-3"></div>
-          </div>
+          {/* Micro partículas flotantes */}
+          {Array.from({ length: 25 }).map((_, i) => (
+            <div
+              key={`micro-particle-${i}`}
+              className="micro-particle"
+              style={{
+                '--delay': `${i * 0.1}s`,
+                '--duration': `${6 + Math.random() * 3}s`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                '--drift-x': `${(Math.random() - 0.5) * 100}px`,
+                '--drift-y': `${(Math.random() - 0.5) * 100}px`
+              }}
+            ></div>
+          ))}
           
-          {/* Microchip central */}
-          <div className="isometric-chip">
-            <div className="chip-pin chip-pin-1"></div>
-            <div className="chip-pin chip-pin-2"></div>
-            <div className="chip-pin chip-pin-3"></div>
-            <div className="chip-pin chip-pin-4"></div>
-            <div className="chip-processing"></div>
-          </div>
+          {/* Ondas de explosión */}
+          <div className="blast-wave wave-1"></div>
+          <div className="blast-wave wave-2"></div>
+          <div className="blast-wave wave-3"></div>
           
-          {/* Conectores */}
-          <div className="circuit-connector connector-1"></div>
-          <div className="circuit-connector connector-2"></div>
-          <div className="circuit-connector connector-3"></div>
-          <div className="circuit-connector connector-4"></div>
-          <div className="circuit-connector connector-5"></div>
-          <div className="circuit-connector connector-6"></div>
-          
-          {/* Flujo de corriente */}
-          <div className="current-flow flow-1"></div>
-          <div className="current-flow flow-2"></div>
-          <div className="current-flow flow-3"></div>
+          {/* Fragmentos pixelados */}
+          {Array.from({ length: 15 }).map((_, i) => (
+            <div
+              key={`pixel-fragment-${i}`}
+              className="pixel-fragment"
+              style={{
+                '--delay': `${i * 0.3}s`,
+                left: `${20 + i * 5}%`,
+                top: `${30 + Math.random() * 40}%`,
+                '--rotate': `${Math.random() * 360}deg`
+              }}
+            ></div>
+          ))}
           
         </div>
       </div>
 
       {/* MODAL PRINCIPAL */}
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative border border-white/20">
+        <div className="bg-white/98 backdrop-blur-xl rounded-xl shadow-xl w-full max-w-md overflow-hidden relative border border-white/30 ring-1 ring-black/5">
           
           {/* Header con gradiente mejorado */}
           <div className={`relative overflow-hidden transition-all duration-700 ${
@@ -210,22 +248,21 @@ const LoginModal = ({ isOpen, onClose }) => {
               <div className="flex justify-center mb-4">
                 <div className="relative">
                   <img
-                    src="/android-chrome-512x512.png"
+                    src="/favicon.svg"
                     alt="Logo Electro Caja"
-                    className="h-20 w-20 rounded-xl object-cover header-logo-glow"
+                    className="h-24 w-24 object-contain shadow-none"
                   />
-                  <div className="absolute inset-0 rounded-xl header-logo-pulse"></div>
                 </div>
               </div>
-              <h2 className="text-xl font-bold electric-text">Electro Caja</h2>
-              <div className="text-blue-100 text-sm mt-1">
-                Versión 1.0 • Guanare, Venezuela
-              </div>
+              <h1 className="text-xl font-bold electric-text tracking-wide">Electro Caja</h1>
+              <p className="text-blue-100/80 text-xs mt-2 font-medium tracking-wider uppercase">
+                Versión 1.0
+              </p>
             </div>
           </div>
 
           {/* Contenido del formulario */}
-          <div className="relative overflow-hidden" style={{ minHeight: '400px' }}>
+          <div className="relative overflow-hidden" style={{ minHeight: '360px' }}>
             
             {/* LOGIN NORMAL */}
             <div 
@@ -233,58 +270,64 @@ const LoginModal = ({ isOpen, onClose }) => {
                 showQuickAccess 
                   ? 'translate-x-[-100%] opacity-0 scale-95' 
                   : 'translate-x-0 opacity-100 scale-100'
+              } ${
+                hasError ? 'animate-shake' : ''
               }`}
             >
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Iniciar Sesión</h3>
-                
-                {/* Error */}
-                {error && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <div className="flex items-center space-x-2 text-red-800">
-                      <AlertCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Error de Autenticación</span>
-                    </div>
-                    <div className="text-sm text-red-700 mt-1">{error}</div>
-                  </div>
-                )}
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="px-6 py-6">
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900 mb-1">Bienvenido</h2>
+                  <p className="text-gray-500 text-xs font-medium">Ingresa tus credenciales para continuar</p>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-800 mb-2" htmlFor="email">
                       Correo Electrónico
                     </label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <div className="relative group">
+                      <User className="pointer-events-none z-10 absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500 transition-colors duration-200 group-focus-within:text-blue-500" />
                       <input
+                        id="email"
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        placeholder="usuario@electrocaja.com"
+                        className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-opacity-20 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white focus:bg-white shadow-md hover:shadow-lg font-medium text-gray-800 placeholder:text-gray-400 placeholder:font-normal ${
+                          hasError 
+                            ? 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50/50' 
+                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-600 hover:border-blue-300'
+                        }`}
+                        placeholder="email@electrocaja.com"
                         required
+                        aria-describedby="email-error"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-800 mb-2" htmlFor="password">
                       Contraseña
                     </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <div className="relative group">
+                      <Lock className="pointer-events-none z-10 absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500 transition-colors duration-200 group-focus-within:text-blue-500" />
                       <input
+                        id="password"
                         type={showPassword ? "text" : "password"}
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        placeholder="Ingresa tu contraseña"
+                        className={`w-full pl-12 pr-14 py-3 border rounded-xl focus:ring-2 focus:ring-opacity-20 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white focus:bg-white shadow-md hover:shadow-lg font-medium text-gray-800 placeholder:text-gray-400 placeholder:font-normal ${
+                          hasError 
+                            ? 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50/50' 
+                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-600 hover:border-blue-300'
+                        }`}
+                        placeholder="tu contraseña"
                         required
+                        aria-describedby="password-error"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 hover:text-gray-600 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                        aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                       >
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
@@ -294,16 +337,17 @@ const LoginModal = ({ isOpen, onClose }) => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full electric-button py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    className="w-full electric-button py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transform hover:scale-[1.01] active:scale-[0.98] shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-30"
+                    aria-label="Iniciar sesión con credenciales"
                   >
                     {loading ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                         <span>Conectando...</span>
                       </>
                     ) : (
                       <>
-                        <User className="h-4 w-4" />
+                        <User className="h-5 w-5" />
                         <span>Iniciar Sesión</span>
                       </>
                     )}
@@ -311,9 +355,10 @@ const LoginModal = ({ isOpen, onClose }) => {
                 </form>
 
                 <div className="mt-6 text-center">
-                  <div className="text-xs text-gray-500">
-                    Electro Caja v1.0
-                  </div>
+                  <p className="text-xs text-gray-400 font-medium flex items-center justify-center">
+                    <Copyright className="h-3 w-3 mr-1" />
+                    2025 Electro Caja v1.0
+                  </p>
                 </div>
               </div>
             </div>
@@ -324,65 +369,75 @@ const LoginModal = ({ isOpen, onClose }) => {
                 showQuickAccess 
                   ? 'translate-x-0 opacity-100 scale-100' 
                   : 'translate-x-full opacity-0 scale-95'
+              } ${
+                hasQuickAccessError ? 'animate-shake' : ''
               }`}
             >
-              <div className="p-6 flex flex-col justify-center" style={{ minHeight: '400px' }}>
+              <div className="px-6 py-6 flex flex-col justify-center" style={{ minHeight: '360px' }}>
                 
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Acceso Rápido</h3>
-                  <p className="text-gray-600 text-sm">Escanea o ingresa tu código de empleado</p>
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">Acceso Rápido</h2>
+                  <p className="text-gray-600 text-xs font-medium leading-relaxed">Escanea tu código QR de empleado<br/>o ingrésalo manualmente</p>
                 </div>
 
                 <div className="mb-6">
-                  <div className="relative w-full h-32 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl border-2 border-dashed border-gray-400 flex items-center justify-center mb-4 overflow-hidden">
+                  <div className="relative w-full h-28 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 rounded-xl border border-dashed border-purple-300 flex items-center justify-center mb-4 overflow-hidden shadow-inner">
                     
-                    <div className="absolute inset-0 scanner-effect"></div>
+                    <div className="absolute inset-0 scanner-effect bg-gradient-to-r from-transparent via-purple-100/50 to-transparent"></div>
                     
                     <div className="text-center relative z-10">
-                      <div className="relative inline-block">
-                        <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                        <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-                          <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent laser-scan opacity-90 shadow-sm shadow-red-500/50"></div>
+                      <div className="relative inline-block p-4">
+                        <div className="relative">
+                          <QrCode className="h-12 w-12 text-purple-400 mx-auto mb-2 drop-shadow-sm" />
+                          <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+                            <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-purple-500 to-transparent laser-scan opacity-80 shadow-md shadow-purple-500/50"></div>
+                          </div>
+                          <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-purple-500 rounded-tl-lg"></div>
+                          <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-purple-500 rounded-tr-lg"></div>
+                          <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-purple-500 rounded-bl-lg"></div>
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-purple-500 rounded-br-lg"></div>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500">Lector activado</p>
+                      <p className="text-sm font-semibold text-purple-600 mb-1">Escáner QR Activo</p>
                     </div>
                   </div>
                 </div>
 
-                <form onSubmit={handleQuickAccessSubmit} className="space-y-4">
-                  <div>
+                <form onSubmit={handleQuickAccessSubmit} className="space-y-5">
+                  <div className="relative group">
+                    <label className="block text-sm font-semibold text-gray-800 mb-2 text-center" htmlFor="qr-code">
+                      Código de Empleado
+                    </label>
                     <input
+                      id="qr-code"
                       ref={scannerInputRef}
                       type="password"
                       value={quickAccessCode}
                       onChange={(e) => setQuickAccessCode(e.target.value)}
                       onKeyDown={handleScannerInput}
                       onFocus={(e) => e.target.select()}
-                      placeholder="Escanea tu código QR"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center font-mono text-sm tracking-widest transition-all"
+                      placeholder="Escanea o ingresa tu código"
+                      className={`w-full px-5 py-3 border rounded-xl focus:ring-2 focus:ring-opacity-20 text-center font-mono text-base tracking-widest transition-all duration-300 bg-white/90 backdrop-blur-sm hover:bg-white focus:bg-white shadow-md hover:shadow-lg font-bold ${
+                        hasQuickAccessError 
+                          ? 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50/50' 
+                          : 'border-purple-300 focus:ring-purple-500 focus:border-purple-600 hover:border-purple-400'
+                      }`}
                       disabled={quickAccessLoading}
                       autoComplete="off"
+                      aria-describedby="qr-help"
+                      maxLength="20"
                     />
+                    <p id="qr-help" className="text-xs text-gray-500 text-center mt-1 font-medium">
+                      El código se ingresará automáticamente al escanear
+                    </p>
                   </div>
                   
-                  <button
-                    type="submit"
-                    disabled={quickAccessLoading || !quickAccessCode.trim()}
-                    className="w-full electric-button-purple py-3 px-4 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                  >
-                    {quickAccessLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Verificando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <QrCode className="h-4 w-4" />
-                        <span>Acceder</span>
-                      </>
-                    )}
-                  </button>
+                  {quickAccessLoading && (
+                    <div className="flex items-center justify-center py-3 bg-purple-50 rounded-xl border border-purple-200">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-500 border-t-transparent"></div>
+                      <span className="ml-3 text-purple-700 font-semibold">Verificando código...</span>
+                    </div>
+                  )}
                 </form>
               </div>
             </div>
@@ -401,7 +456,7 @@ const LoginModal = ({ isOpen, onClose }) => {
         <button
           type="button"
           onClick={() => setShowQuickAccess(!showQuickAccess)}
-          className={`group relative electric-floating-button w-16 h-16 rounded-full shadow-2xl transform transition-all duration-700 hover:scale-110 flex items-center justify-center ${
+          className={`group relative electric-floating-button w-12 h-12 rounded-full shadow-xl transform transition-all duration-700 hover:scale-105 flex items-center justify-center ${
             showQuickAccess 
               ? 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700' 
               : 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
@@ -413,9 +468,9 @@ const LoginModal = ({ isOpen, onClose }) => {
           
           <div className={`transition-transform duration-300 ${showQuickAccess ? 'rotate-180' : 'rotate-0'}`}>
             {showQuickAccess ? (
-              <ArrowLeft className="h-6 w-6 text-white" />
+              <ArrowLeft className="h-5 w-5 text-white" />
             ) : (
-              <QrCode className="h-6 w-6 text-white" />
+              <QrCode className="h-5 w-5 text-white" />
             )}
           </div>
           
@@ -431,339 +486,331 @@ const LoginModal = ({ isOpen, onClose }) => {
       {/* ESTILOS CSS ÉPICOS */}
       <style jsx="true">{`
         
-        /* 🔌 CIRCUITO ISOMÉTRICO MINIMALISTA */
+        /* 💥 PIXEL BLAST BACKGROUND */
         
-        /* Fondo base sutil */
-        .circuit-background {
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-          animation: subtleGradientShift 20s ease-in-out infinite;
+        /* Fondo base pixel */
+        .pixel-background {
+          background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 25%, #16213e 50%, #0f1419 75%, #0a0a0f 100%);
+          background-size: 400% 400%;
+          background-position: 0% 50%;
         }
 
-        @keyframes subtleGradientShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
+        /* Contenedor de partículas pixel */
+        .pixel-container {
+          overflow: hidden;
         }
 
-        /* Contenedor del PCB */
-        .pcb-container {
-          perspective: 1000px;
-          transform-style: preserve-3d;
-        }
-
-        /* 📏 LÍNEAS DE CIRCUITO ISOMÉTRICAS */
-        .circuit-line {
+        /* 💥 EXPLOSIONES PIXEL PRINCIPALES */
+        .pixel-blast {
           position: absolute;
-          height: 2px;
-          background: linear-gradient(90deg, 
-            transparent 0%, 
-            rgba(16, 185, 129, 0.3) 10%, 
-            rgba(16, 185, 129, 0.6) 50%, 
-            rgba(16, 185, 129, 0.3) 90%, 
-            transparent 100%
-          );
-          transform-origin: left;
-          opacity: 0;
-          animation: lineDrawIn 4s ease-in-out infinite;
+          width: 8px;
+          height: 8px;
+          background: #74b9ff;
+          border-radius: 1px;
+          animation: pixelBlastExplosion 4s ease-out infinite;
+          image-rendering: pixelated;
+          box-shadow: 
+            0 0 10px #74b9ff,
+            0 0 20px rgba(116, 185, 255, 0.5);
         }
 
-        /* Línea 1: Horizontal superior */
-        .circuit-line-1 {
-          top: 20%;
-          left: 15%;
-          width: 300px;
-          transform: rotateY(-30deg) rotateX(0deg);
+        /* Posiciones de explosiones */
+        .blast-1 {
+          top: 15%;
+          left: 20%;
           animation-delay: 0s;
+          background: #74b9ff;
+          box-shadow: 0 0 10px #74b9ff, 0 0 20px rgba(116, 185, 255, 0.5);
         }
 
-        /* Línea 2: Vertical izquierda */
-        .circuit-line-2 {
-          top: 20%;
-          left: 15%;
-          width: 200px;
-          transform: rotateY(-30deg) rotateZ(90deg);
-          animation-delay: 1s;
-        }
-
-        /* Línea 3: Horizontal inferior */
-        .circuit-line-3 {
-          top: 60%;
-          left: 25%;
-          width: 250px;
-          transform: rotateY(-30deg) rotateX(0deg);
-          animation-delay: 2s;
-        }
-
-        /* Línea 4: Diagonal conexión */
-        .circuit-line-4 {
+        .blast-2 {
           top: 40%;
-          left: 45%;
-          width: 180px;
-          transform: rotateY(-30deg) rotateZ(45deg);
-          animation-delay: 3s;
+          left: 70%;
+          animation-delay: 1.5s;
+          background: #ddd;
+          box-shadow: 0 0 10px #ddd, 0 0 20px rgba(221, 221, 221, 0.5);
         }
 
-        @keyframes lineDrawIn {
-          0%, 20% { 
-            opacity: 0; 
-            transform: scaleX(0); 
+        .blast-3 {
+          top: 70%;
+          left: 30%;
+          animation-delay: 3s;
+          background: #0984e3;
+          box-shadow: 0 0 10px #0984e3, 0 0 20px rgba(9, 132, 227, 0.5);
+        }
+
+        .blast-4 {
+          top: 25%;
+          left: 80%;
+          animation-delay: 2s;
+          background: #b2bec3;
+          box-shadow: 0 0 10px #b2bec3, 0 0 20px rgba(178, 190, 195, 0.5);
+        }
+
+        .blast-5 {
+          top: 60%;
+          left: 10%;
+          animation-delay: 0.5s;
+          background: #ffffff;
+          box-shadow: 0 0 10px #ffffff, 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes pixelBlastExplosion {
+          0% { 
+            transform: scale(0); 
+            opacity: 0;
           }
-          40%, 80% { 
-            opacity: 0.6; 
-            transform: scaleX(1); 
+          10% { 
+            transform: scale(1); 
+            opacity: 1;
+          }
+          20% {
+            transform: scale(3);
+            opacity: 0.8;
+          }
+          40% {
+            transform: scale(6);
+            opacity: 0.4;
+          }
+          60% {
+            transform: scale(1);
+            opacity: 0.6;
           }
           100% { 
-            opacity: 0.3; 
-            transform: scaleX(1); 
+            transform: scale(0); 
+            opacity: 0;
           }
         }
 
-        /* 💡 LEDs ISOMÉTRICOS */
-        .isometric-led {
+        /* 💫 PARTÍCULAS PIXEL */
+        .pixel-particle {
           position: absolute;
-          width: 8px;
-          height: 8px;
-          background: #1f2937;
-          border-radius: 2px;
-          transform: rotateY(-30deg) rotateX(30deg);
-          box-shadow: 
-            2px 2px 4px rgba(0, 0, 0, 0.3),
-            inset 1px 1px 2px rgba(255, 255, 255, 0.1);
-        }
-
-        .led-1 {
-          top: 18%;
-          left: 25%;
-          animation-delay: 1.5s;
-        }
-
-        .led-2 {
-          top: 58%;
-          left: 55%;
-          animation-delay: 3.5s;
-        }
-
-        .led-light {
-          position: absolute;
-          top: 50%;
-          left: 50%;
           width: 4px;
           height: 4px;
-          border-radius: 50%;
-          transform: translate(-50%, -50%);
-          animation: ledPulse 3s ease-in-out infinite;
+          background: #ff6b6b;
+          border-radius: 1px;
+          animation: pixelParticleFloat var(--duration, 4s) ease-in-out infinite var(--delay, 0s);
+          image-rendering: pixelated;
+          opacity: 0;
         }
 
-        .led-1 .led-light {
-          background: #ef4444;
-          box-shadow: 0 0 8px #ef4444, 0 0 16px rgba(239, 68, 68, 0.3);
-          animation-delay: 1.5s;
+        @keyframes pixelParticleFloat {
+          0% {
+            opacity: 0;
+            transform: translate(0, 0) scale(0);
+          }
+          10% {
+            opacity: 1;
+            transform: translate(0, 0) scale(1);
+          }
+          50% {
+            opacity: 0.8;
+            transform: translate(var(--end-x, 50px), var(--end-y, -50px)) scale(1.2);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(calc(var(--end-x, 50px) * 2), calc(var(--end-y, -50px) * 2)) scale(0);
+          }
         }
 
-        .led-2 .led-light {
-          background: #10b981;
-          box-shadow: 0 0 8px #10b981, 0 0 16px rgba(16, 185, 129, 0.3);
-          animation-delay: 3.5s;
-        }
+        .pixel-particle:nth-child(2n) { background: #74b9ff; }
+        .pixel-particle:nth-child(3n) { background: #0984e3; }
+        .pixel-particle:nth-child(4n) { background: #ddd; }
+        .pixel-particle:nth-child(5n) { background: #b2bec3; }
+        .pixel-particle:nth-child(6n) { background: #ffffff; }
+        .pixel-particle:nth-child(7n) { background: #636e72; }
 
-        @keyframes ledPulse {
-          0%, 70% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
-          85% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
-          100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
-        }
-
-        /* 🎯 RESISTENCIAS ISOMÉTRICAS */
-        .isometric-resistor {
+        /* 🌊 ONDAS DE EXPLOSIÓN */
+        .blast-wave {
           position: absolute;
-          width: 16px;
-          height: 6px;
-          background: #fbbf24;
-          border-radius: 2px;
-          transform: rotateY(-30deg) rotateX(15deg);
-          box-shadow: 
-            2px 1px 3px rgba(0, 0, 0, 0.3),
-            inset 1px 0 2px rgba(255, 255, 255, 0.2);
-        }
-
-        .resistor-1 {
-          top: 35%;
-          left: 20%;
-          animation: componentGlow 6s ease-in-out infinite;
-          animation-delay: 2s;
-        }
-
-        .resistor-2 {
-          top: 50%;
-          left: 60%;
-          animation: componentGlow 6s ease-in-out infinite;
-          animation-delay: 4s;
-        }
-
-        .resistor-band {
-          position: absolute;
-          width: 2px;
-          height: 100%;
-          top: 0;
-        }
-
-        .band-1 { left: 20%; background: #ef4444; }
-        .band-2 { left: 50%; background: #3b82f6; }
-        .band-3 { left: 80%; background: #f59e0b; }
-
-        @keyframes componentGlow {
-          0%, 60% { filter: brightness(1); }
-          80% { filter: brightness(1.3) drop-shadow(0 0 4px rgba(251, 191, 36, 0.6)); }
-          100% { filter: brightness(1); }
-        }
-
-        /* 🔲 MICROCHIP ISOMÉTRICO */
-        .isometric-chip {
-          position: absolute;
-          top: 40%;
-          left: 40%;
           width: 20px;
           height: 20px;
-          background: #111827;
-          border-radius: 2px;
-          transform: rotateY(-30deg) rotateX(20deg);
-          box-shadow: 
-            3px 3px 6px rgba(0, 0, 0, 0.4),
-            inset 2px 2px 4px rgba(255, 255, 255, 0.1);
-          animation: chipProcessing 8s ease-in-out infinite;
-        }
-
-        .chip-pin {
-          position: absolute;
-          width: 2px;
-          height: 1px;
-          background: #9ca3af;
-        }
-
-        .chip-pin-1 { top: 2px; left: -2px; }
-        .chip-pin-2 { top: 8px; left: -2px; }
-        .chip-pin-3 { top: 2px; right: -2px; }
-        .chip-pin-4 { top: 8px; right: -2px; }
-
-        .chip-processing {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          width: 8px;
-          height: 8px;
+          border: 2px solid #ff6b6b;
           border-radius: 50%;
-          transform: translate(-50%, -50%);
-          background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
+          animation: pixelWaveExpand 3s ease-out infinite;
           opacity: 0;
-          animation: processingPulse 2s ease-in-out infinite;
-          animation-delay: 4s;
         }
 
-        @keyframes chipProcessing {
-          0%, 70% { transform: rotateY(-30deg) rotateX(20deg) scale(1); }
-          85% { transform: rotateY(-30deg) rotateX(20deg) scale(1.1); }
-          100% { transform: rotateY(-30deg) rotateX(20deg) scale(1); }
+        .wave-1 {
+          top: 20%;
+          left: 40%;
+          animation-delay: 0s;
+          border-color: #74b9ff;
         }
 
-        @keyframes processingPulse {
-          0%, 30% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-          60% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.2); }
-          100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+        .wave-2 {
+          top: 60%;
+          left: 60%;
+          animation-delay: 1s;
+          border-color: #ddd;
         }
 
-        /* 🔗 CONECTORES ISOMÉTRICOS */
-        .circuit-connector {
+        .wave-3 {
+          top: 40%;
+          left: 20%;
+          animation-delay: 2s;
+          border-color: #0984e3;
+        }
+
+        @keyframes pixelWaveExpand {
+          0% {
+            transform: scale(0);
+            opacity: 1;
+            border-width: 4px;
+          }
+          50% {
+            transform: scale(5);
+            opacity: 0.6;
+            border-width: 2px;
+          }
+          100% {
+            transform: scale(10);
+            opacity: 0;
+            border-width: 1px;
+          }
+        }
+
+        /* 🧪 FRAGMENTOS PIXELADOS */
+        .pixel-fragment {
           position: absolute;
           width: 6px;
           height: 6px;
-          background: #6b7280;
-          border-radius: 50%;
-          transform: rotateY(-30deg) rotateX(45deg);
-          box-shadow: 
-            1px 1px 2px rgba(0, 0, 0, 0.4),
-            inset 1px 1px 1px rgba(255, 255, 255, 0.3);
-        }
-
-        .connector-1 { top: 20%; left: 25%; animation: connectorPulse 4s ease-in-out infinite; animation-delay: 1s; }
-        .connector-2 { top: 35%; left: 15%; animation: connectorPulse 4s ease-in-out infinite; animation-delay: 2s; }
-        .connector-3 { top: 20%; left: 45%; animation: connectorPulse 4s ease-in-out infinite; animation-delay: 1.5s; }
-        .connector-4 { top: 60%; left: 35%; animation: connectorPulse 4s ease-in-out infinite; animation-delay: 3s; }
-        .connector-5 { top: 60%; left: 55%; animation: connectorPulse 4s ease-in-out infinite; animation-delay: 2.5s; }
-        .connector-6 { top: 45%; left: 60%; animation: connectorPulse 4s ease-in-out infinite; animation-delay: 3.5s; }
-
-        @keyframes connectorPulse {
-          0%, 80% { 
-            background: #6b7280; 
-            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
-          }
-          90% { 
-            background: #06b6d4; 
-            box-shadow: 
-              1px 1px 2px rgba(0, 0, 0, 0.4),
-              0 0 8px rgba(6, 182, 212, 0.6);
-          }
-          100% { 
-            background: #6b7280; 
-            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
-          }
-        }
-
-        /* ⚡ FLUJO DE CORRIENTE */
-        .current-flow {
-          position: absolute;
-          width: 4px;
-          height: 4px;
-          background: radial-gradient(circle, #06b6d4 0%, transparent 70%);
-          border-radius: 50%;
+          background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+          border-radius: 1px;
+          animation: pixelFragmentSpin 5s linear infinite var(--delay, 0s);
+          image-rendering: pixelated;
           opacity: 0;
-          animation: currentMove 6s linear infinite;
         }
 
-        .flow-1 {
-          animation-delay: 0s;
-        }
-
-        .flow-2 {
-          animation-delay: 2s;
-        }
-
-        .flow-3 {
-          animation-delay: 4s;
-        }
-
-        @keyframes currentMove {
-          0% { 
-            top: 20%; 
-            left: 15%; 
-            opacity: 0; 
-            transform: scale(0.5);
+        @keyframes pixelFragmentSpin {
+          0% {
+            opacity: 0;
+            transform: rotate(0deg) scale(0);
           }
-          10% { 
-            opacity: 1; 
-            transform: scale(1);
-          }
-          25% { 
-            top: 20%; 
-            left: 35%; 
+          10% {
             opacity: 1;
+            transform: rotate(var(--rotate, 45deg)) scale(1);
           }
-          50% { 
-            top: 40%; 
-            left: 45%; 
+          50% {
+            opacity: 0.7;
+            transform: rotate(calc(var(--rotate, 45deg) + 180deg)) scale(1.5);
+          }
+          80% {
+            opacity: 0.3;
+            transform: rotate(calc(var(--rotate, 45deg) + 270deg)) scale(0.8);
+          }
+          100% {
+            opacity: 0;
+            transform: rotate(calc(var(--rotate, 45deg) + 360deg)) scale(0);
+          }
+        }
+
+        .pixel-fragment:nth-child(2n) { background: linear-gradient(45deg, #74b9ff, #0984e3); }
+        .pixel-fragment:nth-child(3n) { background: linear-gradient(45deg, #ddd, #b2bec3); }
+        .pixel-fragment:nth-child(4n) { background: linear-gradient(45deg, #ffffff, #636e72); }
+
+        /* 💥 EFECTOS PIXEL ADICIONALES */
+        
+        /* Partículas cuadradas grandes */
+        .square-particle {
+          position: absolute;
+          width: 8px;
+          height: 8px;
+          background: #74b9ff;
+          border-radius: 0;
+          animation: squareParticleDance var(--duration, 5s) ease-in-out infinite var(--delay, 0s);
+          image-rendering: pixelated;
+          opacity: 0;
+          transform: scale(var(--scale, 1));
+        }
+
+        @keyframes squareParticleDance {
+          0% {
+            opacity: 0;
+            transform: rotate(0deg) scale(var(--scale, 1));
+          }
+          15% {
             opacity: 0.8;
+            transform: rotate(var(--rotate, 45deg)) scale(calc(var(--scale, 1) * 1.2));
           }
-          75% { 
-            top: 60%; 
-            left: 55%; 
+          50% {
+            opacity: 1;
+            transform: rotate(calc(var(--rotate, 45deg) * 2)) scale(var(--scale, 1));
+          }
+          85% {
+            opacity: 0.6;
+            transform: rotate(calc(var(--rotate, 45deg) * 3)) scale(calc(var(--scale, 1) * 0.8));
+          }
+          100% {
+            opacity: 0;
+            transform: rotate(calc(var(--rotate, 45deg) * 4)) scale(0);
+          }
+        }
+        
+        .square-particle:nth-child(2n) { background: #0984e3; }
+        .square-particle:nth-child(3n) { background: #ddd; }
+        .square-particle:nth-child(4n) { background: #b2bec3; }
+        .square-particle:nth-child(5n) { background: #ffffff; }
+        .square-particle:nth-child(6n) { background: #636e72; }
+        
+        /* Micro partículas flotantes */
+        .micro-particle {
+          position: absolute;
+          width: 2px;
+          height: 2px;
+          background: #74b9ff;
+          border-radius: 0;
+          animation: microParticleFloat var(--duration, 7s) linear infinite var(--delay, 0s);
+          image-rendering: pixelated;
+          opacity: 0;
+        }
+
+        @keyframes microParticleFloat {
+          0% {
+            opacity: 0;
+            transform: translate(0, 0);
+          }
+          10% {
             opacity: 0.6;
           }
-          90% { 
-            opacity: 0; 
-            transform: scale(0.3);
+          50% {
+            opacity: 1;
+            transform: translate(var(--drift-x, 50px), var(--drift-y, -50px));
           }
-          100% { 
-            top: 60%; 
-            left: 65%; 
+          90% {
+            opacity: 0.4;
+          }
+          100% {
             opacity: 0;
+            transform: translate(calc(var(--drift-x, 50px) * 2), calc(var(--drift-y, -50px) * 2));
           }
+        }
+        
+        .micro-particle:nth-child(2n) { background: #0984e3; }
+        .micro-particle:nth-child(3n) { background: #ddd; }
+        .micro-particle:nth-child(4n) { background: #b2bec3; }
+        .micro-particle:nth-child(5n) { background: #ffffff; }
+        .micro-particle:nth-child(6n) { background: #636e72; }
+
+        /* 💫 EFECTOS PIXEL RESPONSIVOS */
+        
+        /* Responsividad para pixel art */
+        @media (max-width: 640px) {
+          .pixel-blast { width: 6px; height: 6px; }
+          .pixel-particle { width: 3px; height: 3px; }
+          .pixel-fragment { width: 4px; height: 4px; }
+          .blast-wave { width: 15px; height: 15px; }
+          .square-particle { width: 6px; height: 6px; }
+          .micro-particle { width: 1px; height: 1px; }
+        }
+        
+        @media (max-width: 480px) {
+          .pixel-blast { width: 4px; height: 4px; }
+          .pixel-particle { width: 2px; height: 2px; }
+          .pixel-fragment { width: 3px; height: 3px; }
+          .blast-wave { width: 12px; height: 12px; }
+          .square-particle { width: 4px; height: 4px; }
+          .micro-particle { width: 1px; height: 1px; }
         }
 
         /* 📱 RESPONSIVO */
@@ -807,90 +854,108 @@ const LoginModal = ({ isOpen, onClose }) => {
           }
         }
 
-        /* 🔌 EFECTOS MINIMALISTAS DEL HEADER */
+        /* 🎨 EFECTOS PIXEL DEL HEADER */
         .header-energy-wave {
-          background: linear-gradient(45deg, transparent, rgba(16, 185, 129, 0.08), transparent);
-          animation: headerCircuitWave 12s ease-in-out infinite;
+          background: linear-gradient(45deg, 
+            transparent, 
+            rgba(116, 185, 255, 0.1), 
+            rgba(221, 221, 221, 0.1), 
+            transparent
+          );
+          animation: headerPixelWave 10s ease-in-out infinite;
         }
 
-        @keyframes headerCircuitWave {
+        @keyframes headerPixelWave {
           0% { transform: translateX(-100%); opacity: 0; }
-          50% { transform: translateX(0%); opacity: 0.6; }
+          50% { transform: translateX(0%); opacity: 0.8; }
           100% { transform: translateX(100%); opacity: 0; }
         }
 
         .header-particle {
           position: absolute;
-          width: 2px;
-          height: 2px;
-          background: rgba(6, 182, 212, 0.4);
-          border-radius: 50%;
-          animation: headerCircuitParticle 8s ease-in-out infinite var(--delay);
+          width: 3px;
+          height: 3px;
+          background: #74b9ff;
+          border-radius: 1px;
+          image-rendering: pixelated;
+          animation: headerPixelParticle 6s ease-in-out infinite var(--delay);
         }
 
-        @keyframes headerCircuitParticle {
-          0%, 80% { transform: translateY(0px); opacity: 0.2; }
-          90% { transform: translateY(-15px); opacity: 0.8; }
-          100% { transform: translateY(0px); opacity: 0.2; }
+        @keyframes headerPixelParticle {
+          0%, 70% { 
+            transform: translateY(0px) scale(0.8); 
+            opacity: 0.3; 
+          }
+          85% { 
+            transform: translateY(-20px) scale(1.2); 
+            opacity: 1; 
+          }
+          100% { 
+            transform: translateY(0px) scale(0.8); 
+            opacity: 0.3; 
+          }
         }
 
         .header-logo-glow {
-          animation: headerLogoCircuitGlow 6s ease-in-out infinite alternate;
+          animation: headerLogoPixelGlow 5s ease-in-out infinite alternate;
         }
 
-        @keyframes headerLogoCircuitGlow {
+        @keyframes headerLogoPixelGlow {
           0% { 
-            filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.3)) 
-                    drop-shadow(0 0 16px rgba(6, 182, 212, 0.2)); 
+            filter: drop-shadow(0 0 10px rgba(116, 185, 255, 0.4)) 
+                    drop-shadow(0 0 20px rgba(221, 221, 221, 0.3)); 
           }
           100% { 
-            filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.5)) 
-                    drop-shadow(0 0 24px rgba(6, 182, 212, 0.3)); 
+            filter: drop-shadow(0 0 16px rgba(116, 185, 255, 0.6)) 
+                    drop-shadow(0 0 32px rgba(221, 221, 221, 0.4)); 
           }
         }
 
         .header-logo-pulse {
-          background: radial-gradient(circle, rgba(16, 185, 129, 0.1), transparent);
-          animation: headerLogoCircuitPulse 8s ease-in-out infinite;
+          background: radial-gradient(circle, rgba(116, 185, 255, 0.15), transparent);
+          animation: headerLogoPixelPulse 6s ease-in-out infinite;
         }
 
-        @keyframes headerLogoCircuitPulse {
-          0%, 70% { transform: scale(0.9); opacity: 0; }
-          85% { transform: scale(1.3); opacity: 0.3; }
-          100% { transform: scale(0.9); opacity: 0; }
+        @keyframes headerLogoPixelPulse {
+          0%, 60% { transform: scale(0.8); opacity: 0; }
+          80% { transform: scale(1.4); opacity: 0.4; }
+          100% { transform: scale(0.8); opacity: 0; }
         }
 
-        /* 🔌 TEXTO CIRCUITO */
+        /* 🗺 TEXTO PIXEL */
         .electric-text {
           text-shadow: 
-            0 0 3px rgba(16, 185, 129, 0.6),
-            0 0 6px rgba(6, 182, 212, 0.4);
-          animation: circuitTextGlow 8s ease-in-out infinite alternate;
+            0 0 5px rgba(116, 185, 255, 0.8),
+            0 0 10px rgba(221, 221, 221, 0.6),
+            0 0 15px rgba(9, 132, 227, 0.4);
+          animation: pixelTextGlow 6s ease-in-out infinite alternate;
         }
 
-        @keyframes circuitTextGlow {
+        @keyframes pixelTextGlow {
           0% { 
             text-shadow: 
-              0 0 3px rgba(16, 185, 129, 0.6),
-              0 0 6px rgba(6, 182, 212, 0.4); 
+              0 0 5px rgba(116, 185, 255, 0.8),
+              0 0 10px rgba(221, 221, 221, 0.6); 
           }
           100% { 
             text-shadow: 
-              0 0 6px rgba(16, 185, 129, 0.8),
-              0 0 12px rgba(6, 182, 212, 0.6),
-              0 0 18px rgba(16, 185, 129, 0.3); 
+              0 0 8px rgba(116, 185, 255, 1),
+              0 0 16px rgba(221, 221, 221, 0.8),
+              0 0 24px rgba(9, 132, 227, 0.6),
+              0 0 32px rgba(255, 255, 255, 0.4); 
           }
         }
 
         /* 🔌 BOTONES CIRCUITO */
         .electric-button {
-          background: linear-gradient(45deg, #0f172a, #1e293b, #0f172a);
+          background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #1e40af 100%);
           background-size: 200% 200%;
           color: white;
-          border: 1px solid rgba(16, 185, 129, 0.3);
+          border: 1px solid rgba(59, 130, 246, 0.4);
           position: relative;
           overflow: hidden;
           animation: circuitButtonFlow 8s ease-in-out infinite;
+          box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
         }
 
         .electric-button::before {
@@ -911,11 +976,13 @@ const LoginModal = ({ isOpen, onClose }) => {
         @keyframes circuitButtonFlow {
           0%, 100% { 
             background-position: 0% 50%; 
-            border-color: rgba(16, 185, 129, 0.3);
+            transform: translateY(0px);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
           }
           50% { 
             background-position: 100% 50%; 
-            border-color: rgba(6, 182, 212, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
           }
         }
 
@@ -925,13 +992,14 @@ const LoginModal = ({ isOpen, onClose }) => {
         }
 
         .electric-button-purple {
-          background: linear-gradient(45deg, #0f172a, #312e81, #0f172a);
+          background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #7c3aed 100%);
           background-size: 200% 200%;
           color: white;
-          border: 1px solid rgba(124, 58, 237, 0.3);
+          border: 1px solid rgba(168, 85, 247, 0.4);
           position: relative;
           overflow: hidden;
           animation: circuitButtonFlow 8s ease-in-out infinite;
+          box-shadow: 0 4px 15px rgba(168, 85, 247, 0.2);
         }
 
         .electric-button-purple::before {
@@ -1360,6 +1428,24 @@ const LoginModal = ({ isOpen, onClose }) => {
           }
         }
 
+        /* 🎯 ANIMACIÓN DE VIBRACIÓN ERROR */
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10% { transform: translateX(-10px); }
+          20% { transform: translateX(10px); }
+          30% { transform: translateX(-8px); }
+          40% { transform: translateX(8px); }
+          50% { transform: translateX(-6px); }
+          60% { transform: translateX(6px); }
+          70% { transform: translateX(-4px); }
+          80% { transform: translateX(4px); }
+          90% { transform: translateX(-2px); }
+        }
+
+        .animate-shake {
+          animation: shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
         /* 🔍 MODO ALTO CONTRASTE */
         @media (prefers-contrast: high) {
           .circuit-line {
@@ -1454,3 +1540,6 @@ const LoginModal = ({ isOpen, onClose }) => {
 };
 
 export default LoginModal;
+
+
+

@@ -66,6 +66,32 @@ npm run db:seed    # Seed database with initial data
 - `PORT`: Server port (default 3001)
 - Client uses `VITE_API_URL` to connect to backend
 
+## Production & Development Environments
+
+**Production Environment:**
+- URL: https://192.168.1.5:5173
+- Server: Ubuntu LTS 24.04
+- Status: Full production deployment with SSL certificates
+- Real-time multi-terminal POS coordination active
+
+**Development Environment:**
+- URL: https://192.168.1.11:5173
+- Server port: 3001 (HTTPS)
+- Client port: 5173 (HTTPS with Vite dev server)
+- SSL certificates: localhost+2.pem / localhost+2-key.pem
+- Real-time sync: Socket.IO integration for multi-terminal coordination
+
+**SSL Configuration:**
+- Both environments use HTTPS for security compliance
+- Certificates configured in both client/vite.config.js and server/src/app.js
+- Chrome compatibility resolved with proper certificate extensions
+- Development certificates: localhost+2.pem and localhost+2-key.pem
+
+**GitHub Integration:**
+- Repository actively maintained with regular commits
+- SSL configuration fixes and system optimizations committed
+- Collaborative development workflow in progress
+
 ## Key Features
 
 - **Multi-user POS system** with role-based permissions

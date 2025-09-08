@@ -15,7 +15,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
   '/api': {
-    target: 'https://localhost:3000',  // ← Cambiar a puerto 3000
+    target: 'https://localhost:3001',  // ← Cambiar a puerto 3000
     changeOrigin: true,
     secure: false,  // ← Permitir certificados auto-firmados
     configure: (proxy, options) => {

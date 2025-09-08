@@ -845,6 +845,7 @@ updateCajaStatus: (cajaData) => {
     // 🔔 NOTIFICACIÓN DE CAJA ABIERTA
     toast.success(`🏪 Caja abierta por ${cajaActualizada.usuario_apertura}`, {
       duration: 4000,
+      id: 'caja-abierta',
       icon: '✅',
       style: {
         background: '#F0FDF4',
@@ -923,6 +924,7 @@ updateCajaStatus: (cajaData) => {
     // 🔔 NOTIFICACIÓN DE CAJA CERRADA
     toast.success(`🔒 Caja cerrada por ${cierreInfo.usuario_cierre}`, {
       duration: 4000,
+      id: 'caja-cerrada',
       icon: '✅',
       style: {
         background: '#FEF3C7',

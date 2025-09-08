@@ -1,5 +1,5 @@
 // client/src/hooks/useSocketEvents.js (CON FORCE LOGOUT AGREGADO)
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
 import { useNotificacionesStore } from '../store/notificacionesStore';
@@ -128,8 +128,11 @@ export const useSocketEvents = () => {
 
     const handleCajaAbierta = (data) => {
       console.log('📦 Caja abierta:', data);
+      // Evitar duplicado si el usuario actual abrió la caja
+      if (usuario?.nombre === data.usuario) return;
       toast.success(`📦 Caja abierta por ${data.usuario}`, { 
         duration: 4000,
+        id: 'caja-abierta',
         style: {
           background: '#ECFDF5',
           color: '#14532D'
@@ -145,8 +148,11 @@ export const useSocketEvents = () => {
     
     const handleCajaCerrada = (data) => {
       console.log('🔒 Caja cerrada:', data);
+      // Evitar duplicado si el usuario actual cerró la caja
+      if (usuario?.nombre === data.usuario) return;
       toast.success(`🔒 Caja cerrada por ${data.usuario}`, { 
         duration: 4000,
+        id: 'caja-cerrada',
         style: {
           background: '#EFF6FF',
           color: '#1E40AF'
@@ -352,7 +358,31 @@ export const useSocketEvents = () => {
     limpiarCajaPendiente();
   };
 
-    // 🔧 REGISTRAR TODOS LOS LISTENERS
+    //     // 🔧 REGISTRAR TODOS LOS LISTENERS
+    //     socket\.off\('bloquear_usuarios'\);\nsocket\.off\('bloquear_usuarios_diferencia'\);\nsocket\.off\('desbloquear_usuarios'\);\nsocket\.off\('force_logout'\);\nsocket\.off\('caja_abierta'\);\nsocket\.off\('caja_cerrada'\);\nsocket\.off\('user-connected'\);\nsocket\.off\('user-disconnected'\);\nsocket\.off\('users-update'\);\nsocket\.off\('caja-updated'\);\nsocket\.off\('transaction-added'\);\nsocket\.off\('transaction-deleted'\);\nsocket\.off\('error'\);\nsocket\.off\('venta_procesada'\);\nsocket\.off\('usuarios_conectados_actualizado'\);\nsocket\.off\('stock_reservado'\);\nsocket\.off\('stock_liberado'\);\nsocket\.off\('auto_cierre_ejecutado'\);\nsocket\.off\('caja_pendiente_resuelta'\);\nsocket\.off\('sistema_desbloqueado'\);\n\n//\ REGISTRAR\ TODOS\ LOS\ LISTENERS\nsocket\.on\('bloquear_usuarios',\ handleBloqueaUsuarios\);
+    // Pre-clean previous listeners to avoid duplicates
+    socket.off('bloquear_usuarios');
+    socket.off('bloquear_usuarios_diferencia');
+    socket.off('desbloquear_usuarios');
+    socket.off('force_logout');
+    socket.off('caja_abierta');
+    socket.off('caja_cerrada');
+    socket.off('user-connected');
+    socket.off('user-disconnected');
+    socket.off('users-update');
+    socket.off('caja-updated');
+    socket.off('transaction-added');
+    socket.off('transaction-deleted');
+    socket.off('error');
+    socket.off('venta_procesada');
+    socket.off('usuarios_conectados_actualizado');
+    socket.off('stock_reservado');
+    socket.off('stock_liberado');
+    socket.off('auto_cierre_ejecutado');
+    socket.off('caja_pendiente_resuelta');
+    socket.off('sistema_desbloqueado');
+
+    // Register listeners
     socket.on('bloquear_usuarios', handleBloqueaUsuarios);
     socket.on('bloquear_usuarios_diferencia', handleBloqueaDiferencia);
     socket.on('desbloquear_usuarios', handleDesbloquea);
@@ -589,3 +619,5 @@ if (funcionEjecutada) {
     socket // Exposer el socket para debug
   };
 };
+
+
