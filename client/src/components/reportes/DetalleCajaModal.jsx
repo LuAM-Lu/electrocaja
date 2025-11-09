@@ -5,7 +5,7 @@ import {
   Clock, TrendingUp, TrendingDown, DollarSign, Smartphone, CreditCard, Package
 } from 'lucide-react';
 import { api } from '../../config/api';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const DetalleCajaModal = ({ isOpen, onClose, caja }) => {
   const [loading, setLoading] = useState(false);

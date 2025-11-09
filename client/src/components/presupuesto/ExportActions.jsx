@@ -1,11 +1,11 @@
-// components/presupuesto/ExportActions.jsx - SOLO CONFIGURACIÓN 🎯
+// components/presupuesto/ExportActions.jsx - SOLO CONFIGURACIÓN 
 import React, { useState } from 'react';
 import { 
   FileText, Mail, MessageSquare, Download,
   CheckCircle, Eye, AlertTriangle, Check, 
   ChevronDown, Wifi, WifiOff
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const ExportActions = ({ 
   presupuestoData,
@@ -15,14 +15,14 @@ const ExportActions = ({
 }) => {
   const [showVistaPrevia, setShowVistaPrevia] = useState(false);
 
-  // 🎯 Estados de configuración ÚNICAMENTE
+  //  Estados de configuración ÚNICAMENTE
   const [exportConfig, setExportConfig] = useState({
     pdf: false,
     whatsapp: false,
     email: false
   });
 
-  // 🔧 Manejar toggle de opciones - SOLO CONFIGURACIÓN
+  //  Manejar toggle de opciones - SOLO CONFIGURACIÓN
   const handleToggle = (type) => {
     const newConfig = {
       ...exportConfig,
@@ -41,19 +41,19 @@ const ExportActions = ({
     };
     
     toast.success(
-      `${exportConfig[type] ? '❌' : '✅'} ${labels[type]} ${exportConfig[type] ? 'desactivado' : 'activado'}`,
+      `${exportConfig[type] ? '' : ''} ${labels[type]} ${exportConfig[type] ? 'desactivado' : 'activado'}`,
       { duration: 2000 }
     );
   };
 
-  // 🔧 Validaciones
+  //  Validaciones
   const isEmailValid = presupuestoData.cliente?.email && 
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(presupuestoData.cliente.email);
 
   const isPhoneValid = presupuestoData.cliente?.telefono && 
     presupuestoData.cliente.telefono.replace(/[^0-9]/g, '').length >= 10;
 
-  // 🎨 Configuración de estilos
+  //  Configuración de estilos
   const getCardStyle = (type, isActive) => {
     const configs = {
       pdf: {
@@ -90,7 +90,7 @@ const ExportActions = ({
   return (
     <div className="space-y-6">
       
-      {/* 🎯 CARDS DE CONFIGURACIÓN - SOLO TOGGLES */}
+      {/*  CARDS DE CONFIGURACIÓN - SOLO TOGGLES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
         {Object.entries(exportConfig).map(([type, isActive]) => {
@@ -152,7 +152,7 @@ const ExportActions = ({
                 {type === 'whatsapp' && !isPhoneValid && (
                   <div className="mt-2">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                      ⚠️ Sin teléfono
+                       Sin teléfono
                     </span>
                   </div>
                 )}
@@ -160,7 +160,7 @@ const ExportActions = ({
                 {type === 'email' && !isEmailValid && (
                   <div className="mt-2">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                      ⚠️ Sin email
+                       Sin email
                     </span>
                   </div>
                 )}
@@ -183,12 +183,12 @@ const ExportActions = ({
         })}
       </div>
 
-      {/* 📋 RESUMEN DE CONFIGURACIÓN */}
+      {/*  RESUMEN DE CONFIGURACIÓN */}
       {Object.values(exportConfig).some(Boolean) && (
         <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4">
           <div className="text-center">
             <h4 className="text-lg font-bold text-emerald-900 mb-2">
-              ✅ Configuración Lista
+               Configuración Lista
             </h4>
             
             <p className="text-emerald-700 text-sm mb-3">
@@ -203,25 +203,25 @@ const ExportActions = ({
             <div className="bg-white/70 rounded-lg p-3 text-sm">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className={exportConfig.pdf ? 'text-red-700 font-semibold' : 'text-gray-500'}>
-                  📄 {exportConfig.pdf ? 'PDF Activo' : 'PDF Inactivo'}
+                   {exportConfig.pdf ? 'PDF Activo' : 'PDF Inactivo'}
                 </div>
                 <div className={exportConfig.whatsapp ? 'text-green-700 font-semibold' : 'text-gray-500'}>
-                  📱 {exportConfig.whatsapp ? 'WhatsApp Activo' : 'WhatsApp Inactivo'}
+                   {exportConfig.whatsapp ? 'WhatsApp Activo' : 'WhatsApp Inactivo'}
                 </div>
                 <div className={exportConfig.email ? 'text-blue-700 font-semibold' : 'text-gray-500'}>
-                  📧 {exportConfig.email ? 'Email Activo' : 'Email Inactivo'}
+                   {exportConfig.email ? 'Email Activo' : 'Email Inactivo'}
                 </div>
               </div>
             </div>
             
             <p className="text-xs text-emerald-600 mt-2">
-              💡 Haz clic en "Generar" para ejecutar las acciones seleccionadas
+               Haz clic en "Generar" para ejecutar las acciones seleccionadas
             </p>
           </div>
         </div>
       )}
 
-      {/* 🎬 VISTA PREVIA SIMPLE */}
+      {/*  VISTA PREVIA SIMPLE */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
         <button
           onClick={() => setShowVistaPrevia(!showVistaPrevia)}
@@ -247,7 +247,7 @@ const ExportActions = ({
   );
 };
 
-// 🧩 COMPONENTE DE VISTA RESUMIDA
+//  COMPONENTE DE VISTA RESUMIDA
 const VistaResumenPresupuesto = ({ presupuestoData, tasaCambio }) => {
   // Cálculo simple de totales
   const subtotal = presupuestoData.items?.reduce((sum, item) => {

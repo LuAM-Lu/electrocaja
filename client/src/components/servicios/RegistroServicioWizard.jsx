@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import ClienteSelector from '../presupuesto/ClienteSelector';
 import ItemsTable from '../presupuesto/ItemsTable';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 // Pasos del wizard
 import PasoDispositivo from './wizard/PasoDispositivo';
@@ -43,7 +43,7 @@ export default function RegistroServicioWizard({
   isOpen, 
   onClose, 
   onServicioCreado,
-  // ✨ NUEVAS PROPS PARA MODO EDICIÓN
+  //  NUEVAS PROPS PARA MODO EDICIÓN
   modoEdicion = false,
   servicioAEditar = null,
   onServicioActualizado = null
@@ -238,7 +238,7 @@ export default function RegistroServicioWizard({
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       if (modoEdicion) {
-        // ✨ MODO EDICIÓN - ACTUALIZAR SERVICIO EXISTENTE
+        //  MODO EDICIÓN - ACTUALIZAR SERVICIO EXISTENTE
         const servicioActualizado = {
           ...servicioAEditar,
           productos: datosServicio.items.map(item => ({
@@ -255,10 +255,10 @@ export default function RegistroServicioWizard({
         };
 
         onServicioActualizado?.(servicioActualizado);
-        toast.success('✅ Servicio actualizado exitosamente');
+        toast.success('Servicio actualizado exitosamente');
         
       } else {
-        // ✨ MODO CREACIÓN - CREAR NUEVO SERVICIO
+        //  MODO CREACIÓN - CREAR NUEVO SERVICIO
         const nuevoServicio = {
           id: Date.now(),
           cliente: datosServicio.cliente.nombre,
@@ -292,14 +292,14 @@ export default function RegistroServicioWizard({
         };
 
         onServicioCreado?.(nuevoServicio);
-        toast.success('✅ Orden de servicio creada exitosamente');
+        toast.success('Orden de servicio creada exitosamente');
       }
       
       onClose();
 
     } catch (error) {
       console.error('Error procesando servicio:', error);
-      toast.error('❌ Error al procesar la solicitud');
+      toast.error('Error al procesar la solicitud');
     } finally {
       setLoading(false);
     }
@@ -417,7 +417,7 @@ export default function RegistroServicioWizard({
             <div className="max-w-2xl mx-auto">
               <div className="flex items-center gap-3 mb-6">
                 <h2 className="text-xl font-semibold text-gray-100">
-                  👤 {modoEdicion ? 'Cliente del Servicio' : 'Seleccionar Cliente'}
+                   {modoEdicion ? 'Cliente del Servicio' : 'Seleccionar Cliente'}
                 </h2>
                 {modoEdicion && (
                   <span className="px-3 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm font-medium">
@@ -433,7 +433,7 @@ export default function RegistroServicioWizard({
                 theme="dark"
               />
               {erroresPaso.cliente && (
-                <p className="text-red-400 text-sm mt-2">⚠️ {erroresPaso.cliente}</p>
+                <p className="text-red-400 text-sm mt-2"> {erroresPaso.cliente}</p>
               )}
             </div>
           )}
@@ -442,7 +442,7 @@ export default function RegistroServicioWizard({
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <h2 className="text-xl font-semibold text-gray-100">
-                  📱 {modoEdicion ? 'Información del Dispositivo' : 'Dispositivo y Diagnóstico'}
+                   {modoEdicion ? 'Información del Dispositivo' : 'Dispositivo y Diagnóstico'}
                 </h2>
                 {modoEdicion && (
                   <span className="px-3 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm font-medium">
@@ -465,7 +465,7 @@ export default function RegistroServicioWizard({
             <div className="max-w-5xl mx-auto">
               <div className="flex items-center gap-3 mb-6">
                 <h2 className="text-xl font-semibold text-gray-100">
-                  🛒 {modoEdicion ? 'Editar Productos y Servicios' : 'Productos y Servicios (Opcional)'}
+                   {modoEdicion ? 'Editar Productos y Servicios' : 'Productos y Servicios (Opcional)'}
                 </h2>
                 {modoEdicion && (
                   <span className="px-3 py-1 bg-green-600/20 text-green-300 rounded-full text-sm font-medium">
@@ -484,7 +484,7 @@ export default function RegistroServicioWizard({
                 maxVisibleItems={6}
               />
               {erroresPaso.items && (
-                <p className="text-red-400 text-sm mt-2">⚠️ {erroresPaso.items}</p>
+                <p className="text-red-400 text-sm mt-2"> {erroresPaso.items}</p>
               )}
             </div>
           )}
@@ -493,7 +493,7 @@ export default function RegistroServicioWizard({
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <h2 className="text-xl font-semibold text-gray-100">
-                  ✅ {modoEdicion ? 'Confirmar Cambios' : 'Confirmar y Crear'}
+                   {modoEdicion ? 'Confirmar Cambios' : 'Confirmar y Crear'}
                 </h2>
               </div>
               

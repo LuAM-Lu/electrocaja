@@ -5,11 +5,11 @@ import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import { useMontosEnCaja, formatearBolivares, formatearDolares } from '../hooks/useMontosEnCaja';
 import { api } from '../config/api';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
 const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
  // ===================================
- // 📊 ESTADOS
+ //  ESTADOS
  // ===================================
  const [loading, setLoading] = useState(false);
  const [loadingPDF, setLoadingPDF] = useState(false);
@@ -21,22 +21,22 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
  const [pdfGenerado, setPdfGenerado] = useState(false);
  const { usuario } = useAuthStore();
 
- // 🆕 USAR HOOK UNIFICADO CON DATOS DE CAJA PENDIENTE
+ //  USAR HOOK UNIFICADO CON DATOS DE CAJA PENDIENTE
  const montosCalculados = useMontosEnCaja(datosEsperados);
 
  // ===================================
- // 🔄 EFECTOS
+ //  EFECTOS
  // ===================================
  useEffect(() => {
    cargarDatosCajaPendiente();
  }, [cajaPendiente.id]);
 
  // ===================================
- // 📡 FUNCIONES DE CARGA DE DATOS
+ //  FUNCIONES DE CARGA DE DATOS
  // ===================================
  const cargarDatosCajaPendiente = async () => {
    try {
-     // 🔧 USAR ENDPOINT ESPECÍFICO PARA CAJA PENDIENTE
+     //  USAR ENDPOINT ESPECÍFICO PARA CAJA PENDIENTE
      const response = await fetch(`https://localhost:3001/api/cajas/${cajaPendiente.id}/detalle`, {
        headers: {
          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
@@ -46,9 +46,9 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
      if (response.ok) {
        const data = await response.json();
        if (data.data) {
-         console.log('📦 Datos cargados para caja pendiente:', data.data);
+         console.log(' Datos cargados para caja pendiente:', data.data);
          
-         // 🔄 CONVERTIR FORMATO BACKEND A FORMATO ESPERADO POR HOOK
+         //  CONVERTIR FORMATO BACKEND A FORMATO ESPERADO POR HOOK
          const datosFormateados = {
            // Montos iniciales (formato consistente)
            monto_inicial_bs: parseFloat(data.data.montoInicialBs || cajaPendiente.montoInicialBs) || 0,
@@ -74,16 +74,16 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
          };
          
          setDatosEsperados(datosFormateados);
-         console.log('✅ Datos formateados para hook:', datosFormateados);
+         console.log(' Datos formateados para hook:', datosFormateados);
        }
      } else {
        throw new Error('Error cargando datos del backend');
      }
    } catch (error) {
-     console.error('❌ Error cargando datos de caja:', error);
+     console.error(' Error cargando datos de caja:', error);
      toast.error('Error cargando datos de la caja pendiente');
      
-     // 🔄 FALLBACK: Usar datos básicos de cajaPendiente
+     //  FALLBACK: Usar datos básicos de cajaPendiente
      const datosFallback = {
        monto_inicial_bs: parseFloat(cajaPendiente.montoInicialBs) || 0,
        monto_inicial_usd: parseFloat(cajaPendiente.montoInicialUsd) || 0,
@@ -100,12 +100,12 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
      };
      
      setDatosEsperados(datosFallback);
-     console.log('⚠️ Usando datos de fallback:', datosFallback);
+     console.log(' Usando datos de fallback:', datosFallback);
    }
  };
 
  // ===================================
- // 🧮 FUNCIONES DE CÁLCULO
+ //  FUNCIONES DE CÁLCULO
  // ===================================
  const calcularDiferencias = () => {
    const contadoBs = parseFloat(montoFinalBs) || 0;
@@ -130,18 +130,18 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
  };
 
  // ===================================
- // 📄 FUNCIONES DE PDF
+ //  FUNCIONES DE PDF
  // ===================================
  const generarPDFCierre = async () => {
    if (!datosEsperados || !montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil) {
-     toast.error('❌ Datos insuficientes para generar PDF');
+     toast.error('Datos insuficientes para generar PDF');
      return;
    }
 
    setLoadingPDF(true);
    
    try {
-     console.log('📄 Iniciando generación de PDF para caja pendiente...');
+     console.log(' Iniciando generación de PDF para caja pendiente...');
      
      // Preparar datos completos para el PDF
      const datosPDF = {
@@ -199,7 +199,7 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
        fechaGeneracion: new Date().toISOString()
      };
 
-     console.log('📊 Datos preparados para PDF:', datosPDF);
+     console.log(' Datos preparados para PDF:', datosPDF);
 
      // Llamar al servicio de PDF
     // Llamar al servicio de PDF unificado
@@ -214,7 +214,7 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
      }
 
      const pdfInfo = response.data.data;
-     console.log('✅ PDF generado:', pdfInfo);
+     console.log(' PDF generado:', pdfInfo);
 
      // Marcar como generado
      setPdfGenerado(true);
@@ -231,28 +231,28 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
          })
          .join(', ') : 'Sin diferencias';
 
-     const mensajeWhatsApp = `🚨 *ELECTRO CAJA - CAJA PENDIENTE RESUELTA*
+     const mensajeWhatsApp = ` *ELECTRO CAJA - CAJA PENDIENTE RESUELTA*
 
-📅 *Fecha Original:* ${cajaPendiente.fecha}
-🕐 *Resuelta:* ${new Date().toLocaleDateString('es-VE')} - ${new Date().toLocaleTimeString('es-VE')}
-👤 *Resuelto por:* ${usuario?.nombre}
-🏢 *Sucursal:* ${usuario?.sucursal || 'Principal'}
+ *Fecha Original:* ${cajaPendiente.fecha}
+ *Resuelta:* ${new Date().toLocaleDateString('es-VE')} - ${new Date().toLocaleTimeString('es-VE')}
+ *Resuelto por:* ${usuario?.nombre}
+ *Sucursal:* ${usuario?.sucursal || 'Principal'}
 
-💰 *CONTEO FÍSICO FINAL:*
-💵 Bolívares: ${formatearBolivares(parseFloat(montoFinalBs))} Bs
-💵 Dólares: $${formatearDolares(parseFloat(montoFinalUsd))}
-📱 Pago Móvil: ${formatearBolivares(parseFloat(montoFinalPagoMovil))} Bs
+ *CONTEO FÍSICO FINAL:*
+ Bolívares: ${formatearBolivares(parseFloat(montoFinalBs))} Bs
+ Dólares: $${formatearDolares(parseFloat(montoFinalUsd))}
+ Pago Móvil: ${formatearBolivares(parseFloat(montoFinalPagoMovil))} Bs
 
-📊 *DIFERENCIAS:* ${diferenciasTexto}
+ *DIFERENCIAS:* ${diferenciasTexto}
 
-🗒️ *Observaciones:* ${observaciones.trim() || 'Ninguna'}
+ *Observaciones:* ${observaciones.trim() || 'Ninguna'}
 
-📄 *Reporte PDF adjunto con detalles completos.*
+ *Reporte PDF adjunto con detalles completos.*
 
 _Caja pendiente resuelta - Electro Caja_`;
 
      // Enviar por WhatsApp
-     console.log('📱 Enviando PDF por WhatsApp...');
+     console.log(' Enviando PDF por WhatsApp...');
      const whatsappResponse = await api.post('/whatsapp/pdf', {
        numero: '+584120552931',
        mensaje: mensajeWhatsApp,
@@ -261,7 +261,7 @@ _Caja pendiente resuelta - Electro Caja_`;
      });
 
      if (whatsappResponse.data.success) {
-       toast.success('✅ PDF generado y enviado por WhatsApp', { duration: 5000 });
+       toast.success('PDF generado y enviado por WhatsApp', { duration: 5000 });
        
        // Descargar PDF localmente
        if (pdfInfo.pdfBase64) {
@@ -271,14 +271,14 @@ _Caja pendiente resuelta - Electro Caja_`;
          document.body.appendChild(link);
          link.click();
          document.body.removeChild(link);
-         console.log('💾 PDF descargado localmente');
+         console.log(' PDF descargado localmente');
        }
      } else {
-       toast.warning('📄 PDF generado pero WhatsApp falló');
+       toast.warning('PDF generado pero WhatsApp falló');
      }
 
    } catch (error) {
-     console.error('❌ Error generando PDF:', error);
+     console.error(' Error generando PDF:', error);
      toast.error('Error generando PDF: ' + (error.response?.data?.message || error.message));
      throw error;
    } finally {
@@ -286,11 +286,11 @@ _Caja pendiente resuelta - Electro Caja_`;
    }
  };
 
- // 📄 FUNCIÓN MANUAL PARA GENERAR PDF (BOTÓN INDEPENDIENTE)
+ //  FUNCIÓN MANUAL PARA GENERAR PDF (BOTÓN INDEPENDIENTE)
  const handleGenerarPDFManual = async () => {
    // Validar datos completos
    if (!montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil) {
-     toast.error('❌ Complete todos los conteos antes de generar el PDF');
+     toast.error('Complete todos los conteos antes de generar el PDF');
      return;
    }
 
@@ -299,16 +299,16 @@ _Caja pendiente resuelta - Electro Caja_`;
 
    // Si hay diferencias significativas y no es admin, bloquear
    if (hayDiferenciasSignif && usuario?.rol?.toLowerCase() !== 'admin') {
-     toast.error('🚨 No se puede generar PDF con diferencias significativas sin autorización de administrador');
+     toast.error('No se puede generar PDF con diferencias significativas sin autorización de administrador');
      return;
    }
 
    const confirmar = window.confirm(
      `¿Generar PDF con los montos actuales?\n\n` +
-     `💵 Bolívares: ${formatearBolivares(parseFloat(montoFinalBs))} Bs\n` +
-     `💵 Dólares: $${formatearDolares(parseFloat(montoFinalUsd))}\n` +
-     `📱 Pago Móvil: ${formatearBolivares(parseFloat(montoFinalPagoMovil))} Bs\n\n` +
-     `${hayDiferencias() ? '⚠️ Con diferencias detectadas' : '✅ Sin diferencias detectadas'}`
+     ` Bolívares: ${formatearBolivares(parseFloat(montoFinalBs))} Bs\n` +
+     ` Dólares: $${formatearDolares(parseFloat(montoFinalUsd))}\n` +
+     ` Pago Móvil: ${formatearBolivares(parseFloat(montoFinalPagoMovil))} Bs\n\n` +
+     `${hayDiferencias() ? ' Con diferencias detectadas' : ' Sin diferencias detectadas'}`
    );
    
    if (!confirmar) return;
@@ -321,7 +321,7 @@ _Caja pendiente resuelta - Electro Caja_`;
  };
 
  // ===================================
- // 💾 FUNCIÓN PRINCIPAL DE ENVÍO
+ //  FUNCIÓN PRINCIPAL DE ENVÍO
  // ===================================
  const handleSubmit = async (e) => {
    e.preventDefault();
@@ -333,13 +333,13 @@ _Caja pendiente resuelta - Electro Caja_`;
    
    // Verificar diferencias significativas (solo para no-admins)
    if (hayDiferenciasSignificativas() && usuario?.rol?.toLowerCase() !== 'admin') {
-     toast.error('🚨 Diferencias significativas detectadas. Se requiere autorización de administrador.');
+     toast.error('Diferencias significativas detectadas. Se requiere autorización de administrador.');
      return;
    }
 
    // Si es admin, mostrar alerta pero permitir continuar
    if (hayDiferenciasSignificativas() && usuario?.rol?.toLowerCase() === 'admin') {
-     toast.warning('⚠️ Admin detectó diferencias significativas - Procediendo con autorización automática');
+     toast.warning('Admin detectó diferencias significativas - Procediendo con autorización automática');
    }
 
    setLoading(true);
@@ -363,7 +363,7 @@ _Caja pendiente resuelta - Electro Caja_`;
        observacionesCompletas = `${observaciones}\n\nDIFERENCIAS DETECTADAS: ${diferenciasTexto.join(', ')} - Resuelto por: ${usuario?.nombre} - ${new Date().toLocaleString('es-VE')}`;
      }
      
-     console.log('🔧 Resolviendo caja pendiente:', cajaPendiente.id);
+     console.log(' Resolviendo caja pendiente:', cajaPendiente.id);
      
      const response = await fetch(`https://localhost:3001/api/cajas/resolver-pendiente/${cajaPendiente.id}`, {
        method: 'POST',
@@ -385,7 +385,7 @@ _Caja pendiente resuelta - Electro Caja_`;
      }
 
      const result = await response.json();
-     console.log('✅ Caja resuelta:', result);
+     console.log(' Caja resuelta:', result);
 
      // Limpiar estado de bloqueo
      useAuthStore.setState({
@@ -393,24 +393,38 @@ _Caja pendiente resuelta - Electro Caja_`;
        sistemaBloquedadoPorCaja: false
      });
 
-     toast.success('✅ Caja pendiente resuelta exitosamente');
+     toast.success('Caja pendiente resuelta exitosamente');
 
-     // 📄 GENERAR PDF AUTOMÁTICAMENTE DESPUÉS DEL CIERRE
+     //  GENERAR PDF AUTOMÁTICAMENTE DESPUÉS DEL CIERRE
      try {
-       console.log('📄 Generando PDF de caja pendiente resuelta...');
+       console.log(' Generando PDF de caja pendiente resuelta...');
        await generarPDFCierre();
      } catch (pdfError) {
-       console.warn('⚠️ Error generando PDF (no crítico):', pdfError);
-       toast.warning('⚠️ Caja cerrada correctamente, pero PDF falló');
+       console.warn(' Error generando PDF (no crítico):', pdfError);
+       toast.warning('Caja cerrada correctamente, pero PDF falló');
      }
 
-     // Recargar la aplicación para mostrar estado normal
-     setTimeout(() => {
-       window.location.reload();
+     //  ACTUALIZAR STORES EN LUGAR DE RECARGAR
+     setTimeout(async () => {
+       console.log(' Actualizando stores después de resolver caja pendiente...');
+
+       // Actualizar auth store (limpiar caja pendiente)
+       useAuthStore.getState().limpiarCajaPendiente();
+
+       // Actualizar caja store
+       try {
+         await useCajaStore.getState().initialize();
+       } catch (err) {
+         console.error('Error actualizando caja store:', err);
+       }
+
+       // Llamar callback y cerrar modal
+       if (onComplete) onComplete();
+       onClose();
      }, 1500);
 
    } catch (error) {
-     console.error('❌ Error resolviendo caja:', error);
+     console.error(' Error resolviendo caja:', error);
      toast.error('Error al resolver caja pendiente: ' + error.message);
    } finally {
      setLoading(false);
@@ -418,11 +432,11 @@ _Caja pendiente resuelta - Electro Caja_`;
  };
 
  // ===================================
- // 🎨 RENDERIZADO
+ //  RENDERIZADO
  // ===================================
  const diferencias = calcularDiferencias();
 
- // 🔄 MOSTRAR LOADING MIENTRAS CARGAN DATOS
+ //  MOSTRAR LOADING MIENTRAS CARGAN DATOS
  if (!datosEsperados) {
    return (
      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center">
@@ -438,7 +452,7 @@ _Caja pendiente resuelta - Electro Caja_`;
    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center">
      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden max-h-[95vh] overflow-y-auto">
        
-       {/* 🎨 HEADER */}
+       {/*  HEADER */}
        <div className="bg-gradient-to-r from-amber-500 to-amber-600">
          <div className="px-6 py-4 text-white">
            <div className="flex items-center justify-between">
@@ -459,7 +473,7 @@ _Caja pendiente resuelta - Electro Caja_`;
                    </div>
                    {montosCalculados.esCajaPendiente && (
                      <div className="bg-amber-400/20 px-2 py-1 rounded-full text-xs">
-                       📊 Hook unificado
+                        Hook unificado
                      </div>
                    )}
                  </div>
@@ -538,7 +552,7 @@ _Caja pendiente resuelta - Electro Caja_`;
                </div>
              </div>
              
-             {/* 📊 ESTADÍSTICAS ADICIONALES */}
+             {/*  ESTADÍSTICAS ADICIONALES */}
              <div className="grid grid-cols-3 gap-2 text-center text-xs bg-blue-50 p-3 rounded-lg">
                <div>
                  <div className="font-semibold text-blue-800">Transacciones</div>
@@ -581,7 +595,7 @@ _Caja pendiente resuelta - Electro Caja_`;
                  <div className={`text-xs mt-1 text-center font-semibold ${
                    diferencias.bs > 0 ? 'text-blue-600' : diferencias.bs < 0 ? 'text-red-600' : 'text-green-600'
                  }`}>
-                   {diferencias.bs === 0 ? '✓ Exacto' : 
+                   {diferencias.bs === 0 ? ' Exacto' : 
                     diferencias.bs > 0 ? `+${formatearBolivares(diferencias.bs)} Bs` : 
                     `${formatearBolivares(diferencias.bs)} Bs`}
                  </div>
@@ -609,7 +623,7 @@ _Caja pendiente resuelta - Electro Caja_`;
                  <div className={`text-xs mt-1 text-center font-semibold ${
                    diferencias.usd > 0 ? 'text-blue-600' : diferencias.usd < 0 ? 'text-red-600' : 'text-green-600'
                  }`}>
-                   {diferencias.usd === 0 ? '✓ Exacto' : 
+                   {diferencias.usd === 0 ? ' Exacto' : 
                     diferencias.usd > 0 ? `+$${formatearDolares(diferencias.usd)}` : 
                     `-$${formatearDolares(Math.abs(diferencias.usd))}`}
                  </div>
@@ -638,7 +652,7 @@ _Caja pendiente resuelta - Electro Caja_`;
                  <div className={`text-xs mt-1 text-center font-semibold ${
                    diferencias.pagoMovil > 0 ? 'text-blue-600' : diferencias.pagoMovil < 0 ? 'text-red-600' : 'text-green-600'
                  }`}>
-                   {diferencias.pagoMovil === 0 ? '✓ Exacto' : 
+                   {diferencias.pagoMovil === 0 ? ' Exacto' : 
                     diferencias.pagoMovil > 0 ? `+${formatearBolivares(diferencias.pagoMovil)} Bs` : 
                     `${formatearBolivares(diferencias.pagoMovil)} Bs`}
                  </div>
@@ -679,9 +693,9 @@ _Caja pendiente resuelta - Electro Caja_`;
                {hayDiferenciasSignificativas() && (
                  <div className="mt-2 text-xs font-semibold">
                    {usuario?.rol?.toLowerCase() === 'admin' ? (
-                     <div className="text-blue-600">ℹ️ Como administrador, puede proceder con estas diferencias</div>
+                     <div className="text-blue-600">ℹ Como administrador, puede proceder con estas diferencias</div>
                    ) : (
-                     <div className="text-red-600">⚠️ Se requiere autorización de administrador para proceder</div>
+                     <div className="text-red-600"> Se requiere autorización de administrador para proceder</div>
                    )}
                  </div>
                )}
@@ -702,7 +716,7 @@ _Caja pendiente resuelta - Electro Caja_`;
              />
            </div>
 
-           {/* 📄 SECCIÓN DE PDF */}
+           {/*  SECCIÓN DE PDF */}
            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
              <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
                <FileText className="h-4 w-4 mr-2" />
@@ -712,7 +726,7 @@ _Caja pendiente resuelta - Electro Caja_`;
                <div className="text-sm text-blue-700">
                  {pdfGenerado ? (
                    <span className="flex items-center text-green-700">
-                     ✅ PDF generado y enviado por WhatsApp
+                      PDF generado y enviado por WhatsApp
                    </span>
                  ) : (
                    <span>
@@ -759,7 +773,7 @@ _Caja pendiente resuelta - Electro Caja_`;
                <div className="flex items-center space-x-3">
                  <FileText className="h-5 w-5 text-green-600" />
                  <div>
-                   <div className="font-semibold text-green-800">✅ PDF Generado y Enviado</div>
+                   <div className="font-semibold text-green-800"> PDF Generado y Enviado</div>
                    <div className="text-sm text-green-700">Reporte enviado por WhatsApp y descargado localmente</div>
                  </div>
                </div>

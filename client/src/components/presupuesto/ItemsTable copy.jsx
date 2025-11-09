@@ -1,4 +1,4 @@
-// components/ItemsTable.jsx - VERSIÓN MEJORADA MODULAR 🎯
+// components/ItemsTable.jsx - VERSIÓN MEJORADA MODULAR 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Plus, Search, Edit3, Trash2, Save, X, 
@@ -8,10 +8,10 @@ import {
   Barcode, Info, Star
 } from 'lucide-react';
 import { useInventarioStore } from "../../store/inventarioStore";
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';
 
-// 🆕 FUNCIONES API PARA STOCK (desde IngresoModal)
+//  FUNCIONES API PARA STOCK (desde IngresoModal)
 const liberarStockAPI = async (productoId, sesionId, cantidad = null) => {
   try {
     const payload = { productoId, sesionId };
@@ -22,16 +22,16 @@ const liberarStockAPI = async (productoId, sesionId, cantidad = null) => {
     const response = await api.post('/ventas/stock/liberar', payload);
     
     if (response.data.success) {
-      console.log('✅ Stock liberado en backend:', response.data.data);
+      console.log(' Stock liberado en backend:', response.data.data);
       return response.data.data;
     }
   } catch (error) {
-    console.error('❌ Error liberando stock:', error);
+    console.error(' Error liberando stock:', error);
     throw error;
   }
 };
 
-// 🆕 FUNCIONES API PARA STOCK
+//  FUNCIONES API PARA STOCK
 const obtenerStockDisponibleAPI = async (productoId, sesionId = null) => {
   try {
     const url = sesionId 
@@ -43,7 +43,7 @@ const obtenerStockDisponibleAPI = async (productoId, sesionId = null) => {
     }
     return null;
   } catch (error) {
-    console.error('❌ Error obteniendo stock:', error);
+    console.error(' Error obteniendo stock:', error);
     return null;
   }
 };
@@ -53,29 +53,29 @@ const validarStockAntesDe = async (producto, cantidadSolicitada, itemsCarrito = 
     // Los servicios siempre tienen stock ilimitado
     if (producto.tipo === 'SERVICIO') return true;
     
-    // 🆕 SIEMPRE consultar API para obtener stock real
+    //  SIEMPRE consultar API para obtener stock real
     const stockInfo = await obtenerStockDisponibleAPI(producto.id, sesionId);
     
     if (stockInfo && stockInfo.stock) {
       const stockDisponible = stockInfo.stock.stockDisponible || 0;
-      console.log(`🔍 Stock API - Producto: ${producto.descripcion}, Disponible: ${stockDisponible}, Solicitado: ${cantidadSolicitada}`);
+      console.log(` Stock API - Producto: ${producto.descripcion}, Disponible: ${stockDisponible}, Solicitado: ${cantidadSolicitada}`);
       const resultado = stockDisponible >= cantidadSolicitada;
-      console.log(`🔍 RESULTADO VALIDACIÓN: ${resultado} (Disponible: ${stockDisponible}, Solicitado: ${cantidadSolicitada})`);
+      console.log(` RESULTADO VALIDACIÓN: ${resultado} (Disponible: ${stockDisponible}, Solicitado: ${cantidadSolicitada})`);
       return resultado;
     }
     
     // Si API falla, rechazar por seguridad
-    console.error('❌ API no disponible, rechazando por seguridad');
+    console.error(' API no disponible, rechazando por seguridad');
     return false;
     
   } catch (error) {
-    console.error('❌ Error validando stock:', error);
+    console.error(' Error validando stock:', error);
     // En caso de error, rechazar por seguridad
     return false;
   }
 };
 
-// 🔧 FUNCIONES HELPER
+//  FUNCIONES HELPER
 const formatearVenezolano = (valor) => {
   if (!valor && valor !== 0) return '';
   const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
@@ -106,14 +106,14 @@ const limpiarNumero = (valor) => {
   return numero > 0 ? numero : 0;
 };
 
-// 🧩 MODAL ITEM PERSONALIZADO
+//  MODAL ITEM PERSONALIZADO
 const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1 }) => {
   const [formData, setFormData] = useState({
   descripcion: '',
   precio: '',
   categoria: 'cotizacion'
 });
-  const [monedaSeleccionada, setMonedaSeleccionada] = useState('bs'); // 🆕 NUEVO
+  const [monedaSeleccionada, setMonedaSeleccionada] = useState('bs'); //  NUEVO
   const [errores, setErrores] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -142,7 +142,7 @@ const handleSubmit = async (e) => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // 🔧 NUEVO: Convertir precio según moneda seleccionada
+    //  NUEVO: Convertir precio según moneda seleccionada
     let precioEnUsd;
     if (monedaSeleccionada === 'bs') {
       // Si está en Bs, convertir a USD dividiendo por tasa de cambio
@@ -158,7 +158,7 @@ const handleSubmit = async (e) => {
       descripcion: formData.descripcion.trim(),
       categoria: 'personalizado',
       cantidad: 1,
-      precio_unitario: precioEnUsd, // 🔧 NUEVO: Siempre guardar en USD
+      precio_unitario: precioEnUsd, //  NUEVO: Siempre guardar en USD
       subtotal: precioEnUsd,
       esPersonalizado: true,
       sinStock: false,
@@ -173,10 +173,10 @@ const handleSubmit = async (e) => {
       precio: '',
       categoria: 'cotizacion'
     });
-    setMonedaSeleccionada('bs'); // 🔧 NUEVO: Resetear moneda
+    setMonedaSeleccionada('bs'); //  NUEVO: Resetear moneda
     setErrores({});
     
-    toast.success(`✅ Item personalizado agregado (${monedaSeleccionada === 'bs' ? 'desde Bs' : 'desde USD'})`);
+    toast.success(`Item personalizado agregado (${monedaSeleccionada === 'bs' ? 'desde Bs' : 'desde USD'})`);
     onClose();
     
   } catch (error) {
@@ -192,7 +192,7 @@ const handleSubmit = async (e) => {
     precio: '',
     categoria: 'cotizacion'
   });
-  setMonedaSeleccionada('bs'); // 🔧 NUEVO: Resetear moneda
+  setMonedaSeleccionada('bs'); //  NUEVO: Resetear moneda
   setErrores({});
   onClose();
 };
@@ -254,7 +254,7 @@ const handleSubmit = async (e) => {
     Precio *
   </label>
   
-  {/* 🆕 NUEVO: Selector de moneda */}
+  {/*  NUEVO: Selector de moneda */}
   <div className="grid grid-cols-2 gap-2 mb-3">
     <button
       type="button"
@@ -265,7 +265,7 @@ const handleSubmit = async (e) => {
           : 'border-gray-200 text-gray-600 hover:border-emerald-300 hover:bg-emerald-50'
       }`}
     >
-      💰 Precio en Bs
+       Precio en Bs
     </button>
     <button
       type="button"
@@ -276,7 +276,7 @@ const handleSubmit = async (e) => {
           : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50'
       }`}
     >
-      💵 Precio en USD
+       Precio en USD
     </button>
   </div>
   
@@ -361,7 +361,7 @@ const handleSubmit = async (e) => {
   );
 };
 
-// 🎯 COMPONENTE PRINCIPAL - ITEMS TABLE
+//  COMPONENTE PRINCIPAL - ITEMS TABLE
 const ItemsTable = ({ 
   items = [], 
   onItemsChange,
@@ -370,15 +370,15 @@ const ItemsTable = ({
   title = "Productos y Servicios",
   showAddCustom = true,
   maxVisibleItems = 5,
-  // 🆕 NUEVOS PROPS PARA VALIDACIÓN DE STOCK
+  //  NUEVOS PROPS PARA VALIDACIÓN DE STOCK
   reservarStock = false,
   mostrarStockDisponible = false,
   validarStockAntes = false,
-  sesionId = null // 🆕 PROP DESDE PADRE
+  sesionId = null //  PROP DESDE PADRE
 }) => {
   const { inventario } = useInventarioStore();
   
-  // 🆕 OBTENER SESIÓN ID PARA SINCRONIZACIÓN
+  //  OBTENER SESIÓN ID PARA SINCRONIZACIÓN
   // sesionId viene como prop desde el componente padre
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -395,7 +395,7 @@ const ItemsTable = ({
     producto.codigo_interno?.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 10);
 
-  // 🔍 Búsqueda automática con Enter (lógica de FloatingActions)
+  //  Búsqueda automática con Enter (lógica de FloatingActions)
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       const query = searchQuery.trim().toUpperCase();
@@ -410,11 +410,10 @@ const ItemsTable = ({
         handleAddProduct(producto);
         setSearchQuery('');
         setShowProductSearch(false);
-        toast.success(`✅ Producto encontrado: ${producto.descripcion}`);
+        toast.success(`Producto encontrado: ${producto.descripcion}`);
       } else {
-        toast.error('❌ Producto no encontrado', {
+        toast.error('Producto no encontrado', {
           duration: 3000,
-          icon: '🔍',
           style: {
             background: '#FEE2E2',
             border: '1px solid #F87171',
@@ -429,13 +428,13 @@ const ItemsTable = ({
     }
   };
 
-// ➕ Agregar producto del inventario - CON VALIDACIÓN DE STOCK API
+//  Agregar producto del inventario - CON VALIDACIÓN DE STOCK API
   const handleAddProduct = async (producto) => {
     try {
       const existingItem = items.find(item => item.codigo === producto.codigo_barras);
       const cantidadSolicitada = existingItem ? existingItem.cantidad + 1 : 0;
       
-      console.log('🔍 DEBUG - Validando producto:', {
+      console.log(' DEBUG - Validando producto:', {
         descripcion: producto.descripcion,
         tipo: producto.tipo,
         stock: producto.stock,
@@ -444,14 +443,14 @@ const ItemsTable = ({
         validarStockAntes
       });
       
-      // 🔍 VALIDACIÓN VISUAL FIFO - SIN RESERVAR STOCK
+      //  VALIDACIÓN VISUAL FIFO - SIN RESERVAR STOCK
       if (producto.tipo !== 'SERVICIO') {
         const stockTotal = producto.stock || 0;
         const stockReservadoPorOtros = producto.stockReservado || 0;
         const stockVisualDisponible = Math.max(0, stockTotal - stockReservadoPorOtros);
         
         if (stockVisualDisponible < cantidadSolicitada) {
-          toast.error(`❌ Stock aparentemente insuficiente: ${producto.descripcion}\n📦 Disponible visualmente: ${stockVisualDisponible}\n📋 Solicitado: ${cantidadSolicitada}\n💡 Stock real se validará al hacer "Siguiente" (FIFO)`, {
+          toast.error(`Stock aparentemente insuficiente: ${producto.descripcion}\n Disponible visualmente: ${stockVisualDisponible}\n Solicitado: ${cantidadSolicitada}\n Stock real se validará al hacer "Siguiente" (FIFO)`, {
             duration: 6000,
             style: {
               background: '#FEF3C7',
@@ -462,11 +461,10 @@ const ItemsTable = ({
           return;
         }
         
-        // 💡 INFO VISUAL PARA USUARIO
+        //  INFO VISUAL PARA USUARIO
         if (stockVisualDisponible <= 5 && stockVisualDisponible > 0) {
-          toast(`⚠️ Stock bajo: ${producto.descripcion} (${stockVisualDisponible} disponibles)`, {
+          toast(`Stock bajo: ${producto.descripcion} (${stockVisualDisponible} disponibles)`, {
             duration: 3000,
-            icon: '📦',
             style: {
               background: '#FEF3C7',
               border: '1px solid #F59E0B',
@@ -488,7 +486,7 @@ const ItemsTable = ({
             : item
         );
         onItemsChange(updatedItems);
-        toast.success(`➕ AQUI HAY PROBLEMA DE RESERVA Cantidad aumentada: ${producto.descripcion}`);
+        toast.success(`AQUI HAY PROBLEMA DE RESERVA Cantidad aumentada: ${producto.descripcion}`);
       } else {
         // Agregar nuevo item con validación de stock mejorada
         const stockDisponible = producto.tipo === 'SERVICIO' ? 999 : (producto.stock || 0) - (producto.stockReservado || 0);
@@ -498,9 +496,9 @@ const ItemsTable = ({
           codigo: producto.codigo_barras || producto.codigo_interno || 'SIN_CODIGO',
           descripcion: producto.descripcion,
           categoria: producto.categoria || 'general',
-          cantidad: 0, // 🆕 CAMBIAR DE 1 A 0
+          cantidad: 0, //  CAMBIAR DE 1 A 0
           precio_unitario: parseFloat(producto.precio_venta || producto.precio || 0),
-          subtotal: 0, // 🆕 CAMBIAR A 0 (0 * precio)
+          subtotal: 0, //  CAMBIAR A 0 (0 * precio)
           // Estados especiales mejorados
           sinStock: producto.tipo !== 'SERVICIO' && stockDisponible <= 0,
           inactivo: !producto.activo,
@@ -516,7 +514,7 @@ const ItemsTable = ({
           ? '(Servicio - Sin límite de stock)' 
           : `(Stock disponible: ${stockDisponible})`;
           
-        toast.success(`✅ Producto agregado: ${producto.descripcion} ${mensajeStock}`);
+        toast.success(`Producto agregado: ${producto.descripcion} ${mensajeStock}`);
       }
       
       setSearchQuery('');
@@ -527,12 +525,12 @@ const ItemsTable = ({
     }
   };
 
-  // ➕ Agregar item personalizado
+  //  Agregar item personalizado
   const handleAddPersonalizado = (itemPersonalizado) => {
     onItemsChange([...items, itemPersonalizado]);
   };
 
-  // ⬆️⬇️ Mover items
+  //  Mover items
   const handleMoveItem = (itemId, direction) => {
     const currentIndex = items.findIndex(item => item.id === itemId);
     
@@ -550,22 +548,22 @@ const ItemsTable = ({
     [newItems[currentIndex], newItems[targetIndex]] = [newItems[targetIndex], newItems[currentIndex]];
     
     onItemsChange(newItems);
-    toast.success('📦 Item reordenado', { duration: 2000 });
+    toast.success('Item reordenado', { duration: 2000 });
   };
 
-  // 🗑️ Eliminar item - CON LIBERACIÓN DE STOCK
+  //  Eliminar item - CON LIBERACIÓN DE STOCK
 const handleDeleteItem = async (itemId) => {
   const itemAEliminar = items.find(item => item.id === itemId);
   
-  // 🆕 SIMPLIFICADO: No liberamos stock aquí, se hará al final en "Siguiente"
-  console.log('🗑️ Eliminando item del carrito (sin liberar stock individual):', itemAEliminar?.descripcion);
+  //  SIMPLIFICADO: No liberamos stock aquí, se hará al final en "Siguiente"
+  console.log(' Eliminando item del carrito (sin liberar stock individual):', itemAEliminar?.descripcion);
   
   const updatedItems = items.filter(item => item.id !== itemId);
   onItemsChange(updatedItems);
-  toast.success('🗑️ Item eliminado del carrito');
+  toast.success('Item eliminado del carrito');
 };
 
-  // ✏️ Editar item inline
+  //  Editar item inline
   const handleStartEdit = (item) => {
     setEditingRowId(item.id);
     setEditingData({
@@ -609,7 +607,7 @@ const handleDeleteItem = async (itemId) => {
     onItemsChange(updatedItems);
     setEditingRowId(null);
     setEditingData({});
-    toast.success('✅ Item actualizado');
+    toast.success('Item actualizado');
   };
 
   const handleCancelEdit = () => {
@@ -617,7 +615,7 @@ const handleDeleteItem = async (itemId) => {
     setEditingData({});
   };
 
-  // 🎨 Obtener color por categoría
+  //  Obtener color por categoría
   const getCategoryColor = (categoria) => {
     const colors = {
       smartphones: 'bg-blue-100 text-blue-700',
@@ -636,7 +634,7 @@ const handleDeleteItem = async (itemId) => {
   return (
     <div className="space-y-4">
       
-      {/* 🔍 BARRA DE BÚSQUEDA Y CONTROLES - VERSIÓN COMPACTA */}
+      {/*  BARRA DE BÚSQUEDA Y CONTROLES - VERSIÓN COMPACTA */}
 {isEditable && (
   <div className="bg-white border border-gray-200 rounded-lg p-3">
     <div className="flex items-center justify-between mb-3">
@@ -707,7 +705,7 @@ const handleDeleteItem = async (itemId) => {
                               ${parseFloat(producto.precio_venta || producto.precio || 0).toFixed(2)}
                             </span>
                             
-                            {/* 🆕 MOSTRAR STOCK DISPONIBLE EN TIEMPO REAL */}
+                            {/*  MOSTRAR STOCK DISPONIBLE EN TIEMPO REAL */}
                             {mostrarStockDisponible && producto.tipo !== 'SERVICIO' && (
                               <>
                                 <span>•</span>
@@ -716,7 +714,7 @@ const handleDeleteItem = async (itemId) => {
                                     ? 'bg-green-100 text-green-700' 
                                     : 'bg-red-100 text-red-700'
                                 }`}>
-                                  📦 {producto.stock - (producto.stockReservado || 0)} disp.
+                                   {producto.stock - (producto.stockReservado || 0)} disp.
                                 </span>
                               </>
                             )}
@@ -725,7 +723,7 @@ const handleDeleteItem = async (itemId) => {
                               <>
                                 <span>•</span>
                                 <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                                  🛠️ Servicio
+                                   Servicio
                                 </span>
                               </>
                             )}
@@ -764,7 +762,7 @@ const handleDeleteItem = async (itemId) => {
         </div>
       )}
 
-      {/* 📋 TABLA DE ITEMS */}
+      {/*  TABLA DE ITEMS */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         {items.length === 0 ? (
           /* Estado vacío */
@@ -927,12 +925,12 @@ const handleDeleteItem = async (itemId) => {
                                   }
                                 } : null}
                           type="number"
-                          min="0" // 🆕 CAMBIAR MIN DE 1 A 0
+                          min="0" //  CAMBIAR MIN DE 1 A 0
                           value={item.cantidad}
                           onChange={async (e) => {
-                            console.log('🔍 DEBUG onChange input:', e.target.value);
+                            console.log(' DEBUG onChange input:', e.target.value);
                             const nuevaCantidad = parseInt(e.target.value) || 0;
-                            console.log('🔍 DEBUG nuevaCantidad calculada:', nuevaCantidad);
+                            console.log(' DEBUG nuevaCantidad calculada:', nuevaCantidad);
                         
                         if (item.productoId && !item.esPersonalizado && nuevaCantidad > item.cantidad) {
                           try {
@@ -942,19 +940,19 @@ const handleDeleteItem = async (itemId) => {
                             
                             if (productoInventario && productoInventario.tipo !== 'SERVICIO') {
 
-                              // 🔧 VALIDAR SOLO STOCK TOTAL - NO RESERVAS
+                              //  VALIDAR SOLO STOCK TOTAL - NO RESERVAS
                                 const stockInfo = await obtenerStockDisponibleAPI(item.productoId, sesionId);
                                 const stockTotal = stockInfo?.stock?.stockTotal || 0;
 
-                                // 🔍 DEBUG: Ver stock real vs disponible
-                                console.log('🔍 DEBUG stockInfo completo:', stockInfo);
-                                console.log('🔍 DEBUG stockTotal (real):', stockTotal);
-                               // console.log('🔍 DEBUG stockDisponible (con reservas):', stockInfo?.stock?.stockDisponible);
-                                console.log('🔍 DEBUG nuevaCantidad:', nuevaCantidad);
-                                console.log('🔍 DEBUG stockTotal < nuevaCantidad:', stockTotal < nuevaCantidad);
+                                //  DEBUG: Ver stock real vs disponible
+                                console.log(' DEBUG stockInfo completo:', stockInfo);
+                                console.log(' DEBUG stockTotal (real):', stockTotal);
+                               // console.log(' DEBUG stockDisponible (con reservas):', stockInfo?.stock?.stockDisponible);
+                                console.log(' DEBUG nuevaCantidad:', nuevaCantidad);
+                                console.log(' DEBUG stockTotal < nuevaCantidad:', stockTotal < nuevaCantidad);
 
                                 if (stockTotal < nuevaCantidad) {
-                                toast.error(`❌ Stock insuficiente: ${item.descripcion}\n📦 Stock total: ${stockTotal}\n📋 Intentaste: ${nuevaCantidad}`, {
+                                toast.error(`Stock insuficiente: ${item.descripcion}\n Stock total: ${stockTotal}\n Intentaste: ${nuevaCantidad}`, {
                                   duration: 4000,
                                   style: {
                                     background: '#FEE2E2',
@@ -983,7 +981,7 @@ const handleDeleteItem = async (itemId) => {
                           }
                         }
                         
-                        // ✅ Permitir cambio si validación pasa o no está habilitada
+                        //  Permitir cambio si validación pasa o no está habilitada
                         const updatedItems = items.map(i =>
                           i.id === item.id
                             ? { 
@@ -1097,7 +1095,7 @@ const handleDeleteItem = async (itemId) => {
        )}
      </div>
 
-     {/* 📊 RESUMEN RÁPIDO */}
+     {/*  RESUMEN RÁPIDO */}
      {items.length > 0 && (
        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -1161,7 +1159,7 @@ const handleDeleteItem = async (itemId) => {
        isOpen={showPersonalizado}
        onClose={() => setShowPersonalizado(false)}
        onAgregar={handleAddPersonalizado}
-       tasaCambio={tasaCambio} // 🔧 NUEVO
+       tasaCambio={tasaCambio} //  NUEVO
      />
    </div>
  );

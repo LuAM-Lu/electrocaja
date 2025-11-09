@@ -5,7 +5,7 @@ import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';
 import { agregarNotificacionWhatsApp, agregarNotificacionSistema } from '../store/notificacionesStore';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 import { api } from '../config/api';
 
 const AbrirCajaModal = ({ isOpen, onClose }) => {
@@ -24,7 +24,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
   const [enviandoWhatsApp, setEnviandoWhatsApp] = useState(false);
   const [whatsappEnviado, setWhatsappEnviado] = useState(false);
   
-  // 🆕 Estados para observaciones desplegables
+  //  Estados para observaciones desplegables
   const [observacionesAbiertas, setObservacionesAbiertas] = useState(false);
   const [observacionesApertura, setObservacionesApertura] = useState('');
   
@@ -33,7 +33,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
 
-  // 📸 INICIALIZAR CÁMARA SILENCIOSAMENTE
+  //  INICIALIZAR CÁMARA SILENCIOSAMENTE
   useEffect(() => {
     if (isOpen) {
       initializeCamera();
@@ -61,10 +61,10 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setCameraStatus('ready');
-        console.log('📸 Cámara inicializada silenciosamente');
+        console.log(' Cámara inicializada silenciosamente');
       }
     } catch (error) {
-      console.warn('⚠️ No se pudo acceder a la cámara:', error);
+      console.warn(' No se pudo acceder a la cámara:', error);
       setCameraStatus('error');
       // No mostrar error al usuario - silent fallback
     }
@@ -78,12 +78,12 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
     setCameraStatus('initializing');
   };
 
-  // 📸 CAPTURAR FOTO SILENCIOSAMENTE
+  //  CAPTURAR FOTO SILENCIOSAMENTE
   const capturePhoto = async () => {
     return new Promise((resolve) => {
       try {
         if (cameraStatus !== 'ready' || !videoRef.current || !canvasRef.current) {
-          console.warn('📸 Cámara no disponible para captura');
+          console.warn(' Cámara no disponible para captura');
           resolve(null);
           return;
         }
@@ -104,47 +104,47 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
         // Convertir a base64 (JPEG con calidad optimizada)
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
         
-        console.log('📸 Foto capturada silenciosamente');
+        console.log(' Foto capturada silenciosamente');
         setCameraStatus('ready');
         resolve(imageData);
         
       } catch (error) {
-        console.error('❌ Error capturando foto:', error);
+        console.error(' Error capturando foto:', error);
         setCameraStatus('error');
         resolve(null);
       }
     });
   };
 
-  // 📱 FUNCIÓN PARA ENVIAR WHATSAPP MEJORADA
+  //  FUNCIÓN PARA ENVIAR WHATSAPP MEJORADA
   const enviarNotificacionWhatsApp = async (datosApertura, fotoBase64 = null) => {
     const { fecha, hora } = obtenerFechaHoraVenezolana();
     
-    // 📝 PLANTILLA DEL MENSAJE CON INFO DE FOTO
-    let mensajeWhatsApp = `🏪 *ELECTRO CAJA - APERTURA DE CAJA*
+    //  PLANTILLA DEL MENSAJE CON INFO DE FOTO
+    let mensajeWhatsApp = ` *ELECTRO CAJA - APERTURA DE CAJA*
 
-      📅 *Fecha:* ${fecha}
-      🕐 *Hora:* ${hora}
-      👤 *Usuario:* ${datosApertura.usuario}
-      🏢 *Sucursal:* ${datosApertura.sucursal}
-      📍 *Turno:* ${datosApertura.turno}
+       *Fecha:* ${fecha}
+       *Hora:* ${hora}
+       *Usuario:* ${datosApertura.usuario}
+       *Sucursal:* ${datosApertura.sucursal}
+       *Turno:* ${datosApertura.turno}
 
-      💰 *MONTOS INICIALES:*
-      💵 Bolívares: ${Math.round(datosApertura.montoBs).toLocaleString('es-VE')} Bs
-      💵 Dólares: $${datosApertura.montoUsd.toLocaleString('en-US')}
-      📱 Pago Móvil: ${Math.round(datosApertura.montoPagoMovil).toLocaleString('es-VE')} Bs
+       *MONTOS INICIALES:*
+       Bolívares: ${Math.round(datosApertura.montoBs).toLocaleString('es-VE')} Bs
+       Dólares: $${datosApertura.montoUsd.toLocaleString('en-US')}
+       Pago Móvil: ${Math.round(datosApertura.montoPagoMovil).toLocaleString('es-VE')} Bs
 
-      ${fotoBase64 ? '📸 *Evidencia fotográfica:* Capturada ✅' : '📸 *Evidencia fotográfica:* No disponible ⚠️'}
+      ${fotoBase64 ? ' *Evidencia fotográfica:* Capturada ' : ' *Evidencia fotográfica:* No disponible '}
 
-      🔐 Caja abierta correctamente y lista para operar.
+       Caja abierta correctamente y lista para operar.
 
       _Notificación automática del sistema Electro Caja_`;
 
           try {
         setEnviandoWhatsApp(true);
       
-        // 🚀 ENVÍO REAL AL BACKEND
-        console.log('📱 ENVIANDO WHATSAPP APERTURA:', {
+        //  ENVÍO REAL AL BACKEND
+        console.log(' ENVIANDO WHATSAPP APERTURA:', {
           numero: '+584120552931',
           mensaje: mensajeWhatsApp,
           evidencia_fotografica: !!fotoBase64,
@@ -160,20 +160,20 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
           throw new Error(response.data.message || 'Error enviando WhatsApp');
         }
         
-        // ✅ CORRECTO: Con axios, response.data ya contiene la respuesta parseada
-        console.log('✅ WhatsApp enviado:', response.data);
+        //  CORRECTO: Con axios, response.data ya contiene la respuesta parseada
+        console.log(' WhatsApp enviado:', response.data);
         setWhatsappEnviado(true);
-        toast.success('📱 Notificación WhatsApp enviada al supervisor');
+        toast.success('Notificación WhatsApp enviada al supervisor');
       
       } catch (error) {
-      console.error('❌ Error enviando WhatsApp:', error);
+      console.error(' Error enviando WhatsApp:', error);
       
-      // 🔧 MANEJO GRACEFUL DEL ERROR
+      //  MANEJO GRACEFUL DEL ERROR
       if (error.response?.status === 500) {
-        console.warn('⚠️ Servicio WhatsApp no disponible en backend');
-        toast.error('⚠️ Caja abierta correctamente. WhatsApp no disponible temporalmente.');
+        console.warn(' Servicio WhatsApp no disponible en backend');
+        toast.error('Caja abierta correctamente. WhatsApp no disponible temporalmente.');
       } else {
-        toast.error('⚠️ Caja abierta, pero falló notificación WhatsApp');
+        toast.error('Caja abierta, pero falló notificación WhatsApp');
       }
       
       // Agregar a cola de notificaciones para retry
@@ -206,7 +206,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
     return { fecha, hora };
   };
 
-  // 🎯 MANEJAR ENVÍO DEL FORMULARIO MEJORADO
+  //  MANEJAR ENVÍO DEL FORMULARIO MEJORADO
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -214,31 +214,31 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
     const montoUsd = parseFloat(montoInicialUsd) || 0;
     const montoPagoMovil = parseFloat(montoInicialPagoMovil) || 0;
     
-    // 🔍 VALIDACIONES MEJORADAS
+    //  VALIDACIONES MEJORADAS
     if (montoBs < 0 || montoUsd < 0 || montoPagoMovil < 0) {
-      toast.error('❌ Los montos no pueden ser negativos');
+      toast.error('Los montos no pueden ser negativos');
       return;
     }
 
     if (montoBs > 1000000) {
-      toast.error('❌ Monto en bolívares muy alto. Verifique.');
+      toast.error('Monto en bolívares muy alto. Verifique.');
       return;
     }
 
     if (montoUsd > 10000) {
-      toast.error('❌ Monto en dólares muy alto. Verifique.');
+      toast.error('Monto en dólares muy alto. Verifique.');
       return;
     }
 
     try {
-      // 📸 1. CAPTURAR FOTO SILENCIOSAMENTE
-      console.log('📸 Iniciando captura silenciosa...');
+      //  1. CAPTURAR FOTO SILENCIOSAMENTE
+      console.log(' Iniciando captura silenciosa...');
       const fotoBase64 = await capturePhoto();
       
-      // 🔐 2. ABRIR LA CAJA EN BACKEND
+      //  2. ABRIR LA CAJA EN BACKEND
       const cajaData = await abrirCaja(montoBs, montoUsd, montoPagoMovil);
       
-      // 📤 3. ENVIAR DATOS AL BACKEND CON FOTO
+      //  3. ENVIAR DATOS AL BACKEND CON FOTO
       if (fotoBase64) {
         try {
           const response = await api.post('/cajas/evidencia-fotografica', {
@@ -251,16 +251,16 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
           });
           
           if (response.data.success) {
-            console.log('📸 Evidencia fotográfica enviada al backend exitosamente');
+            console.log(' Evidencia fotográfica enviada al backend exitosamente');
           } else {
-            console.warn('⚠️ Error en respuesta de evidencia:', response.data.message);
+            console.warn(' Error en respuesta de evidencia:', response.data.message);
           }
         } catch (error) {
-          console.warn('⚠️ Error enviando foto al backend:', error.response?.data?.message || error.message);
+          console.warn(' Error enviando foto al backend:', error.response?.data?.message || error.message);
         }
       }
       
-      // 📱 4. ENVIAR NOTIFICACIÓN WHATSAPP
+      //  4. ENVIAR NOTIFICACIÓN WHATSAPP
       const datosApertura = {
         usuario: usuario?.nombre || 'Usuario Desconocido',
         sucursal: usuario?.sucursal || 'Sucursal Principal',
@@ -270,14 +270,14 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
         montoPagoMovil
       };
       
-      // 📱 ENVIAR WHATSAPP (NO CRÍTICO)
+      //  ENVIAR WHATSAPP (NO CRÍTICO)
       try {
         await enviarNotificacionWhatsApp(datosApertura, fotoBase64);
       } catch (error) {
-        console.warn('⚠️ WhatsApp falló pero apertura exitosa');
+        console.warn(' WhatsApp falló pero apertura exitosa');
       }
       
-      // 📡 5. EMITIR EVENTO SOCKET.IO
+      //  5. EMITIR EVENTO SOCKET.IO
       emitirEvento('caja_abierta', {
         usuario: usuario?.nombre,
         caja: cajaData,
@@ -285,13 +285,13 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
         timestamp: new Date().toISOString()
       });
       
-      // 🧹 6. LIMPIAR Y CERRAR
+      //  6. LIMPIAR Y CERRAR
       setMontoInicialBs('');
       setMontoInicialUsd('');
       setMontoInicialPagoMovil('');
       setObservacionesApertura('');
       
-      toast.success('✅ Caja abierta correctamente' + (fotoBase64 ? ' con evidencia fotográfica' : ''), { id: 'caja-abierta' });
+      toast.success('Caja abierta correctamente' + (fotoBase64 ? ' con evidencia fotográfica' : ''), { id: 'caja-abierta' });
       
       // Cerrar modal después de un momento
       setTimeout(() => {
@@ -301,12 +301,12 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
       }, 1500);
       
     } catch (error) {
-      console.error('❌ Error al abrir la caja:', error);
-      toast.error('❌ Error al abrir la caja: ' + error.message);
+      console.error(' Error al abrir la caja:', error);
+      toast.error('Error al abrir la caja: ' + error.message);
     }
   };
 
-  // 🚪 MANEJAR CIERRE DEL MODAL
+  //  MANEJAR CIERRE DEL MODAL
   const handleClose = () => {
     setWhatsappEnviado(false);
     cleanupCamera();
@@ -319,7 +319,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-70">
       <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full mx-4 overflow-hidden">
         
-        {/* 🎨 HEADER MEJORADO */}
+        {/*  HEADER MEJORADO */}
         <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 relative overflow-hidden">
           {/* Efecto de brillo */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 animate-shimmer"></div>
@@ -334,7 +334,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
                   <h2 className="text-xl font-bold">Abrir Caja del Día</h2>
                   <div className="text-sm text-emerald-100 flex items-center justify-between">
                     <span>Iniciar operaciones</span>
-                    {/* 🆕 INDICADORES DE CONECTIVIDAD */}
+                    {/*  INDICADORES DE CONECTIVIDAD */}
                     <div className="flex items-center space-x-1">
                       {cameraStatus === 'ready' && (
                         <div className="flex items-center space-x-1 bg-white/20 px-2 py-0.5 rounded-full">
@@ -362,7 +362,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* 👤 INFORMACIÓN DEL USUARIO MEJORADA */}
+        {/*  INFORMACIÓN DEL USUARIO MEJORADA */}
         <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-b border-emerald-200 px-6 py-4">
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
@@ -392,10 +392,10 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* 💰 FORMULARIO CON CARDS ELEGANTES (ESTILO CERRAR CAJA) */}
+        {/*  FORMULARIO CON CARDS ELEGANTES (ESTILO CERRAR CAJA) */}
         <form onSubmit={handleSubmit} className="p-6">
           
-          {/* 📊 RESUMEN PREVIO */}
+          {/*  RESUMEN PREVIO */}
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-5 mb-6 border border-emerald-200">
             <h3 className="font-bold text-emerald-900 mb-4 flex items-center text-lg">
               <TrendingUp className="h-5 w-5 mr-2 text-emerald-600" />
@@ -409,7 +409,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* 💰 CONTEO INICIAL CON CARDS (ESTILO CERRAR CAJA) */}
+          {/*  CONTEO INICIAL CON CARDS (ESTILO CERRAR CAJA) */}
           <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-5 mb-6">
             <h4 className="font-bold text-emerald-900 mb-4 flex items-center">
               <Coins className="h-5 w-5 mr-2" />
@@ -432,7 +432,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-orange-800 mb-2">
-                    💵 Efectivo Inicial *
+                     Efectivo Inicial *
                   </label>
                   <input
                     type="number"
@@ -459,7 +459,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-green-800 mb-2">
-                    💵 Efectivo Inicial *
+                     Efectivo Inicial *
                   </label>
                   <input
                     type="number"
@@ -486,7 +486,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-purple-800 mb-2">
-                    📱 Saldo Inicial *
+                     Saldo Inicial *
                   </label>
                   <input
                     type="number"
@@ -505,7 +505,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* 📝 OBSERVACIONES DESPLEGABLES (ESTILO CERRAR CAJA) */}
+          {/*  OBSERVACIONES DESPLEGABLES (ESTILO CERRAR CAJA) */}
           <div className="mb-6">
             <button
               type="button"
@@ -536,7 +536,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          {/* 📱 INFORMACIÓN WHATSAPP MEJORADA */}
+          {/*  INFORMACIÓN WHATSAPP MEJORADA */}
           <div className="bg-blue-50 border-l-4 border-blue-400 rounded-lg p-4 mb-6">
             <div className="flex items-start space-x-3">
               <Smartphone className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -544,7 +544,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
                 <div className="font-semibold text-blue-800 mb-1">Notificación Automática</div>
                 <div className="text-sm text-blue-700 space-y-1">
                   <div>• Mensaje WhatsApp al supervisor: +584120552931</div>
-                  <div>• Evidencia fotográfica automática {cameraStatus === 'ready' ? '✅' : '⚠️'}</div>
+                  <div>• Evidencia fotográfica automática {cameraStatus === 'ready' ? '' : ''}</div>
                   <div>• Registro en audit trail del sistema</div>
                 </div>
               </div>
@@ -557,9 +557,9 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
               <div className="flex items-center space-x-3">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600"></div>
                 <div className="text-sm text-emerald-700 font-medium">
-                  {loading ? '🔐 Abriendo caja...' : 
-                   enviandoWhatsApp ? '📱 Enviando notificación...' : 
-                   '⏳ Procesando...'}
+                  {loading ? ' Abriendo caja...' : 
+                   enviandoWhatsApp ? ' Enviando notificación...' : 
+                   ' Procesando...'}
                 </div>
               </div>
             </div>
@@ -571,14 +571,14 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
               <div className="flex items-center space-x-2 text-green-800">
                 <CheckCircle className="h-5 w-5" />
                 <div>
-                  <div className="font-semibold">✅ Apertura Completada</div>
+                  <div className="font-semibold"> Apertura Completada</div>
                   <div className="text-sm">Notificación WhatsApp enviada correctamente</div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 🔘 BOTONES MEJORADOS */}
+          {/*  BOTONES MEJORADOS */}
           <div className="flex space-x-3">
             <button
               type="button"
@@ -600,7 +600,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
                 </div>
               ) : enviandoWhatsApp ? (
                 <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-pulse">📱</div>
+                  <div className="animate-pulse"></div>
                   <span>Notificando...</span>
                 </div>
               ) : (
@@ -613,7 +613,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
           </div>
         </form>
 
-        {/* 📸 ELEMENTOS OCULTOS PARA CÁMARA */}
+        {/*  ELEMENTOS OCULTOS PARA CÁMARA */}
         <video
           ref={videoRef}
           autoPlay

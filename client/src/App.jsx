@@ -11,12 +11,12 @@ import { useAuthStore } from './store/authStore';
 import { useSocketEvents } from './hooks/useSocketEvents';
 import { useNotificacionesStore } from './store/notificacionesStore';
 import { useInventarioStore } from './store/inventarioStore';
-import toast, { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from './utils/toast.jsx';
 import { api } from './config/api';
 
 function App() {
   // ===================================
-  // 🔧 ESTADOS LOCALES
+  //  ESTADOS LOCALES
   // ===================================
   const [showLogin, setShowLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,7 +29,7 @@ function App() {
   });
 
   // ===================================
-  // 🏪 STORES
+  //  STORES
   // ===================================
   const { initialize } = useCajaStore();
   const { 
@@ -45,9 +45,9 @@ function App() {
   const { cajaActual } = useCajaStore();
   
   // ===================================
-  // 🔔 SOCKET EVENTS
+  //  SOCKET EVENTS
   // ===================================
- // 🆕 HOOK PARA MANEJAR SOCKET.IO Y BLOQUEOS
+ //  HOOK PARA MANEJAR SOCKET.IO Y BLOQUEOS
   const { 
     emitirEvento,
     usuariosBloqueados, 
@@ -56,25 +56,25 @@ function App() {
     socketConnected 
   } = useSocketEvents();
 
-// 🔌 CONECTAR SOCKET AL CAJASTORE (EVITAR DUPLICADOS)
+//  CONECTAR SOCKET AL CAJASTORE (EVITAR DUPLICADOS)
 useEffect(() => {
   if (emitirEvento && !window.socketConnectedToCajaStore) {
     window.socketConnectedToCajaStore = true;
     
     import('./store/cajaStore').then(({ conectarSocketAlStore }) => {
       conectarSocketAlStore(emitirEvento);
-      console.log('🔌 Socket conectado al cajaStore desde App.jsx');
+      console.log(' Socket conectado al cajaStore desde App.jsx');
     });
   }
 }, [emitirEvento]);
 
   // ===================================
-  // 📊 INFO DE SESIÓN
+  //  INFO DE SESIÓN
   // ===================================
   const sessionInfo = getSessionInfo();
 
   // ===================================
-  // 🔔 FUNCIONES DE NOTIFICACIONES
+  //  FUNCIONES DE NOTIFICACIONES
   // ===================================
   const initializeNotifications = async () => {
     const { usuario } = useAuthStore.getState();
@@ -82,7 +82,7 @@ useEffect(() => {
     
     if (!usuario) return;
     
-    console.log('🔔 Inicializando sistema de notificaciones...');
+    console.log(' Inicializando sistema de notificaciones...');
     
     // Configurar listeners de Socket.IO
     setupSocketListeners();
@@ -90,7 +90,7 @@ useEffect(() => {
     // Verificar inventario para stock bajo
     await checkInventoryAlerts();
     
-    // 🔧 COMENTADO - Notificación innecesaria
+    //  COMENTADO - Notificación innecesaria
 // addNotificacion({
 //   tipo: 'sistema',
 //   titulo: 'Sistema iniciado',
@@ -98,7 +98,7 @@ useEffect(() => {
 //   accionable: false
 // });
     
-    console.log('✅ Sistema de notificaciones inicializado');
+    console.log(' Sistema de notificaciones inicializado');
   };
 
   const checkInventoryAlerts = async () => {
@@ -106,17 +106,17 @@ useEffect(() => {
     const { inventario, obtenerStockBajo, obtenerInventario } = useInventarioStore.getState();
     const { notificaciones, addNotificacion } = useNotificacionesStore.getState();
     
-    console.log('📦 Verificando inventario actual:', inventario.length, 'productos');
+    console.log(' Verificando inventario actual:', inventario.length, 'productos');
     
     if (inventario.length === 0) {
-      console.log('📦 Cargando inventario desde backend...');
+      console.log(' Cargando inventario desde backend...');
       await obtenerInventario();
     }
     
     const stockBajo = obtenerStockBajo(10);
-    console.log('⚠️ Stock bajo detectado:', stockBajo.length, 'productos');
+    console.log(' Stock bajo detectado:', stockBajo.length, 'productos');
     
-    // 🔧 VERIFICAR SI YA EXISTE NOTIFICACIÓN DE STOCK BAJO
+    //  VERIFICAR SI YA EXISTE NOTIFICACIÓN DE STOCK BAJO
     const yaExisteStockBajo = notificaciones.some(n => 
       n.tipo === 'stock_bajo' && !n.leida
     );
@@ -129,57 +129,57 @@ useEffect(() => {
         accionable: true,
         datos: { productos: stockBajo }
       });
-      console.log('⚠️ Notificación stock bajo generada:', stockBajo.length, 'productos');
+      console.log(' Notificación stock bajo generada:', stockBajo.length, 'productos');
     } else if (yaExisteStockBajo) {
-      console.log('ℹ️ Ya existe notificación de stock bajo, omitiendo duplicado');
+      console.log('ℹ Ya existe notificación de stock bajo, omitiendo duplicado');
     }
   } catch (error) {
-    console.error('❌ Error verificando stock:', error);
+    console.error(' Error verificando stock:', error);
   }
 };
 
   // ===================================
-  // 🔧 FUNCIONES DE MANEJO
+  //  FUNCIONES DE MANEJO
   // ===================================
  const handleLoginSuccess = () => {
-  console.log('✅ Login exitoso - inicializando sin recargar página');
+  console.log(' Login exitoso - inicializando sin recargar página');
   setShowLogin(false);
   initialize();
   
-  // 🔧 NO MANIPULAR URL PARA EVITAR COMPORTAMIENTOS INESPERADOS
-  console.log('✅ App inicializada correctamente');
+  //  NO MANIPULAR URL PARA EVITAR COMPORTAMIENTOS INESPERADOS
+  console.log(' App inicializada correctamente');
 };
 
   // ===================================
-  // 🔄 EFECTOS PRINCIPALES
+  //  EFECTOS PRINCIPALES
   // ===================================
 
-  // 🔧 DEBUG: Detectar recargas
+  //  DEBUG: Detectar recargas
   useEffect(() => {
-    console.log('🔧 APP.JSX MONTADO - Detectando si es recarga');
-    console.log('🔧 performance.navigation.type:', performance.navigation?.type);
-    console.log('🔧 document.referrer:', document.referrer);
+    console.log(' APP.JSX MONTADO - Detectando si es recarga');
+    console.log(' performance.navigation.type:', performance.navigation?.type);
+    console.log(' document.referrer:', document.referrer);
     
     if (performance.navigation?.type === 1) {
-      console.log('🚨 PÁGINA RECARGADA - Esto no debería pasar después del login');
+      console.log(' PÁGINA RECARGADA - Esto no debería pasar después del login');
     }
   }, []);
 
-// 🔐 EFECTO PRINCIPAL: Verificar autenticación al cargar
+//  EFECTO PRINCIPAL: Verificar autenticación al cargar
 useEffect(() => {
   let mounted = true;
  
-  // 🆕 CONFIGURAR SISTEMA DE EVENTOS GLOBALES
+  //  CONFIGURAR SISTEMA DE EVENTOS GLOBALES
   window.emitirEventoGlobal = (evento, datos) => {
-    console.log('🌐 Evento global emitido:', evento, datos);
+    console.log(' Evento global emitido:', evento, datos);
     const eventoCustom = new CustomEvent(evento, { detail: datos });
     window.dispatchEvent(eventoCustom);
   };
-  console.log('✅ Sistema de eventos globales inicializado');
+  console.log(' Sistema de eventos globales inicializado');
  
-  // 🆕 LISTENER PARA TOKEN EXPIRADO
+  //  LISTENER PARA TOKEN EXPIRADO
   const handleTokenExpired = (event) => {
-    console.log('📡 Evento token-expired recibido:', event.detail);
+    console.log(' Evento token-expired recibido:', event.detail);
     useAuthStore.getState().handleTokenExpired();
   };
 
@@ -188,23 +188,23 @@ useEffect(() => {
   const checkAuth = async () => {
     if (!mounted) return;
    
-    console.log('🔧 APP.JSX - Ejecutando checkAuth (una sola vez)...');
+    console.log(' APP.JSX - Ejecutando checkAuth (una sola vez)...');
    
     const tokenExists = localStorage.getItem('auth-token');
     if (tokenExists) {
-      console.log('🔧 Token encontrado, ejecutando checkAuth del store...');
+      console.log(' Token encontrado, ejecutando checkAuth del store...');
       try {
         const authResult = await useAuthStore.getState().checkAuth();
        
         if (!mounted) return;
        
         if (authResult) {
-        console.log('✅ CheckAuth exitoso - usuario reconectado');
+        console.log(' CheckAuth exitoso - usuario reconectado');
         setShowLogin(false);
-        setIsLoading(false); // 🔧 AGREGAR ESTA LÍNEA
+        setIsLoading(false); //  AGREGAR ESTA LÍNEA
         initialize();
          
-          // 🔔 PREVENIR DUPLICADOS
+          //  PREVENIR DUPLICADOS
           if (!window.notificationsInitialized) {
             window.notificationsInitialized = true;
             setTimeout(() => {
@@ -212,18 +212,18 @@ useEffect(() => {
             }, 2000);
           } // Dar más tiempo para que carguen los stores
         } else {
-          console.log('❌ CheckAuth falló - mostrar login');
+          console.log(' CheckAuth falló - mostrar login');
           if (mounted) {
             setShowLogin(true);
-            setIsLoading(false); // 🔧 AGREGAR ESTA LÍNEA
+            setIsLoading(false); //  AGREGAR ESTA LÍNEA
           }
         }
       } catch (error) {
-        console.error('❌ Error en checkAuth:', error);
+        console.error(' Error en checkAuth:', error);
         if (mounted) setShowLogin(true);
       }
     } else {
-      console.log('⚠️ No hay token - mostrar login');
+      console.log(' No hay token - mostrar login');
       if (mounted) setShowLogin(true);
     }
    
@@ -234,11 +234,11 @@ useEffect(() => {
   return () => {
     mounted = false;
     clearTimeout(timer);
-    window.removeEventListener('token-expired', handleTokenExpired); // 🆕 LÍNEA NUEVA
+    window.removeEventListener('token-expired', handleTokenExpired); //  LÍNEA NUEVA
   };
 }, []);
 
-  // 👤 Escuchar cambios en isAuthenticated (para logout)
+  //  Escuchar cambios en isAuthenticated (para logout)
   useEffect(() => {
     if (!isAuthenticated) {
       setShowLogin(true);
@@ -247,9 +247,9 @@ useEffect(() => {
     }
   }, [isAuthenticated]);
 
-  // ⏰ Auto-verificación de sesión cada minuto
+  //  Auto-verificación de sesión cada minuto
     useEffect(() => {
-  if (!isAuthenticated || showLogin) return; // 🔧 AGREGAR showLogin
+  if (!isAuthenticated || showLogin) return; //  AGREGAR showLogin
 
     const interval = setInterval(() => {
       const sesionValida = verificarSesion();
@@ -260,15 +260,15 @@ useEffect(() => {
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, verificarSesion]); // 🔧 AGREGAR showLogin
+  }, [isAuthenticated, verificarSesion]); //  AGREGAR showLogin
 
-  // 🖱️ Extender sesión en actividad del usuario (CON DEBOUNCE)
+  //  Extender sesión en actividad del usuario (CON DEBOUNCE)
   useEffect(() => {
     if (!isAuthenticated) return;
 
     let timeoutId;
     const handleActivity = () => {
-      // 🚀 DEBOUNCE: Solo ejecutar después de 5 segundos de inactividad
+      //  DEBOUNCE: Solo ejecutar después de 5 segundos de inactividad
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         extenderSesion();
@@ -285,13 +285,13 @@ useEffect(() => {
       eventos.forEach(evento => {
         document.removeEventListener(evento, handleActivity);
       });
-      clearTimeout(timeoutId); // 🆕 LIMPIAR TIMEOUT
+      clearTimeout(timeoutId); //  LIMPIAR TIMEOUT
     };
   }, [isAuthenticated, extenderSesion]);
 
- // 📱 Verificar estado WhatsApp periódicamente
+ //  Verificar estado WhatsApp periódicamente
   useEffect(() => {
-    // 🛡️ SOLO EJECUTAR SI ESTÁ AUTENTICADO
+    //  SOLO EJECUTAR SI ESTÁ AUTENTICADO
     if (!isAuthenticated) return;
 
     const checkWhatsApp = async () => {
@@ -302,7 +302,7 @@ useEffect(() => {
         
         setPanelStats(prev => {
           if (prev.whatsappStatus !== nuevoEstado) {
-            console.log('📱 WhatsApp cambió de', prev.whatsappStatus, 'a', nuevoEstado);
+            console.log(' WhatsApp cambió de', prev.whatsappStatus, 'a', nuevoEstado);
             return {
               ...prev,
               whatsappStatus: nuevoEstado
@@ -311,15 +311,15 @@ useEffect(() => {
           return prev;
         });
       } catch (error) {
-        console.warn('❌ Error verificando WhatsApp - manteniendo estado anterior');
+        console.warn(' Error verificando WhatsApp - manteniendo estado anterior');
       }
     };
 
     const whatsappInterval = setInterval(checkWhatsApp, 30000);
     return () => clearInterval(whatsappInterval);
-  }, [isAuthenticated]); // 🔧 AGREGAR DEPENDENCIA
+  }, [isAuthenticated]); //  AGREGAR DEPENDENCIA
 
-  // 📊 Actualizar stats cada 10 segundos
+  //  Actualizar stats cada 10 segundos
   useEffect(() => {
     const interval = setInterval(() => {
       setPanelStats(prev => ({
@@ -333,7 +333,7 @@ useEffect(() => {
     return () => clearInterval(interval);
   }, []);
 
-  // 🔧 Shortcut para panel debug: Ctrl + Shift + D
+  //  Shortcut para panel debug: Ctrl + Shift + D
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.ctrlKey && event.shiftKey && event.key === 'D') {
@@ -343,12 +343,10 @@ useEffect(() => {
         if (!showDebugPanel) {
           toast.success('Panel debug activado', { 
             duration: 2000,
-            icon: '🔧' 
           });
         } else {
           toast.success('Panel debug desactivado', { 
             duration: 2000,
-            icon: '❌' 
           });
         }
       }
@@ -362,10 +360,10 @@ useEffect(() => {
   }, [showDebugPanel]);
 
   // ===================================
-  // 🎨 RENDERIZADO CONDICIONAL
+  //  RENDERIZADO CONDICIONAL
   // ===================================
 
-  // 🔄 Pantalla de carga inicial
+  //  Pantalla de carga inicial
   if (isLoading) {
     return (
       <>
@@ -383,22 +381,11 @@ useEffect(() => {
             </div>
           </div>
         </div>
-
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-          }}
-        />
       </>
     );
   }
 
-  // 🔐 Mostrar login si no está autenticado
+  //  Mostrar login si no está autenticado
   if (!isAuthenticated || showLogin) {
     return (
       <>
@@ -423,24 +410,13 @@ useEffect(() => {
           isOpen={true}
           onClose={handleLoginSuccess}
         />
-
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-          }}
-        />
       </>
     );
   }
 
 
   // ===================================
-  // 🏠 APP PRINCIPAL
+  //  APP PRINCIPAL
   // ===================================
   return (
     <>
@@ -450,14 +426,14 @@ useEffect(() => {
         <Footer />
       </div>
       
-      {/* 🚫 Overlay de bloqueo */}
+      {/*  Overlay de bloqueo */}
       <BloqueoOverlay 
         usuariosBloqueados={usuariosBloqueados}
         motivoBloqueo={motivoBloqueo}
         usuarioCerrando={usuarioCerrando}
       />
 
-      {/* 🚨 MODAL DE BLOQUEO POR CAJA PENDIENTE - MÁXIMA PRIORIDAD */}
+      {/*  MODAL DE BLOQUEO POR CAJA PENDIENTE - MÁXIMA PRIORIDAD */}
       {sistemaBloquedadoPorCaja && cajaPendienteCierre && (
         <BloqueoCojeModal
           cajaPendiente={cajaPendienteCierre}
@@ -467,14 +443,14 @@ useEffect(() => {
 
       
       
-      {/* 🔧 Panel debug avanzado (Ctrl+Shift+D) */}
+      {/*  Panel debug avanzado (Ctrl+Shift+D) */}
       {showDebugPanel && sessionInfo && (
         <div className="fixed bottom-4 left-4 z-[60] bg-black/90 text-white text-xs p-3 rounded-lg font-mono max-w-sm border border-gray-700 shadow-2xl">
           <div className="space-y-1">
             <div className="text-amber-400 font-semibold border-b border-gray-600 pb-1 mb-2 flex items-center">
-              🔧 PANEL ADMIN
+               PANEL ADMIN
               <div className="ml-auto text-gray-400 flex items-center space-x-1">
-                <span title="Ctrl+Shift+D para ocultar" className="text-xs">👑</span>
+                <span title="Ctrl+Shift+D para ocultar" className="text-xs"></span>
                 <span>v1.0.0</span>
               </div>
             </div>
@@ -483,19 +459,19 @@ useEffect(() => {
             <div className={`flex items-center space-x-2 ${
               socketConnected ? 'text-green-400' : 'text-red-400'
             }`}>
-              <span>{socketConnected ? '🟢' : '🔴'}</span>
+              <span>{socketConnected ? '' : ''}</span>
               <span>Socket: {socketConnected ? 'ONLINE' : 'OFFLINE'}</span>
             </div>
             
             {/* Información de Sesión */}
             <div className="text-blue-400 flex items-center space-x-2">
-              <span>👤</span>
+              <span></span>
               <span>{sessionInfo.usuario?.nombre}</span>
             </div>
             
             {/* Usuarios Conectados */}
             <div className="text-yellow-400 flex items-center space-x-2">
-              <span>📊</span>
+              <span></span>
               <span>Conectados: {sessionInfo.usuariosConectados}</span>
             </div>
             
@@ -503,24 +479,24 @@ useEffect(() => {
             <div className={`flex items-center space-x-2 ${
               cajaActual ? 'text-emerald-400' : 'text-gray-400'
             }`}>
-              <span>💰</span>
+              <span></span>
               <span>Caja: {cajaActual ? 'ABIERTA' : 'CERRADA'}</span>
             </div>
             
             {/* Estado Base de Datos */}
             <div className="text-purple-400 flex items-center space-x-2">
-              <span>🗄️</span>
+              <span></span>
               <span>BD: POSTGRESQL</span>
             </div>
 
             {/* Recursos del Sistema */}
             <div className="text-cyan-400 flex items-center space-x-2">
-              <span>⚡</span>
+              <span></span>
               <span>RAM: {panelStats.ram}MB</span>
             </div>
 
             <div className="text-orange-400 flex items-center space-x-2">
-              <span>⏱️</span>
+              <span></span>
               <span>Uptime: {panelStats.uptime}min</span>
             </div>
 
@@ -528,7 +504,7 @@ useEffect(() => {
             <div className={`flex items-center space-x-2 ${
               navigator.onLine ? 'text-green-400' : 'text-red-400'
             }`}>
-              <span>{navigator.onLine ? '🌐' : '📶'}</span>
+              <span>{navigator.onLine ? '' : ''}</span>
               <span>Internet: {navigator.onLine ? 'ONLINE' : 'OFFLINE'}</span>
             </div>
 
@@ -537,13 +513,13 @@ useEffect(() => {
               panelStats.whatsappStatus === 'ONLINE' ? 'text-green-400' : 
               panelStats.whatsappStatus === 'ERROR' ? 'text-red-400' : 'text-gray-400'
             }`}>
-              <span>📱</span>
+              <span></span>
               <span>WhatsApp: {panelStats.whatsappStatus}</span>
             </div>
 
             {/* Navegador y Dispositivo */}
             <div className="text-indigo-400 flex items-center space-x-2">
-              <span>🖥️</span>
+              <span></span>
               <span>{(() => {
                 const ua = navigator.userAgent;
                 if (ua.includes('Chrome')) return 'Chrome';
@@ -555,7 +531,7 @@ useEffect(() => {
             </div>
 
             <div className="text-violet-400 flex items-center space-x-2">
-              <span>📱</span>
+              <span></span>
               <span>{(() => {
                 const ua = navigator.userAgent;
                 if (/Mobi|Android/i.test(ua)) return 'Móvil';
@@ -566,7 +542,7 @@ useEffect(() => {
 
             {/* Resolución de Pantalla */}
             <div className="text-pink-400 flex items-center space-x-2">
-              <span>📺</span>
+              <span></span>
               <span>{screen.width}x{screen.height}</span>
             </div>
 
@@ -575,7 +551,7 @@ useEffect(() => {
             {/* Socket ID */}
             {sessionInfo.socketId && (
               <div className="text-gray-300 flex items-center space-x-2">
-                <span>🆔</span>
+                <span></span>
                 <span>{sessionInfo.socketId.substring(0, 8)}...</span>
               </div>
             )}
@@ -583,7 +559,7 @@ useEffect(() => {
             {/* Estado de Bloqueo */}
             {usuariosBloqueados && (
               <div className="text-red-300 border-t border-gray-600 pt-1 mt-2 flex items-center space-x-2">
-                <span>🔒</span>
+                <span></span>
                 <span>BLOQUEADO: {motivoBloqueo.substring(0, 15)}...</span>
               </div>
             )} 
@@ -593,16 +569,7 @@ useEffect(() => {
         </div>
       )}
       
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-        }}
-      />
+      <Toaster />
     </>
   );
 }

@@ -16,19 +16,19 @@ import {
 import { useInventarioStore } from '../../store/inventarioStore';
 import { useCajaStore } from '../../store/cajaStore';
 import { useAuthStore } from '../../store/authStore';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
-// 🎮 ICONOS POR TIPO DE EQUIPO
+//  ICONOS POR TIPO DE EQUIPO
 const getEquipmentIcon = (descripcion) => {
   const desc = descripcion.toLowerCase();
-  if (desc.includes('ps4')) return { icon: Gamepad2, color: 'blue', emoji: '🎮' };
-  if (desc.includes('ps5')) return { icon: Gamepad2, color: 'purple', emoji: '🎯' };
-  if (desc.includes('pc')) return { icon: Monitor, color: 'green', emoji: '💻' };
-  if (desc.includes('vr') || desc.includes('virtual')) return { icon: Headphones, color: 'pink', emoji: '🥽' };
-  return { icon: Gamepad2, color: 'gray', emoji: '🎮' };
+  if (desc.includes('ps4')) return { icon: Gamepad2, color: 'blue', emoji: '' };
+  if (desc.includes('ps5')) return { icon: Gamepad2, color: 'purple', emoji: '' };
+  if (desc.includes('pc')) return { icon: Monitor, color: 'green', emoji: '' };
+  if (desc.includes('vr') || desc.includes('virtual')) return { icon: Headphones, color: 'pink', emoji: '' };
+  return { icon: Gamepad2, color: 'gray', emoji: '' };
 };
 
-// ⏱️ FORMATEAR TIEMPO
+//  FORMATEAR TIEMPO
 const formatearTiempo = (milisegundos) => {
   const totalSegundos = Math.floor(milisegundos / 1000);
   const horas = Math.floor(totalSegundos / 3600);
@@ -41,7 +41,7 @@ const formatearTiempo = (milisegundos) => {
   return `${minutos}:${segundos.toString().padStart(2, '0')}`;
 };
 
-// 💰 CALCULAR COSTO EN TIEMPO REAL
+//  CALCULAR COSTO EN TIEMPO REAL
 const calcularCostoTiempoReal = (milisegundos, precioPorHora) => {
   const minutos = Math.ceil(milisegundos / 60000);
   const fracciones15 = Math.ceil(minutos / 15);
@@ -50,7 +50,7 @@ const calcularCostoTiempoReal = (milisegundos, precioPorHora) => {
   return horasACobrar * precioPorHora;
 };
 
-// 🧩 MODAL NUEVO CRONÓMETRO
+//  MODAL NUEVO CRONÓMETRO
 const NuevoCronometroModal = ({ isOpen, onClose, onCrear }) => {
   const [formData, setFormData] = useState({
     equipoId: '',
@@ -70,7 +70,7 @@ const NuevoCronometroModal = ({ isOpen, onClose, onCrear }) => {
     e.preventDefault();
     
     if (!formData.equipoId || !formData.clienteNombre.trim()) {
-      toast.error('⚠️ Completa todos los campos obligatorios');
+      toast.error('Completa todos los campos obligatorios');
       return;
     }
 
@@ -85,7 +85,7 @@ const NuevoCronometroModal = ({ isOpen, onClose, onCrear }) => {
       });
       onClose();
     } catch (error) {
-      toast.error('❌ Error iniciando cronómetro');
+      toast.error('Error iniciando cronómetro');
     } finally {
       setLoading(false);
     }
@@ -297,7 +297,7 @@ const NuevoCronometroModal = ({ isOpen, onClose, onCrear }) => {
   );
 };
 
-// 🎮 TARJETA DE CRONÓMETRO ACTIVO
+//  TARJETA DE CRONÓMETRO ACTIVO
 const CronometroCard = ({ cronometro, onPausar, onFinalizar }) => {
   const [tiempoActual, setTiempoActual] = useState(0);
   const { tasaCambio } = useCajaStore();
@@ -361,8 +361,8 @@ const CronometroCard = ({ cronometro, onPausar, onFinalizar }) => {
           cronometro.estado === ESTADOS.PAUSADO ? 'bg-yellow-100 text-yellow-700' :
           'bg-gray-100 text-gray-700'
         }`}>
-          {cronometro.estado === ESTADOS.EN_PROGRESO ? '▶️ EN VIVO' :
-           cronometro.estado === ESTADOS.PAUSADO ? '⏸️ PAUSADO' : '⏹️ DETENIDO'}
+          {cronometro.estado === ESTADOS.EN_PROGRESO ? ' EN VIVO' :
+           cronometro.estado === ESTADOS.PAUSADO ? ' PAUSADO' : ' DETENIDO'}
         </div>
       </div>
 
@@ -382,8 +382,8 @@ const CronometroCard = ({ cronometro, onPausar, onFinalizar }) => {
               tiempoAgotado ? 'text-red-600' :
               'text-gray-500'
             }`}>
-              {tiempoAgotado ? '⏰ TIEMPO AGOTADO' :
-               alertaTiempo ? `⚠️ ${minutosRestantes} min restantes` :
+              {tiempoAgotado ? ' TIEMPO AGOTADO' :
+               alertaTiempo ? ` ${minutosRestantes} min restantes` :
                `${minutosRestantes} min restantes`}
             </div>
           )}
@@ -461,7 +461,7 @@ const CronometroCard = ({ cronometro, onPausar, onFinalizar }) => {
   );
 };
 
-// 🎯 COMPONENTE PRINCIPAL
+//  COMPONENTE PRINCIPAL
 const CronometrosPanel = () => {
   const [showNuevoModal, setShowNuevoModal] = useState(false);
   const [vistaActual, setVistaActual] = useState('activos'); // 'activos', 'historial'
@@ -622,7 +622,7 @@ const CronometrosPanel = () => {
           ) : (
             /* Estado vacío */
             <div className="flex flex-col items-center justify-center h-64">
-              <div className="text-6xl mb-4">🎮</div>
+              <div className="text-6xl mb-4"></div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 No hay sesiones Gaming activas
               </h3>
@@ -641,7 +641,7 @@ const CronometrosPanel = () => {
              ) : (
                <div className="text-center">
                  <p className="text-orange-600 font-medium mb-2">
-                   ⚠️ Todos los equipos están ocupados
+                    Todos los equipos están ocupados
                  </p>
                  <p className="text-sm text-gray-500">
                    Espera a que termine alguna sesión para iniciar una nueva
@@ -757,7 +757,7 @@ const CronometrosPanel = () => {
              </div>
            ) : (
              <div className="text-center py-8">
-               <div className="text-4xl mb-4">📊</div>
+               <div className="text-4xl mb-4"></div>
                <h3 className="text-lg font-medium text-gray-900 mb-2">
                  Sin historial de sesiones
                </h3>

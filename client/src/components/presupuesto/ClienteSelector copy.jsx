@@ -1,17 +1,17 @@
-// components/ClienteSelector.jsx - VERSIÓN MEJORADA MODULAR 🎯
+// components/ClienteSelector.jsx - VERSIÓN MEJORADA MODULAR 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, UserPlus, X, User, Building, Phone, 
   Mail, MapPin, AlertCircle, CheckCircle 
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { api } from "../../config/api";
 
-// 🔧 DATOS SIMULADOS (mover a store después)
+//  DATOS SIMULADOS (mover a store después)
 // Estado de clientes cargados desde backend
 let CLIENTES_CACHE = [];
 
-// 🔧 FUNCIONES DE VALIDACIÓN
+//  FUNCIONES DE VALIDACIÓN
 const validarCedulaRif = (valor) => {
   const valorLimpio = valor.replace(/\s/g, '').toUpperCase();
   const patronPersona = /^[VE]\d{7,8}$/;
@@ -38,14 +38,14 @@ const detectarTipoCliente = (cedulaRif) => {
   return ['V', 'E'].includes(letra) ? 'persona' : 'empresa';
 };
 
-// 🔧 FUNCIÓN PARA CARGAR CLIENTES DESDE BACKEND
+//  FUNCIÓN PARA CARGAR CLIENTES DESDE BACKEND
 const cargarClientesDesdeBackend = async () => {
   try {
     const response = await api.get('/clientes');
-    console.log('🔧 DEBUG - Respuesta clientes:', response);
-    console.log('🔧 DEBUG - response.data:', response.data);
+    console.log(' DEBUG - Respuesta clientes:', response);
+    console.log(' DEBUG - response.data:', response.data);
     CLIENTES_CACHE = response.data?.data?.clientes || response.data?.clientes || [];
-    console.log('🔧 DEBUG - CLIENTES_CACHE:', CLIENTES_CACHE);
+    console.log(' DEBUG - CLIENTES_CACHE:', CLIENTES_CACHE);
     return CLIENTES_CACHE;
   } catch (error) {
     console.error('Error cargando clientes:', error);
@@ -54,7 +54,7 @@ const cargarClientesDesdeBackend = async () => {
   }
 };
 
-// 🧩 MODAL REGISTRO CLIENTE
+//  MODAL REGISTRO CLIENTE
 const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial = '' }) => {
   const [formData, setFormData] = useState({
     tipo: '',
@@ -65,7 +65,7 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
     direccion: ''
   });
 
-    console.log('🔍 DEBUG Banner:', {
+    console.log(' DEBUG Banner:', {
     cedulaInicial,
     esSoloNumeros: /^\d+$/.test(cedulaInicial),
     formDataCedula: formData.cedula,
@@ -170,7 +170,7 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
       });
       setErrores({});
       
-      toast.success(`✅ Cliente ${formData.tipo === 'empresa' ? 'empresa' : 'persona'} creado exitosamente`);
+      toast.success(`Cliente ${formData.tipo === 'empresa' ? 'empresa' : 'persona'} creado exitosamente`);
       onClose();
       
     } catch (error) {
@@ -212,12 +212,12 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
           </div>
         </div>
 
-{/* 🆕 Banner moderno - Opción 1: Cards en grid */}
+{/*  Banner moderno - Opción 1: Cards en grid */}
         {cedulaInicial && /^\d+$/.test(cedulaInicial) && /^\d+$/.test(formData.cedula) && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 mx-6 mt-4 rounded-xl p-4 shadow-sm">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm">🔍</span>
+                <span className="text-white text-sm"></span>
               </div>
               <div>
                 <h4 className="font-semibold text-blue-900 text-sm">Detectamos solo números</h4>
@@ -232,7 +232,7 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                 onClick={() => {
                   const cedulaCompleta = `V${cedulaInicial.padStart(8, '0')}`;
                   setFormData(prev => ({ ...prev, cedula: cedulaCompleta, tipo: 'persona' }));
-                  toast.success('✅ Persona Natural aplicada');
+                  toast.success('Persona Natural aplicada');
                 }}
                 className="group relative overflow-hidden bg-white hover:bg-green-50 border border-green-200 hover:border-green-300 rounded-lg p-3 transition-all duration-200 hover:scale-105 hover:shadow-md"
               >
@@ -249,12 +249,12 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                 onClick={() => {
                   const cedulaCompleta = `E${cedulaInicial.padStart(8, '0')}`;
                   setFormData(prev => ({ ...prev, cedula: cedulaCompleta, tipo: 'persona' }));
-                  toast.success('✅ Extranjero aplicado');
+                  toast.success('Extranjero aplicado');
                 }}
                 className="group relative overflow-hidden bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 rounded-lg p-3 transition-all duration-200 hover:scale-105 hover:shadow-md"
               >
                 <div className="text-center">
-                  <div className="text-lg mb-1">🌍</div>
+                  <div className="text-lg mb-1"></div>
                   <div className="text-xs font-medium text-blue-700">Extranjero</div>
                   <div className="text-xs text-blue-600">Natural</div>
                 </div>
@@ -266,12 +266,12 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                 onClick={() => {
                   const cedulaCompleta = `V${cedulaInicial.padStart(8, '0')}`;
                   setFormData(prev => ({ ...prev, cedula: cedulaCompleta, tipo: 'empresa' }));
-                  toast.success('✅ Firma Personal aplicada');
+                  toast.success('Firma Personal aplicada');
                 }}
                 className="group relative overflow-hidden bg-white hover:bg-purple-50 border border-purple-200 hover:border-purple-300 rounded-lg p-3 transition-all duration-200 hover:scale-105 hover:shadow-md"
               >
                 <div className="text-center">
-                  <div className="text-lg mb-1">👤</div>
+                  <div className="text-lg mb-1"></div>
                   <div className="text-xs font-medium text-purple-700">Firma</div>
                   <div className="text-xs text-purple-600">Personal</div>
                 </div>
@@ -283,12 +283,12 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                 onClick={() => {
                   const cedulaCompleta = `J${cedulaInicial.padStart(8, '0')}`;
                   setFormData(prev => ({ ...prev, cedula: cedulaCompleta, tipo: 'empresa' }));
-                  toast.success('✅ Empresa aplicada');
+                  toast.success('Empresa aplicada');
                 }}
                 className="group relative overflow-hidden bg-white hover:bg-orange-50 border border-orange-200 hover:border-orange-300 rounded-lg p-3 transition-all duration-200 hover:scale-105 hover:shadow-md"
               >
                 <div className="text-center">
-                  <div className="text-lg mb-1">🏢</div>
+                  <div className="text-lg mb-1"></div>
                   <div className="text-xs font-medium text-orange-700">Empresa</div>
                   <div className="text-xs text-orange-600">Jurídica</div>
                 </div>
@@ -300,12 +300,12 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                 onClick={() => {
                   const cedulaCompleta = `G${cedulaInicial.padStart(8, '0')}`;
                   setFormData(prev => ({ ...prev, cedula: cedulaCompleta, tipo: 'empresa' }));
-                  toast.success('✅ Gobierno aplicado');
+                  toast.success('Gobierno aplicado');
                 }}
                 className="group relative overflow-hidden bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-lg p-3 transition-all duration-200 hover:scale-105 hover:shadow-md"
               >
                 <div className="text-center">
-                  <div className="text-lg mb-1">🏛️</div>
+                  <div className="text-lg mb-1"></div>
                   <div className="text-xs font-medium text-gray-700">Gobierno</div>
                   <div className="text-xs text-gray-600">Público</div>
                 </div>
@@ -330,7 +330,7 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                   formData.tipo === 'persona'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                     : formData.tipo === '' 
-                    ? 'border-gray-300 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50' // 🔧 NUEVO: Estado neutro
+                    ? 'border-gray-300 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50' //  NUEVO: Estado neutro
                     : 'border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
@@ -344,7 +344,7 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                   formData.tipo === 'empresa'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                     : formData.tipo === '' 
-                    ? 'border-gray-300 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50' // 🔧 NUEVO: Estado neutro
+                    ? 'border-gray-300 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50' //  NUEVO: Estado neutro
                     : 'border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
@@ -352,11 +352,11 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                 Empresa
               </button>
             </div>
-            {/* 🔧 NUEVO: Indicador cuando no hay tipo seleccionado */}
+            {/*  NUEVO: Indicador cuando no hay tipo seleccionado */}
 {formData.tipo === '' && (
   <div className="mt-2 text-center">
     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-      ⚠️ Selecciona un tipo de cliente
+       Selecciona un tipo de cliente
     </span>
   </div>
 )}
@@ -483,7 +483,7 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
             {formData.telefono && validarTelefono(formData.telefono) && (
               <p className="text-green-600 text-xs mt-1 flex items-center">
                 <CheckCircle className="h-3 w-3 mr-1" />
-                ✅ Compatible con WhatsApp
+                 Compatible con WhatsApp
               </p>
             )}
           </div>
@@ -535,7 +535,7 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
                   formData.tipo === 'empresa' ? 'bg-purple-500' : 'bg-emerald-500'
                 }`}></span>
                 <span className="font-medium text-emerald-700">
-                  {formData.tipo === 'empresa' ? '🏢 Empresa (Jurídica)' : '👤 Persona Natural'}
+                  {formData.tipo === 'empresa' ? ' Empresa (Jurídica)' : ' Persona Natural'}
                 </span>
               </div>
             </div>
@@ -574,7 +574,7 @@ const ModalRegistroCliente = ({ isOpen, onClose, onClienteCreado, cedulaInicial 
   );
 };
 
-// 🎯 COMPONENTE PRINCIPAL - SELECTOR DE CLIENTE
+//  COMPONENTE PRINCIPAL - SELECTOR DE CLIENTE
 const ClienteSelector = ({ 
   clienteSeleccionado, 
   onClienteSeleccionado,
@@ -590,14 +590,14 @@ const ClienteSelector = ({
   const dropdownRef = useRef(null);
 
 // Filtrar clientes
-console.log('🔧 DEBUG - CLIENTES_CACHE al filtrar:', CLIENTES_CACHE);
-console.log('🔧 DEBUG - busqueda actual:', busqueda);
+console.log(' DEBUG - CLIENTES_CACHE al filtrar:', CLIENTES_CACHE);
+console.log(' DEBUG - busqueda actual:', busqueda);
 const clientesFiltrados = CLIENTES_CACHE.filter(cliente => 
   cliente.cedula_rif.toLowerCase().includes(busqueda.toLowerCase()) ||
   cliente.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
   (cliente.email && cliente.email.toLowerCase().includes(busqueda.toLowerCase()))
 );
-console.log('🔧 DEBUG - clientesFiltrados:', clientesFiltrados);
+console.log(' DEBUG - clientesFiltrados:', clientesFiltrados);
 
   // Manejar selección
   const handleSeleccionar = (cliente) => {
@@ -616,7 +616,7 @@ console.log('🔧 DEBUG - clientesFiltrados:', clientesFiltrados);
   // Manejar cliente creado
   const handleClienteCreado = (nuevoCliente) => {
     handleSeleccionar(nuevoCliente);
-    toast.success(`✅ Cliente ${nuevoCliente.nombre} asignado`);
+    toast.success(`Cliente ${nuevoCliente.nombre} asignado`);
   };
 
   // Valor mostrado en el input
@@ -649,16 +649,16 @@ useEffect(() => {
                 setMostrarOpciones(true);
               }}
               onFocus={async () => {
-                console.log('🔧 DEBUG - Input focused, cargando clientes...');
+                console.log(' DEBUG - Input focused, cargando clientes...');
                 setMostrarOpciones(true);
                 
                 try {
                   const response = await api.get('/clientes');
-                  console.log('🔧 DEBUG - Respuesta directa:', response.data);
-                    console.log('🔧 DEBUG - response.data.data:', response.data.data);
-                    console.log('🔧 DEBUG - response.data.data.data:', response.data.data.data);
+                  console.log(' DEBUG - Respuesta directa:', response.data);
+                    console.log(' DEBUG - response.data.data:', response.data.data);
+                    console.log(' DEBUG - response.data.data.data:', response.data.data.data);
                     CLIENTES_CACHE = response.data?.data?.data?.clientes || response.data?.data?.clientes || response.data?.clientes || [];
-                    console.log('🔧 DEBUG - CLIENTES_CACHE actualizado:', CLIENTES_CACHE);
+                    console.log(' DEBUG - CLIENTES_CACHE actualizado:', CLIENTES_CACHE);
                 } catch (error) {
                   console.error('Error:', error);
                 }
@@ -779,8 +779,8 @@ useEffect(() => {
                               ? 'bg-gray-100 text-gray-700'
                               : 'bg-emerald-100 text-emerald-700'
                           }`}>
-                            {cliente.tipo === 'empresa' ? '🏢' : 
-                             cliente.tipo === 'directo' ? '👥' : '👤'}
+                            {cliente.tipo === 'empresa' ? '' : 
+                             cliente.tipo === 'directo' ? '' : ''}
                           </span>
                         </div>
                       </button>

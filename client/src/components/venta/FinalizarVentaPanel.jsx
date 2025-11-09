@@ -1,11 +1,11 @@
-// components/venta/FinalizarVentaPanel.jsx - PANEL FINAL DE VENTA 🎯
+// components/venta/FinalizarVentaPanel.jsx - PANEL FINAL DE VENTA 
 import React, { useState } from 'react';
 import { 
   CheckCircle, Receipt, Send, FileText, Printer,
   Mail, MessageCircle, AlertTriangle, Info,
   User, Package, DollarSign, Clock, ShoppingCart, FileDown, Phone
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { 
   generarPDFFactura, 
   generarImagenWhatsApp, 
@@ -14,7 +14,7 @@ import {
 } from '../../utils/printUtils';
 import { api } from '../../config/api';
 
-// 🔧 FUNCIONES HELPER
+//  FUNCIONES HELPER
 const formatearVenezolano = (valor) => {
   if (!valor && valor !== 0) return '0,00';
   const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
@@ -24,7 +24,7 @@ const formatearVenezolano = (valor) => {
   });
 };
 
-// 🧩 COMPONENTE TOGGLE DE OPCIÓN
+//  COMPONENTE TOGGLE DE OPCIÓN
 const OpcionToggle = ({ 
   id, 
   label, 
@@ -80,7 +80,7 @@ const OpcionToggle = ({
   );
 };
 
-// 🎯 COMPONENTE PRINCIPAL
+//  COMPONENTE PRINCIPAL
 const FinalizarVentaPanel = ({ 
   ventaData,
   opcionesProcesamiento,
@@ -93,7 +93,7 @@ const FinalizarVentaPanel = ({
 
   const [mostrarDetalles, setMostrarDetalles] = useState(false);
 
-  // ✅ SOLO VALIDAR OPCIONES - SIN CÁLCULOS NI VALIDACIONES DE PAGOS
+  //  SOLO VALIDAR OPCIONES - SIN CÁLCULOS NI VALIDACIONES DE PAGOS
   const alMenosUnaOpcion = Object.values(opcionesProcesamiento).some(Boolean);
   const clienteTieneWhatsApp = ventaData.cliente?.telefono;
   const clienteTieneEmail = ventaData.cliente?.email;
@@ -102,24 +102,24 @@ const FinalizarVentaPanel = ({
     onOpcionesChange({ [opcion]: valor });
   };
 
-  // 🖨️ FUNCIONES DE PROCESAMIENTO MEJORADAS
+  //  FUNCIONES DE PROCESAMIENTO MEJORADAS
   const handleGenerarPDF = async () => {
     try {
-      console.log('🔍 FinalizarVentaPanel - handleGenerarPDF:', { 
+      console.log(' FinalizarVentaPanel - handleGenerarPDF:', { 
         descuento, 
         ventaDataDescuento: ventaData.descuentoAutorizado,
         totalBs: ventaData.totalBs,
         codigoVenta 
       });
       
-      // ✅ AGREGAR USUARIO ACTUAL
+      //  AGREGAR USUARIO ACTUAL
       const ventaDataConUsuario = {
         ...ventaData,
         usuario: ventaData.usuario || { nombre: 'Sistema' }
       };
       
       await descargarPDF(ventaDataConUsuario, codigoVenta, tasaCambio, descuento);
-      toast.success('📄 PDF descargado exitosamente');
+      toast.success('PDF descargado exitosamente');
     } catch (error) {
       toast.error('Error al generar PDF: ' + error.message);
       console.error('Error PDF:', error);
@@ -128,7 +128,7 @@ const FinalizarVentaPanel = ({
 
   const handleImprimirTermica = async () => {
     try {
-      console.log('🔍 FinalizarVentaPanel - handleImprimirTermica:', { 
+      console.log(' FinalizarVentaPanel - handleImprimirTermica:', { 
         descuento, 
         ventaDataDescuento: ventaData.descuentoAutorizado,
         motivoDescuento: ventaData.motivoDescuento,
@@ -136,14 +136,14 @@ const FinalizarVentaPanel = ({
         codigoVenta 
       });
       
-      // ✅ AGREGAR USUARIO ACTUAL
+      //  AGREGAR USUARIO ACTUAL
       const ventaDataConUsuario = {
         ...ventaData,
         usuario: ventaData.usuario || { nombre: 'Sistema' }
       };
       
       await imprimirFacturaTermica(ventaDataConUsuario, codigoVenta, tasaCambio, descuento);
-      toast.success('🖨️ Enviando a impresora térmica...');
+      toast.success('Enviando a impresora térmica...');
     } catch (error) {
       toast.error('Error al imprimir en térmica: ' + error.message);
       console.error('Error impresión térmica:', error);
@@ -157,15 +157,15 @@ const FinalizarVentaPanel = ({
         return;
       }
 
-      console.log('📱 ===== INICIANDO ENVÍO WHATSAPP =====');
-      console.log('🔍 ventaData completa:', ventaData);
-      console.log('🔍 codigoVenta:', codigoVenta);
-      console.log('🔍 tasaCambio:', tasaCambio);
-      console.log('🔍 descuento:', descuento);
+      console.log(' ===== INICIANDO ENVÍO WHATSAPP =====');
+      console.log(' ventaData completa:', ventaData);
+      console.log(' codigoVenta:', codigoVenta);
+      console.log(' tasaCambio:', tasaCambio);
+      console.log(' descuento:', descuento);
 
-      toast.loading('📱 Generando imagen para WhatsApp...', { id: 'whatsapp-sending' });
+      toast.loading('Generando imagen para WhatsApp...', { id: 'whatsapp-sending' });
       
-      // ✅ AGREGAR USUARIO ACTUAL
+      //  AGREGAR USUARIO ACTUAL
       const ventaDataConUsuario = {
         ...ventaData,
         usuario: ventaData.usuario || { nombre: 'Sistema' }
@@ -173,59 +173,56 @@ const FinalizarVentaPanel = ({
       
       const imagenBase64 = await generarImagenWhatsApp(ventaDataConUsuario, codigoVenta, tasaCambio, descuento);
       
-      console.log('📱 Imagen generada exitosamente, enviando...');
-      console.log('📊 Tamaño imagen:', Math.round(imagenBase64.length / 1024), 'KB');
+      console.log(' Imagen generada exitosamente, enviando...');
+      console.log(' Tamaño imagen:', Math.round(imagenBase64.length / 1024), 'KB');
       
-      toast.loading('📱 Enviando por WhatsApp...', { id: 'whatsapp-sending' });
+      toast.loading('Enviando por WhatsApp...', { id: 'whatsapp-sending' });
       
       const response = await api.post('/whatsapp/enviar-factura', {
         numero: ventaData.cliente.telefono,
         clienteNombre: ventaData.cliente.nombre,
         codigoVenta: codigoVenta,
         imagen: imagenBase64,
-        mensaje: `Hola ${ventaData.cliente.nombre || 'Cliente'}, aquí tienes tu comprobante de compra #${codigoVenta}. ¡Gracias por su compra! 🖥️🖱️`
+        mensaje: `Hola ${ventaData.cliente.nombre || 'Cliente'}, aquí tienes tu comprobante de compra #${codigoVenta}. ¡Gracias por su compra! `
       });
       
       if (response.data.success) {
         if (response.data.data?.tipo_fallback === 'simple_sin_imagen') {
-          toast.success('📱 Comprobante enviado por WhatsApp (sin imagen)', {
+          toast.success('Comprobante enviado por WhatsApp (sin imagen)', {
             id: 'whatsapp-sending',
             duration: 6000,
-            icon: '📋'
           });
         } else if (response.data.data?.fallback) {
-          toast.success('📱 Mensaje enviado (imagen falló, pero texto OK)', {
+          toast.success('Mensaje enviado (imagen falló, pero texto OK)', {
             id: 'whatsapp-sending',
             duration: 5000,
-            icon: '📝'
           });
         } else {
-          toast.success('📱 Comprobante con imagen enviado exitosamente', {
+          toast.success('Comprobante con imagen enviado exitosamente', {
             id: 'whatsapp-sending',
             duration: 5000,
-            icon: '🖼️'
           });
         }
       } else {
         throw new Error(response.data.message || 'Error enviando WhatsApp');
       }
     } catch (error) {
-      console.error('❌ Error enviando WhatsApp:', error);
+      console.error(' Error enviando WhatsApp:', error);
       
       const errorData = error.response?.data;
       
       if (errorData?.tipo === 'desconectado') {
-        toast.error('❌ WhatsApp no está conectado\n\n👉 Ve a Configuración → WhatsApp', {
+        toast.error('WhatsApp no está conectado\n\n Ve a Configuración → WhatsApp', {
           id: 'whatsapp-sending',
           duration: 8000
         });
       } else if (errorData?.tipo === 'error_total') {
-        toast.error('❌ WhatsApp no pudo enviar el mensaje\n\n🔧 Verifica la conexión en Configuración', {
+        toast.error('WhatsApp no pudo enviar el mensaje\n\n Verifica la conexión en Configuración', {
           id: 'whatsapp-sending',
           duration: 8000
         });
       } else {
-        toast.error('❌ Error enviando por WhatsApp: ' + (errorData?.message || error.message), {
+        toast.error('Error enviando por WhatsApp: ' + (errorData?.message || error.message), {
           id: 'whatsapp-sending',
           duration: 5000
         });
@@ -233,7 +230,7 @@ const FinalizarVentaPanel = ({
     }
   };
 
-  // 📧 NUEVA FUNCIÓN - Enviar por Email
+  //  NUEVA FUNCIÓN - Enviar por Email
   const handleEnviarEmail = async () => {
     try {
       if (!ventaData.cliente?.email) {
@@ -241,9 +238,9 @@ const FinalizarVentaPanel = ({
         return;
       }
 
-      toast.loading('📧 Generando PDF para email...', { id: 'email-sending' });
+      toast.loading('Generando PDF para email...', { id: 'email-sending' });
       
-      // ✅ AGREGAR USUARIO ACTUAL
+      //  AGREGAR USUARIO ACTUAL
       const ventaDataConUsuario = {
         ...ventaData,
         usuario: ventaData.usuario || { nombre: 'Sistema' }
@@ -257,7 +254,7 @@ const FinalizarVentaPanel = ({
         try {
           const pdfBase64 = reader.result.split(',')[1]; // Remover prefijo data:application/pdf;base64,
           
-          toast.loading('📧 Enviando por email...', { id: 'email-sending' });
+          toast.loading('Enviando por email...', { id: 'email-sending' });
           
           const response = await api.post('/email/enviar-factura', {
             destinatario: ventaData.cliente.email,
@@ -269,7 +266,7 @@ const FinalizarVentaPanel = ({
           });
           
           if (response.data.success) {
-            toast.success('📧 Comprobante enviado por email exitosamente', {
+            toast.success('Comprobante enviado por email exitosamente', {
               id: 'email-sending',
               duration: 5000
             });
@@ -297,7 +294,7 @@ const FinalizarVentaPanel = ({
   return (
     <div className="space-y-6">
       
-      {/* 📋 RESUMEN FINAL DE LA VENTA - COMPACTO VERTICAL */}
+      {/*  RESUMEN FINAL DE LA VENTA - COMPACTO VERTICAL */}
       <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-4">
         <h3 className="text-lg font-bold text-emerald-900 mb-3 flex items-center">
           <ShoppingCart className="h-5 w-5 mr-2" />
@@ -376,7 +373,7 @@ const FinalizarVentaPanel = ({
         )}
       </div>
 
-      {/* ⚙️ OPCIONES DE PROCESAMIENTO */}
+      {/*  OPCIONES DE PROCESAMIENTO */}
       <div className="space-y-4">
         <h4 className="text-lg font-semibold text-gray-900 flex items-center">
           <CheckCircle className="h-5 w-5 mr-2 text-emerald-600" />
@@ -385,7 +382,7 @@ const FinalizarVentaPanel = ({
 
         <div className="grid grid-cols-4 gap-3">
           
-          {/* ✅ TOGGLE: Generar PDF */}
+          {/*  TOGGLE: Generar PDF */}
           <div 
             className={`border-2 rounded-xl p-3 cursor-pointer transition-all relative ${
               opcionesProcesamiento.imprimirRecibo 
@@ -417,13 +414,13 @@ const FinalizarVentaPanel = ({
               <p className="text-xs text-gray-500">Recibo digital</p>
               {opcionesProcesamiento.imprimirRecibo && (
                 <div className="text-xs text-orange-600 font-medium">
-                  ✓ Se descargará automáticamente
+                   Se descargará automáticamente
                 </div>
               )}
             </div>
           </div>
 
-          {/* ✅ TOGGLE: Imprimir Factura */}
+          {/*  TOGGLE: Imprimir Factura */}
           <div 
             className={`border-2 rounded-xl p-3 cursor-pointer transition-all relative ${
               opcionesProcesamiento.generarFactura 
@@ -454,13 +451,13 @@ const FinalizarVentaPanel = ({
               <p className="text-xs text-gray-500">80mm directo</p>
               {opcionesProcesamiento.generarFactura && (
                 <div className="text-xs text-blue-600 font-medium">
-                  ✓ Se enviará a impresora
+                   Se enviará a impresora
                 </div>
               )}
             </div>
           </div>
 
-          {/* ✅ TOGGLE: WhatsApp */}
+          {/*  TOGGLE: WhatsApp */}
           <div 
             className={`border-2 rounded-xl p-3 transition-all relative ${
               !clienteTieneWhatsApp 
@@ -502,13 +499,13 @@ const FinalizarVentaPanel = ({
               </p>
               {opcionesProcesamiento.enviarWhatsApp && clienteTieneWhatsApp && (
                 <div className="text-xs text-green-600 font-medium">
-                  ✓ Se enviará a {ventaData.cliente?.telefono}
+                   Se enviará a {ventaData.cliente?.telefono}
                 </div>
               )}
             </div>
           </div>
 
-          {/* ✅ TOGGLE: Email */}
+          {/*  TOGGLE: Email */}
           <div 
             className={`border-2 rounded-xl p-3 transition-all relative ${
               !clienteTieneEmail 
@@ -550,7 +547,7 @@ const FinalizarVentaPanel = ({
               </p>
               {opcionesProcesamiento.enviarEmail && clienteTieneEmail && (
                 <div className="text-xs text-purple-600 font-medium">
-                  ✓ Se enviará a {ventaData.cliente?.email}
+                   Se enviará a {ventaData.cliente?.email}
                 </div>
               )}
             </div>
@@ -559,7 +556,7 @@ const FinalizarVentaPanel = ({
         </div>
       </div>
 
-      {/* ⚠️ VALIDACIONES Y ADVERTENCIAS */}
+      {/*  VALIDACIONES Y ADVERTENCIAS */}
       {!alMenosUnaOpcion && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <div className="flex items-center space-x-3">

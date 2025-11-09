@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, TrendingDown, User, Calendar, DollarSign, FileText, Eye, Download } from 'lucide-react';
 import { api } from '../../config/api';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const ReportesEgresos = () => {
   const [loading, setLoading] = useState(false);
@@ -30,11 +30,11 @@ const ReportesEgresos = () => {
   const cargarEgresos = async () => {
     setLoading(true);
     try {
-      console.log('🔄 Cargando egresos...', filtros);
+      console.log(' Cargando egresos...', filtros);
       
       const response = await api.get('/reportes/egresos', { params: filtros });
       
-      console.log('✅ Egresos cargados:', response.data);
+      console.log(' Egresos cargados:', response.data);
       
       if (response.data.success) {
         const egresosData = response.data.data || [];
@@ -46,13 +46,13 @@ const ReportesEgresos = () => {
       }
       
     } catch (error) {
-      console.error('❌ Error cargando egresos:', error);
+      console.error(' Error cargando egresos:', error);
       
       const errorMessage = error.response?.data?.message || error.message || 'Error al cargar egresos';
       toast.error(`Error: ${errorMessage}`);
       
       // Datos de ejemplo como fallback
-      console.log('📝 Usando datos de ejemplo debido al error');
+      console.log(' Usando datos de ejemplo debido al error');
       const egresosEjemplo = [
         {
           id: 1,
@@ -163,7 +163,7 @@ const ReportesEgresos = () => {
 
   return (
     <div className="space-y-6">
-      {/* 🔍 FILTROS Y BÚSQUEDA */}
+      {/*  FILTROS Y BÚSQUEDA */}
       <div className="bg-white rounded-xl p-6 shadow-sm border">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -250,7 +250,7 @@ const ReportesEgresos = () => {
         </div>
       </div>
 
-      {/* 📊 RESUMEN DE TOTALES */}
+      {/*  RESUMEN DE TOTALES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 text-white">
           <div className="flex items-center justify-between">
@@ -283,7 +283,7 @@ const ReportesEgresos = () => {
         </div>
       </div>
 
-      {/* 📋 TABLA DE EGRESOS */}
+      {/*  TABLA DE EGRESOS */}
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h4 className="text-lg font-semibold text-gray-900">
@@ -378,7 +378,7 @@ const ReportesEgresos = () => {
         </div>
       </div>
 
-      {/* 📊 RESUMEN POR PERSONA */}
+      {/*  RESUMEN POR PERSONA */}
       {Object.keys(totales.porPersona).length > 0 && (
         <div className="bg-white rounded-xl p-6 shadow-sm border">
           <h4 className="text-lg font-semibold text-gray-900 mb-4">

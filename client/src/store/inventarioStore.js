@@ -2,10 +2,10 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { api, apiWithRetry, testConnection } from '../config/api.js';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
 // ===================================
-// 🏪 STORE PRINCIPAL (SIN PERSIST)
+//  STORE PRINCIPAL (SIN PERSIST)
 // ===================================
 const useInventarioStore = create()(
   devtools(
@@ -17,7 +17,7 @@ const useInventarioStore = create()(
       conectado: false,
 
       // ===================================
-      // 🔌 VERIFICAR CONEXIÓN
+      //  VERIFICAR CONEXIÓN
       // ===================================
       verificarConexion: async () => {
         try {
@@ -25,7 +25,7 @@ const useInventarioStore = create()(
           set({ conectado: result.success });
           
           if (!result.success) {
-            toast.error('❌ Sin conexión al servidor', {
+            toast.error('Sin conexión al servidor', {
               duration: 4000,
               position: 'top-right'
             });
@@ -34,7 +34,7 @@ const useInventarioStore = create()(
           return result.success;
         } catch (error) {
           set({ conectado: false });
-          toast.error('❌ Error de conexión al servidor', {
+          toast.error('Error de conexión al servidor', {
             duration: 4000,
             position: 'top-right'
           });
@@ -43,7 +43,7 @@ const useInventarioStore = create()(
       },
 
       // ===================================
-      // 📊 OBTENER INVENTARIO
+      //  OBTENER INVENTARIO
       // ===================================
       obtenerInventario: async () => {
         const conectado = await get().verificarConexion();
@@ -52,7 +52,7 @@ const useInventarioStore = create()(
         set({ loading: true, error: null });
         
         try {
-          console.log('🌐 Obteniendo inventario desde API');
+          console.log(' Obteniendo inventario desde API');
           const response = await apiWithRetry(() => api.get('/inventory/products?limit=1000'));
           
           if (response.data.success) {
@@ -77,7 +77,7 @@ const useInventarioStore = create()(
                 imagen_url: item.imagenUrl || item.imagen_url || '',
                 proveedor: item.proveedor || '',
                 telefono_proveedor: item.telefonoProveedor || item.telefono_proveedor || '',
-                proveedor_factura_iva: item.proveedorFacturaIva !== undefined ? item.proveedorFacturaIva : true, // 🆕 NUEVO CAMPO
+                proveedor_factura_iva: item.proveedorFacturaIva !== undefined ? item.proveedorFacturaIva : true, //  NUEVO CAMPO
                 activo: item.activo !== undefined ? item.activo : true
               }));
                           
@@ -87,17 +87,17 @@ const useInventarioStore = create()(
               conectado: true 
             });
             
-            console.log(`✅ ${productosAPI.length} productos cargados desde API`);
+            console.log(` ${productosAPI.length} productos cargados desde API`);
           }
         } catch (error) {
-          console.error('❌ Error al obtener inventario:', error);
+          console.error(' Error al obtener inventario:', error);
           set({ 
             loading: false, 
             error: error.message,
             conectado: false 
           });
           
-          toast.error(`❌ Error al cargar inventario: ${error.message}`, {
+          toast.error(`Error al cargar inventario: ${error.message}`, {
             duration: 5000,
             position: 'top-right'
           });
@@ -105,7 +105,7 @@ const useInventarioStore = create()(
       },
 
       // ===================================
-      // ➕ AGREGAR ITEM
+      //  AGREGAR ITEM
       // ===================================
       agregarItem: async (itemData) => {
         const conectado = await get().verificarConexion();
@@ -134,7 +134,7 @@ const useInventarioStore = create()(
             observaciones: itemData.observaciones || ''
           };
 
-          console.log('📤 Enviando nuevo producto:', backendData);
+          console.log(' Enviando nuevo producto:', backendData);
           const response = await apiWithRetry(() => api.post('/inventory/products', backendData));
           
           if (response.data.success) {
@@ -142,7 +142,7 @@ const useInventarioStore = create()(
             await get().obtenerInventario();
             set({ loading: false });
             
-            toast.success(`✅ ${itemData.descripcion} agregado exitosamente`, {
+            toast.success(`${itemData.descripcion} agregado exitosamente`, {
               duration: 3000,
               position: 'top-right'
             });
@@ -150,10 +150,10 @@ const useInventarioStore = create()(
             return response.data.data;
           }
         } catch (error) {
-          console.error('❌ Error al agregar item:', error);
+          console.error(' Error al agregar item:', error);
           set({ loading: false, error: error.message });
           
-          toast.error(`❌ Error al agregar producto: ${error.response?.data?.message || error.message}`, {
+          toast.error(`Error al agregar producto: ${error.response?.data?.message || error.message}`, {
             duration: 5000,
             position: 'top-right'
           });
@@ -162,7 +162,7 @@ const useInventarioStore = create()(
       },
 
       // ===================================
-      // ✏️ ACTUALIZAR ITEM
+      //  ACTUALIZAR ITEM
       // ===================================
       actualizarItem: async (id, itemData) => {
         const conectado = await get().verificarConexion();
@@ -185,11 +185,11 @@ const useInventarioStore = create()(
           imagenUrl: itemData.imagen_url || '',
           proveedor: itemData.proveedor || '',
           telefonoProveedor: itemData.telefono_proveedor || '',
-          proveedorFacturaIva: itemData.proveedor_factura_iva !== false, // 🆕 NUEVO CAMPO
+          proveedorFacturaIva: itemData.proveedor_factura_iva !== false, //  NUEVO CAMPO
           observaciones: itemData.observaciones || ''
         };
 
-          console.log(`📤 Actualizando producto ID ${id}:`, backendData);
+          console.log(` Actualizando producto ID ${id}:`, backendData);
           const response = await apiWithRetry(() => api.put(`/inventory/products/${id}`, backendData));
           
           if (response.data.success) {
@@ -201,7 +201,7 @@ const useInventarioStore = create()(
               loading: false
             }));
             
-            toast.success(`✅ Producto actualizado exitosamente`, {
+            toast.success(`Producto actualizado exitosamente`, {
               duration: 3000,
               position: 'top-right'
             });
@@ -209,10 +209,10 @@ const useInventarioStore = create()(
             return response.data.data;
           }
         } catch (error) {
-          console.error('❌ Error al actualizar item:', error);
+          console.error(' Error al actualizar item:', error);
           set({ loading: false, error: error.message });
           
-          toast.error(`❌ Error al actualizar producto: ${error.response?.data?.message || error.message}`, {
+          toast.error(`Error al actualizar producto: ${error.response?.data?.message || error.message}`, {
             duration: 5000,
             position: 'top-right'
           });
@@ -229,7 +229,7 @@ eliminarItem: async (id, options = {}) => {
   try {
     const { motivo = 'ELIMINACION_MANUAL' } = options;
     
-    console.log(`🗑️ Eliminando producto ID ${id} - Motivo: ${motivo}`);
+    console.log(` Eliminando producto ID ${id} - Motivo: ${motivo}`);
     
     const response = await apiWithRetry(() => 
       api.delete(`/inventory/products/${id}`, {
@@ -253,28 +253,28 @@ eliminarItem: async (id, options = {}) => {
         loading: false
       }));
       
-      toast.success(`✅ Producto eliminado exitosamente`);
+      toast.success(`Producto eliminado exitosamente`);
       
       return true;
     }
   } catch (error) {
-    console.error('❌ Error al eliminar item:', error);
+    console.error(' Error al eliminar item:', error);
     set({ loading: false, error: error.message });
     
-    toast.error(`❌ Error al eliminar producto: ${error.response?.data?.message || error.message}`);
+    toast.error(`Error al eliminar producto: ${error.response?.data?.message || error.message}`);
     throw error;
   }
 },
 
       // ===================================
-      // 📉 REDUCIR STOCK
+      //  REDUCIR STOCK
       // ===================================
       reducirStock: async (id, cantidad) => {
         const { inventario } = get();
         const item = inventario.find(i => i.id === id);
         
         if (!item) {
-          toast.error('❌ Producto no encontrado');
+          toast.error('Producto no encontrado');
           throw new Error('Item no encontrado');
         }
 
@@ -283,7 +283,7 @@ eliminarItem: async (id, options = {}) => {
         }
 
         if (item.stock === null || item.stock < cantidad) {
-          toast.error(`❌ Stock insuficiente. Disponible: ${item.stock || 0}, Solicitado: ${cantidad}`);
+          toast.error(`Stock insuficiente. Disponible: ${item.stock || 0}, Solicitado: ${cantidad}`);
           throw new Error(`Stock insuficiente. Disponible: ${item.stock || 0}, Solicitado: ${cantidad}`);
         }
 
@@ -292,19 +292,19 @@ eliminarItem: async (id, options = {}) => {
       },
 
       // ===================================
-      // 📈 AUMENTAR STOCK
+      //  AUMENTAR STOCK
       // ===================================
       aumentarStock: async (id, cantidad) => {
         const { inventario } = get();
         const item = inventario.find(i => i.id === id);
         
         if (!item) {
-          toast.error('❌ Producto no encontrado');
+          toast.error('Producto no encontrado');
           throw new Error('Item no encontrado');
         }
 
         if (item.tipo === 'servicio') {
-          toast.error('❌ Los servicios no manejan stock');
+          toast.error('Los servicios no manejan stock');
           throw new Error('Los servicios no manejan stock');
         }
 
@@ -313,7 +313,7 @@ eliminarItem: async (id, options = {}) => {
       },
 
       // ===================================
-      // 🔄 ACTUALIZAR STOCK ESPECÍFICO
+      //  ACTUALIZAR STOCK ESPECÍFICO
       // ===================================
       actualizarStock: async (id, nuevoStock) => {
         const conectado = await get().verificarConexion();
@@ -335,29 +335,103 @@ eliminarItem: async (id, options = {}) => {
             return response.data.data;
           }
         } catch (error) {
-          console.error('❌ Error al actualizar stock:', error);
-          toast.error(`❌ Error al actualizar stock: ${error.message}`);
+          console.error(' Error al actualizar stock:', error);
+          toast.error(`Error al actualizar stock: ${error.message}`);
           throw error;
         }
       },
 
       // ===================================
-      // 🔒 ACTUALIZAR STOCK RESERVADO (WEBSOCKET)
+      //  ACTUALIZAR STOCK RESERVADO (OPTIMIZADO)
       // ===================================
       actualizarStockReservado: (productoId, nuevoStockReservado) => {
         set(state => ({
           inventario: state.inventario.map(item => 
             item.id === productoId 
-              ? { ...item, stockReservado: nuevoStockReservado }
+              ? { 
+                  ...item, 
+                  stockReservado: nuevoStockReservado,
+                  stockDisponible: item.stock !== null ? item.stock - nuevoStockReservado : null,
+                  ultimaActualizacionStock: new Date().toISOString()
+                }
               : item
           )
         }));
         
-        console.log(`📦 Stock reservado actualizado para producto ${productoId}: ${nuevoStockReservado}`);
+        console.log(` Stock reservado actualizado para producto ${productoId}: ${nuevoStockReservado}`);
       },
 
       // ===================================
-      // 🔍 FUNCIONES DE BÚSQUEDA Y FILTROS
+      //  ACTUALIZAR STOCK DISPONIBLE EN TIEMPO REAL
+      // ===================================
+      actualizarStockDisponible: (productoId, stockTotal, stockReservado) => {
+        set(state => ({
+          inventario: state.inventario.map(item => 
+            item.id === productoId 
+              ? { 
+                  ...item, 
+                  stock: stockTotal,
+                  stockReservado: stockReservado,
+                  stockDisponible: stockTotal - stockReservado,
+                  ultimaActualizacionStock: new Date().toISOString()
+                }
+              : item
+          )
+        }));
+        
+        console.log(` Stock disponible actualizado para producto ${productoId}: ${stockTotal - stockReservado}`);
+      },
+
+      // ===================================
+      //  SINCRONIZAR STOCK DESDE WEBSOCKET
+      // ===================================
+      sincronizarStockDesdeWebSocket: (data) => {
+        const { productoId, stockTotal, stockReservado, stockDisponible, operacion } = data;
+        
+        set(state => ({
+          inventario: state.inventario.map(item => 
+            item.id === productoId 
+              ? { 
+                  ...item, 
+                  stock: stockTotal,
+                  stockReservado: stockReservado,
+                  stockDisponible: stockDisponible,
+                  ultimaActualizacionStock: new Date().toISOString(),
+                  ultimaOperacion: operacion
+                }
+              : item
+          )
+        }));
+        
+        console.log(` Stock sincronizado desde WebSocket para producto ${productoId}:`, data);
+      },
+
+      // ===================================
+      //  OBTENER ESTADÍSTICAS DE STOCK
+      // ===================================
+      obtenerEstadisticasStock: () => {
+        const { inventario } = get();
+        
+        const productosFisicos = inventario.filter(item => item.stock !== null);
+        const productosConReservas = productosFisicos.filter(item => item.stockReservado > 0);
+        
+        const estadisticas = {
+          totalProductos: inventario.length,
+          productosFisicos: productosFisicos.length,
+          productosServicios: inventario.length - productosFisicos.length,
+          productosConReservas: productosConReservas.length,
+          stockTotalReservado: productosConReservas.reduce((sum, item) => sum + (item.stockReservado || 0), 0),
+          stockTotalDisponible: productosFisicos.reduce((sum, item) => sum + (item.stockDisponible || item.stock || 0), 0),
+          productosStockBajo: productosFisicos.filter(item => item.stockDisponible <= item.stock_minimo).length,
+          ultimaActualizacion: productosFisicos.length > 0 ? 
+            Math.max(...productosFisicos.map(item => new Date(item.ultimaActualizacionStock || 0).getTime())) : null
+        };
+        
+        return estadisticas;
+      },
+
+      // ===================================
+      //  FUNCIONES DE BÚSQUEDA Y FILTROS
       // ===================================
       buscarItems: (termino) => {
         const { inventario } = get();
@@ -372,6 +446,109 @@ eliminarItem: async (id, options = {}) => {
           item.codigo_barras?.toLowerCase().includes(terminoLower) ||
           item.codigo_interno?.toLowerCase().includes(terminoLower)
         );
+      },
+
+      // ===================================
+      //  FUNCIONES DE RESERVA Y LIBERACIÓN
+      // ===================================
+      
+      // Obtener stock disponible de un producto específico
+      obtenerStockDisponible: (productoId) => {
+        const { inventario } = get();
+        const producto = inventario.find(item => item.id === productoId);
+        
+        if (!producto) return null;
+        if (producto.stock === null) return null; // Servicios no tienen stock
+        
+        return {
+          stockTotal: producto.stock,
+          stockReservado: producto.stockReservado || 0,
+          stockDisponible: producto.stockDisponible || (producto.stock - (producto.stockReservado || 0)),
+          ultimaActualizacion: producto.ultimaActualizacionStock,
+          producto: {
+            id: producto.id,
+            descripcion: producto.descripcion,
+            tipo: producto.tipo
+          }
+        };
+      },
+
+      // Verificar si hay stock suficiente para una reserva
+      verificarStockSuficiente: (productoId, cantidadRequerida) => {
+        const stockInfo = get().obtenerStockDisponible(productoId);
+        
+        if (!stockInfo) return { suficiente: false, razon: 'Producto no encontrado' };
+        if (stockInfo.stockDisponible < cantidadRequerida) {
+          return { 
+            suficiente: false, 
+            razon: `Stock insuficiente. Disponible: ${stockInfo.stockDisponible}, Requerido: ${cantidadRequerida}` 
+          };
+        }
+        
+        return { suficiente: true, stockInfo };
+      },
+
+      // Limpiar reservas expiradas localmente
+      limpiarReservasExpiradas: (productosAfectados = []) => {
+        set(state => ({
+          inventario: state.inventario.map(item => {
+            if (productosAfectados.includes(item.id)) {
+              return {
+                ...item,
+                stockReservado: 0,
+                stockDisponible: item.stock,
+                ultimaActualizacionStock: new Date().toISOString(),
+                ultimaOperacion: 'RESERVA_EXPIRADA'
+              };
+            }
+            return item;
+          })
+        }));
+        
+        console.log(` Reservas expiradas limpiadas para ${productosAfectados.length} productos`);
+      },
+
+      // ===================================
+      //  FUNCIONES DE MONITOREO
+      // ===================================
+      
+      // Obtener productos con stock bajo
+      obtenerProductosStockBajo: () => {
+        const { inventario } = get();
+        return inventario.filter(item => 
+          item.stock !== null && 
+          item.stockDisponible <= item.stock_minimo
+        );
+      },
+
+      // Obtener productos con reservas activas
+      obtenerProductosConReservas: () => {
+        const { inventario } = get();
+        return inventario.filter(item => 
+          item.stockReservado > 0
+        );
+      },
+
+      // Obtener historial de cambios de stock (últimas 24 horas)
+      obtenerHistorialStock: () => {
+        const { inventario } = get();
+        const hace24Horas = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        
+        return inventario
+          .filter(item => 
+            item.ultimaActualizacionStock && 
+            new Date(item.ultimaActualizacionStock) > hace24Horas
+          )
+          .map(item => ({
+            productoId: item.id,
+            descripcion: item.descripcion,
+            stockTotal: item.stock,
+            stockReservado: item.stockReservado,
+            stockDisponible: item.stockDisponible,
+            ultimaActualizacion: item.ultimaActualizacionStock,
+            ultimaOperacion: item.ultimaOperacion
+          }))
+          .sort((a, b) => new Date(b.ultimaActualizacion) - new Date(a.ultimaActualizacion));
       },
 
       obtenerPorTipo: (tipo) => {
@@ -390,7 +567,7 @@ eliminarItem: async (id, options = {}) => {
       },
 
       // ===================================
-      // 📊 ESTADÍSTICAS
+      //  ESTADÍSTICAS
       // ===================================
       obtenerEstadisticas: () => {
         const { inventario } = get();
@@ -426,7 +603,7 @@ eliminarItem: async (id, options = {}) => {
       },
 
       // ===================================
-      // 🧹 UTILIDADES
+      //  UTILIDADES
       // ===================================
       limpiarError: () => {
         set({ error: null });
@@ -449,17 +626,17 @@ eliminarItem: async (id, options = {}) => {
 
 /*
 // ===================================
-// 🚀 AUTO-INICIALIZACIÓN
+//  AUTO-INICIALIZACIÓN
 // ===================================
 if (typeof window !== 'undefined') {
   // Cargar inventario automáticamente al inicializar
   setTimeout(async () => {
     try {
-      console.log('🔄 Auto-inicializando inventario...');
+      console.log(' Auto-inicializando inventario...');
       const store = useInventarioStore.getState();
       await store.obtenerInventario();
     } catch (error) {
-      console.warn('⚠️ Error en auto-inicialización:', error.message);
+      console.warn(' Error en auto-inicialización:', error.message);
     }
   }, 1000);
 

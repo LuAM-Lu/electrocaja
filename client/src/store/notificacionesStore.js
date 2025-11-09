@@ -3,9 +3,9 @@ import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
 import { api } from '../config/api';
 import { useAuthStore } from './authStore';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
-// 🎯 TIPOS DE NOTIFICACIONES
+//  TIPOS DE NOTIFICACIONES
 export const TIPOS_NOTIFICACION = {
  WHATSAPP_PENDIENTE: 'whatsapp_pendiente',
  WHATSAPP_FALLIDO: 'whatsapp_fallido',
@@ -19,45 +19,45 @@ export const TIPOS_NOTIFICACION = {
  SISTEMA: 'sistema'
 };
 
-// 🎨 CONFIGURACIÓN VISUAL POR TIPO
+//  CONFIGURACIÓN VISUAL POR TIPO
 export const NOTIFICACION_CONFIG = {
  [TIPOS_NOTIFICACION.WHATSAPP_PENDIENTE]: {
-   icono: '📱',
+   icono: '',
    color: 'blue',
    prioridad: 2,
    autoRetry: true,
    maxIntentos: 3
  },
  [TIPOS_NOTIFICACION.WHATSAPP_FALLIDO]: {
-   icono: '❌',
+   icono: '',
    color: 'red',
    prioridad: 3,
    autoRetry: true,
    maxIntentos: 3
  },
  [TIPOS_NOTIFICACION.STOCK_BAJO]: {
-   icono: '📦',
+   icono: '',
    color: 'orange',
    prioridad: 2,
    autoRetry: false,
    maxIntentos: 1
  },
  [TIPOS_NOTIFICACION.DIFERENCIA_CAJA]: {
-   icono: '⚠️',
+   icono: '',
    color: 'red',
    prioridad: 4,
    autoRetry: false,
    maxIntentos: 1
  },
  [TIPOS_NOTIFICACION.ARQUEO_PENDIENTE]: {
-   icono: '🧮',
+   icono: '',
    color: 'purple',
    prioridad: 3,
    autoRetry: false,
    maxIntentos: 1
  },
  [TIPOS_NOTIFICACION.SISTEMA]: {
-   icono: '🔧',
+   icono: '',
    color: 'gray',
    prioridad: 1,
    autoRetry: false,
@@ -65,23 +65,23 @@ export const NOTIFICACION_CONFIG = {
  }
 };
 
-// 🏪 STORE PRINCIPAL
+//  STORE PRINCIPAL
 export const useNotificacionesStore = create(
  subscribeWithSelector(
    persist(
      (set, get) => ({
-       // 📊 ESTADO
+       //  ESTADO
        notificaciones: [],
        loading: false,
        error: null,
        lastUpdate: null,
        socketConnected: false,
 
-       // 🔧 CONFIGURACIÓN
+       //  CONFIGURACIÓN
        maxNotificaciones: 100,
        autoCleanupHours: 24,
 
-       // ➕ AGREGAR NOTIFICACIÓN
+       //  AGREGAR NOTIFICACIÓN
        addNotificacion: (notifData) => {
          const { notificaciones, maxNotificaciones } = get();
          
@@ -104,7 +104,7 @@ export const useNotificacionesStore = create(
          );
 
          if (duplicada) {
-           console.log('🔄 Notificación duplicada ignorada:', nuevaNotificacion.titulo);
+           console.log(' Notificación duplicada ignorada:', nuevaNotificacion.titulo);
            return duplicada.id;
          }
 
@@ -119,7 +119,7 @@ export const useNotificacionesStore = create(
            lastUpdate: new Date().toISOString()
          });
 
-         console.log('🔔 Nueva notificación agregada:', nuevaNotificacion);
+         console.log(' Nueva notificación agregada:', nuevaNotificacion);
          
          // Emitir via Socket.IO si está conectado
          get().emitirNotificacion(nuevaNotificacion);
@@ -127,7 +127,7 @@ export const useNotificacionesStore = create(
          return nuevaNotificacion.id;
        },
 
-       // ❌ ELIMINAR NOTIFICACIÓN
+       //  ELIMINAR NOTIFICACIÓN
        removeNotificacion: (id) => {
          set(state => ({
            notificaciones: state.notificaciones.filter(n => n.id !== id),
@@ -135,7 +135,7 @@ export const useNotificacionesStore = create(
          }));
        },
 
-       // 👁️ MARCAR COMO LEÍDA
+       //  MARCAR COMO LEÍDA
        markAsRead: (id) => {
          set(state => ({
            notificaciones: state.notificaciones.map(n => 
@@ -145,7 +145,7 @@ export const useNotificacionesStore = create(
          }));
        },
 
-       // 👁️ MARCAR TODAS COMO LEÍDAS
+       //  MARCAR TODAS COMO LEÍDAS
        markAllAsRead: () => {
          set(state => ({
            notificaciones: state.notificaciones.map(n => ({ ...n, leida: true })),
@@ -153,7 +153,7 @@ export const useNotificacionesStore = create(
          }));
        },
 
-       // 🔄 REINTENTAR NOTIFICACIÓN ESPECÍFICA
+       //  REINTENTAR NOTIFICACIÓN ESPECÍFICA
        retryNotificacion: async (id) => {
          const { notificaciones } = get();
          const notificacion = notificaciones.find(n => n.id === id);
@@ -188,7 +188,7 @@ export const useNotificacionesStore = create(
 
            if (exito) {
              get().removeNotificacion(id);
-             toast.success('✅ Reintento exitoso');
+             toast.success('Reintento exitoso');
              return true;
            } else {
              // Incrementar contador de intentos
@@ -197,7 +197,7 @@ export const useNotificacionesStore = create(
                  n.id === id ? { ...n, intentos: n.intentos + 1 } : n
                )
              }));
-             toast.error('❌ Reintento fallido');
+             toast.error('Reintento fallido');
              return false;
            }
 
@@ -210,7 +210,7 @@ export const useNotificacionesStore = create(
          }
        },
 
-       // 🔄 REINTENTAR TODAS LAS NOTIFICACIONES
+       //  REINTENTAR TODAS LAS NOTIFICACIONES
        retryAll: async () => {
          const { notificaciones } = get();
          const pendientes = notificaciones.filter(n => 
@@ -236,19 +236,19 @@ export const useNotificacionesStore = create(
          }
 
          set({ loading: false });
-         toast.success(`✅ ${exitosos}/${pendientes.length} notificaciones reenviadas`);
+         toast.success(`${exitosos}/${pendientes.length} notificaciones reenviadas`);
        },
 
-       // 🧹 LIMPIAR TODAS LAS NOTIFICACIONES
+       //  LIMPIAR TODAS LAS NOTIFICACIONES
        clearAll: () => {
          set({
            notificaciones: [],
            lastUpdate: new Date().toISOString()
          });
-         toast.success('🧹 Todas las notificaciones eliminadas');
+         toast.success('Todas las notificaciones eliminadas');
        },
 
-       // 🧹 LIMPIAR NOTIFICACIONES ANTIGUAS
+       //  LIMPIAR NOTIFICACIONES ANTIGUAS
        cleanupOldNotifications: () => {
          const { notificaciones, autoCleanupHours } = get();
          const cutoffTime = Date.now() - (autoCleanupHours * 60 * 60 * 1000);
@@ -262,11 +262,11 @@ export const useNotificacionesStore = create(
              notificaciones: notificacionesActuales,
              lastUpdate: new Date().toISOString()
            });
-           console.log(`🧹 ${notificaciones.length - notificacionesActuales.length} notificaciones antiguas eliminadas`);
+           console.log(` ${notificaciones.length - notificacionesActuales.length} notificaciones antiguas eliminadas`);
          }
        },
 
-       // 📤 EMITIR NOTIFICACIÓN VIA SOCKET.IO
+       //  EMITIR NOTIFICACIÓN VIA SOCKET.IO
        emitirNotificacion: (notificacion) => {
          const { socket } = useAuthStore.getState();
          if (socket && socket.connected) {
@@ -278,7 +278,7 @@ export const useNotificacionesStore = create(
          }
        },
 
-       // 📥 CONFIGURAR LISTENERS DE SOCKET.IO
+       //  CONFIGURAR LISTENERS DE SOCKET.IO
        setupSocketListeners: () => {
          const { socket } = useAuthStore.getState();
          if (!socket) return;
@@ -300,7 +300,7 @@ export const useNotificacionesStore = create(
          set({ socketConnected: true });
        },
 
-       // 🔄 RETRY ESPECÍFICOS POR TIPO
+       //  RETRY ESPECÍFICOS POR TIPO
        retryWhatsApp: async (notificacion) => {
          try {
            const response = await api.post('/whatsapp/enviar', {
@@ -326,7 +326,7 @@ export const useNotificacionesStore = create(
          }
        },
 
-       // 📊 GETTERS Y SELECTORES
+       //  GETTERS Y SELECTORES
        getNotificaciones: () => get().notificaciones,
        
        getPendientes: () => get().notificaciones.filter(n => !n.leida),
@@ -361,9 +361,9 @@ export const useNotificacionesStore = create(
          };
        },
 
-       // 🔧 UTILIDADES
+       //  UTILIDADES
        debug: () => {
-         console.log('📊 Estado Notificaciones:', {
+         console.log(' Estado Notificaciones:', {
            total: get().notificaciones.length,
            pendientes: get().getCount(),
            ultimaActualizacion: get().lastUpdate,
@@ -392,14 +392,14 @@ export const useNotificacionesStore = create(
  )
 );
 
-// 🔄 AUTO-LIMPIEZA CADA HORA
+//  AUTO-LIMPIEZA CADA HORA
 //if (typeof window !== 'undefined') {
  //setInterval(() => {
   // useNotificacionesStore.getState().cleanupOldNotifications();
  //}, 60 * 60 * 1000); // 1 hora
 //}
 
-// 🎣 HOOKS PERSONALIZADOS
+//  HOOKS PERSONALIZADOS
 export const useNotificacionesPendientes = () => {
  return useNotificacionesStore(state => state.getPendientes());
 };
@@ -412,7 +412,7 @@ export const useNotificacionesPorTipo = (tipo) => {
  return useNotificacionesStore(state => state.getByTipo(tipo));
 };
 
-// 📡 FUNCIONES HELPER PARA USO FÁCIL
+//  FUNCIONES HELPER PARA USO FÁCIL
 export const agregarNotificacionWhatsApp = (datos) => {
  return useNotificacionesStore.getState().addNotificacion({
    tipo: TIPOS_NOTIFICACION.WHATSAPP_FALLIDO,

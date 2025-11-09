@@ -4,7 +4,7 @@ import {
   Building, Plus, Search, Edit2, Trash2, Eye, Package, 
   Phone, Mail, MapPin, User, Filter, ExternalLink, X
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';
 
 // Helper function para requests API
@@ -60,7 +60,7 @@ const ProveedoresManager = () => {
       }
 
       const response = await apiRequest(`/proveedores?${params.toString()}`);
-      console.log('🔧 DEBUG - Respuesta proveedores:', response);
+      console.log(' DEBUG - Respuesta proveedores:', response);
       setProveedores(response.data?.data?.proveedores || response.data?.proveedores || response.proveedores || []);
       } catch (error) {
       console.error('Error cargando proveedores:', error);
@@ -317,7 +317,7 @@ const ProveedoresManager = () => {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{proveedor.nombre}</div>
                           {proveedor.contacto && (
-                            <div className="text-sm text-gray-500">👤 {proveedor.contacto}</div>
+                            <div className="text-sm text-gray-500"> {proveedor.contacto}</div>
                           )}
                         </div>
                       </div>
@@ -374,7 +374,7 @@ const ProveedoresManager = () => {
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {proveedor.activo ? '✅ Activo' : '❌ Inactivo'}
+                        {proveedor.activo ? ' Activo' : ' Inactivo'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -395,7 +395,7 @@ const ProveedoresManager = () => {
                           }`}
                           title={proveedor.activo ? 'Desactivar' : 'Activar'}
                         >
-                          {proveedor.activo ? '🚫' : '✅'}
+                          {proveedor.activo ? '' : ''}
                         </button>
                         <button
                           onClick={() => handleEliminarProveedor(proveedor)}

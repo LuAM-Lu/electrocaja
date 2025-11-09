@@ -1,29 +1,29 @@
-// components/presupuesto/TotalsPanel.jsx - VERSIÓN REORGANIZADA Y COMPACTA 🎯
+// components/presupuesto/TotalsPanel.jsx - VERSIÓN REORGANIZADA Y COMPACTA 
 import React, { useState, useEffect } from 'react';
 import { 
   Calculator, DollarSign, Percent, TrendingUp, 
   Info, Plus, X, ChevronDown, ChevronUp,
   Tag, Edit3, Check, MessageSquare
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
-// 🎨 OBSERVACIONES PREDEFINIDAS
+//  OBSERVACIONES PREDEFINIDAS
 const OBSERVACIONES_PREDEFINIDAS = [
-  "📱 Pago Móvil: 0414-XXX-XXXX",
-  "💰 Zelle: usuario@email.com", 
-  "🏦 Binance ID: XXXXXXXX",
-  "⚠️ Precios sujetos a cambio sin previo aviso",
-  "🚚 Incluye delivery en Guanare",
-  "⏰ Oferta válida por 48 horas",
-  "💎 Garantía de 6 meses",
-  "🎁 Incluye accesorios premium",
-  "📞 Contacto WhatsApp: +58-XXX-XXX-XXXX",
-  "🏪 Retiro en tienda disponible",
-  "📄 Cotización válida hasta agotar stock",
-  "💳 Aceptamos tarjetas de crédito/débito"
+  " Pago Móvil: 0414-XXX-XXXX",
+  " Zelle: usuario@email.com", 
+  " Binance ID: XXXXXXXX",
+  " Precios sujetos a cambio sin previo aviso",
+  " Incluye delivery en Guanare",
+  " Oferta válida por 48 horas",
+  " Garantía de 6 meses",
+  " Incluye accesorios premium",
+  " Contacto WhatsApp: +58-XXX-XXX-XXXX",
+  " Retiro en tienda disponible",
+  " Cotización válida hasta agotar stock",
+  " Aceptamos tarjetas de crédito/débito"
 ];
 
-// 🔧 FUNCIONES HELPER
+//  FUNCIONES HELPER
 const formatearVenezolano = (valor) => {
   if (!valor && valor !== 0) return '';
   const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
@@ -33,7 +33,7 @@ const formatearVenezolano = (valor) => {
   });
 };
 
-// 🧩 COMPONENTE OBSERVACIONES INTELIGENTES
+//  COMPONENTE OBSERVACIONES INTELIGENTES
 const ObservacionesInteligentes = ({ 
   observaciones = [], 
   onObservacionesChange 
@@ -46,9 +46,9 @@ const ObservacionesInteligentes = ({
   const handleAgregarPredefinida = (obs) => {
     if (!observaciones.includes(obs)) {
       onObservacionesChange([...observaciones, obs]);
-      toast.success('✅ Observación agregada');
+      toast.success('Observación agregada');
     } else {
-      toast.info('ℹ️ Ya está agregada');
+      toast.info('Ya está agregada');
     }
   };
 
@@ -57,16 +57,16 @@ const ObservacionesInteligentes = ({
     if (obs && !observaciones.includes(obs)) {
       onObservacionesChange([...observaciones, obs]);
       setNuevaObservacion('');
-      toast.success('✅ Observación personalizada agregada');
+      toast.success('Observación personalizada agregada');
     } else if (observaciones.includes(obs)) {
-      toast.info('ℹ️ Ya existe esta observación');
+      toast.info('Ya existe esta observación');
     }
   };
 
   const handleEliminar = (index) => {
     const nuevas = observaciones.filter((_, i) => i !== index);
     onObservacionesChange(nuevas);
-    toast.success('🗑️ Observación eliminada');
+    toast.success('Observación eliminada');
   };
 
   const handleIniciarEdicion = (index) => {
@@ -83,7 +83,7 @@ const ObservacionesInteligentes = ({
       onObservacionesChange(nuevas);
       setEditandoIndex(null);
       setObservacionEditada('');
-      toast.success('✅ Observación actualizada');
+      toast.success('Observación actualizada');
     }
   };
 
@@ -243,7 +243,7 @@ const ObservacionesInteligentes = ({
   );
 };
 
-// 🎯 COMPONENTE PRINCIPAL REORGANIZADO
+//  COMPONENTE PRINCIPAL REORGANIZADO
 const TotalsPanel = ({ 
   items = [], 
   descuentoGlobal = 0,
@@ -259,10 +259,10 @@ const TotalsPanel = ({
 }) => {
   const [animatingTotal, setAnimatingTotal] = useState(false);
 
-  // 🧮 CÁLCULOS PRINCIPALES
-  // 🧮 CÁLCULOS PRINCIPALES CON LÓGICA IVA VENEZOLANA
+  //  CÁLCULOS PRINCIPALES
+  //  CÁLCULOS PRINCIPALES CON LÓGICA IVA VENEZOLANA
 const calculos = React.useMemo(() => {
-  // 🆕 CALCULAR SUBTOTAL CONSIDERANDO IVA POR PRODUCTO
+  //  CALCULAR SUBTOTAL CONSIDERANDO IVA POR PRODUCTO
   const subtotal = items.reduce((sum, item) => {
     const precioUnitario = item.precio_unitario || 0;
     
@@ -325,7 +325,7 @@ const calculos = React.useMemo(() => {
     return () => clearTimeout(timer);
   }, [calculos.totalUsd]);
 
-  // 🔧 Manejar cambio de descuento
+  //  Manejar cambio de descuento
   const handleDescuentoChange = (campo, valor) => {
     if (campo === 'tipo') {
       onDescuentoChange && onDescuentoChange(descuentoGlobal, valor);
@@ -338,14 +338,14 @@ const calculos = React.useMemo(() => {
   return (
     <div className="space-y-4">
       
-      {/* 📊 RESUMEN PRINCIPAL COMPACTO */}
+      {/*  RESUMEN PRINCIPAL COMPACTO */}
       <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4">
         <h3 className="text-lg font-bold text-emerald-900 mb-4 flex items-center">
           <Calculator className="h-5 w-5 mr-2" />
           {title}
         </h3>
 
-        {/* 🆕 FILA REORGANIZADA: Items | Base Imponible | Descuento (20% | 40% | 40%) */}
+        {/*  FILA REORGANIZADA: Items | Base Imponible | Descuento (20% | 40% | 40%) */}
         <div className="grid grid-cols-5 gap-4 mb-4">
           
           {/* Items (20% = 1/5) */}

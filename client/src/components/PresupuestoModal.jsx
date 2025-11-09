@@ -1,4 +1,4 @@
-// components/PresupuestoModal.jsx - VERSIÓN CON ALTURAS AMPLIADAS Y EXPORT ARREGLADO 🎯
+// components/PresupuestoModal.jsx - VERSIÓN CON ALTURAS AMPLIADAS Y EXPORT ARREGLADO 
 import React, { useState, useEffect } from 'react';
 import {
   X, Calculator, FileText, Send, Save,
@@ -12,9 +12,9 @@ import ClienteSelector from './presupuesto/ClienteSelector';
 import ItemsTable from './presupuesto/ItemsTable';
 import TotalsPanel from './presupuesto/TotalsPanel';
 import ExportActions from './presupuesto/ExportActions';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
-// 🎨 CONFIGURACIÓN DE TABS
+//  CONFIGURACIÓN DE TABS
 const TABS = [
   { id: 'cliente', label: 'Cliente', icon: User, step: 1 },
   { id: 'items', label: 'Items', icon: Package, step: 2 },
@@ -22,7 +22,7 @@ const TABS = [
   { id: 'exportar', label: 'Exportar', icon: FileText, step: 4 }
 ];
 
-// 🧩 BREADCRUMB MODERNO CON VALIDACIONES
+//  BREADCRUMB MODERNO CON VALIDACIONES
 const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
   const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
 
@@ -84,7 +84,7 @@ const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
   );
 };
 
-// 🎯 COMPONENTE PRINCIPAL CON ALTURAS AMPLIADAS
+//  COMPONENTE PRINCIPAL CON ALTURAS AMPLIADAS
 const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
   const { usuario } = useAuthStore();
   const { tasaCambio } = useCajaStore();
@@ -103,7 +103,7 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     id: null,
     numero: '',
     fecha: new Date().toISOString().split('T')[0],
-    fechaVencimiento: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 🔧 CAMBIAR: 1 día
+    fechaVencimiento: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], //  CAMBIAR: 1 día
     cliente: null,
     items: [],
     subtotal: 0,
@@ -112,7 +112,7 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     impuestos: 16,
     totalUsd: 0,
     observaciones: [],
-    validezDias: 1, // 🔧 CAMBIAR: 1 día
+    validezDias: 1, //  CAMBIAR: 1 día
     exportConfig: {
       pdf: false,
       whatsapp: false,
@@ -132,7 +132,7 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     exportar: { valido: false, errores: 0 }
   });
 
-  // 🔄 EFECTOS DE INICIALIZACIÓN
+  //  EFECTOS DE INICIALIZACIÓN
   useEffect(() => {
     if (isOpen) {
       if (presupuesto) {
@@ -146,7 +146,7 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     }
   }, [isOpen, presupuesto]);
 
-  // 🔍 VALIDACIONES AUTOMÁTICAS
+  //  VALIDACIONES AUTOMÁTICAS
   useEffect(() => {
     const nuevasValidaciones = {
       cliente: {
@@ -170,7 +170,7 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     setValidaciones(nuevasValidaciones);
   }, [presupuestoData.cliente, presupuestoData.items, presupuestoData.exportConfig]);
 
-  // 🎯 MANEJADORES DE NAVEGACIÓN
+  //  MANEJADORES DE NAVEGACIÓN
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
   };
@@ -185,7 +185,7 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     }
   };
 
-  // 🔧 MANEJADORES DE DATOS
+  //  MANEJADORES DE DATOS
   const handleClienteSeleccionado = (cliente) => {
     setPresupuestoData(prev => ({ ...prev, cliente }));
     setHasUnsavedChanges(true);
@@ -225,14 +225,13 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     setHasUnsavedChanges(true);
   };
 
-  // 💾 MANEJADORES DE ACCIONES PRINCIPALES
+  //  MANEJADORES DE ACCIONES PRINCIPALES
   const handleGuardarPresupuesto = async () => {
-    setLoadingGuardar(true);  // 🔧 NUEVO
+    setLoadingGuardar(true);  //  NUEVO
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success('  Presupuesto guardado para aprobación', {
+      toast.success('Presupuesto guardado para aprobación', {
         duration: 4000,
-        icon: '💾',
         style: {
           background: '#DBEAFE',
           border: '1px solid #3B82F6',
@@ -243,18 +242,18 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     } catch (error) {
       toast.error('Error al guardar presupuesto');
     } finally {
-      setLoadingGuardar(false);  // 🔧 NUEVO
+      setLoadingGuardar(false);  //  NUEVO
     }
   };
 
-// 🚀 EJECUTOR PRINCIPAL - FUNCIÓN CORREGIDA
+//  EJECUTOR PRINCIPAL - FUNCIÓN CORREGIDA
 const handleCrearPresupuesto = async () => {
   setLoadingCrear(true);
   
   try {
-    console.log('🚀 Ejecutando creación de presupuesto...', presupuestoData.exportConfig);
+    console.log(' Ejecutando creación de presupuesto...', presupuestoData.exportConfig);
     
-    // ✅ IMPORTAR FUNCIONES DESDE UTILS DIRECTAMENTE
+    //  IMPORTAR FUNCIONES DESDE UTILS DIRECTAMENTE
     const { 
       ejecutarExportPresupuesto, 
       validarPresupuesto, 
@@ -264,14 +263,14 @@ const handleCrearPresupuesto = async () => {
     // Validar datos del presupuesto
     const validacionPresupuesto = validarPresupuesto(presupuestoData);
     if (!validacionPresupuesto.valido) {
-      toast.error('❌ ' + validacionPresupuesto.errores.join('\n'));
+      toast.error('' + validacionPresupuesto.errores.join('\n'));
       return;
     }
     
     // Validar configuración de export
     const validacionConfig = validarExportConfig(presupuestoData.exportConfig, presupuestoData);
     if (!validacionConfig.valido) {
-      toast.error('❌ ' + validacionConfig.errores.join('\n'));
+      toast.error('' + validacionConfig.errores.join('\n'));
       return;
     }
     
@@ -279,20 +278,19 @@ const handleCrearPresupuesto = async () => {
     const resultado = await ejecutarExportPresupuesto(presupuestoData, tasaCambio, presupuestoData.exportConfig);
     
     if (resultado.success) {
-      const exitosos = resultado.resultados.filter(r => !r.includes('❌')).length;
+      const exitosos = resultado.resultados.filter(r => !r.includes('')).length;
       const fallidos = resultado.errores;
       
-      let mensaje = `✅ Presupuesto ${presupuestoData.numero} creado exitosamente:\n\n`;
+      let mensaje = ` Presupuesto ${presupuestoData.numero} creado exitosamente:\n\n`;
       
       resultado.resultados.forEach(r => {
-        if (!r.includes('❌')) {
+        if (!r.includes('')) {
           mensaje += r + '\n';
         }
       });
       
       toast.success(mensaje, {
         duration: 6000,
-        icon: '🚀',
         style: {
           background: '#ECFDF5',
           border: '1px solid #10B981',
@@ -303,7 +301,7 @@ const handleCrearPresupuesto = async () => {
       // Mostrar errores si los hay
       if (fallidos > 0) {
         resultado.resultados.forEach(r => {
-          if (r.includes('❌')) {
+          if (r.includes('')) {
             toast.error(r, { duration: 6000 });
           }
         });
@@ -314,14 +312,14 @@ const handleCrearPresupuesto = async () => {
     onClose();
     
   } catch (error) {
-    console.error('❌ Error creando presupuesto:', error);
+    console.error(' Error creando presupuesto:', error);
     toast.error('Error creando presupuesto: ' + error.message);
   } finally {
     setLoadingCrear(false);
   }
 };
 
-  // 🚪 MANEJADORES DE SALIDA
+  //  MANEJADORES DE SALIDA
   const handleClose = () => {
     if (hasUnsavedChanges) {
       setShowExitModal(true);
@@ -340,7 +338,7 @@ const handleCrearPresupuesto = async () => {
     setShowExitModal(false);
   };
 
-  // 🆕 NUEVA: Función para cancelar y limpiar todo
+  //  NUEVA: Función para cancelar y limpiar todo
 const handleCancelar = () => {
   // Limpiar todo el estado del presupuesto
   const numero = `PRES-${Date.now().toString().slice(-6)}`;
@@ -375,11 +373,11 @@ const handleCancelar = () => {
   // Limpiar cambios sin guardar
   setHasUnsavedChanges(false);
   
-  toast.success('🗑️ Presupuesto cancelado y limpiado');
+  toast.success('Presupuesto cancelado y limpiado');
   onClose();
 };
 
-  // 🎨 ALTURAS AMPLIADAS PARA 720PX
+  //  ALTURAS AMPLIADAS PARA 720PX
   const getContentHeight = () => {
     switch (activeTab) {
       case 'cliente':
@@ -405,10 +403,10 @@ const handleCancelar = () => {
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        {/* 🎯 MODAL CON ALTURA FIJA AMPLIADA */}
+        {/*  MODAL CON ALTURA FIJA AMPLIADA */}
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden h-[90vh] flex flex-col">
 
-          {/* 🎨 HEADER ELEGANTE (FIJO) */}
+          {/*  HEADER ELEGANTE (FIJO) */}
           <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 overflow-hidden flex-shrink-0">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute inset-0" style={{
@@ -431,7 +429,7 @@ const handleCancelar = () => {
                         <Calendar className="h-4 w-4" />
                         <span>{new Date(presupuestoData.fecha).toLocaleDateString('es-VE')}</span>
                       </span>
-                      {/* 🆕 NUEVO: Selector de fecha de vencimiento */}
+                      {/*  NUEVO: Selector de fecha de vencimiento */}
                       <span className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4" />
                         <span>Válido hasta:</span>
@@ -446,7 +444,7 @@ const handleCancelar = () => {
                           className="bg-white/20 border border-white/30 rounded px-2 py-1 text-xs text-white placeholder-emerald-200 focus:bg-white/30 focus:outline-none w-26"
                         />
 
-                        {/* 🆕 NUEVO: Botones de acceso rápido */}
+                        {/*  NUEVO: Botones de acceso rápido */}
   <div className="flex items-center space-x-1">
     <button
       type="button"
@@ -481,7 +479,7 @@ const handleCancelar = () => {
                   {presupuestoData.cliente && presupuestoData.items?.length > 0 && (
                     <div className="flex items-center space-x-3">
                       <button
-                        onClick={() => toast.success('🔗 QR generado (próximamente)')}
+                        onClick={() => toast.success('QR generado (próximamente)')}
                         className="bg-white/20 hover:bg-white/30 px-4 py-3 rounded-xl transition-colors backdrop-blur-sm flex items-center space-x-2"
                         title="Generar código QR"
                       >
@@ -490,7 +488,7 @@ const handleCancelar = () => {
                       </button>
 
                       <button
-                        onClick={() => toast.success('🛒 Convirtiendo a venta...')}
+                        onClick={() => toast.success('Convirtiendo a venta...')}
                         className="bg-white/20 hover:bg-white/30 px-4 py-3 rounded-xl transition-colors backdrop-blur-sm flex items-center space-x-2"
                         title="Convertir a venta"
                       >
@@ -505,7 +503,7 @@ const handleCancelar = () => {
             </div>
           </div>
 
-          {/* 📋 BREADCRUMB MODERNO (FIJO) */}
+          {/*  BREADCRUMB MODERNO (FIJO) */}
           <div className="flex-shrink-0">
             <BreadcrumbModerno
               tabs={TABS}
@@ -515,7 +513,7 @@ const handleCancelar = () => {
             />
           </div>
 
-          {/* 📄 CONTENIDO DE TABS CON ALTURA AMPLIADA (FLEX) */}
+          {/*  CONTENIDO DE TABS CON ALTURA AMPLIADA (FLEX) */}
           <div className={`flex-1 overflow-y-auto p-8 ${getContentHeight()}`}>
 
             {activeTab === 'cliente' && (
@@ -540,7 +538,7 @@ const handleCancelar = () => {
                 tasaCambio={tasaCambio}
                 title="Productos y Servicios del Presupuesto"
                 showAddCustom={true}
-                maxVisibleItems={12} // ⬆️ AUMENTADO para más espacio
+                maxVisibleItems={12} //  AUMENTADO para más espacio
               />
             )}
 
@@ -573,7 +571,7 @@ const handleCancelar = () => {
             )}
           </div>
 
-          {/* 🔧 FOOTER REORGANIZADO - ANTERIOR | ACCIONES | SIGUIENTE */}
+          {/*  FOOTER REORGANIZADO - ANTERIOR | ACCIONES | SIGUIENTE */}
           <div className="bg-gray-50 px-8 py-4 border-t border-gray-200 flex-shrink-0">
             <div className="grid grid-cols-3 items-center">
 
@@ -594,7 +592,7 @@ const handleCancelar = () => {
               {/* CENTRO: Botones de Acción */}
 <div className="flex items-center justify-center space-x-3">
   <button
-    type="button"  // 🔧 AGREGAR
+    type="button"  //  AGREGAR
     onClick={handleCancelar}
     className="px-6 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium flex items-center space-x-2"
   >
@@ -603,7 +601,7 @@ const handleCancelar = () => {
   </button>
   
   <button
-    type="button"  // 🔧 AGREGAR
+    type="button"  //  AGREGAR
     onClick={handleGuardarPresupuesto}
     disabled={loadingGuardar}
     className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center space-x-2"
@@ -622,7 +620,7 @@ const handleCancelar = () => {
   </button>
   
   <button
-    type="button"  // 🔧 AGREGAR
+    type="button"  //  AGREGAR
     onClick={handleCrearPresupuesto}
     disabled={loadingCrear  || !allValid}
     className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center space-x-2"
@@ -662,7 +660,7 @@ const handleCancelar = () => {
         </div>
       </div>
 
-      {/* 🚨 MODAL DE CONFIRMACIÓN DE SALIDA */}
+      {/*  MODAL DE CONFIRMACIÓN DE SALIDA */}
       {showExitModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">

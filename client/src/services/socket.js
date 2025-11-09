@@ -31,10 +31,10 @@ export const initializeSocket = (token) => {
 
   socket = io(SERVER_URL, {
     auth: { token },
-    transports: ['polling', 'websocket'], // 🔧 Polling primero
+    transports: ['polling', 'websocket'], //  Polling primero
     forceNew: true,
     upgrade: true,
-    rememberUpgrade: false, // 🔧 No recordar upgrade fallido
+    rememberUpgrade: false, //  No recordar upgrade fallido
     timeout: 15000,
     reconnection: true,
     reconnectionAttempts: 3,

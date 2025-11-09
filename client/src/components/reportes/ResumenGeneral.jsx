@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, TrendingUp, TrendingDown, DollarSign, Package, Users, Calendar, Activity, Eye, RefreshCw } from 'lucide-react';
 import { api } from '../../config/api';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const ResumenGeneral = () => {
   const [loading, setLoading] = useState(false);
@@ -48,13 +48,13 @@ const ResumenGeneral = () => {
   const cargarResumen = async () => {
     setLoading(true);
     try {
-      console.log('🔄 Cargando resumen general...', { periodo });
+      console.log(' Cargando resumen general...', { periodo });
       
       const response = await api.get('/reportes/resumen-general', { 
         params: { periodo } 
       });
       
-      console.log('✅ Resumen cargado:', response.data);
+      console.log(' Resumen cargado:', response.data);
       
       if (response.data.success) {
         setDatos(response.data.data);
@@ -64,7 +64,7 @@ const ResumenGeneral = () => {
       }
       
     } catch (error) {
-      console.error('❌ Error cargando resumen:', error);
+      console.error(' Error cargando resumen:', error);
       
       const errorMessage = error.response?.data?.message || error.message || 'Error al cargar resumen';
       toast.error(`Error: ${errorMessage}`);
@@ -72,7 +72,7 @@ const ResumenGeneral = () => {
       // Mantener datos anteriores en caso de error
       if (Object.keys(datos.cajas).every(key => datos.cajas[key] === 0)) {
         // Solo usar datos de ejemplo si no hay datos previos
-        console.log('📝 Usando datos de ejemplo debido al error');
+        console.log(' Usando datos de ejemplo debido al error');
         setDatos({
           cajas: {
             total: 15,
@@ -152,7 +152,7 @@ const ResumenGeneral = () => {
 
   return (
     <div className="space-y-6">
-      {/* 🎛️ CONTROLES */}
+      {/*  CONTROLES */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Dashboard Ejecutivo</h3>
@@ -184,7 +184,7 @@ const ResumenGeneral = () => {
         </div>
       </div>
 
-      {/* 📊 MÉTRICAS PRINCIPALES */}
+      {/*  MÉTRICAS PRINCIPALES */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Ingresos */}
         <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
@@ -197,7 +197,7 @@ const ResumenGeneral = () => {
             <TrendingUp className="h-8 w-8 text-green-200" />
           </div>
           <div className="mt-2 text-green-100 text-sm">
-            ↗ +12.5% vs período anterior
+             +12.5% vs período anterior
           </div>
         </div>
 
@@ -212,7 +212,7 @@ const ResumenGeneral = () => {
             <TrendingDown className="h-8 w-8 text-red-200" />
           </div>
           <div className="mt-2 text-red-100 text-sm">
-            ↗ +8.3% vs período anterior
+             +8.3% vs período anterior
           </div>
         </div>
 
@@ -227,7 +227,7 @@ const ResumenGeneral = () => {
             <DollarSign className="h-8 w-8 text-blue-200" />
           </div>
           <div className="mt-2 text-blue-100 text-sm">
-            ↗ +15.2% vs período anterior
+             +15.2% vs período anterior
           </div>
         </div>
 
@@ -242,12 +242,12 @@ const ResumenGeneral = () => {
             <Activity className="h-8 w-8 text-purple-200" />
           </div>
           <div className="mt-2 text-purple-100 text-sm">
-            ↗ +5.8% vs período anterior
+             +5.8% vs período anterior
           </div>
         </div>
       </div>
 
-      {/* 📋 PANELES INFORMATIVOS */}
+      {/*  PANELES INFORMATIVOS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Estado de Cajas */}
@@ -315,7 +315,7 @@ const ResumenGeneral = () => {
         </div>
       </div>
 
-      {/* 🔥 PRODUCTOS TOP Y ACTIVIDAD RECIENTE */}
+      {/*  PRODUCTOS TOP Y ACTIVIDAD RECIENTE */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Top Productos */}

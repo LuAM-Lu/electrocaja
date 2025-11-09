@@ -10,24 +10,89 @@ import {
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
 import ItemFormModal from './inventario/ItemFormModal';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 import { useCajaStore } from '../store/cajaStore';
 import ProductViewModal from './ProductViewModal';
 import CargaMasivaModal from './inventario/CargaMasivaModal';
 import { getImageUrl } from '../config/api';
 
 const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
- const { 
-   inventario, 
-   loading, 
+ const {
+   inventario,
+   loading,
    eliminarItem,
-   obtenerEstadisticas, 
+   obtenerEstadisticas,
    obtenerStockBajo,
    obtenerInventario // Agregado para recargar
  } = useInventarioStore();
 
- const { usuario } = useAuthStore();
+ const { usuario, socket } = useAuthStore();
  const { tasaCambio } = useCajaStore();
+
+ //  SUSCRIBIRSE A EVENTOS DE INVENTARIO EN TIEMPO REAL
+ useEffect(() => {
+   if (!socket || !isOpen) return;
+
+   const handleInventarioActualizado = async (data) => {
+     console.log(' Inventario actualizado (Socket.IO):', data.operacion);
+
+     //  PROTECCIÓN GLOBAL: NO actualizar si hay CUALQUIER modal crítico activo
+     // Esto evita que modales se cierren cuando otro usuario completa una venta
+     const modalProtectionKeys = [
+       'itemFormModalActive',      // Modal de edición de productos
+       'ingresoModalActive',        // Modal de venta/ingreso (con factura)
+       'productViewModalActive'     // Modal de vista de productos
+     ];
+
+     const anyModalActive = modalProtectionKeys.some(key =>
+       sessionStorage.getItem(key) === 'true'
+     );
+
+     if (anyModalActive) {
+       const activeModal = modalProtectionKeys.find(key =>
+         sessionStorage.getItem(key) === 'true'
+       );
+       console.log(` Modal activo (${activeModal}) - Posponiendo actualización de inventario`);
+
+       // Marcar que hay una actualización pendiente
+       sessionStorage.setItem('inventarioPendienteActualizar', 'true');
+       return;
+     }
+
+     // Actualizar inventario normalmente si no hay modales activos
+     await obtenerInventario();
+
+     // Toast solo si es de otro usuario
+     if (data.usuario !== usuario?.nombre) {
+        const message = `${data.usuario}: ${data.producto?.descripcion || 'procesó una venta'}`;
+        switch (data.operacion) {
+          case 'CREAR':
+            toast.success(message, { duration: 3000 });
+            break;
+          case 'EDITAR':
+            toast.info(message, { duration: 3000 });
+            break;
+          case 'ELIMINAR':
+            toast.warning(message, { duration: 3000 });
+            break;
+          case 'VENTA_PROCESADA':
+            toast.info(message, { duration: 3000 });
+            break;
+          default:
+            toast(message, { duration: 3000 });
+            break;
+        }
+      }
+   };
+
+   socket.on('inventario_actualizado', handleInventarioActualizado);
+   socket.on('venta_procesada', handleInventarioActualizado);
+
+   return () => {
+     socket.off('inventario_actualizado', handleInventarioActualizado);
+     socket.off('venta_procesada', handleInventarioActualizado);
+   };
+ }, [socket, isOpen, obtenerInventario, usuario]);
 
  // Estados para la gestión de la lista
  const [searchTerm, setSearchTerm] = useState('');
@@ -41,7 +106,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
  const [selectedProduct, setSelectedProduct] = useState(null);
  const [showCargaMasiva, setShowCargaMasiva] = useState(false);
 
- // 🎭 ESTADO PARA ANIMACIÓN DE SALIDA
+ //  ESTADO PARA ANIMACIÓN DE SALIDA
  const [isClosing, setIsClosing] = useState(false);
 
  // Estados para animaciones del header
@@ -50,23 +115,25 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
 
  // Función para abrir formulario de nuevo item
  const handleNewItem = () => {
+   console.log(' [InventoryManagerModal] handleNewItem - Abriendo modal para nuevo item');
    setEditingItem(null);
    setShowItemForm(true);
  };
 
  // Función para editar item existente
  const handleEditItem = (item) => {
+   console.log(' [InventoryManagerModal] handleEditItem - Abriendo modal para editar:', item.id);
    setEditingItem(item);
    setShowItemForm(true);
  };
 
  // Función cuando se guarda un item exitosamente
  const handleItemSaved = (savedItem) => {
-   console.log('Item guardado exitosamente:', savedItem);
+   console.log(' [InventoryManagerModal] handleItemSaved - Item guardado:', savedItem);
    setShowItemForm(false);
    setEditingItem(null);
-   
-   // 🔄 FORZAR RECARGA DEL INVENTARIO
+
+   //  FORZAR RECARGA DEL INVENTARIO
    setTimeout(() => {
      obtenerInventario();
    }, 500);
@@ -79,17 +146,17 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
 
  const handleDeleteItem = async (item) => {
    if (usuario?.rol !== 'admin') {
-     toast.error('⛔ Solo administradores pueden eliminar items');
+     toast.error('Solo administradores pueden eliminar items');
      return;
    }
 
-   // 🎯 Modal con opciones de motivo
+   //  Modal con opciones de motivo
    const motivos = [
-     { valor: 'ELIMINACION_MANUAL', label: '🗑️ Eliminación general', descripcion: 'Eliminar producto sin motivo específico' },
-     { valor: 'ERROR_REGISTRO', label: '📝 Error de registro', descripcion: 'Producto registrado incorrectamente' },
-     { valor: 'PRODUCTO_DAÑADO', label: '💥 Producto dañado', descripcion: 'Mercancía física dañada o defectuosa' },
-     { valor: 'DESCONTINUADO', label: '🚫 Descontinuado', descripcion: 'Proveedor ya no fabrica este producto' },
-     { valor: 'SIN_DEMANDA', label: '📉 Sin demanda', descripcion: 'Producto no se vende, sin rotación' }
+     { valor: 'ELIMINACION_MANUAL', label: ' Eliminación general', descripcion: 'Eliminar producto sin motivo específico' },
+     { valor: 'ERROR_REGISTRO', label: ' Error de registro', descripcion: 'Producto registrado incorrectamente' },
+     { valor: 'PRODUCTO_DAÑADO', label: ' Producto dañado', descripcion: 'Mercancía física dañada o defectuosa' },
+     { valor: 'DESCONTINUADO', label: ' Descontinuado', descripcion: 'Proveedor ya no fabrica este producto' },
+     { valor: 'SIN_DEMANDA', label: ' Sin demanda', descripcion: 'Producto no se vende, sin rotación' }
    ];
 
    // Crear modal personalizado
@@ -102,7 +169,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
          <div class="p-6">
            <!-- Header -->
            <div class="flex items-center justify-between mb-4">
-             <h3 class="text-lg font-semibold text-gray-900">🗑️ Eliminar Producto</h3>
+             <h3 class="text-lg font-semibold text-gray-900"> Eliminar Producto</h3>
              <button id="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors">
                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -189,14 +256,14 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
      await eliminarItem(item.id, { motivo: motivoSeleccionado });
 
      const motivoLabel = motivos.find(m => m.valor === motivoSeleccionado)?.label || motivoSeleccionado;
-     toast.success(`✅ ${item.descripcion} eliminado: ${motivoLabel}`);
+     toast.success(`${item.descripcion} eliminado: ${motivoLabel}`);
 
-     // 🔄 FORZAR RECARGA DEL INVENTARIO DESPUÉS DE ELIMINAR
+     //  FORZAR RECARGA DEL INVENTARIO DESPUÉS DE ELIMINAR
      setTimeout(() => {
        obtenerInventario();
      }, 500);
    } catch (error) {
-     toast.error('⛔ Error al eliminar el item');
+     toast.error('Error al eliminar el item');
      console.error('Error:', error);
    }
  };
@@ -226,7 +293,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
 
  const itemsStockBajo = getStockBajo();
 
- // 🎬 EFECTO PARA ANIMACIÓN DE SALIDA
+ //  EFECTO PARA ANIMACIÓN DE SALIDA
  useEffect(() => {
    if (!isOpen && isClosing) {
      const timer = setTimeout(() => {
@@ -268,44 +335,68 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
 
  return (
    <>
-     <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${className}`}>
-       <div className={`bg-white rounded-xl shadow-2xl max-w-[85vw] w-full h-[95vh] overflow-hidden flex flex-col ${
-         isClosing ? 'animate-modal-exit' : ''
-       }`}>
-         
-         {/* Header mejorado con estadísticas compactas */}
+     <div
+       className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 ${className}`}
+       onClick={(e) => {
+         console.log(' [InventoryManagerModal] Clic en backdrop padre:', {
+           showItemForm,
+           showViewModal,
+           showCargaMasiva,
+           isCurrentTarget: e.target === e.currentTarget
+         });
+         //  NO cerrar si hay un modal hijo abierto
+         if (showItemForm || showViewModal || showCargaMasiva) {
+           console.log(' [InventoryManagerModal] Modal hijo abierto, ignorando clic en backdrop');
+           return;
+         }
+         // Solo cerrar si se hace clic en el backdrop
+         if (e.target === e.currentTarget) {
+           console.log(' [InventoryManagerModal] Cerrando modal padre por clic en backdrop');
+           handleClose();
+         }
+       }}
+     >
+       <div
+         className={`bg-white rounded-lg sm:rounded-xl shadow-2xl w-full sm:max-w-[85vw] h-[98vh] sm:h-[95vh] overflow-hidden flex flex-col ${
+           isClosing ? 'animate-modal-exit' : ''
+         }`}
+         onClick={(e) => e.stopPropagation()} //  Prevenir propagación de clics
+       >
+
+         {/* Header mejorado con estadísticas compactas - RESPONSIVE */}
          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 flex-shrink-0">
-           <div className="px-6 py-4 text-white">
-             <div className="flex items-center justify-between">
-               <div className="flex items-center space-x-4">
-                 <div className="bg-white/20 p-3 rounded-xl">
-                   <Package className="h-7 w-7" />
+           <div className="px-3 sm:px-6 py-3 sm:py-4 text-white">
+             <div className="flex items-center justify-between mb-3 sm:mb-0">
+               <div className="flex items-center space-x-2 sm:space-x-4">
+                 <div className="bg-white/20 p-2 sm:p-3 rounded-lg sm:rounded-xl">
+                   <Package className="h-5 w-5 sm:h-7 sm:w-7" />
                  </div>
                  <div>
-                   <h2 className="text-2xl font-bold">Gestión de Inventario</h2>
-                   <div className="text-sm text-indigo-100 mt-1">
+                   <h2 className="text-lg sm:text-2xl font-bold">Gestión de Inventario</h2>
+                   <div className="text-xs sm:text-sm text-indigo-100 mt-0.5 sm:mt-1 hidden sm:block">
                      Administra productos, servicios y electrobar
                    </div>
                  </div>
                </div>
-               
-               {/* 🆕 ESTADÍSTICAS COMPACTAS EN EL HEADER */}
-               <div className="flex items-center space-x-4">
-                 
-                 {/* Total Items - Compacto */}
-                 <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
-                   <div className="flex items-center space-x-3">
-                     <Package className="h-5 w-5 text-white/80" />
+             </div>
+
+               {/*  ESTADÍSTICAS COMPACTAS EN EL HEADER - RESPONSIVE */}
+               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-4 sm:justify-end mt-3 sm:mt-0">
+
+                 {/* Total Items - Compacto - RESPONSIVE */}
+                 <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/20">
+                   <div className="flex items-center space-x-2 sm:space-x-3">
+                     <Package className="h-4 w-4 sm:h-5 sm:w-5 text-white/80" />
                      <div>
-                       <div className="text-xl font-bold">{stats.total}</div>
-                       <div className="text-xs text-white/70">Items</div>
+                       <div className="text-lg sm:text-xl font-bold">{stats.total}</div>
+                       <div className="text-[10px] sm:text-xs text-white/70">Items</div>
                      </div>
                    </div>
                  </div>
 
-                 {/* Valor Total Rotativo - Compacto */}
-                 <div 
-                   className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20 cursor-pointer hover:bg-white/20 transition-all group"
+                 {/* Valor Total Rotativo - Compacto - RESPONSIVE */}
+                 <div
+                   className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/20 cursor-pointer hover:bg-white/20 transition-all group"
                    onClick={() => {
                      setIsRotating(true);
                      setTimeout(() => {
@@ -318,10 +409,10 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                      }, 150);
                    }}
                  >
-                   <div className="flex items-center space-x-3">
-                     <DollarSign className={`h-5 w-5 text-white/80 transition-transform duration-300 ${isRotating ? 'rotate-180' : ''}`} />
+                   <div className="flex items-center space-x-2 sm:space-x-3">
+                     <DollarSign className={`h-4 w-4 sm:h-5 sm:w-5 text-white/80 transition-transform duration-300 ${isRotating ? 'rotate-180' : ''}`} />
                      <div>
-                       <div className="text-xl font-bold">
+                       <div className="text-lg sm:text-xl font-bold">
                          ${(() => {
                            switch(valorTotalType) {
                              case 'productos': return stats.valorTotalProductos?.toFixed(0) || '0';
@@ -330,17 +421,17 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                            }
                          })()}
                        </div>
-                       <div className="text-xs text-white/70 flex items-center space-x-1">
+                       <div className="text-[10px] sm:text-xs text-white/70 flex items-center space-x-1">
                          <span>
                            {(() => {
                              switch(valorTotalType) {
-                               case 'productos': return 'Productos';
-                               case 'electrobar': return 'Electrobar';
+                               case 'productos': return 'Prod.';
+                               case 'electrobar': return 'Elec.';
                                default: return 'Total';
                              }
                            })()}
                          </span>
-                         <svg className="w-3 h-3 opacity-60 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <svg className="w-2 h-2 sm:w-3 sm:h-3 opacity-60 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                          </svg>
                        </div>
@@ -348,67 +439,66 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                    </div>
                  </div>
 
-                 {/* Stock Bajo - Compacto */}
-                 <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
-                   <div className="flex items-center space-x-3">
-                     <AlertCircle className={`h-5 w-5 ${itemsStockBajo.length > 0 ? 'text-red-300' : 'text-green-300'}`} />
+                 {/* Stock Bajo - Compacto - RESPONSIVE */}
+                 <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/20">
+                   <div className="flex items-center space-x-2 sm:space-x-3">
+                     <AlertCircle className={`h-4 w-4 sm:h-5 sm:w-5 ${itemsStockBajo.length > 0 ? 'text-red-300' : 'text-green-300'}`} />
                      <div>
-                       <div className="text-xl font-bold">{itemsStockBajo.length}</div>
-                       <div className="text-xs text-white/70">Stock Bajo</div>
+                       <div className="text-lg sm:text-xl font-bold">{itemsStockBajo.length}</div>
+                       <div className="text-[10px] sm:text-xs text-white/70">Stock</div>
                      </div>
                    </div>
                  </div>
 
-                 {/* Inactivos - Compacto */}
-                 <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
-                   <div className="flex items-center space-x-3">
-                     <X className="h-5 w-5 text-red-300" />
+                 {/* Inactivos - Compacto - RESPONSIVE */}
+                 <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/20">
+                   <div className="flex items-center space-x-2 sm:space-x-3">
+                     <X className="h-4 w-4 sm:h-5 sm:w-5 text-red-300" />
                      <div>
-                       <div className="text-xl font-bold">
+                       <div className="text-lg sm:text-xl font-bold">
                          {inventario.filter(item => item.activo === false).length}
                        </div>
-                       <div className="text-xs text-white/70">Inactivos</div>
+                       <div className="text-[10px] sm:text-xs text-white/70 hidden sm:block">Inactivos</div>
                      </div>
                    </div>
                  </div>
-                 
-                 {/* Botón cerrar */}
+
+                 {/* Botón cerrar - RESPONSIVE */}
                  <button
                    onClick={handleClose}
-                   className="bg-white/20 hover:bg-white/30 p-3 rounded-xl transition-colors group ml-4"
+                   className="bg-white/20 hover:bg-white/30 p-2 sm:p-3 rounded-lg sm:rounded-xl transition-colors group col-span-2 sm:col-span-1 sm:ml-4"
                  >
-                   <X className="h-6 w-6 group-hover:rotate-90 transition-transform" />
+                   <X className="h-5 w-5 sm:h-6 sm:w-6 group-hover:rotate-90 transition-transform mx-auto" />
                  </button>
                </div>
              </div>
            </div>
-         </div>
 
-         {/* Contenido principal mejorado - Ocupar espacio restante */}
+         {/* Contenido principal mejorado - Ocupar espacio restante - RESPONSIVE */}
          <div className="flex-1 flex flex-col overflow-hidden">
-           
-           {/* Controles superiores */}
-           <div className="flex-shrink-0 p-6 bg-white border-b border-gray-200">
-             <div className="flex flex-col lg:flex-row gap-4">
-               
-               <div className="flex-1 flex gap-4">
-                 {/* Search mejorado */}
+
+           {/* Controles superiores - RESPONSIVE */}
+           <div className="flex-shrink-0 p-3 sm:p-6 bg-white border-b border-gray-200">
+             <div className="flex flex-col gap-3 sm:gap-4">
+
+               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                 {/* Search mejorado - RESPONSIVE */}
                  <div className="relative flex-1">
-                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                   <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                    <input
                      type="text"
-                     placeholder="Buscar por descripción, código o observaciones..."
+                     placeholder="Buscar producto..."
                      value={searchTerm}
                      onChange={(e) => setSearchTerm(e.target.value)}
-                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
+                     className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm"
                    />
                  </div>
-                 
-                 {/* Filtros mejorados */}
+
+                 {/* Filtros mejorados - RESPONSIVE */}
                  <select
                    value={filterType}
                    onChange={(e) => setFilterType(e.target.value)}
-                   className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm font-medium"
+                   className="px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm font-medium"
                  >
                    <option value="todos">Todos</option>
                    <option value="producto">Productos</option>
@@ -433,26 +523,34 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                    </button>
                </div>
 
-               {/* Botones de acción mejorados */}
-               <div className="flex space-x-4">
+               {/* Botones de acción mejorados - RESPONSIVE */}
+               {console.log(' [InventoryManagerModal] Renderizando botones de acción. Usuario:', usuario)}
+               <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
                  {/* Solo Admin puede agregar items */}
-                 {usuario?.rol === 'admin' && (
+                 {console.log(' [InventoryManagerModal] Verificando rol para botón Agregar:', usuario?.rol)}
+                 {usuario?.rol === 'admin' ? (
                    <button
-                     onClick={handleNewItem}
-                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-all flex items-center space-x-2 shadow-sm hover:shadow-md"
+                     onClick={(e) => {
+                       console.log(' [InventoryManagerModal] CLIC en botón Agregar Item detectado!');
+                       e.stopPropagation();
+                       handleNewItem();
+                     }}
+                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl font-medium transition-all flex items-center justify-center space-x-2 shadow-sm hover:shadow-md text-sm sm:text-base"
                    >
-                     <Plus className="h-5 w-5" />
+                     <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                      <span>Agregar Item</span>
                    </button>
+                 ) : (
+                   console.log(' [InventoryManagerModal] Usuario no es admin, botón NO renderizado. Rol:', usuario?.rol)
                  )}
-                 
+
                  {/* Admin y Supervisor pueden cargar items */}
                  {(usuario?.rol === 'admin' || usuario?.rol === 'supervisor') && (
                    <button
                      onClick={() => setShowCargaMasiva(true)}
-                     className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium transition-all flex items-center space-x-2 shadow-sm hover:shadow-md"
+                     className="bg-green-600 hover:bg-green-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl font-medium transition-all flex items-center justify-center space-x-2 shadow-sm hover:shadow-md text-sm sm:text-base"
                    >
-                     <Package className="h-5 w-5" />
+                     <Package className="h-4 w-4 sm:h-5 sm:w-5" />
                      <span>Cargar Items</span>
                    </button>
                  )}
@@ -460,8 +558,8 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
              </div>
            </div>
 
-           {/* Área de tabla - Scrolleable */}
-           <div className="flex-1 overflow-y-auto p-6">
+           {/* Área de tabla - Scrolleable horizontal y vertical para móvil */}
+           <div className="flex-1 overflow-auto p-3 sm:p-6">
              {/* Tabla completamente adaptable - CON ICONOS LUCIDE */}
              {filteredItems.length === 0 ? (
                <div className="text-center py-12">
@@ -487,8 +585,14 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                  )}
                </div>
              ) : (
-               <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
-                 <table className="w-full table-fixed">
+               <>
+                 {/*  Indicador de scroll horizontal para móvil */}
+                 <div className="sm:hidden bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3 flex items-center justify-center space-x-2 text-blue-700 text-xs">
+                   <span> Desliza para ver más columnas </span>
+                 </div>
+
+                 <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 shadow-lg overflow-x-auto">
+                   <table className="w-full min-w-[1200px]">
                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                      <tr>
                        <th className="w-[8%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -790,18 +894,26 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                    </div>
                  </div>
                </div>
-             )}
+             </>
+           )}
            </div>
          </div>
        </div>
      </div>
 
-     {/* Modal del formulario */}
+     {/* Modal del formulario -  NO INTERFERIR CON SU CIERRE */}
+     {console.log(' [InventoryManagerModal] Renderizando ItemFormModal:', { showItemForm, editingItem: editingItem?.id || 'nuevo' })}
      <ItemFormModal
        isOpen={showItemForm}
        onClose={() => {
-         setShowItemForm(false);
-         setEditingItem(null);
+         console.log(' [InventoryManagerModal] onClose callback ejecutado - Stack trace:');
+         console.trace();
+         //  Agregar pequeño delay para evitar conflictos
+         setTimeout(() => {
+           console.log(' [InventoryManagerModal] Cerrando ItemFormModal (delayed)');
+           setShowItemForm(false);
+           setEditingItem(null);
+         }, 100);
        }}
        item={editingItem}
        onSave={handleItemSaved}
@@ -824,7 +936,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
        onClose={() => setShowCargaMasiva(false)}
        onSuccess={() => {
          toast.success('Inventario actualizado');
-         // 🔄 FORZAR RECARGA DESPUÉS DE CARGA MASIVA
+         //  FORZAR RECARGA DESPUÉS DE CARGA MASIVA
          setTimeout(() => {
            obtenerInventario();
          }, 500);

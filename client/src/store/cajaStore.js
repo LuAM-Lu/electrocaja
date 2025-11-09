@@ -3,7 +3,7 @@ import { create } from 'zustand';
 
 import { api, apiWithRetry, testConnection } from '../config/api.js';
 import { useSocketEvents } from '../hooks/useSocketEvents';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 import { useAuthStore } from './authStore.js';
 
 
@@ -26,7 +26,7 @@ const apiRequest = async (endpoint, options = {}) => {
   } catch (error) {
     // Mostrar toast de error
     const mensaje = error.response?.data?.message || error.message || 'Error de conexión';
-    toast.error(`❌ ${mensaje}`, {
+    toast.error(`${mensaje}`, {
       duration: 4000,
       position: 'top-right'
     });
@@ -44,29 +44,29 @@ const useCajaStore = create((set, get) => ({
   loading: false,
   error: null,
 
-//🆕 NUEVO: Cargar caja actual desde backend (CORREGIDO COMPLETAMENTE)
+// NUEVO: Cargar caja actual desde backend (CORREGIDO COMPLETAMENTE)
 cargarCajaActual: async () => {
   set({ loading: true, error: null });
   
   try {
     const data = await apiRequest('/cajas/actual');
     
-    console.log('🔍 === DIAGNÓSTICO CAJA ===');
-    console.log('🔍 Datos recibidos del backend:', data);
+    console.log(' === DIAGNÓSTICO CAJA ===');
+    console.log(' Datos recibidos del backend:', data);
     
     if (data && data.caja) {
       const caja = data.caja;
-      console.log('🔍 Estado caja backend:', caja.estado);
+      console.log(' Estado caja backend:', caja.estado);
       
      if (caja.estado === 'PENDIENTE_CIERRE_FISICO') {
-        console.log('🚨 CAJA PENDIENTE DETECTADA - VERIFICANDO PERMISOS');
+        console.log(' CAJA PENDIENTE DETECTADA - VERIFICANDO PERMISOS');
         
         // Verificar si el usuario actual puede resolver la caja
         const { usuario } = useAuthStore.getState();
         const esResponsable = usuario?.id === caja.usuarioAperturaId;
         const esAdmin = usuario?.rol?.toLowerCase() === 'admin';
         
-        console.log('🔍 Verificación permisos:', {
+        console.log(' Verificación permisos:', {
           usuarioActual: usuario?.nombre,
           rolActual: usuario?.rol,
           responsableCaja: caja.usuarioApertura?.nombre,
@@ -74,14 +74,14 @@ cargarCajaActual: async () => {
           esAdmin
         });
         
-        // 🆕 PREPARAR DATOS COMPLETOS PARA EL MODAL
+        //  PREPARAR DATOS COMPLETOS PARA EL MODAL
         const datosCajaPendiente = {
           id: caja.id,
           fecha: new Date(caja.fecha).toLocaleDateString('es-VE'),
           usuarioResponsable: caja.usuarioApertura?.nombre,
           usuarioResponsableId: caja.usuarioAperturaId,
           
-          // 🔥 DATOS ADICIONALES PARA CÁLCULOS
+          //  DATOS ADICIONALES PARA CÁLCULOS
           montoInicialBs: parseFloat(caja.montoInicialBs) || 0,
           montoInicialUsd: parseFloat(caja.montoInicialUsd) || 0,
           montoInicialPagoMovil: parseFloat(caja.montoInicialPagoMovil) || 0,
@@ -91,23 +91,23 @@ cargarCajaActual: async () => {
           totalEgresosUsd: parseFloat(caja.totalEgresosUsd) || 0,
           totalPagoMovil: parseFloat(caja.totalPagoMovil) || 0,
           
-          // 📊 TRANSACCIONES PARA CÁLCULO DETALLADO
+          //  TRANSACCIONES PARA CÁLCULO DETALLADO
           transacciones: data.transacciones || [],
           
-          // 🔍 PERMISOS CALCULADOS
+          //  PERMISOS CALCULADOS
           puedeResolver: esResponsable || esAdmin,
           esResponsable,
           esAdmin
         };
         
         if (esResponsable || esAdmin) {
-          console.log('✅ Usuario autorizado - Datos completos preparados');
+          console.log(' Usuario autorizado - Datos completos preparados');
           useAuthStore.setState({
             sistemaBloquedadoPorCaja: true,
             cajaPendienteCierre: datosCajaPendiente
           });
         } else {
-          console.log('🚫 Usuario SIN permisos - Bloquear sistema');
+          console.log(' Usuario SIN permisos - Bloquear sistema');
           useAuthStore.setState({
             sistemaBloquedadoPorCaja: true,
             cajaPendienteCierre: datosCajaPendiente
@@ -121,7 +121,7 @@ cargarCajaActual: async () => {
           error: `Caja pendiente de cierre físico`
         });
         
-        console.log('🚨 Sistema bloqueado por caja pendiente');
+        console.log(' Sistema bloqueado por caja pendiente');
         return;
       }
       
@@ -146,7 +146,7 @@ cargarCajaActual: async () => {
         transacciones: (data.transacciones || []).map(transaccion => ({
           ...transaccion,
           tipo: transaccion.tipo ? transaccion.tipo.toLowerCase() : 'ingreso',
-          usuario: transaccion.usuario || 'Usuario desconocido' // 👈 AGREGAR ESTA LÍNEA
+          usuario: transaccion.usuario || 'Usuario desconocido' //  AGREGAR ESTA LÍNEA
         })),
         loading: false
       });
@@ -158,10 +158,10 @@ cargarCajaActual: async () => {
       });
     }
     
-    console.log('🔍 === FIN DIAGNÓSTICO ===');
+    console.log(' === FIN DIAGNÓSTICO ===');
     
   } catch (error) {
-    console.error('❌ Error cargando caja:', error);
+    console.error(' Error cargando caja:', error);
     set({ 
       loading: false, 
       error: error.message,
@@ -178,7 +178,7 @@ cargarCajaActual: async () => {
     // Verificar conexión primero
     const conexion = await testConnection();
     if (!conexion.success) {
-      toast.error('❌ Sin conexión al servidor', {
+      toast.error('Sin conexión al servidor', {
         duration: 4000,
         position: 'top-right'
       });
@@ -196,10 +196,10 @@ cargarCajaActual: async () => {
     }
     
     set({ loading: false });
-    toast.success('✅ Sistema inicializado correctamente');
+    toast.success('Sistema inicializado correctamente');
   } catch (error) {
     set({ loading: false, error: 'Error al inicializar la aplicación' });
-    toast.error(`❌ Error al inicializar: ${error.message}`);
+    toast.error(`Error al inicializar: ${error.message}`);
   }
 },
 
@@ -224,14 +224,14 @@ cargarCajaActual: async () => {
     }
   },
 
-// 🆕 Cargar tasa consultando servidor primero
+//  Cargar tasa consultando servidor primero
 loadTasaFromServer: async () => {
   try {
     // 1. Consultar estado del servidor
     const response = await apiWithRetry(() => api.get('/tasa-bcv/estado'));
     const estadoServidor = response.data.data;
     
-    console.log('🔍 Estado tasa en servidor (cajaStore):', estadoServidor);
+    console.log(' Estado tasa en servidor (cajaStore):', estadoServidor);
     
     // 2. Usar estado del servidor (MANUAL o AUTO)
     set({ tasaCambio: estadoServidor.valor });
@@ -244,7 +244,7 @@ loadTasaFromServer: async () => {
   }
 },
 
-  // 🔄 ACTUALIZADO: Abrir caja con backend (NOMBRES CORREGIDOS)
+  //  ACTUALIZADO: Abrir caja con backend (NOMBRES CORREGIDOS)
 abrirCaja: async (montoInicialBs, montoInicialUsd, montoInicialPagoMovil) => {
   set({ loading: true, error: null });
   
@@ -258,7 +258,7 @@ abrirCaja: async (montoInicialBs, montoInicialUsd, montoInicialPagoMovil) => {
       throw new Error('Los montos iniciales no pueden ser negativos');
     }
 
-    console.log('🔍 Enviando al backend:', {
+    console.log(' Enviando al backend:', {
       montoInicialBs: parseFloat(montoInicialBs) || 0,
       montoInicialUsd: parseFloat(montoInicialUsd) || 0,
       montoInicialPagoMovil: parseFloat(montoInicialPagoMovil) || 0
@@ -268,13 +268,13 @@ abrirCaja: async (montoInicialBs, montoInicialUsd, montoInicialPagoMovil) => {
     const data = await apiRequest('/cajas/abrir', {
       method: 'POST',
       body: {
-        montoInicialBs: parseFloat(montoInicialBs) || 0,        // ✅ camelCase
-        montoInicialUsd: parseFloat(montoInicialUsd) || 0,      // ✅ camelCase
-        montoInicialPagoMovil: parseFloat(montoInicialPagoMovil) || 0  // ✅ camelCase
+        montoInicialBs: parseFloat(montoInicialBs) || 0,        //  camelCase
+        montoInicialUsd: parseFloat(montoInicialUsd) || 0,      //  camelCase
+        montoInicialPagoMovil: parseFloat(montoInicialPagoMovil) || 0  //  camelCase
       }
     });
 
-    console.log('✅ Respuesta del backend:', data);
+    console.log(' Respuesta del backend:', data);
 
     // Actualizar estado local
     const nuevaCaja = {
@@ -302,26 +302,26 @@ abrirCaja: async (montoInicialBs, montoInicialUsd, montoInicialPagoMovil) => {
       error: null
     });
 
-    // 🔄 RECARGAR CAJA ACTUAL DESDE BACKEND
+    //  RECARGAR CAJA ACTUAL DESDE BACKEND
     setTimeout(async () => {
       try {
         await get().cargarCajaActual();
-        console.log('🔄 Caja recargada después de abrir');
+        console.log(' Caja recargada después de abrir');
       } catch (error) {
-        console.log('⚠️ Error recargando caja:', error.message);
+        console.log(' Error recargando caja:', error.message);
       }
     }, 500);
 
     return nuevaCaja;
 
   } catch (error) {
-    console.error('❌ Error abriendo caja:', error);
+    console.error(' Error abriendo caja:', error);
     set({ loading: false, error: error.message });
     throw error;
   }
 },
 
-// 🔄 ACTUALIZADO: Cerrar caja con backend (NOMBRES CORREGIDOS)
+//  ACTUALIZADO: Cerrar caja con backend (NOMBRES CORREGIDOS)
 cerrarCaja: async (datosCierre) => {
   const estado = get();
   if (!estado.cajaActual) {
@@ -331,20 +331,20 @@ cerrarCaja: async (datosCierre) => {
   set({ loading: true, error: null });
 
   try {
-    console.log('🔍 Cerrando caja con datos:', datosCierre);
+    console.log(' Cerrando caja con datos:', datosCierre);
 
     // Llamada al backend - NOMBRES CORREGIDOS
     const data = await apiRequest('/cajas/cerrar', {
       method: 'PUT',
       body: {
-        montoFinalBs: datosCierre.montoFinalBs,              // ✅ camelCase
-        montoFinalUsd: datosCierre.montoFinalUsd,            // ✅ camelCase
-        montoFinalPagoMovil: datosCierre.montoFinalPagoMovil, // ✅ camelCase
-        observacionesCierre: datosCierre.observacionesCierre || ''  // ✅ camelCase
+        montoFinalBs: datosCierre.montoFinalBs,              //  camelCase
+        montoFinalUsd: datosCierre.montoFinalUsd,            //  camelCase
+        montoFinalPagoMovil: datosCierre.montoFinalPagoMovil, //  camelCase
+        observacionesCierre: datosCierre.observacionesCierre || ''  //  camelCase
       }
     });
 
-    console.log('✅ Caja cerrada en backend:', data);
+    console.log(' Caja cerrada en backend:', data);
 
     // Crear información del cierre para el estado local
     const cierreInfo = {
@@ -379,17 +379,17 @@ cerrarCaja: async (datosCierre) => {
       error: null
     });
 
-    console.log('✅ Estado local actualizado - Caja cerrada');
+    console.log(' Estado local actualizado - Caja cerrada');
     return cierreInfo;
 
   } catch (error) {
-    console.error('❌ Error cerrando caja:', error);
+    console.error(' Error cerrando caja:', error);
     set({ loading: false, error: error.message });
     throw error;
   }
 },
 
-// 🔄 VERSIÓN DEBUG: Para identificar el problema del tipo
+//  VERSIÓN DEBUG: Para identificar el problema del tipo
 agregarTransaccion: async (transaccion) => {
   const estado = get();
   if (!estado.cajaActual) {
@@ -399,12 +399,6 @@ agregarTransaccion: async (transaccion) => {
   set({ loading: true, error: null });
 
   try {
-    console.log('🔍 DEBUG 1 - TRANSACCIÓN RECIBIDA:', {
-      tipo: transaccion.tipo,
-      tipoEsString: typeof transaccion.tipo,
-      categoria: transaccion.categoria
-    });
-
     // 1. VALIDACIONES LOCALES
     if (!transaccion.categoria || !transaccion.categoria.trim()) {
       throw new Error('La categoría es obligatoria');
@@ -423,13 +417,6 @@ agregarTransaccion: async (transaccion) => {
     // 2. VALIDAR TIPO CORRECTO DESDE EL INICIO
     const tipoOriginal = transaccion.tipo.toLowerCase();
     const tipoBackend = tipoOriginal.toUpperCase();
-
-    console.log('🔍 DEBUG 2 - TIPOS PROCESADOS:', {
-      tipoOriginal: tipoOriginal,
-      tipoBackend: tipoBackend,
-      debeSerIngreso: tipoOriginal === 'ingreso',
-      debeSerEgreso: tipoOriginal === 'egreso'
-    });
 
     // 3. ENVIAR AL BACKEND
     const data = await apiRequest('/cajas/transacciones', {
@@ -454,16 +441,10 @@ agregarTransaccion: async (transaccion) => {
       }
     });
 
-    console.log('✅ DEBUG 3 - RESPUESTA BACKEND:', {
-      backendTipo: data.tipo,
-      backendId: data.id,
-      backendCompleto: data
-    });
-
     // 4. CREAR FECHA VÁLIDA
     let fechaValida;
     try {
-      if (data.fechaHora) { // ✅ CAMBIO: usar fechaHora en lugar de createdAt
+      if (data.fechaHora) { //  CAMBIO: usar fechaHora en lugar de createdAt
         fechaValida = new Date(data.fechaHora).toISOString();
         if (isNaN(new Date(fechaValida).getTime())) {
           throw new Error('Fecha inválida del backend');
@@ -472,14 +453,14 @@ agregarTransaccion: async (transaccion) => {
         fechaValida = new Date().toISOString();
       }
     } catch (error) {
-      console.warn('⚠️ Error con fecha del backend, usando fecha actual:', error);
+      console.warn(' Error con fecha del backend, usando fecha actual:', error);
       fechaValida = new Date().toISOString();
     }
 
     // 5. CREAR TRANSACCIÓN PARA FRONTEND
     const nuevaTransaccion = {
       id: data.id || Date.now(),
-      tipo: tipoOriginal, // ✅ MANTENER TIPO ORIGINAL ('ingreso' o 'egreso')
+      tipo: tipoOriginal, //  MANTENER TIPO ORIGINAL ('ingreso' o 'egreso')
       categoria: data.categoria || transaccion.categoria.trim(),
       observaciones: data.observaciones || transaccion.observaciones?.trim() || '',
       fecha_hora: fechaValida,
@@ -506,14 +487,6 @@ agregarTransaccion: async (transaccion) => {
       }))
     };
 
-    console.log('🔍 DEBUG 4 - TRANSACCIÓN PARA FRONTEND CREADA:', {
-      id: nuevaTransaccion.id,
-      tipo: nuevaTransaccion.tipo,
-      tipoEsString: typeof nuevaTransaccion.tipo,
-      esIngreso: nuevaTransaccion.tipo === 'ingreso',
-      esEgreso: nuevaTransaccion.tipo === 'egreso'
-    });
-
     // 6. ACTUALIZAR ESTADO LOCAL
     const transaccionesActualizadas = [nuevaTransaccion, ...estado.transacciones];
     
@@ -523,28 +496,12 @@ agregarTransaccion: async (transaccion) => {
       error: null
     });
 
-    console.log('🔍 DEBUG 5 - ESTADO ACTUALIZADO, VERIFICANDO PRIMERA TRANSACCIÓN:', {
-      primeraTransaccion: transaccionesActualizadas[0],
-      primerTipo: transaccionesActualizadas[0]?.tipo,
-      cantidadTransacciones: transaccionesActualizadas.length
-    });
-
     // 7. RECARGAR CAJA ACTUAL
     setTimeout(async () => {
       try {
-        console.log('🔍 DEBUG 6 - ANTES DE RECARGAR CAJA');
         await get().cargarCajaActual();
-        console.log('🔍 DEBUG 7 - DESPUÉS DE RECARGAR CAJA');
-        
-        // Verificar si la recarga afectó las transacciones
-        const estadoDespues = get();
-        console.log('🔍 DEBUG 8 - TRANSACCIONES DESPUÉS DE RECARGA:', {
-          cantidad: estadoDespues.transacciones.length,
-          primerTipo: estadoDespues.transacciones[0]?.tipo,
-          primeraCompleta: estadoDespues.transacciones[0]
-        });
       } catch (error) {
-        console.log('⚠️ Error recargando caja:', error.message);
+        console.error('Error recargando caja:', error.message);
       }
     }, 300);
 
@@ -555,24 +512,24 @@ agregarTransaccion: async (transaccion) => {
           usuario: estado.usuario?.nombre || 'Usuario',
           timestamp: new Date().toISOString()
         });
-        console.log('📡 Evento nueva_transaccion emitido');
+        console.log(' Evento nueva_transaccion emitido');
       } else {
-        console.log('⚠️ globalEmitirEvento no está disponible para nueva transacción');
+        console.log(' globalEmitirEvento no está disponible para nueva transacción');
       }
 
 // 9. MOSTRAR CONFIRMACIÓN
-toast.success(`✅ ${tipoOriginal === 'ingreso' ? 'Ingreso' : 'Egreso'} registrado correctamente`);
+toast.success(`${tipoOriginal === 'ingreso' ? 'Ingreso' : 'Egreso'} registrado correctamente`);
 
 return nuevaTransaccion;
 
   } catch (error) {
-    console.error('❌ Error agregando transacción:', error);
+    console.error(' Error agregando transacción:', error);
     set({ loading: false, error: error.message });
     throw error;
   }
 },
 
-// 🔄 ACTUALIZADO: Eliminar transacción con backend REAL
+//  ACTUALIZADO: Eliminar transacción con backend REAL
 eliminarTransaccion: async (transaccionId) => {
   const estado = get();
   if (!estado.cajaActual) {
@@ -582,7 +539,7 @@ eliminarTransaccion: async (transaccionId) => {
   set({ loading: true, error: null });
 
   try {
-    console.log('🗑️ ELIMINANDO TRANSACCIÓN:', transaccionId);
+    console.log(' ELIMINANDO TRANSACCIÓN:', transaccionId);
 
     // 1. BUSCAR TRANSACCIÓN LOCALMENTE PARA REFERENCIA
     const transaccionAEliminar = estado.transacciones.find(t => t.id === transaccionId);
@@ -590,7 +547,7 @@ eliminarTransaccion: async (transaccionId) => {
       throw new Error('Transacción no encontrada');
     }
 
-    console.log('🔍 Transacción a eliminar:', {
+    console.log(' Transacción a eliminar:', {
       id: transaccionAEliminar.id,
       tipo: transaccionAEliminar.tipo,
       categoria: transaccionAEliminar.categoria
@@ -601,7 +558,7 @@ eliminarTransaccion: async (transaccionId) => {
       method: 'DELETE'
     });
 
-    console.log('✅ Transacción eliminada en backend');
+    console.log(' Transacción eliminada en backend');
 
     // 3. ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE
     const transaccionesActualizadas = estado.transacciones.filter(t => t.id !== transaccionId);
@@ -612,15 +569,15 @@ eliminarTransaccion: async (transaccionId) => {
       error: null
     });
 
-    console.log('✅ Estado local actualizado - Transacción eliminada');
+    console.log(' Estado local actualizado - Transacción eliminada');
 
     // 4. RECARGAR CAJA PARA SINCRONIZAR TOTALES
     setTimeout(async () => {
       try {
         await get().cargarCajaActual();
-        console.log('🔄 Caja recargada después de eliminar transacción');
+        console.log(' Caja recargada después de eliminar transacción');
       } catch (error) {
-        console.log('⚠️ Error recargando caja:', error.message);
+        console.log(' Error recargando caja:', error.message);
       }
     }, 300);
 
@@ -632,18 +589,18 @@ eliminarTransaccion: async (transaccionId) => {
           usuario: estado.usuario?.nombre || 'Usuario',
           timestamp: new Date().toISOString()
         });
-        console.log('📡 Evento transaccion_eliminada emitido');
+        console.log(' Evento transaccion_eliminada emitido');
       } else {
-        console.log('⚠️ globalEmitirEvento no está disponible para eliminación');
+        console.log(' globalEmitirEvento no está disponible para eliminación');
       }
 
       // 6. MOSTRAR CONFIRMACIÓN
-      toast.success(`✅ ${transaccionAEliminar.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} eliminado correctamente`);
+      toast.success(`${transaccionAEliminar.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} eliminado correctamente`);
 
       return transaccionAEliminar;
 
   } catch (error) {
-    console.error('❌ Error eliminando transacción:', error);
+    console.error(' Error eliminando transacción:', error);
     
     // Si el backend falla, mantener estado local y mostrar warning
     if (error.message.includes('ERR_CONNECTION_REFUSED') || error.message.includes('Network Error')) {
@@ -656,10 +613,10 @@ eliminarTransaccion: async (transaccionId) => {
         error: null
       });
       
-      toast.error('⚠️ Backend desconectado - Eliminado solo localmente');
+      toast.error('Backend desconectado - Eliminado solo localmente');
     } else {
       set({ loading: false, error: error.message });
-      toast.error(`❌ Error al eliminar: ${error.message}`);
+      toast.error(`Error al eliminar: ${error.message}`);
     }
     
     throw error;
@@ -767,53 +724,53 @@ eliminarTransaccion: async (transaccionId) => {
     });
   },
 
-// 🆕 FUNCIÓN PARA ACTUALIZAR ESTADO DE CAJA VIA SOCKET.IO (DETECCIÓN AUTOMÁTICA COMPLETA)
+//  FUNCIÓN PARA ACTUALIZAR ESTADO DE CAJA VIA SOCKET.IO (DETECCIÓN AUTOMÁTICA COMPLETA)
 updateCajaStatus: (cajaData) => {
-  console.log('🔧 updateCajaStatus llamada con:', cajaData);
+  console.log(' updateCajaStatus llamada con:', cajaData);
   
   if (!cajaData) {
-    console.log('⚠️ updateCajaStatus: cajaData es null/undefined');
+    console.log(' updateCajaStatus: cajaData es null/undefined');
     return;
   }
 
-  // 🔧 DETECTAR FORMATO DE DATOS AUTOMÁTICAMENTE
+  //  DETECTAR FORMATO DE DATOS AUTOMÁTICAMENTE
   const yaEsProcesado = cajaData.fecha_apertura && !cajaData.fecha;
   
   let datosActuales;
   if (yaEsProcesado) {
-    // 📋 DATOS YA PROCESADOS desde useSocketEvents
+    //  DATOS YA PROCESADOS desde useSocketEvents
     datosActuales = cajaData;
-    console.log('🔧 Usando datos YA PROCESADOS desde useSocketEvents');
+    console.log(' Usando datos YA PROCESADOS desde useSocketEvents');
   } else if (cajaData.caja && cajaData.caja.id) {
     datosActuales = cajaData.caja;
-    console.log('🔧 Usando cajaData.caja (datos crudos del backend)');
+    console.log(' Usando cajaData.caja (datos crudos del backend)');
   } else if (cajaData.id) {
     datosActuales = cajaData;
-    console.log('🔧 Usando cajaData directamente (datos crudos del backend)');
+    console.log(' Usando cajaData directamente (datos crudos del backend)');
   } else {
-    console.log('⚠️ Formato de datos no reconocido:', cajaData);
+    console.log(' Formato de datos no reconocido:', cajaData);
     return;
   }
 
-  console.log('🔧 Estado de la caja:', datosActuales.estado);
-  console.log('🔧 Datos a procesar:', datosActuales);
-  console.log('🔧 Formato detectado:', yaEsProcesado ? 'PROCESADO' : 'CRUDO');
+  console.log(' Estado de la caja:', datosActuales.estado);
+  console.log(' Datos a procesar:', datosActuales);
+  console.log(' Formato detectado:', yaEsProcesado ? 'PROCESADO' : 'CRUDO');
 
-  // 📦 ===================================
+  //  ===================================
   // CAJA ABIERTA
   // ===================================
   if (datosActuales.estado === 'ABIERTA') {
     let cajaActualizada;
     
     if (yaEsProcesado) {
-      // ✅ DATOS YA PROCESADOS - usar directamente
+      //  DATOS YA PROCESADOS - usar directamente
       cajaActualizada = {
         ...datosActuales,
         lastUpdated: Date.now()
       };
-      console.log('✅ Usando datos procesados directamente sin modificación');
+      console.log(' Usando datos procesados directamente sin modificación');
     } else {
-      // 🔄 DATOS CRUDOS del backend - procesar normalmente
+      //  DATOS CRUDOS del backend - procesar normalmente
       cajaActualizada = {
         id: datosActuales.id,
         fecha_apertura: new Date(datosActuales.fecha).toLocaleDateString('es-VE'),
@@ -831,10 +788,10 @@ updateCajaStatus: (cajaData) => {
         estado: datosActuales.estado,
         lastUpdated: Date.now()
       };
-      console.log('✅ Procesando datos crudos del backend');
+      console.log(' Procesando datos crudos del backend');
     }
 
-    // 🚀 ACTUALIZACIÓN DIRECTA (sin timeout para evitar parpadeos)
+    //  ACTUALIZACIÓN DIRECTA (sin timeout para evitar parpadeos)
     set({
       cajaActual: cajaActualizada,
       transacciones: datosActuales.transacciones || [],
@@ -842,11 +799,10 @@ updateCajaStatus: (cajaData) => {
       loading: false
     });
 
-    // 🔔 NOTIFICACIÓN DE CAJA ABIERTA
-    toast.success(`🏪 Caja abierta por ${cajaActualizada.usuario_apertura}`, {
+    //  NOTIFICACIÓN DE CAJA ABIERTA
+    toast.success(`Caja abierta por ${cajaActualizada.nombre_apertura || cajaActualizada.usuario_apertura}`, {
       duration: 4000,
       id: 'caja-abierta',
-      icon: '✅',
       style: {
         background: '#F0FDF4',
         border: '2px solid #22C55E',
@@ -856,17 +812,17 @@ updateCajaStatus: (cajaData) => {
       }
     });
 
-    console.log('✅ Estado actualizado - Caja abierta:', cajaActualizada);
+    console.log(' Estado actualizado - Caja abierta:', cajaActualizada);
   }
 
-  // 🔒 ===================================
+  //  ===================================
   // CAJA CERRADA
   // ===================================
   else if (datosActuales.estado === 'CERRADA') {
     let cierreInfo;
     
     if (yaEsProcesado) {
-      // ✅ DATOS YA PROCESADOS - adaptarlos al formato esperado
+      //  DATOS YA PROCESADOS - adaptarlos al formato esperado
       cierreInfo = {
         id: datosActuales.id,
         tipo: 'cierre',
@@ -889,7 +845,7 @@ updateCajaStatus: (cajaData) => {
         lastUpdated: Date.now()
       };
     } else {
-      // 🔄 DATOS CRUDOS del backend - procesar normalmente
+      //  DATOS CRUDOS del backend - procesar normalmente
       cierreInfo = {
         id: datosActuales.id,
         tipo: 'cierre',
@@ -921,11 +877,10 @@ updateCajaStatus: (cajaData) => {
       loading: false
     });
 
-    // 🔔 NOTIFICACIÓN DE CAJA CERRADA
-    toast.success(`🔒 Caja cerrada por ${cierreInfo.usuario_cierre}`, {
+    //  NOTIFICACIÓN DE CAJA CERRADA
+    toast.success(`Caja cerrada por ${cierreInfo.nombre_cierre || cierreInfo.usuario_cierre}`, {
       duration: 4000,
       id: 'caja-cerrada',
-      icon: '✅',
       style: {
         background: '#FEF3C7',
         border: '2px solid #F59E0B',
@@ -935,14 +890,14 @@ updateCajaStatus: (cajaData) => {
       }
     });
 
-    console.log('✅ Estado actualizado - Caja cerrada');
+    console.log(' Estado actualizado - Caja cerrada');
   }
 
-  // 🚨 ===================================
+  //  ===================================
   // CAJA PENDIENTE DE CIERRE FÍSICO
   // ===================================
   else if (datosActuales.estado === 'PENDIENTE_CIERRE_FISICO') {
-    console.log('🚨 Caja pendiente de cierre físico detectada:', {
+    console.log(' Caja pendiente de cierre físico detectada:', {
       id: datosActuales.id,
       fecha: datosActuales.fecha || datosActuales.fecha_apertura,
       usuario_responsable: datosActuales.usuarioApertura?.nombre || datosActuales.usuario_apertura
@@ -959,7 +914,7 @@ updateCajaStatus: (cajaData) => {
       usuarioResponsable = datosActuales.usuarioApertura?.nombre;
     }
 
-    // 🚨 ACTUALIZAR ESTADO LOCAL
+    //  ACTUALIZAR ESTADO LOCAL
     set({
       cajaActual: null,
       transacciones: [],
@@ -973,8 +928,8 @@ updateCajaStatus: (cajaData) => {
       }
     });
 
-    // 🔔 TOAST DE ADVERTENCIA
-    toast.error(`🚨 Caja del ${fechaCaja} pendiente de cierre físico`, {
+    //  TOAST DE ADVERTENCIA
+    toast.error(`Caja del ${fechaCaja} pendiente de cierre físico`, {
       duration: 8000,
       style: {
         background: '#FEF2F2',
@@ -985,7 +940,7 @@ updateCajaStatus: (cajaData) => {
       }
     });
 
-    // 🌐 EMITIR EVENTO GLOBAL PARA MODAL DE BLOQUEO
+    //  EMITIR EVENTO GLOBAL PARA MODAL DE BLOQUEO
     if (typeof window !== 'undefined' && window.emitirEventoGlobal) {
       window.emitirEventoGlobal('mostrar_modal_caja_pendiente', {
         caja: datosActuales,
@@ -995,21 +950,21 @@ updateCajaStatus: (cajaData) => {
       });
     }
 
-    console.log('🚨 Modal de caja pendiente activado');
+    console.log(' Modal de caja pendiente activado');
   }
 
-  // ⚠️ ===================================
+  //  ===================================
   // ESTADO NO RECONOCIDO
   // ===================================
   else {
-    console.log('⚠️ Estado de caja no reconocido:', datosActuales.estado);
+    console.log(' Estado de caja no reconocido:', datosActuales.estado);
     set({ 
       loading: false,
       error: `Estado de caja no reconocido: ${datosActuales.estado}`
     });
 
-    // 🔔 TOAST DE ERROR
-    toast.error(`⚠️ Estado de caja desconocido: ${datosActuales.estado}`, {
+    //  TOAST DE ERROR
+    toast.error(`Estado de caja desconocido: ${datosActuales.estado}`, {
       duration: 5000,
       style: {
         background: '#FEF2F2',
@@ -1020,18 +975,18 @@ updateCajaStatus: (cajaData) => {
   }
 },
 
-  // 🆕 FUNCIÓN PARA AGREGAR TRANSACCIÓN VIA SOCKET.IO
+  //  FUNCIÓN PARA AGREGAR TRANSACCIÓN VIA SOCKET.IO
       addTransaction: (transactionData) => {
-        console.log('🔧 addTransaction llamada con:', transactionData);
+        console.log(' addTransaction llamada con:', transactionData);
         
         if (!transactionData || !transactionData.transaccion) {
-          console.log('⚠️ addTransaction: datos de transacción inválidos');
+          console.log(' addTransaction: datos de transacción inválidos');
           return;
         }
 
         const estado = get();
         if (!estado.cajaActual) {
-          console.log('⚠️ addTransaction: no hay caja abierta');
+          console.log(' addTransaction: no hay caja abierta');
           return;
         }
 
@@ -1046,53 +1001,41 @@ updateCajaStatus: (cajaData) => {
           transacciones: [transaccion, ...estado.transacciones]
         });
 
-        console.log('✅ Transacción agregada al estado local con usuario:', transaccion.usuario);
+        console.log(' Transacción agregada al estado local con usuario:', transaccion.usuario);
       },
 
-      // 🆕 FUNCIÓN PARA PROCESAR VENTA COMPLETADA VIA SOCKET.IO
+      //  FUNCIÓN PARA PROCESAR VENTA COMPLETADA VIA SOCKET.IO
 processVentaCompletada: (ventaData) => {
-  console.log('🚀 processVentaCompletada llamada con:', ventaData);
-  
-  if (!ventaData || !ventaData.venta) {
-    console.log('⚠️ processVentaCompletada: datos de venta inválidos');
-    return;
-  }
+  if (!ventaData || !ventaData.venta) return;
 
   const estado = get();
-  if (!estado.cajaActual) {
-    console.log('⚠️ processVentaCompletada: no hay caja abierta');
-    return;
-  }
+  if (!estado.cajaActual) return;
 
-  // Recargar caja actual para obtener totales actualizados
+  // ✅ VERIFICAR SI ES LA VENTA DEL MISMO USUARIO
+  const { usuario } = useAuthStore.getState();
+  const esDelMismoUsuario = ventaData.usuario === usuario?.nombre;
+
+  if (esDelMismoUsuario) return;
+
+  // ✅ Para OTROS usuarios: Recargar con debounce para evitar flicker
   setTimeout(async () => {
     try {
       await get().cargarCajaActual();
-      console.log('✅ Dashboard actualizado automáticamente después de venta');
     } catch (error) {
-      console.error('❌ Error recargando después de venta:', error);
+      console.error('Error recargando después de venta:', error);
     }
-  }, 500);
+  }, 1500); // 1.5 segundos de delay para suavizar la experiencia
 
-  // Mostrar notificación
-  toast.success(`💰 Venta procesada por ${ventaData.usuario}`, {
-    duration: 3000,
-    icon: '🚀'
-  });
+  // NOTA: El toast ya se muestra desde useSocketEvents.handleVentaProcesada
+  // y desde IngresoModal, no necesitamos duplicarlo aquí
 },
 
-  // 🆕 FUNCIÓN PARA ELIMINAR TRANSACCIÓN VIA SOCKET.IO
+  //  FUNCIÓN PARA ELIMINAR TRANSACCIÓN VIA SOCKET.IO
   removeTransaction: (transaccionId) => {
-    console.log('🔧 removeTransaction llamada con ID:', transaccionId);
-    
-    if (!transaccionId) {
-      console.log('⚠️ removeTransaction: ID de transacción inválido');
-      return;
-    }
+    if (!transaccionId) return;
 
     const estado = get();
     if (!estado.cajaActual) {
-      console.log('⚠️ removeTransaction: no hay caja abierta');
       return;
     }
 
@@ -1103,25 +1046,25 @@ processVentaCompletada: (ventaData) => {
       transacciones: transaccionesActualizadas
     });
 
-    console.log('✅ Transacción eliminada del estado local');
+    console.log(' Transacción eliminada del estado local');
   },
 
   debug: () => {
     console.log('Estado actual del store:', get());
   },
 
-  // 🆕 ===================================
+  //  ===================================
   // FUNCIONES PARA CAJAS PENDIENTES
   // ===================================
 
-  // 📋 OBTENER CAJAS PENDIENTES
+  //  OBTENER CAJAS PENDIENTES
   obtenerCajasPendientes: async () => {
     set({ loading: true, error: null });
     
     try {
       const data = await apiRequest('/cajas/pendientes');
       
-      console.log('📋 Cajas pendientes obtenidas:', data);
+      console.log(' Cajas pendientes obtenidas:', data);
       
       return {
         success: true,
@@ -1130,7 +1073,7 @@ processVentaCompletada: (ventaData) => {
       };
       
     } catch (error) {
-      console.error('❌ Error obteniendo cajas pendientes:', error);
+      console.error(' Error obteniendo cajas pendientes:', error);
       set({ loading: false, error: error.message });
       throw error;
     } finally {
@@ -1138,12 +1081,12 @@ processVentaCompletada: (ventaData) => {
     }
   },
 
-  // ✅ RESOLVER CAJA PENDIENTE
+  //  RESOLVER CAJA PENDIENTE
   resolverCajaPendiente: async (cajaId, datosResolucion) => {
     set({ loading: true, error: null });
     
     try {
-      console.log('✅ Resolviendo caja pendiente:', {
+      console.log(' Resolviendo caja pendiente:', {
         cajaId,
         datosResolucion
       });
@@ -1159,7 +1102,7 @@ processVentaCompletada: (ventaData) => {
         }
       });
 
-      console.log('✅ Caja pendiente resuelta exitosamente:', data);
+      console.log(' Caja pendiente resuelta exitosamente:', data);
 
       // Crear información del cierre para el estado local
       const cierreInfo = {
@@ -1194,30 +1137,30 @@ processVentaCompletada: (ventaData) => {
         error: null
       });
 
-      console.log('✅ Estado local actualizado - Caja pendiente resuelta');
+      console.log(' Estado local actualizado - Caja pendiente resuelta');
       return cierreInfo;
 
     } catch (error) {
-      console.error('❌ Error resolviendo caja pendiente:', error);
+      console.error(' Error resolviendo caja pendiente:', error);
       set({ loading: false, error: error.message });
       throw error;
     }
   },
 
-  // 🕚 FORZAR AUTO-CIERRE (SOLO ADMIN)
+  //  FORZAR AUTO-CIERRE (SOLO ADMIN)
   forzarAutoCierre: async () => {
     set({ loading: true, error: null });
     
     try {
-      console.log('🕚 Forzando auto-cierre...');
+      console.log(' Forzando auto-cierre...');
 
       const data = await apiRequest('/cajas/forzar-auto-cierre', {
         method: 'POST'
       });
 
-      console.log('✅ Auto-cierre forzado exitoso:', data);
+      console.log(' Auto-cierre forzado exitoso:', data);
 
-      toast.success('🕚 Auto-cierre ejecutado correctamente');
+      toast.success('Auto-cierre ejecutado correctamente');
       
       return {
         success: true,
@@ -1226,7 +1169,7 @@ processVentaCompletada: (ventaData) => {
       };
 
     } catch (error) {
-      console.error('❌ Error forzando auto-cierre:', error);
+      console.error(' Error forzando auto-cierre:', error);
       set({ loading: false, error: error.message });
       throw error;
     } finally {
@@ -1234,7 +1177,7 @@ processVentaCompletada: (ventaData) => {
     }
   },
 
-  // 🔍 VERIFICAR SI HAY CAJAS PENDIENTES
+  //  VERIFICAR SI HAY CAJAS PENDIENTES
   verificarCajasPendientes: async () => {
     try {
       const resultado = await get().obtenerCajasPendientes();
@@ -1246,7 +1189,7 @@ processVentaCompletada: (ventaData) => {
       };
       
     } catch (error) {
-      console.error('❌ Error verificando cajas pendientes:', error);
+      console.error(' Error verificando cajas pendientes:', error);
       return {
         hayCajasPendientes: false,
         cajasPendientes: [],
@@ -1255,10 +1198,10 @@ processVentaCompletada: (ventaData) => {
     }
   },
 
-  // 🧹 LIMPIAR ESTADO DE CAJA PENDIENTE
+  //  LIMPIAR ESTADO DE CAJA PENDIENTE
   limpiarEstadoCajaPendiente: () => {
     // Esta función se llamará desde authStore después de resolver
-    console.log('🧹 Limpiando estado de caja pendiente...');
+    console.log(' Limpiando estado de caja pendiente...');
     
     // Nota: No limpiar cajaActual aquí, eso se maneja en resolverCajaPendiente
     // Solo notificar que el estado pendiente se limpió
@@ -1267,26 +1210,26 @@ processVentaCompletada: (ventaData) => {
   }
 }));
 
-// 🆕 Variable global para emitir eventos
+//  Variable global para emitir eventos
 let globalEmitirEvento = null;
 
-// 🆕 Función para conectar el socket
+//  Función para conectar el socket
 export const conectarSocketAlStore = (emitirEvento) => {
   if (globalEmitirEvento === emitirEvento) {
-    console.log('🔌 Socket ya conectado al cajaStore - omitiendo');
+    console.log(' Socket ya conectado al cajaStore - omitiendo');
     return;
   }
   globalEmitirEvento = emitirEvento;
-  console.log('🔌 Socket conectado al cajaStore');
+  console.log(' Socket conectado al cajaStore');
 };
 
-// 🆕 Función auxiliar para emitir eventos
+//  Función auxiliar para emitir eventos
 const emitirEventoSocket = (evento, data) => {
   if (globalEmitirEvento) {
-    console.log('📡 Emitiendo evento:', evento, data);
+    console.log(' Emitiendo evento:', evento, data);
     globalEmitirEvento(evento, data);
   } else {
-    console.log('⚠️ Socket no conectado, no se puede emitir:', evento);
+    console.log(' Socket no conectado, no se puede emitir:', evento);
   }
 };
 

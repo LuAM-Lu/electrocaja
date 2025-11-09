@@ -5,7 +5,7 @@ import { useCajaStore } from '../store/cajaStore';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
 import AbrirCajaModal from './AbrirCajaModal';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
 const CajaStatus = () => {
   const { cajaActual } = useCajaStore();
@@ -211,7 +211,7 @@ const CajaStatus = () => {
 </div>
 
 
-        {/* 👈 NUEVA FILA 3: Tabla 3 columnas x 2 filas */}
+        {/*  NUEVA FILA 3: Tabla 3 columnas x 2 filas */}
         <div className="border-t border-gray-100 pt-2">
           <div className="grid grid-cols-3 gap-1 text-xs">
             

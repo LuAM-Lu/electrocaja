@@ -7,7 +7,7 @@ import {
   ChevronRight, AlertCircle
 } from 'lucide-react';
 import { api } from '../../config/api';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const ReporteEmpleado = () => {
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ const ReporteEmpleado = () => {
     clientes: false
   });
 
-  // 🚀 CARGAR USUARIOS AL MONTAR COMPONENTE
+  //  CARGAR USUARIOS AL MONTAR COMPONENTE
   useEffect(() => {
     cargarUsuarios();
     
@@ -36,7 +36,7 @@ const ReporteEmpleado = () => {
     setFechaInicio(haceUnMes.toISOString().split('T')[0]);
   }, []);
 
-  // 📋 CARGAR LISTA DE USUARIOS
+  //  CARGAR LISTA DE USUARIOS
   const cargarUsuarios = async () => {
     try {
       const response = await api.get('/users');
@@ -59,10 +59,10 @@ const ReporteEmpleado = () => {
     }
   };
 
-  // 📊 CARGAR REPORTE DEL EMPLEADO
+  //  CARGAR REPORTE DEL EMPLEADO
   const cargarReporte = async () => {
     if (!usuarioSeleccionado) {
-      toast.error('⚠️ Selecciona un usuario para generar el reporte');
+      toast.error('Selecciona un usuario para generar el reporte');
       return;
     }
 
@@ -79,7 +79,7 @@ const ReporteEmpleado = () => {
       
       if (response.data?.success) {
         setDatos(response.data.data);
-        toast.success(`✅ Reporte generado para ${response.data.data.usuario.nombre}`);
+        toast.success(`Reporte generado para ${response.data.data.usuario.nombre}`);
       } else {
         throw new Error(response.data?.message || 'Error al generar reporte');
       }
@@ -171,9 +171,9 @@ const ReporteEmpleado = () => {
     }
   };
 
-  // 🔧 UTILIDADES
+  //  UTILIDADES
   const formatearBs = (amount) => Math.round(amount || 0).toLocaleString('es-VE');
-  const formatearUsd = (amount) => `$${(amount || 0).toFixed(2)}`; // ✅ CORREGIDO: Mostrar $ siempre
+  const formatearUsd = (amount) => `$${(amount || 0).toFixed(2)}`; //  CORREGIDO: Mostrar $ siempre
   const formatearPorcentaje = (amount) => `${(amount || 0).toFixed(1)}%`;
   
   const toggleSection = (section) => {
@@ -183,26 +183,26 @@ const ReporteEmpleado = () => {
     }));
   };
 
-  // 🎨 COMPONENTE DE SECCIÓN EXPANDIBLE COMPACTA
+  //  COMPONENTE DE SECCIÓN EXPANDIBLE COMPACTA
   const ExpandableSection = ({ title, isExpanded, onToggle, children, count = null, icon: Icon }) => (
     <div className="bg-white rounded-lg shadow-sm border">
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors" // ✅ COMPACTADO: py-3 en lugar de py-4
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors" //  COMPACTADO: py-3 en lugar de py-4
       >
-        <div className="flex items-center space-x-2"> {/* ✅ COMPACTADO: space-x-2 en lugar de space-x-3 */}
-          <Icon className="h-4 w-4 text-gray-600" /> {/* ✅ COMPACTADO: h-4 w-4 en lugar de h-5 w-5 */}
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3> {/* ✅ COMPACTADO: text-base en lugar de text-lg */}
+        <div className="flex items-center space-x-2"> {/*  COMPACTADO: space-x-2 en lugar de space-x-3 */}
+          <Icon className="h-4 w-4 text-gray-600" /> {/*  COMPACTADO: h-4 w-4 en lugar de h-5 w-5 */}
+          <h3 className="text-base font-semibold text-gray-900">{title}</h3> {/*  COMPACTADO: text-base en lugar de text-lg */}
           {count !== null && (
-            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium"> {/* ✅ COMPACTADO: py-0.5 y text-xs */}
+            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium"> {/*  COMPACTADO: py-0.5 y text-xs */}
               {count}
             </span>
           )}
         </div>
-        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />} {/* ✅ COMPACTADO */}
+        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />} {/*  COMPACTADO */}
       </button>
       {isExpanded && (
-        <div className="px-4 pb-4"> {/* ✅ COMPACTADO: px-4 pb-4 en lugar de px-6 pb-6 */}
+        <div className="px-4 pb-4"> {/*  COMPACTADO: px-4 pb-4 en lugar de px-6 pb-6 */}
           {children}
         </div>
       )}
@@ -210,32 +210,32 @@ const ReporteEmpleado = () => {
   );
 
   return (
-    <div className="space-y-4"> {/* ✅ COMPACTADO: space-y-4 en lugar de space-y-6 */}
+    <div className="space-y-4"> {/*  COMPACTADO: space-y-4 en lugar de space-y-6 */}
       
-      {/* 🎛️ CONTROLES PRINCIPALES - COMPACTOS */}
-      <div className="bg-white rounded-lg p-4 shadow-sm border"> {/* ✅ COMPACTADO: p-4 en lugar de p-6 */}
-        <div className="flex items-center justify-between mb-4"> {/* ✅ COMPACTADO: mb-4 en lugar de mb-6 */}
+      {/*  CONTROLES PRINCIPALES - COMPACTOS */}
+      <div className="bg-white rounded-lg p-4 shadow-sm border"> {/*  COMPACTADO: p-4 en lugar de p-6 */}
+        <div className="flex items-center justify-between mb-4"> {/*  COMPACTADO: mb-4 en lugar de mb-6 */}
           <div>
-            <h2 className="text-xl font-bold text-gray-900 flex items-center"> {/* ✅ COMPACTADO: text-xl en lugar de text-2xl */}
-              <User className="h-5 w-5 mr-2 text-blue-600" /> {/* ✅ COMPACTADO: h-5 w-5 mr-2 */}
+            <h2 className="text-xl font-bold text-gray-900 flex items-center"> {/*  COMPACTADO: text-xl en lugar de text-2xl */}
+              <User className="h-5 w-5 mr-2 text-blue-600" /> {/*  COMPACTADO: h-5 w-5 mr-2 */}
               Reporte por Empleado
             </h2>
-            <p className="text-sm text-gray-600">Análisis de ventas y egresos por usuario</p> {/* ✅ COMPACTADO */}
+            <p className="text-sm text-gray-600">Análisis de ventas y egresos por usuario</p> {/*  COMPACTADO */}
           </div>
         </div>
 
         {/* Filtros Compactos */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4"> {/* ✅ COMPACTADO: gap-3 mb-4 */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4"> {/*  COMPACTADO: gap-3 mb-4 */}
           {/* Selector de Usuario */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1"> {/* ✅ COMPACTADO: text-xs mb-1 */}
+            <label className="block text-xs font-medium text-gray-700 mb-1"> {/*  COMPACTADO: text-xs mb-1 */}
               <User className="h-3 w-3 inline mr-1" />
               Usuario *
             </label>
             <select
               value={usuarioSeleccionado}
               onChange={(e) => setUsuarioSeleccionado(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500" // ✅ COMPACTADO
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500" //  COMPACTADO
               disabled={loading}
             >
               <option value="">Seleccionar...</option>
@@ -279,7 +279,7 @@ const ReporteEmpleado = () => {
             <button
               onClick={cargarReporte}
               disabled={loading || !usuarioSeleccionado}
-              className="w-full flex items-center justify-center space-x-1 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 transition-colors" // ✅ COMPACTADO
+              className="w-full flex items-center justify-center space-x-1 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 transition-colors" //  COMPACTADO
             >
               {loading ? (
                 <>
@@ -298,16 +298,16 @@ const ReporteEmpleado = () => {
 
         {/* Info Usuario - COMPACTA */}
         {datos && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3"> {/* ✅ COMPACTADO: p-3 */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3"> {/*  COMPACTADO: p-3 */}
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium text-blue-900 text-sm"> {/* ✅ COMPACTADO: text-sm */}
-                  📊 {datos.usuario.nombre} • {datos.usuario.rol} • {datos.periodo.diasAnalizados} días
+                <h4 className="font-medium text-blue-900 text-sm"> {/*  COMPACTADO: text-sm */}
+                   {datos.usuario.nombre} • {datos.usuario.rol} • {datos.periodo.diasAnalizados} días
                 </h4>
               </div>
               <button
-                onClick={() => toast.info('🔄 Exportación próximamente')}
-                className="flex items-center space-x-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" // ✅ COMPACTADO
+                onClick={() => toast.info('Exportación próximamente')}
+                className="flex items-center space-x-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700" //  COMPACTADO
               >
                 <Download className="h-3 w-3" />
                 <span>PDF</span>
@@ -317,19 +317,19 @@ const ReporteEmpleado = () => {
         )}
       </div>
 
-      {/* 📊 MÉTRICAS COMPACTAS EN UNA FILA */}
+      {/*  MÉTRICAS COMPACTAS EN UNA FILA */}
       {datos && (
         <>
           {/* Métricas principales en cards horizontales compactas */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"> {/* ✅ COMPACTADO: gap-3 */}
-            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-3 text-white"> {/* ✅ COMPACTADO: p-3 */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"> {/*  COMPACTADO: gap-3 */}
+            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-3 text-white"> {/*  COMPACTADO: p-3 */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-xs">Ventas</p> {/* ✅ COMPACTADO: text-xs */}
-                  <p className="text-lg font-bold">{datos.metricas.totalVentas}</p> {/* ✅ COMPACTADO: text-lg */}
-                  <p className="text-xs">{formatearBs(datos.metricas.montoVentasBs)} Bs • {formatearUsd(datos.metricas.montoVentasUsd)}</p> {/* ✅ USD con $ */}
+                  <p className="text-green-100 text-xs">Ventas</p> {/*  COMPACTADO: text-xs */}
+                  <p className="text-lg font-bold">{datos.metricas.totalVentas}</p> {/*  COMPACTADO: text-lg */}
+                  <p className="text-xs">{formatearBs(datos.metricas.montoVentasBs)} Bs • {formatearUsd(datos.metricas.montoVentasUsd)}</p> {/*  USD con $ */}
                 </div>
-                <TrendingUp className="h-6 w-6 text-green-200" /> {/* ✅ COMPACTADO: h-6 w-6 */}
+                <TrendingUp className="h-6 w-6 text-green-200" /> {/*  COMPACTADO: h-6 w-6 */}
               </div>
             </div>
 
@@ -338,7 +338,7 @@ const ReporteEmpleado = () => {
                 <div>
                   <p className="text-red-100 text-xs">Egresos</p>
                   <p className="text-lg font-bold">{datos.metricas.totalEgresos}</p>
-                  <p className="text-xs">{formatearBs(datos.metricas.montoEgresosBs)} Bs • {formatearUsd(datos.metricas.montoEgresosUsd)}</p> {/* ✅ USD con $ */}
+                  <p className="text-xs">{formatearBs(datos.metricas.montoEgresosBs)} Bs • {formatearUsd(datos.metricas.montoEgresosUsd)}</p> {/*  USD con $ */}
                 </div>
                 <TrendingDown className="h-6 w-6 text-red-200" />
               </div>
@@ -348,7 +348,7 @@ const ReporteEmpleado = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-xs">Balance</p>
-                  <p className="text-lg font-bold">{formatearUsd(datos.balance.netoUsd)}</p> {/* ✅ USD con $ prominente */}
+                  <p className="text-lg font-bold">{formatearUsd(datos.balance.netoUsd)}</p> {/*  USD con $ prominente */}
                   <p className="text-xs">{formatearBs(datos.balance.neto)} Bs</p>
                 </div>
                 <DollarSign className="h-6 w-6 text-blue-200" />
@@ -367,7 +367,7 @@ const ReporteEmpleado = () => {
             </div>
           </div>
 
-          {/* 💳 MÉTODOS DE PAGO - COMPACTO */}
+          {/*  MÉTODOS DE PAGO - COMPACTO */}
           <ExpandableSection
             title="Métodos de Pago"
             isExpanded={expandedSections.metodosPago}
@@ -375,7 +375,7 @@ const ReporteEmpleado = () => {
             icon={CreditCard}
             count={Object.keys(datos.metricas.metodosPago || {}).filter(([, monto]) => monto > 0).length}
           >
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"> {/* ✅ COMPACTADO: gap-3 */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"> {/*  COMPACTADO: gap-3 */}
               {Object.entries(datos.metricas.metodosPago || {})
                 .filter(([, monto]) => monto > 0)
                 .sort(([, a], [, b]) => b - a)
@@ -390,13 +390,13 @@ const ReporteEmpleado = () => {
                   else if (metodo.includes('Banco')) IconoMetodo = Building;
                   
                   return (
-                    <div key={metodo} className="p-2 border border-gray-200 bg-gray-50 rounded"> {/* ✅ COMPACTADO: p-2 */}
-                      <div className="flex items-center space-x-1 mb-1"> {/* ✅ COMPACTADO */}
+                    <div key={metodo} className="p-2 border border-gray-200 bg-gray-50 rounded"> {/*  COMPACTADO: p-2 */}
+                      <div className="flex items-center space-x-1 mb-1"> {/*  COMPACTADO */}
                         <IconoMetodo className="h-3 w-3 text-gray-600" />
-                        <h5 className="font-medium text-xs text-gray-900 truncate">{metodo}</h5> {/* ✅ COMPACTADO: text-xs */}
+                        <h5 className="font-medium text-xs text-gray-900 truncate">{metodo}</h5> {/*  COMPACTADO: text-xs */}
                       </div>
-                      <p className="text-sm font-bold text-gray-800">{formatearBs(monto)} Bs</p> {/* ✅ COMPACTADO: text-sm */}
-                      <div className="w-full bg-gray-200 rounded-full h-1 mt-1"> {/* ✅ COMPACTADO: h-1 */}
+                      <p className="text-sm font-bold text-gray-800">{formatearBs(monto)} Bs</p> {/*  COMPACTADO: text-sm */}
+                      <div className="w-full bg-gray-200 rounded-full h-1 mt-1"> {/*  COMPACTADO: h-1 */}
                         <div className="bg-blue-500 h-1 rounded-full" style={{ width: `${porcentaje}%` }}></div>
                       </div>
                       <p className="text-xs text-gray-600">{porcentaje.toFixed(1)}%</p>
@@ -406,7 +406,7 @@ const ReporteEmpleado = () => {
             </div>
           </ExpandableSection>
 
-          {/* 🏆 TOP PRODUCTOS - COMPACTO */}
+          {/*  TOP PRODUCTOS - COMPACTO */}
           <ExpandableSection
             title="Top Productos"
             isExpanded={expandedSections.productos}
@@ -414,10 +414,10 @@ const ReporteEmpleado = () => {
             icon={Package}
             count={datos.metricas.topProductos?.length || 0}
           >
-            <div className="space-y-2"> {/* ✅ COMPACTADO: space-y-2 */}
+            <div className="space-y-2"> {/*  COMPACTADO: space-y-2 */}
               {datos.metricas.topProductos?.map((producto, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100"> {/* ✅ COMPACTADO: p-2 */}
-                  <div className="flex items-center space-x-2"> {/* ✅ COMPACTADO: space-x-2 */}
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100"> {/*  COMPACTADO: p-2 */}
+                  <div className="flex items-center space-x-2"> {/*  COMPACTADO: space-x-2 */}
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
                       index === 0 ? 'bg-yellow-500' : 
                       index === 1 ? 'bg-gray-400' : 
@@ -426,19 +426,19 @@ const ReporteEmpleado = () => {
                       {index + 1}
                     </span>
                     <div>
-                      <h5 className="font-medium text-sm text-gray-900 truncate">{producto.descripcion}</h5> {/* ✅ COMPACTADO: text-sm */}
+                      <h5 className="font-medium text-sm text-gray-900 truncate">{producto.descripcion}</h5> {/*  COMPACTADO: text-sm */}
                       <p className="text-xs text-gray-500">{producto.cantidad} unidades</p>
                     </div>
                   </div>
-                  <p className="font-bold text-sm text-green-600">{formatearBs(producto.montoTotal)} Bs</p> {/* ✅ COMPACTADO: text-sm */}
+                  <p className="font-bold text-sm text-green-600">{formatearBs(producto.montoTotal)} Bs</p> {/*  COMPACTADO: text-sm */}
                 </div>
               ))}
             </div>
           </ExpandableSection>
 
-          {/* 📋 TRANSACCIONES - PROTAGONISTAS */}
+          {/*  TRANSACCIONES - PROTAGONISTAS */}
           <ExpandableSection
-            title="Historial de Transacciones" // ✅ PROTAGONISTA
+            title="Historial de Transacciones" //  PROTAGONISTA
             isExpanded={expandedSections.transacciones}
             onToggle={() => toggleSection('transacciones')}
             icon={Eye}
@@ -449,11 +449,11 @@ const ReporteEmpleado = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="text-left p-2 font-medium text-gray-700 text-xs">Fecha</th> {/* ✅ COMPACTADO: p-2 text-xs */}
+                      <th className="text-left p-2 font-medium text-gray-700 text-xs">Fecha</th> {/*  COMPACTADO: p-2 text-xs */}
                       <th className="text-left p-2 font-medium text-gray-700 text-xs">Tipo</th>
                       <th className="text-left p-2 font-medium text-gray-700 text-xs">Cliente</th>
                       <th className="text-right p-2 font-medium text-gray-700 text-xs">Monto Bs</th>
-                      <th className="text-right p-2 font-medium text-gray-700 text-xs">Monto USD</th> {/* ✅ USD con $ */}
+                      <th className="text-right p-2 font-medium text-gray-700 text-xs">Monto USD</th> {/*  USD con $ */}
                       <th className="text-left p-2 font-medium text-gray-700 text-xs">Método</th>
                       <th className="text-left p-2 font-medium text-gray-700 text-xs">Items</th>
                     </tr>
@@ -461,7 +461,7 @@ const ReporteEmpleado = () => {
                   <tbody>
                     {datos.transacciones.map((transaccion, index) => (
                       <tr key={index} className="border-t hover:bg-gray-50">
-                        <td className="p-2 text-xs"> {/* ✅ COMPACTADO: p-2 text-xs */}
+                        <td className="p-2 text-xs"> {/*  COMPACTADO: p-2 text-xs */}
                           {new Date(transaccion.fechaHora).toLocaleDateString('es-VE', { 
                             day: '2-digit', 
                             month: '2-digit',
@@ -478,7 +478,7 @@ const ReporteEmpleado = () => {
                         </td>
                         <td className="p-2 text-xs truncate max-w-32">{transaccion.cliente}</td>
                         <td className="p-2 text-right font-mono text-xs">{formatearBs(transaccion.totalBs)} Bs</td>
-                        <td className="p-2 text-right font-mono text-xs font-bold text-green-600">{formatearUsd(transaccion.totalUsd)}</td> {/* ✅ USD con $ prominente */}
+                        <td className="p-2 text-right font-mono text-xs font-bold text-green-600">{formatearUsd(transaccion.totalUsd)}</td> {/*  USD con $ prominente */}
                         <td className="p-2 text-xs">
                           {transaccion.pagos?.length > 0 ? (
                             <div className="space-y-1">
@@ -512,14 +512,14 @@ const ReporteEmpleado = () => {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-6 text-gray-500"> {/* ✅ COMPACTADO: py-6 */}
+              <div className="text-center py-6 text-gray-500"> {/*  COMPACTADO: py-6 */}
                 <Eye className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No hay transacciones en este período</p>
               </div>
             )}
           </ExpandableSection>
 
-          {/* 👥 CLIENTES - COLAPSADO POR DEFECTO */}
+          {/*  CLIENTES - COLAPSADO POR DEFECTO */}
           {datos.metricas.clientesFrecuentes?.length > 0 && (
             <ExpandableSection
               title="Clientes Frecuentes"
@@ -528,16 +528,16 @@ const ReporteEmpleado = () => {
               icon={Users}
               count={datos.metricas.clientesFrecuentes.length}
             >
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"> {/* ✅ COMPACTADO: gap-2 */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"> {/*  COMPACTADO: gap-2 */}
                 {datos.metricas.clientesFrecuentes.map((cliente, index) => (
-                  <div key={index} className="p-2 border border-gray-200 rounded hover:shadow-sm"> {/* ✅ COMPACTADO: p-2 */}
+                  <div key={index} className="p-2 border border-gray-200 rounded hover:shadow-sm"> {/*  COMPACTADO: p-2 */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h5 className="font-medium text-xs text-gray-900 truncate">{cliente.nombre}</h5> {/* ✅ COMPACTADO: text-xs */}
+                        <h5 className="font-medium text-xs text-gray-900 truncate">{cliente.nombre}</h5> {/*  COMPACTADO: text-xs */}
                         <p className="text-xs text-gray-500">{cliente.visitas} visitas</p>
                       </div>
                       <span className="text-xs">
-                        {cliente.visitas >= 5 ? '⭐' : cliente.visitas >= 3 ? '👤' : '•'}
+                        {cliente.visitas >= 5 ? '' : cliente.visitas >= 3 ? '' : '•'}
                       </span>
                     </div>
                   </div>
@@ -548,18 +548,18 @@ const ReporteEmpleado = () => {
         </>
       )}
 
-      {/* 📝 ESTADO VACÍO - COMPACTO */}
+      {/*  ESTADO VACÍO - COMPACTO */}
       {!datos && !loading && (
-        <div className="bg-white rounded-lg p-8 text-center shadow-sm border"> {/* ✅ COMPACTADO: p-8 */}
-          <User className="h-12 w-12 mx-auto mb-3 text-gray-300" /> {/* ✅ COMPACTADO: h-12 w-12 mb-3 */}
-         <h3 className="text-lg font-semibold text-gray-900 mb-2"> {/* ✅ COMPACTADO: text-lg mb-2 */}
+        <div className="bg-white rounded-lg p-8 text-center shadow-sm border"> {/*  COMPACTADO: p-8 */}
+          <User className="h-12 w-12 mx-auto mb-3 text-gray-300" /> {/*  COMPACTADO: h-12 w-12 mb-3 */}
+         <h3 className="text-lg font-semibold text-gray-900 mb-2"> {/*  COMPACTADO: text-lg mb-2 */}
            Selecciona un empleado para generar su reporte
          </h3>
-         <p className="text-sm text-gray-600 mb-4"> {/* ✅ COMPACTADO: text-sm mb-4 */}
+         <p className="text-sm text-gray-600 mb-4"> {/*  COMPACTADO: text-sm mb-4 */}
            Elige un usuario y el período para ver sus métricas detalladas
          </p>
-         <div className="flex items-center justify-center space-x-2 text-xs text-gray-500"> {/* ✅ COMPACTADO: text-xs */}
-           <AlertCircle className="h-3 w-3" /> {/* ✅ COMPACTADO: h-3 w-3 */}
+         <div className="flex items-center justify-center space-x-2 text-xs text-gray-500"> {/*  COMPACTADO: text-xs */}
+           <AlertCircle className="h-3 w-3" /> {/*  COMPACTADO: h-3 w-3 */}
            <span>El usuario es obligatorio para generar el reporte</span>
          </div>
        </div>

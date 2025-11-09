@@ -22,7 +22,7 @@ const useKeyboardShortcuts = () => {
         window.dispatchEvent(new CustomEvent('openCerrarCajaModal'));
       }
 
-      // 👈 NUEVO: Ctrl + P para inventario
+      //  NUEVO: Ctrl + P para inventario
       if (event.ctrlKey && event.key === 'p') {
         event.preventDefault();
         window.dispatchEvent(new CustomEvent('openInventarioModal'));

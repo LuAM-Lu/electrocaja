@@ -1,13 +1,13 @@
 // components/inventario/ImageUploader.jsx
 import React, { useState, useRef } from 'react';
 import { Upload, X, Camera, Image, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { API_CONFIG, getImageUrl } from '../../config/api';
 
 const ImageUploader = ({ 
   value, 
   onChange, 
-  productInfo = null, // 🆕 Info del producto para nombres inteligentes
+  productInfo = null, //  Info del producto para nombres inteligentes
   maxSize = 3, // MB
   allowedFormats = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'],
   targetSize = 400, // px para redimensionar
@@ -58,14 +58,14 @@ const ImageUploader = ({
     // Validar formato
     if (!allowedFormats.includes(file.type)) {
       const formatsText = allowedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ');
-      toast.error(`❌ Formato no válido\nSolo se permiten: ${formatsText}`);
+      toast.error(`Formato no válido\nSolo se permiten: ${formatsText}`);
       return false;
     }
 
     // Validar tamaño
     const sizeMB = file.size / (1024 * 1024);
     if (sizeMB > maxSize) {
-      toast.error(`❌ Archivo muy grande\nTamaño máximo: ${maxSize}MB\nTamaño actual: ${sizeMB.toFixed(1)}MB`);
+      toast.error(`Archivo muy grande\nTamaño máximo: ${maxSize}MB\nTamaño actual: ${sizeMB.toFixed(1)}MB`);
       return false;
     }
 
@@ -142,7 +142,7 @@ const ImageUploader = ({
     });
   };
 
-// ✅ VERSIÓN OPTIMIZADA CON CARPETA TEMPORAL
+//  VERSIÓN OPTIMIZADA CON CARPETA TEMPORAL
 const handleFile = async (file) => {
   if (!validateFile(file)) return;
 
@@ -150,7 +150,7 @@ const handleFile = async (file) => {
   setUploadProgress(0);
 
   try {
-    // 🔥 GENERAR NOMBRE INTELIGENTE TEMPORAL
+    //  GENERAR NOMBRE INTELIGENTE TEMPORAL
     const generateTempFileName = () => {
       const productCode = productInfo?.codigo_interno || 
                          productInfo?.codigo_barras || 
@@ -175,7 +175,7 @@ const handleFile = async (file) => {
     });
     
     formData.append('image', renamedFile);
-    formData.append('isTemporary', 'true'); // 🔥 FLAG para carpeta temporal
+    formData.append('isTemporary', 'true'); //  FLAG para carpeta temporal
     formData.append('productCode', productInfo?.codigo_interno || productInfo?.codigo_barras || '');
     
     // Progreso simulado
@@ -183,7 +183,7 @@ const handleFile = async (file) => {
       setUploadProgress(prev => Math.min(prev + 15, 90));
     }, 200);
 
-    // 🌐 UPLOAD A CARPETA TEMPORAL
+    //  UPLOAD A CARPETA TEMPORAL
     const response = await fetch('/api/inventory/upload-image', {
       method: 'POST',
       body: formData,
@@ -201,7 +201,7 @@ const handleFile = async (file) => {
     const result = await response.json();
     
     if (result.success) {
-      // 🔥 GUARDAR INFO TEMPORAL para mover después
+      //  GUARDAR INFO TEMPORAL para mover después
       const tempImageData = {
         tempPath: result.data.tempPath,
         tempFilename: result.data.filename,
@@ -212,7 +212,7 @@ const handleFile = async (file) => {
       const imageUrl = `/uploads/temp/${result.data.filename}`;
       setPreview(imageUrl);
       
-      // 🔥 PASAR OBJETO CON INFO TEMPORAL
+      //  PASAR OBJETO CON INFO TEMPORAL
       onChange({
         url: imageUrl,
         tempData: tempImageData,
@@ -225,8 +225,8 @@ const handleFile = async (file) => {
         setUploadProgress(0);
         
         toast.success(
-          `📸 Imagen temporal: ${result.data.filename}\n✅ Se moverá al guardar el producto`, 
-          { duration: 4000, icon: '⏳' }
+          `Imagen temporal: ${result.data.filename}\n Se moverá al guardar el producto`,
+          { duration: 4000 }
         );
       }, 500);
     } else {
@@ -236,7 +236,7 @@ const handleFile = async (file) => {
   } catch (error) {
     setLoading(false);
     setUploadProgress(0);
-    toast.error(`❌ Error al subir imagen: ${error.message}`);
+    toast.error(`Error al subir imagen: ${error.message}`);
     console.error('Error uploading temp image:', error);
   }
 };
@@ -248,7 +248,7 @@ const handleFile = async (file) => {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    toast.success('🗑️ Imagen eliminada');
+    toast.success('Imagen eliminada');
   };
 
   // Obtener estadísticas de la imagen

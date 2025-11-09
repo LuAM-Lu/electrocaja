@@ -9,13 +9,13 @@ import BarcodeScanner from './BarcodeScanner';
 import ImageUploader from './ImageUploader';
 import PriceCalculator from './PriceCalculator';
 import TabNavigation from './TabNavigation';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { API_CONFIG } from '../../config/api';
 import { api } from '../../config/api';
 
 
 
-// 🔧 HELPER PARA FOCUS AUTOMÁTICO
+//  HELPER PARA FOCUS AUTOMÁTICO
 const focusNextInput = (currentInput) => {
   // Obtener todos los inputs visibles y habilitados
   const allInputs = Array.from(document.querySelectorAll(
@@ -45,7 +45,7 @@ const focusNextInput = (currentInput) => {
   return false;
 };
 
-// 🔧 HANDLER UNIVERSAL PARA ENTER
+//  HANDLER UNIVERSAL PARA ENTER
 const handleEnterKey = (e, callback = null) => {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -61,10 +61,10 @@ const handleEnterKey = (e, callback = null) => {
 };
 
 // ===========================
-// 🔧 CONSTANTES
+//  CONSTANTES
 // ===========================
 const CATEGORIAS_DEFAULT = [
-  // 📱 Dispositivos
+  //  Dispositivos
   'Smartphones',
   'Tablets',
   'Laptops',
@@ -73,7 +73,7 @@ const CATEGORIAS_DEFAULT = [
   'Smartwatch',
   'Hogar Inteligente',
 
-  // 🎧 Audio & Video
+  //  Audio & Video
   'Audífonos',
   'Cornetas y Parlantes',
   'Micrófonos',
@@ -82,7 +82,7 @@ const CATEGORIAS_DEFAULT = [
   'Proyectores',
   'Streaming & Cámaras',
 
-  // 🎮 Gaming
+  //  Gaming
   'Gaming',
   'Accesorios Gaming',
   'Sillas Gamer',
@@ -90,7 +90,7 @@ const CATEGORIAS_DEFAULT = [
   'Controles & Joysticks',
   'Merchandising Gaming',
 
-  // 🔌 Accesorios
+  //  Accesorios
   'Accesorios',
   'Cables y Adaptadores',
   'Cargadores y Fuentes',
@@ -100,7 +100,7 @@ const CATEGORIAS_DEFAULT = [
   'Teclados y Mouse',
   'Redes & WiFi',
 
-  // 🛠️ Servicios Técnicos
+  //  Servicios Técnicos
   'Reparaciones',
   'Servicios Técnicos',
   'Mantenimiento de PC',
@@ -108,13 +108,13 @@ const CATEGORIAS_DEFAULT = [
   'Armado de PC',
   'Instalaciones Especiales',
 
-  // 🍹 Electrobar / Gadgets
+  //  Electrobar / Gadgets
   'Electrobar',
   'Gadgets Curiosos',
   'Coleccionables',
   'Otros',
 
-  // 📦 Extra
+  //  Extra
   'Ofertas',
   'Accesorios Premium',
   'Otros Productos',
@@ -128,7 +128,7 @@ const UBICACIONES_DEFAULT = [
   'Mostrador de Gancho', 'Mostrador 1 ', 'Mostrador 2', 'Electrobar', 'Servicio Técnico', "Oficina", "Vitrina Caja"
 ];
 
-// 🔧 FUNCIÓN PARA CARGAR PROVEEDORES DESDE BACKEND
+//  FUNCIÓN PARA CARGAR PROVEEDORES DESDE BACKEND
 const cargarProveedoresDesdeBackend = async () => {
   try {
     const response = await api.get('/proveedores');
@@ -143,7 +143,7 @@ const cargarProveedoresDesdeBackend = async () => {
 
 
 // ===========================
-// 🎯 COMPONENTE PRINCIPAL
+//  COMPONENTE PRINCIPAL
 // ===========================
 const ItemModal = ({ 
   isOpen, 
@@ -164,10 +164,10 @@ const ItemModal = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const isEditing = !!item;
   
-  // 🔴 Estado para validación visual de código interno
+  //  Estado para validación visual de código interno
 const [codigoInternoError, setCodigoInternoError] = useState(false);
 
-// 🆕 ESTADO DEL FORMULARIO UNIFICADO
+//  ESTADO DEL FORMULARIO UNIFICADO
 const [formData, setFormData] = useState({
   // Básico
   descripcion: '',
@@ -194,27 +194,33 @@ const [formData, setFormData] = useState({
   // Proveedor
   proveedor: '',
   telefono_proveedor: '',
-  proveedor_factura_iva: true, // 🆕 NUEVO CAMPO
+  proveedor_factura_iva: true, //  NUEVO CAMPO
   
   // Control
   activo: true,
   observaciones: ''
 });
 
+  //  Flag para prevenir detección temprana de cambios
+  const [isInitializing, setIsInitializing] = useState(true);
+
   // Detectar cambios no guardados
   useEffect(() => {
+    //  NO detectar cambios durante la inicialización
+    if (isInitializing) return;
+
     if (item) {
       // Comparar con datos originales si está editando
       const hasChanges = JSON.stringify(formData) !== JSON.stringify(getInitialFormData(item));
       setHasUnsavedChanges(hasChanges);
     } else {
       // Para nuevo item, detectar si hay algún campo lleno
-      const hasData = Object.values(formData).some(value => 
+      const hasData = Object.values(formData).some(value =>
         value !== '' && value !== '30' && value !== '0' && value !== '5' && value !== '100' && value !== true
       );
       setHasUnsavedChanges(hasData);
     }
-  }, [formData, item]);
+  }, [formData, item, isInitializing]);
 
 const getInitialFormData = (itemData = null) => {
   if (itemData) {
@@ -222,34 +228,34 @@ const getInitialFormData = (itemData = null) => {
       descripcion: itemData.descripcion || '',
       tipo: itemData.tipo || 'producto',
      
-      // 🔧 CÓDIGOS - Mapeo robusto frontend/backend
+      //  CÓDIGOS - Mapeo robusto frontend/backend
       codigo_barras: itemData.codigo_barras || itemData.codigoBarras || '',
       codigo_interno: itemData.codigo_interno || itemData.codigoInterno || '',
      
       categoria: itemData.categoria || '',
      
-      // 🔧 PRECIOS - Mapeo completo de todas las variantes
+      //  PRECIOS - Mapeo completo de todas las variantes
       precio_costo: itemData.precio_costo?.toString() || itemData.precioCosto?.toString() || '',
       precio_venta: itemData.precio_venta?.toString() || itemData.precioVenta?.toString() || itemData.precio?.toString() || '',
       margen_porcentaje: itemData.margen_porcentaje?.toString() || itemData.margenPorcentaje?.toString() || '30',
      
       descuento_maximo: itemData.descuento_maximo?.toString() || '0',
      
-      // 🔧 STOCK - Mapeo de variantes
+      //  STOCK - Mapeo de variantes
       stock: itemData.stock?.toString() || '',
       stock_minimo: itemData.stock_minimo?.toString() || itemData.stockMinimo?.toString() || '5',
       stock_maximo: itemData.stock_maximo?.toString() || itemData.stockMaximo?.toString() || '100',
      
-      // 🔧 UBICACIÓN E IMAGEN
+      //  UBICACIÓN E IMAGEN
       ubicacion_fisica: itemData.ubicacion_fisica || itemData.ubicacionFisica || '',
       imagen_url: itemData.imagen_url || itemData.imagenUrl || '',
      
-      // 🔧 PROVEEDOR
+      //  PROVEEDOR
       proveedor: itemData.proveedor || '',
       telefono_proveedor: itemData.telefono_proveedor || itemData.telefonoProveedor || '',
-      proveedor_factura_iva: itemData.proveedor_factura_iva !== undefined ? itemData.proveedor_factura_iva : true, // 🆕 NUEVO CAMPO
+      proveedor_factura_iva: itemData.proveedor_factura_iva !== undefined ? itemData.proveedor_factura_iva : true, //  NUEVO CAMPO
      
-      // 🔧 CONTROL
+      //  CONTROL
       activo: itemData.activo !== undefined ? itemData.activo : true,
       observaciones: itemData.observaciones || ''
     };
@@ -272,7 +278,7 @@ const getInitialFormData = (itemData = null) => {
       imagen_url: '',
       proveedor: '',
       telefono_proveedor: '',
-      proveedor_factura_iva: true, // 🆕 NUEVO CAMPO
+      proveedor_factura_iva: true, //  NUEVO CAMPO
       activo: true,
       observaciones: ''
     };
@@ -280,11 +286,43 @@ const getInitialFormData = (itemData = null) => {
 
   // Inicializar formulario cuando se abre el modal
   useEffect(() => {
+    console.log(' [ItemFormModal] useEffect isOpen cambió:', {
+      isOpen,
+      item: item?.id || 'nuevo',
+      timestamp: new Date().toISOString()
+    });
+
     if (isOpen) {
+      console.log(' [ItemFormModal] Modal ABIERTO - Inicializando...');
+      setIsInitializing(true); //  Marcar que estamos inicializando
       const initialData = getInitialFormData(item);
       setFormData(initialData);
       setActiveTab('basico');
       setHasUnsavedChanges(false);
+
+      //  Desactivar flag de inicialización después de un momento
+      const timer = setTimeout(() => {
+        console.log(' [ItemFormModal] Inicialización completada - Listo para editar');
+        setIsInitializing(false);
+      }, 500);
+
+      //  PROTECCIÓN: Marcar modal como activo en el almacenamiento de sesión
+      // Esto evita que otros eventos cierren este modal
+      sessionStorage.setItem('itemFormModalActive', 'true');
+      console.log(' [ItemFormModal] Modal marcado como activo en sesión');
+
+      return () => {
+        console.log(' [ItemFormModal] Cleanup del useEffect');
+        clearTimeout(timer);
+        //  Limpiar marca de modal activo
+        sessionStorage.removeItem('itemFormModalActive');
+      };
+    } else {
+      console.log(' [ItemFormModal] Modal CERRADO');
+      //  Resetear flag cuando se cierra
+      setIsInitializing(true);
+      //  Asegurar limpieza de marca de sesión
+      sessionStorage.removeItem('itemFormModalActive');
     }
   }, [isOpen, item]);
 
@@ -306,7 +344,7 @@ useEffect(() => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  // ✅ Validar código interno en tiempo real
+  //  Validar código interno en tiempo real
 const validateCodigoInterno = useCallback((codigo) => {
   if (!codigo || isEditing) {
     setCodigoInternoError(false);
@@ -327,8 +365,8 @@ useEffect(() => {
   validateCodigoInterno(formData.codigo_interno);
 }, [formData.codigo_interno, validateCodigoInterno]);
 
-  // ✅ NUEVO - Sin spam de notificaciones
-// ✅ VERSIÓN ÁGIL CON AUTOSELECT Y FOCUS
+  //  NUEVO - Sin spam de notificaciones
+//  VERSIÓN ÁGIL CON AUTOSELECT Y FOCUS
 const handleBarcodeScan = useCallback((code) => {
   // Buscar productos existentes (solo activos)
   const existingItem = inventario.find(inventoryItem =>
@@ -338,16 +376,16 @@ const handleBarcodeScan = useCallback((code) => {
   );
  
   if (existingItem) {
-    // 🎯 AUTOSELECT - Preguntar si quiere usar los datos existentes
+    //  AUTOSELECT - Preguntar si quiere usar los datos existentes
     toast(
       (t) => (
         <div className="flex flex-col space-y-2">
-          <div className="font-medium">🎯 Producto encontrado:</div>
+          <div className="font-medium"> Producto encontrado:</div>
           <div className="text-sm text-gray-600">{existingItem.descripcion}</div>
           <div className="flex space-x-2">
             <button
               onClick={() => {
-                // 🔥 AUTO-LLENAR DATOS
+                //  AUTO-LLENAR DATOS
                 const datosExistentes = {
                   descripcion: existingItem.descripcion?.toUpperCase() || '',
                   tipo: existingItem.tipo || 'producto',
@@ -367,21 +405,21 @@ const handleBarcodeScan = useCallback((code) => {
                 }));
                 
                 toast.dismiss(t.id);
-                toast.success('✅ Datos cargados automáticamente');
+                toast.success('Datos cargados automáticamente');
                 
-                // 🎯 FOCUS AL STOCK
+                //  FOCUS AL STOCK
                 setTimeout(() => {
                   const stockInput = document.querySelector('input[type="number"][placeholder="0"]');
                   if (stockInput) {
                     stockInput.focus();
                     stockInput.select();
-                    toast.info('📦 Ajuste el stock si es necesario', { duration: 2000 });
+                    toast.info('Ajuste el stock si es necesario', { duration: 2000 });
                   }
                 }, 500);
               }}
               className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
             >
-              ✅ Usar datos
+               Usar datos
             </button>
             <button
               onClick={() => {
@@ -391,7 +429,7 @@ const handleBarcodeScan = useCallback((code) => {
               }}
               className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
             >
-              📝 Solo código
+               Solo código
             </button>
           </div>
         </div>
@@ -408,20 +446,20 @@ const handleBarcodeScan = useCallback((code) => {
       updateFormData('codigo_interno', `INT${timestamp}`);
     }
     
-    // 🎯 FOCUS AL SIGUIENTE CAMPO
+    //  FOCUS AL SIGUIENTE CAMPO
     setTimeout(() => {
       if (!formData.descripcion) {
         const descripcionInput = document.querySelector('input[placeholder*="DESCRIPTIVO"]');
         if (descripcionInput) {
           descripcionInput.focus();
-          toast.info('📝 Complete la descripción', { duration: 2000 });
+          toast.info('Complete la descripción', { duration: 2000 });
         }
       } else {
         const categoriaSelect = document.querySelector('select[value=""]');
         if (categoriaSelect) {
           categoriaSelect.focus();
           categoriaSelect.click();
-          toast.info('📁 Seleccione la categoría', { duration: 2000 });
+          toast.info('Seleccione la categoría', { duration: 2000 });
         }
       }
     }, 300);
@@ -441,12 +479,12 @@ const handleBarcodeScan = useCallback((code) => {
       errors.push({ tab: 'basico', message: 'El código de barras es obligatorio' });
     }
 
- // ✅ PERMITIR códigos duplicados - solo mostrar warning en consola
+ //  PERMITIR códigos duplicados - solo mostrar warning en consola
 if (!item && existingCodes.includes(formData.codigo_barras.toUpperCase())) {
-  console.warn('⚠️ Código de barras duplicado detectado:', formData.codigo_barras);
+  console.warn(' Código de barras duplicado detectado:', formData.codigo_barras);
   // Ya NO es error - permitir guardar items con códigos duplicados
 }
-// 🔒 VALIDAR que código interno SÍ sea único (CRÍTICO)
+//  VALIDAR que código interno SÍ sea único (CRÍTICO)
 const existingInternalCodes = inventario
   .filter(inventoryItem => inventoryItem.id !== item?.id)
   .map(inventoryItem => inventoryItem.codigo_interno)
@@ -498,18 +536,17 @@ if (formData.codigo_interno && existingInternalCodes.includes(formData.codigo_in
       setActiveTab(firstError.tab);
       toast.error(firstError.message, {
         duration: 4000,
-        icon: '⚠️'
       });
       return;
     }
 
     setSaving(true);
 
-  // 🧪 DEBUG TEMPORAL
-  console.log('🔧 ITEMFORMMODAL - Guardando producto...');
-  console.log('🔧 API Estado:', window.inventarioAPI?.estado());
-  console.log('🔧 FormData completo:', formData);
-  console.log('🔧 Precios específicos:', {
+  //  DEBUG TEMPORAL
+  console.log(' ITEMFORMMODAL - Guardando producto...');
+  console.log(' API Estado:', window.inventarioAPI?.estado());
+  console.log(' FormData completo:', formData);
+  console.log(' Precios específicos:', {
     precio_costo: formData.precio_costo,
     precio_venta: formData.precio_venta,
     tipo_precio_costo: typeof formData.precio_costo,
@@ -541,35 +578,54 @@ if (formData.codigo_interno && existingInternalCodes.includes(formData.codigo_in
         ...(item ? {} : { fecha_creacion: new Date().toISOString() })
       };
 
-      console.log('🔧 ItemData final:', itemData);
+      console.log(' ItemData final:', itemData);
 
-      // 🔥 MANEJAR IMAGEN TEMPORAL - MOVER A DEFINITIVO
+      //  MANEJAR IMAGEN TEMPORAL - MOVER A DEFINITIVO
             let savedItem;
               if (item) {
                 savedItem = await actualizarItem(item.id, formData);
-                toast.success(`✅ ${formData.descripcion} actualizado correctamente`, {
+                toast.success(`${formData.descripcion} actualizado correctamente`, {
                   duration: 3000,
-                  icon: '🔄'
                 });
               } else {
                 savedItem = await agregarItem(formData);
-                toast.success(`✅ ${formData.descripcion} agregado al inventario`, {
+                toast.success(`${formData.descripcion} agregado al inventario`, {
                   duration: 3000,
-                  icon: '➕'
                 });
               }
 
       // Callback de éxito
-      onSave(savedItem);
-      
-      // Cerrar modal
-      handleClose();
+      if (onSave && typeof onSave === 'function') {
+        onSave(savedItem);
+      }
+
+      // Cerrar modal después de guardar exitosamente
+      setHasUnsavedChanges(false);
+      setIsInitializing(true);
+
+      //  Limpiar marca de modal activo ANTES de cerrar
+      sessionStorage.removeItem('itemFormModalActive');
+
+      //  APLICAR ACTUALIZACIONES PENDIENTES DE INVENTARIO
+      const actualizacionPendiente = sessionStorage.getItem('inventarioPendienteActualizar') === 'true';
+      if (actualizacionPendiente) {
+        console.log(' Aplicando actualización de inventario pendiente...');
+        sessionStorage.removeItem('inventarioPendienteActualizar');
+
+        // Recargar inventario después de cerrar el modal
+        setTimeout(async () => {
+          const { useInventarioStore } = await import('../../store/inventarioStore');
+          await useInventarioStore.getState().obtenerInventario();
+          toast.success('Inventario actualizado', { duration: 2000 });
+        }, 300);
+      }
+
+      onClose();
 
     } catch (error) {
       console.error('Error al guardar item:', error);
       toast.error(error.message || 'Error al guardar el item', {
         duration: 4000,
-        icon: '❌'
       });
     } finally {
       setSaving(false);
@@ -599,9 +655,40 @@ const getImageUrl = (imagePath) => {
  const [showExitModal, setShowExitModal] = useState(false);
 
 const handleClose = () => {
-  if (hasUnsavedChanges && !saving) {
+  console.log(' handleClose llamado:', {
+    hasUnsavedChanges,
+    saving,
+    isInitializing,
+    willShowExitModal: hasUnsavedChanges && !saving && !isInitializing
+  });
+
+  //  NO mostrar confirmación si está inicializando o guardando
+  if (hasUnsavedChanges && !saving && !isInitializing) {
+    console.log(' Mostrando modal de confirmación');
     setShowExitModal(true);
   } else {
+    console.log(' Cerrando modal directamente');
+    //  Limpiar estados antes de cerrar
+    setShowExitModal(false);
+    setHasUnsavedChanges(false);
+    setIsInitializing(true);
+
+    //  Limpiar marca de modal activo
+    sessionStorage.removeItem('itemFormModalActive');
+
+    //  APLICAR ACTUALIZACIONES PENDIENTES
+    const actualizacionPendiente = sessionStorage.getItem('inventarioPendienteActualizar') === 'true';
+    if (actualizacionPendiente) {
+      console.log(' Aplicando actualización de inventario pendiente (al cancelar)...');
+      sessionStorage.removeItem('inventarioPendienteActualizar');
+
+      setTimeout(async () => {
+        const { useInventarioStore } = await import('../../store/inventarioStore');
+        await useInventarioStore.getState().obtenerInventario();
+        toast.success('Inventario actualizado', { duration: 2000 });
+      }, 300);
+    }
+
     onClose();
   }
 };
@@ -609,6 +696,23 @@ const handleClose = () => {
 const handleConfirmExit = () => {
   setHasUnsavedChanges(false);
   setShowExitModal(false);
+
+  //  Limpiar marca de modal activo
+  sessionStorage.removeItem('itemFormModalActive');
+
+  //  APLICAR ACTUALIZACIONES PENDIENTES
+  const actualizacionPendiente = sessionStorage.getItem('inventarioPendienteActualizar') === 'true';
+  if (actualizacionPendiente) {
+    console.log(' Aplicando actualización de inventario pendiente (confirmación de salida)...');
+    sessionStorage.removeItem('inventarioPendienteActualizar');
+
+    setTimeout(async () => {
+      const { useInventarioStore } = await import('../../store/inventarioStore');
+      await useInventarioStore.getState().obtenerInventario();
+      toast.success('Inventario actualizado', { duration: 2000 });
+    }, 300);
+  }
+
   onClose();
 };
 
@@ -623,7 +727,7 @@ const handleCancelExit = () => {
       setFormData(initialData);
       setActiveTab('basico');
       setHasUnsavedChanges(false);
-      toast.success('🔄 Formulario reiniciado');
+      toast.success('Formulario reiniciado');
     }
   };
 
@@ -667,11 +771,41 @@ const handleCancelExit = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, hasUnsavedChanges, saving]);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    console.log(' [ItemFormModal] No renderizando - isOpen es false');
+    return null;
+  }
+
+  console.log(' [ItemFormModal] Renderizando modal:', {
+    isOpen,
+    isInitializing,
+    hasUnsavedChanges,
+    saving
+  });
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
+      onClick={(e) => {
+        console.log(' [ItemFormModal] Clic en backdrop:', {
+          isCurrentTarget: e.target === e.currentTarget,
+          isInitializing,
+          willClose: e.target === e.currentTarget && !isInitializing
+        });
+        //  Solo cerrar si se hace clic en el backdrop, no en el contenido del modal
+        if (e.target === e.currentTarget && !isInitializing) {
+          console.log(' [ItemFormModal] Cerrando por clic en backdrop');
+          handleClose();
+        }
+      }}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        onClick={(e) => {
+          console.log(' [ItemFormModal] Clic dentro del modal - Propagación detenida');
+          e.stopPropagation();
+        }} //  Prevenir que los clics dentro del modal se propaguen
+      >
         
         {/* Header */}
         <div className="bg-gradient-to-r from-indigo-500 to-purple-600 relative overflow-hidden">
@@ -681,14 +815,14 @@ const handleCancelExit = () => {
               <div className="flex items-center space-x-3">
                 <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
                   <span className="text-xl">
-                    {formData.tipo === 'producto' ? '📱' : 
-                     formData.tipo === 'servicio' ? '🔧' : 
-                     formData.tipo === 'electrobar' ? '🍿' : '📦'}
+                    {formData.tipo === 'producto' ? '' : 
+                     formData.tipo === 'servicio' ? '' : 
+                     formData.tipo === 'electrobar' ? '' : ''}
                   </span>
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">
-                    {item ? '✏️ Editar Item' : '➕ Nuevo Item'}
+                    {item ? ' Editar Item' : ' Nuevo Item'}
                   </h2>
                   <div className="text-sm text-white/90">
                     {formData.descripcion || 'Complete la información del item'}
@@ -742,7 +876,7 @@ const handleCancelExit = () => {
                   
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      📝 Descripción del Item *
+                       Descripción del Item *
                     </label>
                     
                     {isEditing ? (
@@ -755,10 +889,10 @@ const handleCancelExit = () => {
                           className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          🔒
+                          
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          🔒 Campo protegido - No se puede modificar al editar
+                           Campo protegido - No se puede modificar al editar
                         </div>
                       </div>
                     ) : (
@@ -781,14 +915,14 @@ const handleCancelExit = () => {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      ⚡ Estado
+                       Estado
                     </label>
                     <div className="flex justify-center">
                       <label className="inline-flex items-center cursor-pointer">
                         <span className={`mr-3 text-sm font-medium ${
                           !formData.activo ? 'text-red-600' : 'text-gray-400'
                         }`}>
-                          ❌ Inactivo
+                           Inactivo
                         </span>
                         
                         <input
@@ -812,7 +946,7 @@ const handleCancelExit = () => {
                         <span className={`ml-3 text-sm font-medium ${
                           formData.activo ? 'text-green-700' : 'text-gray-400'
                         }`}>
-                          ✅ Activo
+                           Activo
                         </span>
                       </label>
                     </div>
@@ -820,7 +954,7 @@ const handleCancelExit = () => {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      🏷️ Tipo de Item *
+                       Tipo de Item *
                     </label>
                     
                     {isEditing ? (
@@ -828,17 +962,17 @@ const handleCancelExit = () => {
                       <div className="relative">
                         <input
                           type="text"
-                          value={formData.tipo === 'producto' ? '📱 Producto' : 
-                                formData.tipo === 'servicio' ? '🔧 Servicio' : 
-                                '🍿 Electrobar'}
+                          value={formData.tipo === 'producto' ? ' Producto' : 
+                                formData.tipo === 'servicio' ? ' Servicio' : 
+                                ' Electrobar'}
                           readOnly
                           className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          🔒
+                          
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          🔒 Campo protegido - No se puede modificar al editar
+                           Campo protegido - No se puede modificar al editar
                         </div>
                       </div>
                     ) : (
@@ -848,16 +982,16 @@ const handleCancelExit = () => {
                         onChange={(e) => updateFormData('tipo', e.target.value)}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                       >
-                        <option value="producto">📱 Producto</option>
-                        <option value="servicio">🔧 Servicio</option>
-                        <option value="electrobar">🍿 Electrobar</option>
+                        <option value="producto"> Producto</option>
+                        <option value="servicio"> Servicio</option>
+                        <option value="electrobar"> Electrobar</option>
                       </select>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      📁 Categoría
+                       Categoría
                     </label>
                     <select
                       value={formData.categoria}
@@ -876,7 +1010,7 @@ const handleCancelExit = () => {
   {/* Código de Barras */}
   <div>
     <label className="block text-sm font-semibold text-gray-700 mb-2">
-      📊 Código de Barras *
+       Código de Barras *
     </label>
     
     {isEditing ? (
@@ -889,10 +1023,10 @@ const handleCancelExit = () => {
           className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
         />
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-          🔒
+          
         </div>
         <div className="text-xs text-gray-500 mt-1">
-          🔒 Campo protegido - No se puede modificar al editar
+           Campo protegido - No se puede modificar al editar
         </div>
       </div>
     ) : (
@@ -910,7 +1044,7 @@ const handleCancelExit = () => {
   {/* Código Interno */}
 <div>
   <label className="block text-sm font-semibold text-gray-700 mb-2">
-    🔢 Código Interno
+     Código Interno
   </label>
   <input
     type="text"
@@ -928,13 +1062,13 @@ const handleCancelExit = () => {
   />
   <div className="text-xs mt-1">
     {isEditing ? (
-      <span className="text-gray-500">🔒 Campo protegido - No se puede modificar al editar</span>
+      <span className="text-gray-500"> Campo protegido - No se puede modificar al editar</span>
     ) : codigoInternoError ? (
       <span className="text-red-600 flex items-center space-x-1">
-        <span>⚠️ Este código interno ya existe en el inventario</span>
+        <span> Este código interno ya existe en el inventario</span>
       </span>
     ) : (
-      <span className="text-gray-500">💡 Se genera automáticamente si se deja vacío</span>
+      <span className="text-gray-500"> Se genera automáticamente si se deja vacío</span>
     )}
   </div>
 </div>
@@ -948,10 +1082,10 @@ const handleCancelExit = () => {
                 <div className="mt-5">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-semibold text-gray-700">
-                        📝 Observaciones Adicionales
+                         Observaciones Adicionales
                       </label>
                       <span className="text-xs text-gray-500">
-                        💡 Información adicional que aparecerá en el detalle del producto
+                         Información adicional que aparecerá en el detalle del producto
                       </span>
                     </div>
                     
@@ -965,10 +1099,10 @@ const handleCancelExit = () => {
                           className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed resize-none"
                         />
                         <div className="absolute right-3 top-2">
-                          🔒
+                          
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          🔒 Campo protegido - No se puede modificar al editar
+                           Campo protegido - No se puede modificar al editar
                         </div>
                       </div>
                     ) : (
@@ -992,7 +1126,7 @@ const handleCancelExit = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      💰 Precio de Costo (USD) *
+                       Precio de Costo (USD) *
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
@@ -1008,7 +1142,7 @@ const handleCancelExit = () => {
                         if (costo > 0) {
                           const precioVenta = costo * (1 + margen / 100);
                           updateFormData('precio_venta', precioVenta.toFixed(2));
-                          toast.success(`💰 Precio calculado: $${precioVenta.toFixed(2)}`, { duration: 2000 });
+                          toast.success(`Precio calculado: $${precioVenta.toFixed(2)}`, { duration: 2000 });
                         }
                       })}
                       placeholder="0.00"
@@ -1020,7 +1154,7 @@ const handleCancelExit = () => {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      📈 Margen de Ganancia (%)
+                       Margen de Ganancia (%)
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
@@ -1057,7 +1191,7 @@ const handleCancelExit = () => {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      💵 Precio de Venta (USD) *
+                       Precio de Venta (USD) *
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">$</span>
@@ -1076,9 +1210,8 @@ const handleCancelExit = () => {
                             // Calcular margen: ((venta - costo) / costo) * 100
                             const margenCalculado = ((venta - costo) / costo) * 100;
                             updateFormData('margen_porcentaje', margenCalculado.toFixed(1));
-                            toast.success(`📊 Margen calculado: ${margenCalculado.toFixed(1)}%`, {
+                            toast.success(`Margen calculado: ${margenCalculado.toFixed(1)}%`, {
                               duration: 2000,
-                              icon: '📊'
                             });
                           }
                         }
@@ -1110,7 +1243,7 @@ const handleCancelExit = () => {
                       
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          📦 Stock Actual *
+                           Stock Actual *
                         </label>
                         <input
                           type="number"
@@ -1125,7 +1258,7 @@ const handleCancelExit = () => {
 
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          ⚠️ Stock Mínimo
+                           Stock Mínimo
                         </label>
                         <input
                           type="number"
@@ -1136,13 +1269,13 @@ const handleCancelExit = () => {
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                         />
                         <div className="text-xs text-gray-500 mt-1">
-                          💡 Alerta cuando el stock esté por debajo
+                           Alerta cuando el stock esté por debajo
                         </div>
                       </div>
 
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          📈 Stock Máximo
+                           Stock Máximo
                         </label>
                         <input
                           type="number"
@@ -1153,14 +1286,14 @@ const handleCancelExit = () => {
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                        />
                        <div className="text-xs text-gray-500 mt-1">
-                         💡 Capacidad máxima recomendada
+                          Capacidad máxima recomendada
                        </div>
                      </div>
                    </div>
 
                    <div>
                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                       📍 Ubicación Física
+                        Ubicación Física
                      </label>
                      <select
                        value={formData.ubicacion_fisica}
@@ -1173,7 +1306,7 @@ const handleCancelExit = () => {
                        ))}
                      </select>
                      <div className="text-xs text-gray-500 mt-1">
-                       💡 Donde se encuentra físicamente el item en el negocio
+                        Donde se encuentra físicamente el item en el negocio
                      </div>
                    </div>
                     {/* Alertas de Stock */}
@@ -1181,7 +1314,7 @@ const handleCancelExit = () => {
                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                        <div className="flex items-center space-x-2">
                          <AlertTriangle className="h-5 w-5 text-orange-600" />
-                         <span className="font-semibold text-orange-800">⚠️ Stock Bajo Detectado</span>
+                         <span className="font-semibold text-orange-800"> Stock Bajo Detectado</span>
                        </div>
                        <div className="text-sm text-orange-700 mt-1">
                          El stock actual ({formData.stock}) está en el límite mínimo ({formData.stock_minimo}). 
@@ -1193,14 +1326,14 @@ const handleCancelExit = () => {
                    {formData.tipo === 'electrobar' && (
                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                        <div className="flex items-center space-x-2 mb-2">
-                         <span className="text-lg">🍿</span>
+                         <span className="text-lg"></span>
                          <span className="font-semibold text-orange-800">Tips para Electrobar</span>
                        </div>
                        <div className="text-sm text-orange-700 space-y-1">
-                         <div>• 📦 Mantener stock mínimo de 10-15 unidades</div>
-                         <div>• ⏰ Verificar fechas de vencimiento regularmente</div>
-                         <div>• 🌡️ Almacenar en lugar fresco y seco</div>
-                         <div>• 💰 Margen recomendado: 40-60%</div>
+                         <div>•  Mantener stock mínimo de 10-15 unidades</div>
+                         <div>•  Verificar fechas de vencimiento regularmente</div>
+                         <div>•  Almacenar en lugar fresco y seco</div>
+                         <div>•  Margen recomendado: 40-60%</div>
                        </div>
                      </div>
                    )}
@@ -1208,7 +1341,7 @@ const handleCancelExit = () => {
                ) : (
                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
                    <div className="flex items-center justify-center space-x-2 mb-3">
-                     <span className="text-2xl">🔧</span>
+                     <span className="text-2xl"></span>
                      <span className="font-semibold text-blue-800 text-lg">Los servicios no manejan stock físico</span>
                    </div>
                    <div className="text-sm text-blue-700 max-w-md mx-auto">
@@ -1226,7 +1359,7 @@ const handleCancelExit = () => {
                
                <div>
                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                   🖼️ Imagen del Item
+                    Imagen del Item
                  </label>
                  <ImageUploader
                     value={formData.imagen_url}
@@ -1245,7 +1378,7 @@ const handleCancelExit = () => {
                {/* Preview del item en el sistema */}
                {(formData.descripcion || formData.imagen_url) && (
                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                   <h4 className="font-semibold text-gray-900 mb-3">👁️ Vista Previa en Sistema:</h4>
+                   <h4 className="font-semibold text-gray-900 mb-3"> Vista Previa en Sistema:</h4>
                    <div className="flex items-center space-x-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
                      {formData.imagen_url ? (
                        <img 
@@ -1256,9 +1389,9 @@ const handleCancelExit = () => {
                      ) : (
                        <div className="w-20 h-20 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
                          <span className="text-2xl">
-                           {formData.tipo === 'producto' ? '📱' : 
-                            formData.tipo === 'servicio' ? '🔧' : 
-                            formData.tipo === 'electrobar' ? '🍿' : '📦'}
+                           {formData.tipo === 'producto' ? '' : 
+                            formData.tipo === 'servicio' ? '' : 
+                            formData.tipo === 'electrobar' ? '' : ''}
                          </span>
                        </div>
                      )}
@@ -1301,7 +1434,7 @@ const handleCancelExit = () => {
     {formData.tipo === 'servicio' ? (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
         <div className="flex items-center justify-center space-x-2 mb-3">
-          <span className="text-2xl">🔧</span>
+          <span className="text-2xl"></span>
           <span className="font-semibold text-blue-800 text-lg">Los servicios no requieren proveedor</span>
         </div>
         <div className="text-sm text-blue-700 max-w-md mx-auto">
@@ -1309,13 +1442,13 @@ const handleCancelExit = () => {
           por lo que no necesitan información de proveedores externos.
         </div>
         <div className="mt-4 p-3 bg-green-100 border border-green-200 rounded-lg">
-          <div className="text-sm text-green-700 font-medium">✅ IVA automático:</div>
+          <div className="text-sm text-green-700 font-medium"> IVA automático:</div>
           <div className="text-xs text-green-600">Se aplicará 16% de IVA sobre el precio base en las ventas</div>
         </div>
       </div>
     ) : (
       <>
-       {/* 🆕 SECCIÓN IVA DEL PROVEEDOR - COMPACTA */}
+       {/*  SECCIÓN IVA DEL PROVEEDOR - COMPACTA */}
 <div className="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4">
   <div className="flex items-center space-x-2 mb-3">
     <h4 className="text-sm font-bold text-yellow-900">Información de IVA del Proveedor</h4>
@@ -1341,7 +1474,7 @@ const handleCancelExit = () => {
                   />
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
-                      <span className="text-lg">✅</span>
+                      <span className="text-lg"></span>
                       <span className="font-semibold text-green-700">SÍ, con factura</span>
                     </div>
                     <div className="text-xs text-green-600 mt-1">
@@ -1364,7 +1497,7 @@ const handleCancelExit = () => {
                   />
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
-                      <span className="text-lg">📝</span>
+                      <span className="text-lg"></span>
                       <span className="font-semibold text-orange-700">NO, sin factura</span>
                     </div>
                     <div className="text-xs text-orange-600 mt-1">
@@ -1385,7 +1518,7 @@ const handleCancelExit = () => {
                 <div className={`font-medium mb-2 ${
                   formData.proveedor_factura_iva ? 'text-green-800' : 'text-orange-800'
                 }`}>
-                  💡 Impacto en el cálculo de precios:
+                   Impacto en el cálculo de precios:
                 </div>
                 <div className={`text-xs ${
                   formData.proveedor_factura_iva ? 'text-green-700' : 'text-orange-700'
@@ -1405,7 +1538,7 @@ const handleCancelExit = () => {
           
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              🏢 Proveedor *
+               Proveedor *
             </label>
             <select
               value={formData.proveedor}
@@ -1421,7 +1554,7 @@ const handleCancelExit = () => {
               ))}
             </select>
             <div className="text-xs text-gray-500 mt-1">
-              💡 Puede agregar más proveedores desde Configuración
+               Puede agregar más proveedores desde Configuración
             </div>
           </div>
         </div>
@@ -1432,7 +1565,7 @@ const handleCancelExit = () => {
   return proveedorSeleccionado ? (
     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
       <h4 className="font-semibold text-green-800 mb-3 flex items-center">
-        <span className="mr-2">📋</span>
+        <span className="mr-2"></span>
         Información del Proveedor
       </h4>
       <div className="grid grid-cols-2 gap-3 text-sm">
@@ -1443,24 +1576,24 @@ const handleCancelExit = () => {
         {proveedorSeleccionado.contacto && (
           <div className="flex flex-col">
             <span className="text-green-600 font-medium">Contacto:</span>
-            <div className="text-green-800 break-words">👤 {proveedorSeleccionado.contacto}</div>
+            <div className="text-green-800 break-words"> {proveedorSeleccionado.contacto}</div>
           </div>
         )}
         {proveedorSeleccionado.telefono && (
           <div className="flex flex-col">
             <span className="text-green-600 font-medium">Teléfono:</span>
-            <div className="text-green-800 break-words">📞 {proveedorSeleccionado.telefono}</div>
+            <div className="text-green-800 break-words"> {proveedorSeleccionado.telefono}</div>
           </div>
         )}
         {proveedorSeleccionado.email && (
           <div className="flex flex-col">
             <span className="text-green-600 font-medium">Email:</span>
-            <div className="text-green-800 break-words">📧 {proveedorSeleccionado.email}</div>
+            <div className="text-green-800 break-words"> {proveedorSeleccionado.email}</div>
           </div>
         )}
         <div className="flex flex-col">
           <span className="text-green-600 font-medium">Estado:</span>
-          <div className="text-green-800">{proveedorSeleccionado.activo ? '✅ Activo' : '❌ Inactivo'}</div>
+          <div className="text-green-800">{proveedorSeleccionado.activo ? ' Activo' : ' Inactivo'}</div>
         </div>
       </div>
     </div>
@@ -1483,7 +1616,7 @@ const handleCancelExit = () => {
                      {/* Información de Creación */}
                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                        <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
-                         <span className="mr-2">📅</span>
+                         <span className="mr-2"></span>
                          Información de Registro
                        </h4>
                        <div className="space-y-3 text-sm">
@@ -1515,7 +1648,7 @@ const handleCancelExit = () => {
                      {/* Estadísticas de Ventas */}
                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                        <h4 className="font-semibold text-green-800 mb-3 flex items-center">
-                         <span className="mr-2">📊</span>
+                         <span className="mr-2"></span>
                          Estadísticas de Ventas
                        </h4>
                        <div className="space-y-3 text-sm">
@@ -1537,7 +1670,7 @@ const handleCancelExit = () => {
                          </div>
                        </div>
                        <div className="mt-3 text-xs text-green-600 bg-green-100 rounded p-2">
-                         💡 Las estadísticas se actualizarán automáticamente con las futuras ventas
+                          Las estadísticas se actualizarán automáticamente con las futuras ventas
                        </div>
                      </div>
                    </div>
@@ -1545,7 +1678,7 @@ const handleCancelExit = () => {
                    {/* Análisis de Precios */}
                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                      <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
-                       <span className="mr-2">💰</span>
+                       <span className="mr-2"></span>
                        Análisis de Precios
                      </h4>
                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
@@ -1579,37 +1712,37 @@ const handleCancelExit = () => {
                    {/* Alertas y Recomendaciones */}
                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                      <h4 className="font-semibold text-orange-800 mb-3 flex items-center">
-                       <span className="mr-2">💡</span>
+                       <span className="mr-2"></span>
                        Recomendaciones
                      </h4>
                      <div className="space-y-2 text-sm text-orange-700">
                        {formData.stock && formData.stock_minimo && parseInt(formData.stock) <= parseInt(formData.stock_minimo) && formData.tipo !== 'servicio' && (
                           <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                            <span>⚠️</span>
+                            <span></span>
                             <span>Stock bajo: Considere reabastecer pronto</span>
                           </div>
                         )}
                        {!formData.imagen_url && (
                          <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                           <span>📸</span>
+                           <span></span>
                            <span>Agregar imagen mejorará la experiencia de venta</span>
                          </div>
                        )}
                        {parseFloat(formData.margen_porcentaje || 0) < 20 && (
                          <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                           <span>💰</span>
+                           <span></span>
                            <span>Margen bajo: Considere revisar estrategia de precios</span>
                          </div>
                        )}
                        {formData.tipo !== 'servicio' && !formData.proveedor && (
                          <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                           <span>🏢</span>
+                           <span></span>
                            <span>Asignar proveedor facilitará el control de inventario</span>
                          </div>
                        )}
                        {!formData.categoria && (
                          <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                           <span>📁</span>
+                           <span></span>
                            <span>Agregar categoría ayudará con la organización</span>
                          </div>
                        )}
@@ -1620,7 +1753,7 @@ const handleCancelExit = () => {
                  // Vista para nuevo item
                  <div className="text-center py-12">
                    <div className="bg-gray-100 rounded-full p-8 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-                     <span className="text-3xl">📊</span>
+                     <span className="text-3xl"></span>
                    </div>
                    <h3 className="text-xl font-semibold text-gray-600 mb-3">
                      Estadísticas no disponibles
@@ -1631,7 +1764,7 @@ const handleCancelExit = () => {
                    </p>
                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-sm mx-auto">
                      <div className="text-sm text-blue-700">
-                       💡 <strong>Próximamente verás:</strong>
+                        <strong>Próximamente verás:</strong>
                        <ul className="text-left mt-2 space-y-1 text-xs">
                          <li>• Historial de ventas</li>
                          <li>• Tendencias de precios</li>
@@ -1720,7 +1853,7 @@ const handleCancelExit = () => {
          <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 rounded-t-xl">
            <div className="flex items-center space-x-3 text-white">
              <div className="bg-white/20 p-2 rounded-lg">
-               <span className="text-xl">⚠️</span>
+               <span className="text-xl"></span>
              </div>
              <div>
                <h3 className="text-lg font-bold">Cambios Sin Guardar</h3>

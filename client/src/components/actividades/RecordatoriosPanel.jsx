@@ -13,9 +13,9 @@ import {
   selectRecordatorios
 } from '../../store/actividadesStore';
 import { useAuthStore } from '../../store/authStore';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
-// 🎨 OBTENER COLOR POR PRIORIDAD
+//  OBTENER COLOR POR PRIORIDAD
 const getPrioridadColor = (prioridad) => {
   switch(prioridad) {
     case PRIORIDADES.ALTA.valor:
@@ -49,21 +49,21 @@ const getPrioridadColor = (prioridad) => {
   }
 };
 
-// 🎨 OBTENER COLOR POR ESTADO
+//  OBTENER COLOR POR ESTADO
 const getEstadoColor = (estado) => {
   switch(estado) {
     case ESTADOS.PENDIENTE:
-      return { bg: 'bg-blue-100', text: 'text-blue-700', emoji: '⏳' };
+      return { bg: 'bg-blue-100', text: 'text-blue-700', emoji: '' };
     case ESTADOS.EN_PROGRESO:
-      return { bg: 'bg-purple-100', text: 'text-purple-700', emoji: '🔄' };
+      return { bg: 'bg-purple-100', text: 'text-purple-700', emoji: '' };
     case ESTADOS.COMPLETADO:
-      return { bg: 'bg-green-100', text: 'text-green-700', emoji: '✅' };
+      return { bg: 'bg-green-100', text: 'text-green-700', emoji: '' };
     default:
-      return { bg: 'bg-gray-100', text: 'text-gray-700', emoji: '📋' };
+      return { bg: 'bg-gray-100', text: 'text-gray-700', emoji: '' };
   }
 };
 
-// 🔍 COMPONENTE DE BÚSQUEDA Y FILTROS
+//  COMPONENTE DE BÚSQUEDA Y FILTROS
 const FiltrosRecordatorios = ({ filtros, onFiltrosChange, usuarios = [] }) => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
@@ -104,9 +104,9 @@ const FiltrosRecordatorios = ({ filtros, onFiltrosChange, usuarios = [] }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
               >
                 <option value="">Todas</option>
-                <option value={PRIORIDADES.ALTA.valor}>🔴 Alta</option>
-                <option value={PRIORIDADES.MEDIA.valor}>🟡 Media</option>
-                <option value={PRIORIDADES.BAJA.valor}>🟢 Baja</option>
+                <option value={PRIORIDADES.ALTA.valor}> Alta</option>
+                <option value={PRIORIDADES.MEDIA.valor}> Media</option>
+                <option value={PRIORIDADES.BAJA.valor}> Baja</option>
               </select>
             </div>
 
@@ -121,9 +121,9 @@ const FiltrosRecordatorios = ({ filtros, onFiltrosChange, usuarios = [] }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
               >
                 <option value="">Todos</option>
-                <option value={ESTADOS.PENDIENTE}>⏳ Pendiente</option>
-                <option value={ESTADOS.EN_PROGRESO}>🔄 En Progreso</option>
-                <option value={ESTADOS.COMPLETADO}>✅ Completado</option>
+                <option value={ESTADOS.PENDIENTE}> Pendiente</option>
+                <option value={ESTADOS.EN_PROGRESO}> En Progreso</option>
+                <option value={ESTADOS.COMPLETADO}> Completado</option>
               </select>
             </div>
 
@@ -169,7 +169,7 @@ const FiltrosRecordatorios = ({ filtros, onFiltrosChange, usuarios = [] }) => {
   );
 };
 
-// 🧩 MODAL NUEVO RECORDATORIO
+//  MODAL NUEVO RECORDATORIO
 const NuevoRecordatorioModal = ({ isOpen, onClose, onCrear }) => {
   const [formData, setFormData] = useState({
     titulo: '',
@@ -212,7 +212,7 @@ const NuevoRecordatorioModal = ({ isOpen, onClose, onCrear }) => {
     e.preventDefault();
     
     if (!formData.titulo.trim() || !formData.fechaVencimiento) {
-      toast.error('⚠️ Completa los campos obligatorios');
+      toast.error('Completa los campos obligatorios');
       return;
     }
 
@@ -240,7 +240,7 @@ const NuevoRecordatorioModal = ({ isOpen, onClose, onCrear }) => {
       
       onClose();
     } catch (error) {
-      toast.error('❌ Error creando recordatorio');
+      toast.error('Error creando recordatorio');
     } finally {
       setLoading(false);
     }
@@ -385,9 +385,9 @@ const NuevoRecordatorioModal = ({ isOpen, onClose, onCrear }) => {
                 onChange={(e) => setFormData(prev => ({ ...prev, prioridad: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
-                <option value={PRIORIDADES.BAJA.valor}>🟢 Baja</option>
-                <option value={PRIORIDADES.MEDIA.valor}>🟡 Media</option>
-                <option value={PRIORIDADES.ALTA.valor}>🔴 Alta</option>
+                <option value={PRIORIDADES.BAJA.valor}> Baja</option>
+                <option value={PRIORIDADES.MEDIA.valor}> Media</option>
+                <option value={PRIORIDADES.ALTA.valor}> Alta</option>
               </select>
             </div>
             
@@ -502,7 +502,7 @@ const NuevoRecordatorioModal = ({ isOpen, onClose, onCrear }) => {
   );
 };
 
-// 📋 TARJETA DE RECORDATORIO
+//  TARJETA DE RECORDATORIO
 const RecordatorioCard = ({ recordatorio, onEstadoChange, onEliminar, canEdit }) => {
   const [showMenu, setShowMenu] = useState(false);
   const { usuario } = useAuthStore();
@@ -557,13 +557,13 @@ const RecordatorioCard = ({ recordatorio, onEstadoChange, onEliminar, canEdit })
               
               {esVencido && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 animate-pulse">
-                  🚨 VENCIDO
+                   VENCIDO
                 </span>
               )}
               
               {esHoy && !esVencido && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                  📅 HOY
+                   HOY
                 </span>
               )}
             </div>
@@ -607,7 +607,7 @@ const RecordatorioCard = ({ recordatorio, onEstadoChange, onEliminar, canEdit })
                     onClick={() => {
                       setShowMenu(false);
                       // TODO: Implementar edición
-                      toast.info('🔧 Función de edición próximamente');
+                      toast.info('Función de edición próximamente');
                     }}
                     className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center space-x-2"
                   >
@@ -688,7 +688,7 @@ const RecordatorioCard = ({ recordatorio, onEstadoChange, onEliminar, canEdit })
  );
 };
 
-// 🎯 COMPONENTE PRINCIPAL
+//  COMPONENTE PRINCIPAL
 const RecordatoriosPanel = () => {
  const [showNuevoModal, setShowNuevoModal] = useState(false);
  const [filtros, setFiltros] = useState({
@@ -800,9 +800,9 @@ const RecordatoriosPanel = () => {
  const handleEstadoChange = async (recordatorioId, nuevoEstado) => {
    try {
      // TODO: Implementar actualización de estado en el store
-     toast.success(`✅ Estado actualizado a: ${nuevoEstado}`);
+     toast.success(`Estado actualizado a: ${nuevoEstado}`);
    } catch (error) {
-     toast.error('❌ Error actualizando estado');
+     toast.error('Error actualizando estado');
    }
  };
 
@@ -966,8 +966,8 @@ const RecordatoriosPanel = () => {
          /* Estado vacío */
          <div className="flex flex-col items-center justify-center h-64">
            <div className="text-6xl mb-4">
-             {vistaActual === 'vencidos' ? '⏰' : 
-              vistaActual === 'mis_tareas' ? '🎯' : '📝'}
+             {vistaActual === 'vencidos' ? '' : 
+              vistaActual === 'mis_tareas' ? '' : ''}
            </div>
            <h3 className="text-xl font-semibold text-gray-900 mb-2">
              {vistaActual === 'vencidos' ? 'No hay recordatorios vencidos' :

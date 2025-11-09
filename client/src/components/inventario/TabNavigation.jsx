@@ -293,9 +293,9 @@ const tabs = [
            'bg-gray-100 text-gray-700'
          }`}>
            {formData?.tipo ? (
-             formData.tipo === 'producto' ? '📱 Producto' :
-             formData.tipo === 'servicio' ? '🔧 Servicio' :
-             formData.tipo === 'electrobar' ? '🍿 Electrobar' :
+             formData.tipo === 'producto' ? ' Producto' :
+             formData.tipo === 'servicio' ? ' Servicio' :
+             formData.tipo === 'electrobar' ? ' Electrobar' :
              formData.tipo
            ) : 'No definido'}
          </span>
@@ -305,7 +305,7 @@ const tabs = [
      {/* Atajos de teclado (solo mostrar en desktop) */}
      <div className="hidden lg:block mt-2 px-1">
        <div className="flex items-center space-x-4 text-xs text-gray-400">
-         <span>💡 Atajos:</span>
+         <span> Atajos:</span>
          <span><kbd className="px-1 bg-gray-100 rounded">Tab</kbd> Siguiente campo</span>
          <span><kbd className="px-1 bg-gray-100 rounded">Ctrl+S</kbd> Guardar</span>
          <span><kbd className="px-1 bg-gray-100 rounded">Esc</kbd> Cerrar</span>

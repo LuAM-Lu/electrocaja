@@ -26,6 +26,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^2.0.1",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.5",
     "prisma": "^6.10.1",
     "qrcode-terminal": "^0.12.0",

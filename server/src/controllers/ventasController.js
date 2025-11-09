@@ -1,6 +1,7 @@
 // server/src/controllers/ventasController.js
 const { PrismaClient, Decimal } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/responses');
+const stockService = require('../services/stockService');
 
 const prisma = new PrismaClient();
 
@@ -65,7 +66,7 @@ const generarCodigoVenta = async () => {
   return fallback;
 };
 // ===================================
-// 🔒 RESERVAR STOCK
+// 🔒 RESERVAR STOCK CON BLOQUEO PESIMISTA
 // ===================================
 const reservarStock = async (req, res) => {
   const timestamp = new Date().toISOString();
@@ -83,7 +84,7 @@ const reservarStock = async (req, res) => {
       return await reservarMultiplesProductos(req, res, items, sesionId, requestId);
     }
     
-    // Si es producto individual, usar lógica actual
+    // Si es producto individual, usar nuevo servicio
     const usuarioId = req.user.userId;
 
     console.log(`📋 [${requestId}] Parámetros:`, { productoId, cantidad, sesionId, usuarioId });
@@ -93,7 +94,7 @@ const reservarStock = async (req, res) => {
       ip: req.ip,
       userAgent: req.get('User-Agent')?.substr(0, 50)
     });
-    console.log(`🔒 [${requestId}] Iniciando reserva...`);
+    console.log(`🔒 [${requestId}] Iniciando reserva con bloqueo pesimista...`);
 
     // Validaciones
     if (!productoId || !cantidad || !sesionId) {
@@ -104,132 +105,28 @@ const reservarStock = async (req, res) => {
       return sendError(res, 'La cantidad debe ser mayor a 0', 400);
     }
 
-    // Buscar el producto
-    const producto = await prisma.product.findUnique({
-      where: { id: parseInt(productoId) }
-    });
-
-    if (!producto) {
-      return sendError(res, 'Producto no encontrado', 404);
-    }
-
-    // Solo productos físicos necesitan reserva de stock
-    if (producto.tipo === 'SERVICIO') {
-      return sendSuccess(res, {
-        reservado: true,
-        mensaje: 'Los servicios no requieren reserva de stock',
-        stockDisponible: 999999
-      });
-    }
-    // 🆕 CALCULAR STOCK REAL DISPONIBLE (stock - reservas activas)
-      const reservasActivasQuery = await prisma.stockMovement.findMany({
-        where: {
-          productoId: parseInt(productoId),
-          tipo: 'RESERVA',
-          transaccionId: null // Solo reservas no procesadas
-        },
-        select: {
-          cantidad: true,
-          motivo: true
-        }
-      });
-
-    // Excluir MI propia reserva del cálculo de stock disponible
-    const reservasDeOtros = reservasActivasQuery.filter(reserva => 
-      !reserva.motivo || !reserva.motivo.includes(sesionId)
+    // 🔒 USAR NUEVO SERVICIO CON BLOQUEO PESIMISTA
+    const resultado = await stockService.reservarStock(
+      parseInt(productoId),
+      cantidad,
+      sesionId,
+      usuarioId,
+      req.ip || req.connection.remoteAddress
     );
-    const totalReservadoPorOtros = reservasDeOtros.reduce((sum, reserva) => sum + reserva.cantidad, 0);
-    const stockRealDisponible = Math.max(0, producto.stock - totalReservadoPorOtros);
 
-    if (stockRealDisponible < cantidad) {
-      return sendError(res, `Stock insuficiente. Disponible: ${stockRealDisponible}, Solicitado: ${cantidad}`, 400);
-    }
+    console.log(`✅ [${requestId}] Reserva exitosa:`, resultado);
 
-    // Verificar si ya existe una reserva para esta sesión y producto
-    const reservaExistente = await prisma.stockMovement.findFirst({
-      where: {
-        productoId: parseInt(productoId),
-        tipo: 'RESERVA',
-        motivo: `Sesión: ${sesionId}`,
-        transaccionId: null
-      }
-    });
-
-    if (reservaExistente) {
-      // Acumular a la reserva existente
-      const nuevaCantidadTotal = reservaExistente.cantidad + cantidad;
-      
-      await prisma.stockMovement.update({
-        where: { id: reservaExistente.id },
-        data: {
-          cantidad: nuevaCantidadTotal,
-          stockNuevo: producto.stock,
-          fecha: new Date(),
-          observaciones: `${reservaExistente.observaciones} + ${cantidad} = ${nuevaCantidadTotal}`
-        }
-      });
-
-     console.log('✅ Reserva acumulada exitosamente:', nuevaCantidadTotal);
-      
-      // 🆕 DEBUG: Estado después de acumular
-      console.log('🔍 DEBUG POST-ACUMULACIÓN:', {
-        stockTotal: producto.stock,
-        miReservaAcumulada: nuevaCantidadTotal,
-        sesionId: sesionId
-      });
-    } else {
-      // Crear nueva reserva
-      await prisma.stockMovement.create({
-        data: {
-          productoId: parseInt(productoId),
-          tipo: 'RESERVA',
-          cantidad: cantidad,
-          stockAnterior: producto.stock,
-          stockNuevo: producto.stock,
-          motivo: `Sesión: ${sesionId}`,
-          observaciones: `Reserva temporal para venta en sesión ${sesionId}`,
-          usuarioId: usuarioId,
-          ipAddress: req.ip || req.connection.remoteAddress
-        }
-      });
-
-      console.log('✅ Nueva reserva creada exitosamente');
-    }
-
-    // 🆕 RECALCULAR STOCK DESPUÉS DE RESERVAR
-    const nuevasReservasQuery = await prisma.stockMovement.findMany({
-      where: {
-        productoId: parseInt(productoId),
-        tipo: 'RESERVA',
-        transaccionId: null
-      },
-      select: {
-        cantidad: true
-      }
-    });
-
-    const nuevoTotalReservado = nuevasReservasQuery.reduce((sum, reserva) => sum + reserva.cantidad, 0);
-    const nuevoStockDisponible = Math.max(0, producto.stock - nuevoTotalReservado);
-
-    sendSuccess(res, {
-      reservado: true,
-      producto: producto.descripcion,
-      stockTotal: producto.stock,
-      stockReservado: nuevoTotalReservado,
-      stockDisponible: nuevoStockDisponible,
-      cantidadReservada: cantidad,
-      sesionId: sesionId
-    }, 'Stock reservado correctamente');
+    sendSuccess(res, resultado, 'Stock reservado correctamente');
 
     // 📡 EMITIR EVENTO WEBSOCKET PARA SINCRONIZACIÓN EN TIEMPO REAL
     if (req.io) {
       req.io.emit('stock_reservado', {
         productoId: parseInt(productoId),
-        producto: producto.descripcion,
-        stockTotal: producto.stock,
-        stockReservado: nuevoTotalReservado,
-        stockDisponible: nuevoStockDisponible,
-        cantidadReservada: cantidad,
+        producto: resultado.producto,
+        stockTotal: resultado.stockTotal,
+        stockReservado: resultado.stockReservado,
+        stockDisponible: resultado.stockDisponible,
+        cantidadReservada: resultado.cantidadReservada,
         sesionId: sesionId,
         usuario: req.user?.nombre || req.user?.email,
         timestamp: new Date().toISOString()
@@ -239,6 +136,16 @@ const reservarStock = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error reservando stock:', error);
+    
+    // Manejar errores específicos del servicio
+    if (error.message.includes('Stock insuficiente')) {
+      return sendError(res, error.message, 400);
+    }
+    
+    if (error.message.includes('Producto no encontrado')) {
+      return sendError(res, error.message, 404);
+    }
+    
     sendError(res, 'Error interno del servidor');
   }
 };
@@ -429,7 +336,7 @@ const crearOActualizarReserva = async (tx, productoId, cantidad, sesionId, usuar
 };
 
 // ===================================
-// 🔓 LIBERAR STOCK
+// 🔓 LIBERAR STOCK CON TRANSACCIÓN ATÓMICA
 // ===================================
 const liberarStock = async (req, res) => {
   const timestamp = new Date().toISOString();
@@ -448,134 +355,61 @@ const liberarStock = async (req, res) => {
     if (!productoId && sesionId) {
       return await liberarTodasLasReservasDeSesion(req, res, sesionId, requestId);
     }
+
     console.log(`🌐 [${requestId}] Request info:`, {
       method: req.method,
       url: req.url,
       ip: req.ip,
       userAgent: req.get('User-Agent')?.substr(0, 50)
     });
-    console.log(`🔓 [${requestId}] Iniciando liberación...`);
+    console.log(`🔓 [${requestId}] Iniciando liberación con transacción atómica...`);
 
     // Validaciones
     if (!productoId || !sesionId) {
       return sendError(res, 'Faltan datos requeridos: productoId, sesionId', 400);
     }
 
-    // Buscar el producto
-    const producto = await prisma.product.findUnique({
-      where: { id: parseInt(productoId) }
-    });
+    // 🔓 USAR NUEVO SERVICIO CON TRANSACCIÓN ATÓMICA
+    const resultado = await stockService.liberarStock(
+      parseInt(productoId),
+      sesionId,
+      cantidad,
+      usuarioId,
+      req.ip || req.connection.remoteAddress
+    );
 
-    if (!producto) {
-      return sendError(res, 'Producto no encontrado', 404);
-    }
+    console.log(`✅ [${requestId}] Liberación exitosa:`, resultado);
 
-    // Solo productos físicos tienen reservas
-    if (producto.tipo === 'SERVICIO') {
-      return sendSuccess(res, {
-        liberado: true,
-        mensaje: 'Los servicios no tienen reservas que liberar'
-      });
-    }
-
-    // Buscar reserva activa para esta sesión
-    const reserva = await prisma.stockMovement.findFirst({
-      where: {
-        productoId: parseInt(productoId),
-        tipo: 'RESERVA',
-        motivo: `Sesión: ${sesionId}`,
-        transaccionId: null // Solo reservas no procesadas
-      }
-    });
-
-    if (!reserva) {
-      return sendSuccess(res, {
-        liberado: true,
-        mensaje: 'No hay reservas activas para esta sesión'
-      });
-    }
-
-   // Liberar reserva (completa o parcial)
-const cantidadALiberar = cantidad || reserva.cantidad; // 🆕 Usar cantidad específica o total
-
-await prisma.$transaction(async (tx) => {
-  // Reducir stock reservado
-  await tx.product.update({
-    where: { id: parseInt(productoId) },
-    data: {
-     // stockReservado: {
-        //decrement: cantidadALiberar  // 🆕 USAR cantidad específica
-      //}
-    }
-  });
-
-      // Registrar movimiento de liberación
-      await tx.stockMovement.create({
-        data: {
-          productoId: parseInt(productoId),
-          tipo: 'LIBERACION',
-          cantidad: cantidadALiberar,  // 🆕 USAR cantidad específica
-          stockAnterior: producto.stock,
-          stockNuevo: producto.stock,
-          motivo: cantidad ? `Liberación parcial sesión: ${sesionId}` : `Liberación de sesión: ${sesionId}`,  // 🆕 DIFERENCIAR
-          observaciones: cantidad ? 
-            `Liberación parcial (${cantidadALiberar}) de sesión ${sesionId}` : 
-            `Liberación de reserva temporal de sesión ${sesionId}`,  // 🆕 MEJORAR DESCRIPCIÓN
-          usuarioId: usuarioId,
-          ipAddress: req.ip || req.connection.remoteAddress
-        }
-      });
-
-      // Marcar la reserva como procesada (soft delete)
-      await tx.stockMovement.update({
-        where: { id: reserva.id },
-        data: {
-          observaciones: `${reserva.observaciones || ''} - LIBERADA el ${new Date().toISOString()}`
-        }
-      });
-    });
-
-    // Obtener stock actualizado
-    const productoActualizado = await prisma.product.findUnique({
-      where: { id: parseInt(productoId) },
-      select: {
-        stock: true,
-        //stockReservado: true,
-        descripcion: true
-      }
-    });
-
-    console.log('✅ Stock liberado exitosamente');
-
-    sendSuccess(res, {
-      liberado: true,
-      producto: productoActualizado.descripcion,
-      stockTotal: productoActualizado.stock,
-      stockReservado: 0, // productoActualizado.stockReservado,
-      stockDisponible: productoActualizado.stock, // - productoActualizado.stockReservado,
-      cantidadLiberada: cantidadALiberar,  // 🆕 USAR cantidad específica
-      esLiberacionParcial: !!cantidad,     // 🆕 INDICAR SI ES PARCIAL
-      sesionId: sesionId
-    }, cantidad ? 'Stock liberado parcialmente' : 'Stock liberado correctamente');  // 🆕 MENSAJE ESPECÍFICO
+    sendSuccess(res, resultado, cantidad ? 'Stock liberado parcialmente' : 'Stock liberado correctamente');
 
     // 📡 EMITIR EVENTO WEBSOCKET PARA SINCRONIZACIÓN EN TIEMPO REAL
-   if (req.io) {
-  req.io.emit('stock_liberado', {
-    productoId: parseInt(productoId),
-    producto: productoActualizado.descripcion,
-    stockTotal: productoActualizado.stock,
-    stockReservado: 0, // productoActualizado.stockReservado,
-      stockDisponible: productoActualizado.stock, // - productoActualizado.stockReservado,
-    cantidadLiberada: cantidadALiberar,  // ✅ USAR cantidad específica
-    esLiberacionParcial: !!cantidad,    // 🆕 INDICAR SI ES PARCIAL
-    sesionId: sesionId,
-    usuario: req.user?.nombre || req.user?.email,
-    timestamp: new Date().toISOString()
-  });
-  console.log(`📡 Evento stock_liberado emitido via WebSocket - ${cantidad ? 'Parcial' : 'Total'}: ${cantidadALiberar}`);
-}
+    if (req.io) {
+      req.io.emit('stock_liberado', {
+        productoId: parseInt(productoId),
+        producto: resultado.producto,
+        stockTotal: resultado.stockTotal,
+        stockReservado: 0,
+        stockDisponible: resultado.stockTotal,
+        cantidadLiberada: resultado.cantidadLiberada,
+        esLiberacionParcial: resultado.esLiberacionParcial,
+        sesionId: sesionId,
+        usuario: req.user?.nombre || req.user?.email,
+        timestamp: new Date().toISOString()
+      });
+      console.log(`📡 Evento stock_liberado emitido via WebSocket - ${cantidad ? 'Parcial' : 'Total'}: ${resultado.cantidadLiberada}`);
+    }
+
   } catch (error) {
     console.error('❌ Error liberando stock:', error);
+    
+    // Manejar errores específicos del servicio
+    if (error.message.includes('No hay reservas activas')) {
+      return sendSuccess(res, {
+        liberado: true,
+        mensaje: error.message
+      });
+    }
+    
     sendError(res, 'Error interno del servidor');
   }
 };
@@ -587,119 +421,47 @@ const liberarTodasLasReservasDeSesion = async (req, res, sesionId, requestId) =>
   console.log(`🧹 [${requestId}] Liberando todas las reservas de sesión: ${sesionId}`);
   
   try {
-    const reservasActivas = await prisma.stockMovement.findMany({
-      where: {
-        tipo: 'RESERVA',
-        motivo: `Sesión: ${sesionId}`,
-        transaccionId: null
-      },
-      include: {
-        producto: {
-          select: { descripcion: true }
-        }
-      }
-    });
+    // 🧹 USAR NUEVO SERVICIO PARA LIBERACIÓN MASIVA
+    const resultado = await stockService.liberarTodasLasReservasDeSesion(
+      sesionId,
+      usuarioId,
+      req.ip || req.connection.remoteAddress
+    );
     
-    if (reservasActivas.length === 0) {
-      console.log(`✅ [${requestId}] No hay reservas activas para sesión ${sesionId}`);
-      return sendSuccess(res, {
-        liberado: true,
-        reservasLiberadas: 0,
-        mensaje: 'No había reservas activas para esta sesión'
+    console.log(`✅ [${requestId}] Liberación masiva completada:`, resultado);
+
+    sendSuccess(res, resultado, `${resultado.reservasLiberadas} reservas liberadas correctamente`);
+
+    // 📡 EMITIR EVENTOS WEBSOCKET PARA TODOS LOS USUARIOS
+    if (req.io && resultado.detalles && resultado.detalles.length > 0) {
+      // Evento individual por cada producto liberado
+      for (const liberacion of resultado.detalles) {
+        req.io.emit('stock_liberado', {
+          productoNombre: liberacion.producto,
+          cantidad: liberacion.cantidad,
+          sesionId: sesionId,
+          usuario: req.user?.nombre || req.user?.email,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Evento de actualización de inventario global
+      req.io.emit('inventario_actualizado', {
+        operacion: 'STOCK_LIBERADO',
+        usuario: req.user?.nombre || req.user?.email,
+        productosAfectados: resultado.reservasLiberadas,
+        productos: resultado.detalles,
+        timestamp: new Date().toISOString()
       });
+
+      console.log(`📡 Eventos emitidos: ${resultado.reservasLiberadas} stock_liberado + inventario_actualizado`);
     }
     
-    console.log(`🔓 [${requestId}] Encontradas ${reservasActivas.length} reservas activas`);
-    
-    // 🔄 LIBERAR TODAS EN TRANSACCIÓN AGRUPADAS POR PRODUCTO
-        const resultados = await prisma.$transaction(async (tx) => {
-          // 📊 AGRUPAR RESERVAS POR PRODUCTO
-          const productoMap = new Map();
-          
-          for (const reserva of reservasActivas) {
-            const productoId = reserva.productoId;
-            if (!productoMap.has(productoId)) {
-              productoMap.set(productoId, {
-                producto: reserva.producto,
-                cantidadTotal: 0,
-                reservas: []
-              });
-            }
-            
-            const info = productoMap.get(productoId);
-            info.cantidadTotal += reserva.cantidad;
-            info.reservas.push(reserva);
-          }
-          
-          const liberaciones = [];
-  
-        // 🔓 CREAR UNA LIBERACIÓN POR PRODUCTO CON CANTIDAD TOTAL
-        for (const [productoId, info] of productoMap) {
-          // Obtener stock actual del producto
-          const producto = await tx.product.findUnique({
-            where: { id: productoId }
-          });
-
-          // Crear movimiento de liberación AGRUPADO
-          await tx.stockMovement.create({
-            data: {
-              productoId: productoId,
-              tipo: 'LIBERACION',
-              cantidad: info.cantidadTotal, // ✅ CANTIDAD TOTAL AGRUPADA
-              stockAnterior: producto.stock,
-              stockNuevo: producto.stock,
-              motivo: `Liberación masiva de sesión: ${sesionId}`,
-              observaciones: `Sesión cancelada - ${info.producto.descripcion} (${info.reservas.length} reservas)`,
-              usuarioId: usuarioId,
-              ipAddress: req.ip || req.connection.remoteAddress
-            }
-          });
-          
-          // Marcar TODAS las reservas del producto como procesadas
-          for (const reserva of info.reservas) {
-            await tx.stockMovement.update({
-              where: { id: reserva.id },
-              data: {
-                observaciones: `${reserva.observaciones} - LIBERADA MASIVAMENTE ${new Date().toISOString()}`,
-                motivo: `${reserva.motivo} - PROCESADA`
-              }
-            });
-          }
-          
-          liberaciones.push({
-            producto: info.producto.descripcion,
-            cantidad: info.cantidadTotal // ✅ CANTIDAD TOTAL
-          });
-        }
-        
-        return liberaciones;
-            });
-          
-          console.log(`✅ [${requestId}] ${resultados.length} reservas liberadas exitosamente`);
-          
-          sendSuccess(res, {
-            liberado: true,
-            reservasLiberadas: resultados.length,
-            detalles: resultados,
-            sesionId: sesionId
-          }, `${resultados.length} reservas liberadas correctamente`);
-          
-          // 📡 EMITIR EVENTO WEBSOCKET
-          if (req.io) {
-            req.io.emit('reservas_liberadas_masivamente', {
-              sesionId: sesionId,
-              reservasLiberadas: resultados.length,
-              productos: resultados,
-              usuario: req.user?.nombre || req.user?.email,
-              timestamp: new Date().toISOString()
-            });
-          }
-          
-        } catch (error) {
-          console.error(`❌ [${requestId}] Error en liberación masiva:`, error);
-          sendError(res, 'Error interno en liberación masiva');
-        }
-      };
+  } catch (error) {
+    console.error(`❌ [${requestId}] Error en liberación masiva:`, error);
+    sendError(res, 'Error interno en liberación masiva');
+  }
+};
 
 // ===================================
 // 💾 GUARDAR VENTA EN ESPERA
@@ -1079,9 +841,9 @@ const procesarVenta = async (req, res) => {
       const LIMITE_REGALIA_USD = 2;  // $2
       const limiteRegaliaTotalBs = LIMITE_REGALIA_BS + (LIMITE_REGALIA_USD * tasaCambio);
 
-      // 🔧 TOLERANCIA PARA ERRORES DE REDONDEO
-    const TOLERANCIA_REDONDEO = 1.0; // 1 Bs de tolerancia para redondeo
-    
+      // 🔧 TOLERANCIA PARA ERRORES DE REDONDEO - Ajustada para alta precisión
+    const TOLERANCIA_REDONDEO = 0.01; // 0.01 Bs de tolerancia (1 céntimo)
+
     // Calcular diferencia de pagos PRIMERO
     const diferenciaPagos = sumaTotalPagos - totalBs;
 
@@ -1394,19 +1156,30 @@ const procesarVenta = async (req, res) => {
 
     sendSuccess(res, ventaConvertida, 'Venta procesada correctamente');
 
-// ✅ LIMPIAR RESERVAS TEMPORALES DE LA SESIÓN (DATOS TEMPORALES)
-try {
-  const reservasEliminadas = await prisma.stockMovement.deleteMany({
-    where: {
-      tipo: 'RESERVA',
-      motivo: `Sesión: ${sesionId}`
+    // ✅ LIMPIAR RESERVAS TEMPORALES DE LA SESIÓN (DATOS TEMPORALES)
+    try {
+      const reservasEliminadas = await prisma.stockMovement.deleteMany({
+        where: {
+          tipo: 'RESERVA',
+          motivo: `Sesión: ${sesionId}`
+        }
+      });
+
+      console.log(`🗑️ Limpieza post-venta: ${reservasEliminadas.count} reservas temporales eliminadas`);
+
+      // 📡 EMITIR EVENTO PARA ACTUALIZAR INVENTARIO EN OTROS USUARIOS
+      if (req.io) {
+        req.io.emit('inventario_actualizado', {
+          operacion: 'VENTA_PROCESADA',
+          usuario: req.user?.nombre || req.user?.email,
+          productosAfectados: items.length,
+          timestamp: new Date().toISOString()
+        });
+        console.log('📡 Evento inventario_actualizado emitido después de venta');
+      }
+    } catch (errorLimpieza) {
+      console.error('⚠️ Error limpiando reservas post-venta (no crítico):', errorLimpieza);
     }
-  });
-  
-  console.log(`🗑️ Limpieza post-venta: ${reservasEliminadas.count} reservas temporales eliminadas para sesión ${sesionId}`);
-} catch (errorLimpieza) {
-  console.error('⚠️ Error limpiando reservas post-venta (no crítico):', errorLimpieza);
-}
 
 } catch (error) {
     console.error('❌ Error procesando venta:', error);
@@ -1609,6 +1382,9 @@ const retomarVentaEnEspera = async (req, res) => {
 // ===================================
 // 📊 OBTENER STOCK DISPONIBLE
 // ===================================
+// ===================================
+// 📊 OBTENER STOCK DISPONIBLE CON BLOQUEO
+// ===================================
 const obtenerStockDisponible = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1617,145 +1393,27 @@ const obtenerStockDisponible = async (req, res) => {
     console.log('🔍 CONSULTA STOCK - ID:', id, 'SesionId:', sesionId);
     console.log('📊 Consultando stock disponible para producto:', id);
 
-    // Buscar el producto
-    const producto = await prisma.product.findUnique({
-      where: { id: parseInt(id) },
-      select: {
-        id: true,
-        descripcion: true,
-        codigoBarras: true,
-        codigoInterno: true,
-        tipo: true,
-        stock: true,
-        stockMinimo: true,
-        stockMaximo: true,
-        precioVenta: true,
-        activo: true
-      }
-    });
-
-    if (!producto) {
-      return sendError(res, 'Producto no encontrado', 404);
-    }
-
-    if (!producto.activo) {
-      return sendError(res, 'Producto inactivo', 400);
-    }
-
-    // Calcular stock disponible
-    let stockInfo;
-
-    if (producto.tipo === 'SERVICIO') {
-      // Los servicios tienen stock "ilimitado"
-      stockInfo = {
-        stockTotal: 999999,
-        stockReservado: 0,
-        stockDisponible: 999999,
-        esServicio: true,
-        requiereValidacionStock: false
-      };
-    } else {
-      // 🆕 CALCULAR RESERVAS ACTIVAS DESDE stock_movements
-      const reservasActivasQuery = await prisma.stockMovement.findMany({
-        where: {
-          productoId: parseInt(id),
-          tipo: 'RESERVA',
-          transaccionId: null // Solo reservas no procesadas
-        },
-        select: {
-          cantidad: true
-        }
-      });
-
-     // Excluir MI propia reserva si tengo sesionId
-        const reservasDeOtros = sesionId 
-          ? reservasActivasQuery.filter(reserva => 
-              !reserva.motivo || reserva.motivo !== `Sesión: ${sesionId}`
-            )
-          : reservasActivasQuery;
-          
-        const totalReservadoPorOtros = reservasDeOtros.reduce((sum, reserva) => sum + reserva.cantidad, 0);
-        const stockDisponible = Math.max(0, producto.stock - totalReservadoPorOtros);
-
-        console.log('🔍 CALCULO STOCK:', {
-          stockTotal: producto.stock,
-          reservasTotal: reservasActivasQuery.length,
-          reservasDeOtros: reservasDeOtros.length,
-          stockDisponible,
-          sesionId
-        });
-      
-      stockInfo = {
-        stockTotal: producto.stock,
-        stockReservado: totalReservadoPorOtros,
-        stockDisponible: stockDisponible,
-        stockMinimo: producto.stockMinimo,
-        stockMaximo: producto.stockMaximo,
-        esServicio: false,
-        requiereValidacionStock: true,
-        alertaStockBajo: stockDisponible <= producto.stockMinimo,
-        alertaStockCritico: stockDisponible === 0
-      };
-    }
-
-    // Obtener reservas activas detalladas para este producto
-    const reservasActivas = await prisma.stockMovement.findMany({
-      where: {
-        productoId: parseInt(id),
-        tipo: 'RESERVA',
-        transaccionId: null // Solo reservas no procesadas
-      },
-      select: {
-        id: true,
-        cantidad: true,
-        motivo: true,
-        fecha: true,
-        usuario: {
-          select: {
-            nombre: true
-          }
-        }
-      },
-      orderBy: {
-        fecha: 'desc'
-      },
-      take: 10 // Últimas 10 reservas
-    });
+    // 🔍 USAR NUEVO SERVICIO CON BLOQUEO
+    const resultado = await stockService.obtenerStockDisponible(parseInt(id), sesionId);
 
     console.log('✅ Stock disponible consultado exitosamente');
 
-    // 🆕 MEJORAR INFO DE RESERVAS CON DETALLES DE USUARIO
-    const reservasConDetalles = reservasActivas.map(reserva => ({
-      id: reserva.id,
-      cantidad: reserva.cantidad,
-      motivo: reserva.motivo,
-      fecha: reserva.fecha,
-      usuario: reserva.usuario.nombre,
-      esPropia: reserva.motivo && reserva.motivo.includes(sesionId)
-    }));
-
-    sendSuccess(res, {
-      producto: {
-        id: producto.id,
-        descripcion: producto.descripcion,
-        codigoBarras: producto.codigoBarras,
-        codigoInterno: producto.codigoInterno,
-        tipo: producto.tipo,
-        precioVenta: decimalToNumber(producto.precioVenta)
-      },
-      stock: stockInfo,
-      reservasActivas: reservasConDetalles,
-      timestamp: new Date().toISOString()
-    });
+    sendSuccess(res, resultado);
 
   } catch (error) {
     console.error('❌ Error consultando stock disponible:', error);
+    
+    // Manejar errores específicos del servicio
+    if (error.message.includes('Producto no encontrado')) {
+      return sendError(res, error.message, 404);
+    }
+    
     sendError(res, 'Error interno del servidor');
   }
 };
 
 // ===================================
-// 🧹 LIMPIAR RESERVAS EXPIRADAS
+// 🧹 LIMPIAR RESERVAS EXPIRADAS CON SERVICIO
 // ===================================
 const limpiarReservasExpiradas = async (req, res) => {
   try {
@@ -1763,111 +1421,23 @@ const limpiarReservasExpiradas = async (req, res) => {
 
     console.log('🧹 Limpiando reservas expiradas mayores a', tiempoLimiteHoras, 'horas');
 
-    const fechaLimite = new Date();
-    fechaLimite.setHours(fechaLimite.getHours() - tiempoLimiteHoras);
+    // 🧹 USAR NUEVO SERVICIO PARA LIMPIEZA AUTOMÁTICA
+    const resultado = await stockService.limpiarReservasExpiradas(tiempoLimiteHoras);
 
-    // Buscar reservas expiradas
-    const reservasExpiradas = await prisma.stockMovement.findMany({
-      where: {
-        tipo: 'RESERVA',
-        transaccionId: null, // Solo reservas no procesadas
-        fecha: {
-          lt: fechaLimite
-        }
-      },
-      include: {
-        producto: {
-          select: {
-            id: true,
-            descripcion: true,
-            stock: true
-          }
-        }
-      }
-    });
-
-    if (reservasExpiradas.length === 0) {
-      return sendSuccess(res, {
-        reservasLiberadas: 0,
-        mensaje: 'No hay reservas expiradas para limpiar'
-      });
-    }
-
-    // Liberar reservas expiradas
-    const resultados = await prisma.$transaction(async (tx) => {
-      const productosAfectados = new Map();
-
-      for (const reserva of reservasExpiradas) {
-        // Acumular cantidades por producto
-        const productoId = reserva.productoId;
-        if (!productosAfectados.has(productoId)) {
-          productosAfectados.set(productoId, {
-            producto: reserva.producto,
-            cantidadTotal: 0,
-            reservas: []
-          });
-        }
-        
-        const info = productosAfectados.get(productoId);
-        info.cantidadTotal += reserva.cantidad;
-        info.reservas.push(reserva);
-      }
-
-      // Crear movimiento de liberación por cada producto
-      for (const [productoId, info] of productosAfectados) {
-        await tx.stockMovement.create({
-          data: {
-            productoId: productoId,
-            tipo: 'LIBERACION',
-            cantidad: info.cantidadTotal,
-            stockAnterior: info.producto.stock,
-            stockNuevo: info.producto.stock,
-            motivo: 'Limpieza automática de reservas expiradas',
-            observaciones: `Liberadas ${info.reservas.length} reservas expiradas. IDs: ${info.reservas.map(r => r.id).join(', ')}`,
-            usuarioId: req.user.userId,
-            ipAddress: req.ip || req.connection.remoteAddress
-          }
-        });
-      }
-
-      // 🆕 MARCAR RESERVAS COMO PROCESADAS (asignar transaccionId especial)
-      await tx.stockMovement.updateMany({
-        where: {
-          id: {
-            in: reservasExpiradas.map(r => r.id)
-          }
-        },
-        data: {
-          transaccionId: -1, // ID especial para reservas expiradas
-          observaciones: `${new Date().toISOString()} - LIBERADA AUTOMÁTICAMENTE POR EXPIRACIÓN`
-        }
-      });
-
-      return {
-        reservasLiberadas: reservasExpiradas.length,
-        productosAfectados: productosAfectados.size,
-        detalles: Array.from(productosAfectados.values()).map(info => ({
-          producto: info.producto.descripcion,
-          cantidadLiberada: info.cantidadTotal,
-          reservasLiberadas: info.reservas.length
-        }))
-      };
-    });
-
-    console.log('✅ Reservas expiradas limpiadas exitosamente:', resultados);
+    console.log('✅ Reservas expiradas limpiadas exitosamente:', resultado);
 
     // 📡 EMITIR EVENTO WEBSOCKET PARA NOTIFICAR LIMPIEZA
     if (req.io) {
       req.io.emit('reservas_expiradas_limpiadas', {
-        reservasLiberadas: resultados.reservasLiberadas,
-        productosAfectados: resultados.productosAfectados,
+        reservasLiberadas: resultado.reservasLiberadas,
+        productosAfectados: resultado.productosAfectados,
         usuario: req.user?.nombre || req.user?.email,
         timestamp: new Date().toISOString()
       });
       console.log('📡 Evento reservas_expiradas_limpiadas emitido via WebSocket');
     }
 
-    sendSuccess(res, resultados, 'Reservas expiradas limpiadas correctamente');
+    sendSuccess(res, resultado, 'Reservas expiradas limpiadas correctamente');
 
   } catch (error) {
     console.error('❌ Error limpiando reservas expiradas:', error);
@@ -1876,7 +1446,7 @@ const limpiarReservasExpiradas = async (req, res) => {
 };
 
 // ===================================
-// 💓 HEARTBEAT PARA MANTENER RESERVAS VIVAS
+// 💓 HEARTBEAT PARA MANTENER RESERVAS VIVAS CON SERVICIO
 // ===================================
 const heartbeatReservas = async (req, res) => {
   try {
@@ -1889,44 +1459,12 @@ const heartbeatReservas = async (req, res) => {
       return sendError(res, 'SesionId requerido', 400);
     }
     
-    // Buscar reservas activas de esta sesión
-    const reservasActivas = await prisma.stockMovement.findMany({
-      where: {
-        tipo: 'RESERVA',
-        motivo: `Sesión: ${sesionId}`,
-        transaccionId: null
-      }
-    });
+    // 💓 USAR NUEVO SERVICIO PARA RENOVAR RESERVAS
+    const resultado = await stockService.renovarReservas(sesionId, usuarioId);
     
-    if (reservasActivas.length === 0) {
-      console.log('⚠️ No hay reservas activas para renovar');
-      return sendSuccess(res, {
-        renovado: false,
-        mensaje: 'No hay reservas activas para esta sesión'
-      });
-    }
+    console.log(`✅ Heartbeat procesado:`, resultado);
     
-    // Renovar timestamp de todas las reservas de la sesión
-    await prisma.stockMovement.updateMany({
-      where: {
-        tipo: 'RESERVA',
-        motivo: `Sesión: ${sesionId}`,
-        transaccionId: null
-      },
-      data: {
-        fecha: new Date(), // Renovar timestamp
-        observaciones: `Reserva renovada por heartbeat - ${new Date().toISOString()}`
-      }
-    });
-    
-    console.log(`✅ Renovadas ${reservasActivas.length} reservas para sesión ${sesionId}`);
-    
-    sendSuccess(res, {
-      renovado: true,
-      reservasRenovadas: reservasActivas.length,
-      proximoHeartbeat: '2 minutos',
-      timestamp: new Date().toISOString()
-    }, 'Reservas renovadas correctamente');
+    sendSuccess(res, resultado, resultado.renovado ? 'Reservas renovadas correctamente' : resultado.mensaje);
     
   } catch (error) {
     console.error('❌ Error en heartbeat:', error);

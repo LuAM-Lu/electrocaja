@@ -236,6 +236,17 @@ if (typeof req.body.imagenUrl === 'object' && req.body.imagenUrl?.isTemporary) {
   }
 }
 
+    // 📡 Emitir evento Socket.IO para sincronizar inventario
+    if (req.io) {
+      req.io.emit('inventario_actualizado', {
+        operacion: 'CREAR',
+        producto: product,
+        usuario: req.user?.nombre || req.user?.email,
+        timestamp: new Date().toISOString()
+      });
+      console.log('📡 Evento inventario_actualizado emitido (CREAR)');
+    }
+
 res.status(201).json({
   success: true,
   message: 'Producto creado correctamente',
@@ -395,6 +406,17 @@ const updateProduct = async (req, res) => {
       });
     }
 
+    // 📡 Emitir evento Socket.IO para sincronizar inventario
+    if (req.io) {
+      req.io.emit('inventario_actualizado', {
+        operacion: 'EDITAR',
+        producto: updatedProduct,
+        usuario: req.user?.nombre || req.user?.email,
+        timestamp: new Date().toISOString()
+      });
+      console.log('📡 Evento inventario_actualizado emitido (EDITAR)');
+    }
+
     res.json({
       success: true,
       message: 'Producto actualizado correctamente',
@@ -528,6 +550,17 @@ if (motivo === 'ERROR_REGISTRO' && !tieneRelaciones) {
   tipoEliminacion = 'SOFT_DELETE';
   console.log(`🔒 SOFT DELETE: ${product.descripcion} - Historial preservado`);
 }
+
+    // 📡 Emitir evento Socket.IO para sincronizar inventario
+    if (req.io) {
+      req.io.emit('inventario_actualizado', {
+        operacion: 'ELIMINAR',
+        producto: product,
+        usuario: req.user?.nombre || req.user?.email,
+        timestamp: new Date().toISOString()
+      });
+      console.log('📡 Evento inventario_actualizado emitido (ELIMINAR)');
+    }
 
     res.json({
       success: true,

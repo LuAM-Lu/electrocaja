@@ -1,13 +1,13 @@
-// components/venta/PagosPanel.jsx - SISTEMA DE PAGOS MODULAR CON HYBRID CHIPS 💳
+// components/venta/PagosPanel.jsx - SISTEMA DE PAGOS MODULAR CON HYBRID CHIPS 
 import React from 'react';
 import { 
  X, Plus, CreditCard, DollarSign, RefreshCw,
  AlertTriangle, CheckCircle, Percent, MousePointerClick, Trash2, HandCoins, BanknoteArrowUp
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 // ===================================
-// 🔧 FUNCIONES HELPER
+//  FUNCIONES HELPER
 // ===================================
 const formatearVenezolano = (valor) => {
  if (!valor && valor !== 0) return '';
@@ -41,7 +41,7 @@ const limpiarNumero = (valor) => {
 };
 
 // ===================================
-// 🏦 CONFIGURACIÓN DE MÉTODOS DE PAGO
+//  CONFIGURACIÓN DE MÉTODOS DE PAGO
 // ===================================
 const METODOS_PAGO = [
  { value: 'efectivo_bs', label: 'Efectivo Bs', moneda: 'bs', requiere_referencia: false },
@@ -91,7 +91,7 @@ const obtenerMetodosDisponibles = (pagosActuales, idActual = null) => {
 };
 
 // ===================================
-// 🔥 COMPONENTE HYBRID CHIP
+//  COMPONENTE HYBRID CHIP
 // ===================================
 const PagoItemHybrid = ({ 
  pago, index, onUpdate, onDelete, canDelete, tipo = "pago"
@@ -101,23 +101,23 @@ const PagoItemHybrid = ({
  const esVuelto = tipo === "vuelto";
  const monto = limpiarNumero(pago.monto);
  
- // 🎨 Obtener icono y colores por método
+ //  Obtener icono y colores por método
  const getMetodoConfig = (metodoValue) => {
    const configs = {
-     efectivo_bs: { icon: '💰', color: 'emerald', label: 'Efectivo Bs' },
-     efectivo_usd: { icon: '💵', color: 'green', label: 'Efectivo USD' },
-     pago_movil: { icon: '📱', color: 'blue', label: 'Pago Móvil' },
-     transferencia: { icon: '🏦', color: 'indigo', label: 'Transferencia' },
-     zelle: { icon: '💳', color: 'purple', label: 'Zelle' },
-     binance: { icon: '🟡', color: 'yellow', label: 'Binance' },
-     tarjeta: { icon: '💳', color: 'gray', label: 'Tarjeta' }
+     efectivo_bs: { icon: '', color: 'emerald', label: 'Efectivo Bs' },
+     efectivo_usd: { icon: '', color: 'green', label: 'Efectivo USD' },
+     pago_movil: { icon: '', color: 'blue', label: 'Pago Móvil' },
+     transferencia: { icon: '', color: 'indigo', label: 'Transferencia' },
+     zelle: { icon: '', color: 'purple', label: 'Zelle' },
+     binance: { icon: '', color: 'yellow', label: 'Binance' },
+     tarjeta: { icon: '', color: 'gray', label: 'Tarjeta' }
    };
    return configs[metodoValue] || configs.efectivo_bs;
  };
  
  const config = getMetodoConfig(pago.metodo);
  
- // 🎨 Colores dinámicos
+ //  Colores dinámicos
  const getColorClasses = (color, isVuelto) => {
    const baseColors = {
      emerald: isVuelto ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800',
@@ -131,11 +131,11 @@ const PagoItemHybrid = ({
    return baseColors[color] || baseColors.emerald;
  };
  
- // 🔍 Estado del pago
+ //  Estado del pago
  const getEstadoPago = () => {
-   if (!pago.monto || monto === 0) return { icon: '⚠️', text: 'Pendiente', color: 'text-orange-600' };
-   if (metodo?.requiere_referencia && (!pago.banco || !pago.referencia)) return { icon: '❗', text: 'Incompleto', color: 'text-red-600' };
-   return { icon: '✅', text: 'Completo', color: 'text-green-600' };
+   if (!pago.monto || monto === 0) return { icon: '', text: 'Pendiente', color: 'text-orange-600' };
+   if (metodo?.requiere_referencia && (!pago.banco || !pago.referencia)) return { icon: '', text: 'Incompleto', color: 'text-red-600' };
+   return { icon: '', text: 'Completo', color: 'text-green-600' };
  };
  
  const estado = getEstadoPago();
@@ -324,7 +324,7 @@ const PagoItemHybrid = ({
 };
 
 // ===================================
-// 🎯 COMPONENTE PRINCIPAL PAGOS PANEL
+//  COMPONENTE PRINCIPAL PAGOS PANEL
 // ===================================
 const PagosPanel = ({ 
  pagos, 
@@ -342,7 +342,7 @@ const PagosPanel = ({
  const [descuentoClicked, setDescuentoClicked] = React.useState(false);
  
  // ===================================
- // 📊 CALCULAR TOTALES
+ //  CALCULAR TOTALES
  // ===================================
  const calcularTotalPagado = () => {
    return pagos.reduce((total, pago) => {
@@ -388,7 +388,7 @@ const PagosPanel = ({
  }, [transaccionCompleta, excesoPendiente, onValidationChange]);
 
  // ===================================
- // 🎮 MANEJADORES DE EVENTOS
+ //  MANEJADORES DE EVENTOS
  // ===================================
  const agregarPago = () => {
    const metodosDisponibles = obtenerMetodosDisponibles(pagos);
@@ -464,7 +464,7 @@ const PagosPanel = ({
      }
      
      actualizarPago(primerPagoVacio.id, 'monto', montoAEnviar);
-     toast.success(`💰 Monto enviado al ${metodoInfo.label}`);
+     toast.success(`Monto enviado al ${metodoInfo.label}`);
    } else {
      toast.warning('Todos los métodos de pago ya tienen montos asignados');
    }
@@ -480,9 +480,9 @@ const PagosPanel = ({
 
    if (onDescuentoLimpiar) {
      onDescuentoLimpiar();
-     toast.success('🗑️ Descuento eliminado');
+     toast.success('Descuento eliminado');
    } else {
-     toast.error('❌ Función onDescuentoLimpiar no disponible');
+     toast.error('Función onDescuentoLimpiar no disponible');
    }
  };
 
@@ -490,7 +490,7 @@ const PagosPanel = ({
    <div className="space-y-4">
      
      {/* ===================================
-         💰 RESUMEN VISUAL DE TOTALES
+          RESUMEN VISUAL DE TOTALES
          =================================== */}
      <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-6">
        <div className="flex items-center justify-between mb-4">
@@ -616,7 +616,7 @@ const PagosPanel = ({
      </div>
 
      {/* ===================================
-         💳 MÉTODOS DE PAGO - HYBRID CHIPS
+          MÉTODOS DE PAGO - HYBRID CHIPS
          =================================== */}
      <div className="space-y-2">
        <div className="bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 backdrop-blur-sm border border-gray-200/50 rounded-xl p-3 shadow-lg flex items-center justify-between">
@@ -659,7 +659,7 @@ const PagosPanel = ({
      </div>
 
      {/* ===================================
-         🔄 VUELTOS - HYBRID CHIPS (solo si hay exceso)
+          VUELTOS - HYBRID CHIPS (solo si hay exceso)
          =================================== */}
      {necesitaVuelto && (
        <div className="space-y-2">

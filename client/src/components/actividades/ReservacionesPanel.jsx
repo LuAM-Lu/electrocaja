@@ -15,9 +15,9 @@ import {
 } from '../../store/actividadesStore';
 import { useCajaStore } from '../../store/cajaStore';
 import { useAuthStore } from '../../store/authStore';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
-// 📅 UTILIDADES DE FECHA
+//  UTILIDADES DE FECHA
 const obtenerDiasDelMes = (fecha) => {
   const año = fecha.getFullYear();
   const mes = fecha.getMonth();
@@ -71,7 +71,7 @@ const formatearFecha = (fecha) => {
   });
 };
 
-// 🎨 OBTENER COLOR POR TIPO DE RESERVACIÓN
+//  OBTENER COLOR POR TIPO DE RESERVACIÓN
 const getTipoColor = (tipo) => {
   switch(tipo) {
     case TIPOS_RESERVACION.CUMPLEANOS.valor:
@@ -96,12 +96,12 @@ const getTipoColor = (tipo) => {
         text: 'text-gray-700',
         badge: 'bg-gray-100 text-gray-700',
         button: 'bg-gray-600 hover:bg-gray-700',
-        emoji: '📅'
+        emoji: ''
       };
   }
 };
 
-// 🧩 MODAL NUEVA RESERVACIÓN
+//  MODAL NUEVA RESERVACIÓN
 const NuevaReservacionModal = ({ isOpen, onClose, onCrear, fechaSeleccionada = null }) => {
   const [formData, setFormData] = useState({
     tipoReservacion: TIPOS_RESERVACION.CUMPLEANOS.valor,
@@ -144,14 +144,14 @@ const NuevaReservacionModal = ({ isOpen, onClose, onCrear, fechaSeleccionada = n
     e.preventDefault();
     
     if (!formData.titulo.trim() || !formData.clienteNombre.trim() || !formData.fechaEvento) {
-      toast.error('⚠️ Completa todos los campos obligatorios');
+      toast.error('Completa todos los campos obligatorios');
       return;
     }
 
     // Validar fecha futura
     const fechaEvento = new Date(`${formData.fechaEvento}T${formData.horaEvento}`);
     if (fechaEvento <= new Date()) {
-      toast.error('⚠️ La fecha del evento debe ser futura');
+      toast.error('La fecha del evento debe ser futura');
       return;
     }
 
@@ -181,7 +181,7 @@ const NuevaReservacionModal = ({ isOpen, onClose, onCrear, fechaSeleccionada = n
       
       onClose();
     } catch (error) {
-      toast.error('❌ Error creando reservación');
+      toast.error('Error creando reservación');
     } finally {
       setLoading(false);
     }
@@ -467,7 +467,7 @@ const NuevaReservacionModal = ({ isOpen, onClose, onCrear, fechaSeleccionada = n
   );
 };
 
-// 📅 COMPONENTE CALENDARIO
+//  COMPONENTE CALENDARIO
 const CalendarioView = ({ fechaActual, onFechaChange, reservaciones, onFechaSeleccionada }) => {
   const dias = obtenerDiasDelMes(fechaActual);
   const nombreMes = fechaActual.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' });
@@ -575,7 +575,7 @@ const CalendarioView = ({ fechaActual, onFechaChange, reservaciones, onFechaSele
   );
 };
 
-// 📋 TARJETA DE RESERVACIÓN
+//  TARJETA DE RESERVACIÓN
 const ReservacionCard = ({ reservacion, onEstadoChange, onEliminar, canEdit }) => {
   const [showDetalles, setShowDetalles] = useState(false);
   const { tasaCambio } = useCajaStore();
@@ -616,17 +616,17 @@ const ReservacionCard = ({ reservacion, onEstadoChange, onEliminar, canEdit }) =
         <div className="space-y-1">
           {esHoy && (
             <span className="inline-block px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold animate-pulse">
-              📅 HOY
+               HOY
             </span>
           )}
           {esMañana && (
             <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-              ⏰ MAÑANA
+               MAÑANA
             </span>
           )}
           {esPasado && !esHoy && (
             <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
-              ✅ REALIZADO
+               REALIZADO
             </span>
           )}
         </div>
@@ -732,11 +732,11 @@ const ReservacionCard = ({ reservacion, onEstadoChange, onEliminar, canEdit }) =
              <div className="mt-1">
                {anticipoRequerido > 0 ? (
                  <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                   💰 Anticipo recibido
+                    Anticipo recibido
                  </span>
                ) : (
                  <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs">
-                   ⏳ Anticipo pendiente
+                    Anticipo pendiente
                  </span>
                )}
              </div>
@@ -752,7 +752,7 @@ const ReservacionCard = ({ reservacion, onEstadoChange, onEliminar, canEdit }) =
          
          {/* Desglose de pagos */}
          <div className="bg-green-50 rounded-lg p-3">
-           <h5 className="font-medium text-green-800 mb-2">💰 Desglose de Pagos</h5>
+           <h5 className="font-medium text-green-800 mb-2"> Desglose de Pagos</h5>
            <div className="space-y-1 text-sm">
              <div className="flex justify-between">
                <span className="text-green-700">Anticipo (50%):</span>
@@ -774,7 +774,7 @@ const ReservacionCard = ({ reservacion, onEstadoChange, onEliminar, canEdit }) =
  );
 };
 
-// 📊 VISTA DE LISTA DE RESERVACIONES
+//  VISTA DE LISTA DE RESERVACIONES
 const ListaReservaciones = ({ reservaciones, onEstadoChange, onEliminar, canEdit }) => {
  const [filtroEstado, setFiltroEstado] = useState('todas');
  const [ordenPor, setOrdenPor] = useState('fecha');
@@ -820,12 +820,12 @@ const ListaReservaciones = ({ reservaciones, onEstadoChange, onEliminar, canEdit
            onChange={(e) => setFiltroEstado(e.target.value)}
            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
          >
-           <option value="todas">📅 Todas las reservas</option>
-           <option value="hoy">🎯 Hoy</option>
-           <option value="proximas">⏰ Próximas</option>
-           <option value="pasadas">✅ Pasadas</option>
-           <option value={ESTADOS.PENDIENTE}>⏳ Pendientes</option>
-           <option value={ESTADOS.COMPLETADO}>✅ Completadas</option>
+           <option value="todas"> Todas las reservas</option>
+           <option value="hoy"> Hoy</option>
+           <option value="proximas"> Próximas</option>
+           <option value="pasadas"> Pasadas</option>
+           <option value={ESTADOS.PENDIENTE}> Pendientes</option>
+           <option value={ESTADOS.COMPLETADO}> Completadas</option>
          </select>
          
          <select
@@ -833,9 +833,9 @@ const ListaReservaciones = ({ reservaciones, onEstadoChange, onEliminar, canEdit
            onChange={(e) => setOrdenPor(e.target.value)}
            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
          >
-           <option value="fecha">📅 Por fecha</option>
-           <option value="precio">💰 Por precio</option>
-           <option value="cliente">👤 Por cliente</option>
+           <option value="fecha"> Por fecha</option>
+           <option value="precio"> Por precio</option>
+           <option value="cliente"> Por cliente</option>
          </select>
        </div>
        
@@ -876,7 +876,7 @@ const ListaReservaciones = ({ reservaciones, onEstadoChange, onEliminar, canEdit
  );
 };
 
-// 🎯 COMPONENTE PRINCIPAL
+//  COMPONENTE PRINCIPAL
 const ReservacionesPanel = () => {
  const [showNuevaModal, setShowNuevaModal] = useState(false);
  const [vistaActual, setVistaActual] = useState('calendario'); // 'calendario' | 'lista'
@@ -899,7 +899,7 @@ const ReservacionesPanel = () => {
  const handleCrearReservacion = async (datosReservacion) => {
    try {
      await crearReservacion(datosReservacion);
-     toast.success('🎉 Reservación creada exitosamente');
+     toast.success('Reservación creada exitosamente');
    } catch (error) {
      throw error;
    }
@@ -908,9 +908,9 @@ const ReservacionesPanel = () => {
  const handleEstadoChange = async (id, nuevoEstado) => {
    try {
      await actualizarEstadoActividad(id, nuevoEstado);
-     toast.success(`✅ Estado actualizado a ${nuevoEstado}`);
+     toast.success(`Estado actualizado a ${nuevoEstado}`);
    } catch (error) {
-     toast.error('❌ Error actualizando estado');
+     toast.error('Error actualizando estado');
    }
  };
 
@@ -918,9 +918,9 @@ const ReservacionesPanel = () => {
    if (window.confirm('¿Estás seguro de eliminar esta reservación?')) {
      try {
        await eliminarActividad(id);
-       toast.success('🗑️ Reservación eliminada');
+       toast.success('Reservación eliminada');
      } catch (error) {
-       toast.error('❌ Error eliminando reservación');
+       toast.error('Error eliminando reservación');
      }
    }
  };
@@ -931,7 +931,7 @@ const ReservacionesPanel = () => {
      setFechaSeleccionada(fecha);
      setShowNuevaModal(true);
    } else {
-     toast.error('⚠️ Solo puedes crear reservaciones para fechas futuras');
+     toast.error('Solo puedes crear reservaciones para fechas futuras');
    }
  };
 
@@ -963,7 +963,7 @@ const ReservacionesPanel = () => {
                  : 'text-gray-600 hover:text-purple-700'
              }`}
            >
-             📅 Calendario
+              Calendario
            </button>
            <button
              onClick={() => setVistaActual('lista')}
@@ -973,7 +973,7 @@ const ReservacionesPanel = () => {
                  : 'text-gray-600 hover:text-purple-700'
              }`}
            >
-             📋 Lista
+              Lista
            </button>
          </div>
          

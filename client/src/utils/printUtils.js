@@ -1,9 +1,9 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import html2canvas from 'html2canvas'; // 🆕 Para generar imágenes
-import toast from 'react-hot-toast'; // ✅ AGREGAR ESTA LÍNEA
+import html2canvas from 'html2canvas'; //  Para generar imágenes
+import toast from './toast.jsx';
 
-// 🔧 FUNCIÓN PARA FORMATEAR NÚMEROS VENEZOLANOS
+//  FUNCIÓN PARA FORMATEAR NÚMEROS VENEZOLANOS
 const formatearVenezolano = (valor) => {
  if (!valor && valor !== 0) return '';
  const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
@@ -13,15 +13,15 @@ const formatearVenezolano = (valor) => {
  });
 };
 
-// 🎨 FUNCIÓN PARA CARGAR LOGO
+//  FUNCIÓN PARA CARGAR LOGO
 const cargarLogo = () => {
   return new Promise((resolve) => {
-    console.log('🔍 Cargando logo desde /termico.png...');
+    console.log(' Cargando logo desde /termico.png...');
     
     const img = new Image();
     
     img.onload = function() {
-      console.log('✅ Logo cargado exitosamente');
+      console.log(' Logo cargado exitosamente');
       try {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -29,16 +29,16 @@ const cargarLogo = () => {
         canvas.height = 50;
         ctx.drawImage(img, 0, 0, 50, 50);
         const dataUrl = canvas.toDataURL('image/png');
-        console.log('✅ Logo convertido a base64, longitud:', dataUrl.length);
+        console.log(' Logo convertido a base64, longitud:', dataUrl.length);
         resolve(dataUrl);
       } catch (error) {
-        console.error('❌ Error procesando logo:', error);
+        console.error(' Error procesando logo:', error);
         resolve(null);
       }
     };
     
     img.onerror = (error) => {
-      console.error('❌ Error cargando logo:', error);
+      console.error(' Error cargando logo:', error);
       resolve(null);
     };
     
@@ -46,10 +46,10 @@ const cargarLogo = () => {
   });
 };
 
-// 🆕 FUNCIÓN PARA GENERAR HTML UNIFICADO (BASE PARA TODAS LAS OPCIONES)
+//  FUNCIÓN PARA GENERAR HTML UNIFICADO (BASE PARA TODAS LAS OPCIONES)
 const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, formato = 'termica') => {
-  // 🔍 DEBUG: Verificar usuario recibido
-  console.log('👤 generarHTMLBase - Usuario recibido:', ventaData.usuario?.nombre || 'No definido');
+  //  DEBUG: Verificar usuario recibido
+  console.log(' generarHTMLBase - Usuario recibido:', ventaData.usuario?.nombre || 'No definido');
   
   const fechaActual = new Date().toLocaleDateString('es-ES', {
     day: '2-digit',
@@ -60,14 +60,14 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
     hour12: true
   });
 
-  // 🎨 ESTILOS SEGÚN EL FORMATO
+  //  ESTILOS SEGÚN EL FORMATO
   const estilos = {
     termica: {
-      width: '302px',        // ✅ 80mm = ~302px a 96 DPI
-      fontSize: '11px',      // ✅ Optimizado para 300 DPI
-      padding: '8px',        // ✅ Márgenes mínimos para 80mm
-      logoSize: '80px',      // ✅ Logo más compacto
-      lineHeight: '1.2'      // ✅ Espaciado optimizado
+      width: '302px',        //  80mm = ~302px a 96 DPI
+      fontSize: '11px',      //  Optimizado para 300 DPI
+      padding: '8px',        //  Márgenes mínimos para 80mm
+      logoSize: '80px',      //  Logo más compacto
+      lineHeight: '1.2'      //  Espaciado optimizado
     },
     whatsapp: {
       width: '350px',
@@ -289,7 +289,7 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
     <body>
         ${formato === 'whatsapp' ? `
         <div class="whatsapp-header">
-            <div class="title">📱 COMPROBANTE ELECTRÓNICO</div>
+            <div class="title"> COMPROBANTE ELECTRÓNICO</div>
             <div class="subtitle">Enviado por WhatsApp</div>
         </div>
         ` : ''}
@@ -378,7 +378,7 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
               const metodo = pago.metodo.replace('_', ' ').toUpperCase();
               const monto = parseFloat(pago.monto);
               
-              // ✅ DETERMINAR MONEDA SEGÚN EL MÉTODO
+              //  DETERMINAR MONEDA SEGÚN EL MÉTODO
               let montoTexto;
               if (pago.metodo === 'efectivo_usd' || pago.metodo === 'zelle' || pago.metodo === 'binance') {
                 montoTexto = monto.toLocaleString('es-ES', {
@@ -406,7 +406,7 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
               const metodo = vuelto.metodo.replace('_', ' ').toUpperCase();
               const monto = parseFloat(vuelto.monto);
               
-              // ✅ DETERMINAR MONEDA SEGÚN EL MÉTODO
+              //  DETERMINAR MONEDA SEGÚN EL MÉTODO
               let montoTexto;
               if (vuelto.metodo === 'efectivo_usd' || vuelto.metodo === 'zelle' || vuelto.metodo === 'binance') {
                 montoTexto = monto.toLocaleString('es-ES', {
@@ -432,8 +432,8 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
         
         ${formato === 'whatsapp' ? `
         <div class="whatsapp-footer">
-            <div class="normal">📱 Comprobante enviado automáticamente</div>
-            <div class="normal">💬 Responda este mensaje para cualquier consulta</div>
+            <div class="normal"> Comprobante enviado automáticamente</div>
+            <div class="normal"> Responda este mensaje para cualquier consulta</div>
         </div>
         ` : `
         <!-- FOOTER DISCLAIMER -->
@@ -448,14 +448,14 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
   `;
 };
 
-// 🖨️ MANTENER - Impresión térmica (función actual SIN CAMBIOS)
+//  MANTENER - Impresión térmica (función actual SIN CAMBIOS)
 export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
-    console.log('🖨️ Generando impresión térmica 80mm optimizada...');
+    console.log(' Generando impresión térmica 80mm optimizada...');
     
     const contenidoHTML = generarHTMLBase(ventaData, codigoVenta, tasaCambio, descuento, 'termica');
     
-    // ✅ Configuración optimizada para impresoras térmicas 80mm
+    //  Configuración optimizada para impresoras térmicas 80mm
     const ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
     
     if (!ventanaImpresion) {
@@ -474,18 +474,18 @@ export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio,
       }, 500);
     };
     
-    console.log('✅ Ventana de impresión térmica abierta');
+    console.log(' Ventana de impresión térmica abierta');
     
   } catch (error) {
-    console.error('❌ Error en impresión térmica tradicional:', error);
+    console.error(' Error en impresión térmica tradicional:', error);
     throw error;
   }
 };
 
-// 📄 NUEVO - Generar PDF para descarga y email
+//  NUEVO - Generar PDF para descarga y email
 export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
-    console.log('📄 Generando PDF para descarga/email...');
+    console.log(' Generando PDF para descarga/email...');
     
     const doc = new jsPDF();
     const fechaActual = new Date().toLocaleDateString('es-ES', {
@@ -601,11 +601,11 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
     // Retornar blob para descarga o email
     const pdfBlob = doc.output('blob');
     
-    console.log('✅ PDF generado exitosamente');
+    console.log(' PDF generado exitosamente');
     return pdfBlob;
     
   } catch (error) {
-    console.error('❌ Error generando PDF:', error);
+    console.error(' Error generando PDF:', error);
     throw error;
   }
 };
@@ -613,41 +613,41 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
 
 export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
-    console.log('📱 ===== INICIANDO GENERACIÓN IMAGEN WHATSAPP =====');
-    console.log('👤 Usuario en WhatsApp:', ventaData.usuario?.nombre || 'No definido');
-    console.log('🔍 ventaData recibida:', ventaData);
-    console.log('🔍 codigoVenta:', codigoVenta);
-    console.log('🔍 tasaCambio:', tasaCambio);
-    console.log('🔍 descuento:', descuento);
+    console.log(' ===== INICIANDO GENERACIÓN IMAGEN WHATSAPP =====');
+    console.log(' Usuario en WhatsApp:', ventaData.usuario?.nombre || 'No definido');
+    console.log(' ventaData recibida:', ventaData);
+    console.log(' codigoVenta:', codigoVenta);
+    console.log(' tasaCambio:', tasaCambio);
+    console.log(' descuento:', descuento);
     
-    // ✅ CREAR IMAGEN MÁS COMPACTA (50% del ancho original)
+    //  CREAR IMAGEN MÁS COMPACTA (50% del ancho original)
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
     // Dimensiones más compactas para WhatsApp
-    canvas.width = 360; // ✅ Reducido de 720 a 360 (50%)
+    canvas.width = 360; //  Reducido de 720 a 360 (50%)
     canvas.height = 1000; // Altura inicial
     
-    console.log('📐 Canvas creado (compacto):', canvas.width, 'x', canvas.height);
+    console.log(' Canvas creado (compacto):', canvas.width, 'x', canvas.height);
     
     // ===== FONDO BLANCO =====
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    console.log('🎨 Fondo blanco aplicado');
+    console.log(' Fondo blanco aplicado');
     
 // ===== HEADER COMPACTO CON LOGO A LA IZQUIERDA =====
-const gradient = ctx.createLinearGradient(0, 0, canvas.width, 60); // ✅ Header más compacto (60px en lugar de 100px)
+const gradient = ctx.createLinearGradient(0, 0, canvas.width, 60); //  Header más compacto (60px en lugar de 100px)
 gradient.addColorStop(0, '#3B82F6');
 gradient.addColorStop(1, '#1D4ED8');
 ctx.fillStyle = gradient;
 ctx.fillRect(0, 0, canvas.width, 60);
-console.log('🎨 Header compacto aplicado');
+console.log(' Header compacto aplicado');
 
-// ✅ CARGAR Y DIBUJAR LOGO A LA IZQUIERDA
+//  CARGAR Y DIBUJAR LOGO A LA IZQUIERDA
 let logoLoaded = false;
 try {
   const logoUrl = `${window.location.origin}/android-chrome-512x5129.png`;
-  console.log('🔍 Cargando logo desde:', logoUrl);
+  console.log(' Cargando logo desde:', logoUrl);
   
   const logo = await loadImage(logoUrl);
   
@@ -658,39 +658,39 @@ try {
   
   ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
   logoLoaded = true;
-  console.log('✅ Logo dibujado a la izquierda');
+  console.log(' Logo dibujado a la izquierda');
   
 } catch (error) {
-  console.log('⚠️ No se pudo cargar el logo:', error.message);
+  console.log(' No se pudo cargar el logo:', error.message);
   logoLoaded = false;
 }
 
 // Texto del header (a la derecha del logo)
 ctx.fillStyle = '#ffffff';
-ctx.font = 'bold 12px Arial, sans-serif'; // ✅ Fuente ajustada
-ctx.textAlign = 'left'; // ✅ Alineado a la izquierda
+ctx.font = 'bold 12px Arial, sans-serif'; //  Fuente ajustada
+ctx.textAlign = 'left'; //  Alineado a la izquierda
 
-const textStartX = logoLoaded ? 65 : 15; // ✅ Inicio del texto después del logo + margen
+const textStartX = logoLoaded ? 65 : 15; //  Inicio del texto después del logo + margen
 ctx.fillText('ELECTRO SHOP MORANDIN CA', textStartX, 20);
 
-ctx.font = '9px Arial, sans-serif'; // ✅ Fuente más pequeña
+ctx.font = '9px Arial, sans-serif'; //  Fuente más pequeña
 ctx.fillText('RIF: J-405903333 - Guanare, Venezuela', textStartX, 33);
 
 ctx.font = '8px Arial, sans-serif';
 ctx.fillText('ElectroCaja v1.0', textStartX, 45);
 
-console.log('🎨 Texto del header compacto aplicado');
+console.log(' Texto del header compacto aplicado');
 
-let yPos = 80; // ✅ Inicio después del header compacto (80px en lugar de 120px)
+let yPos = 80; //  Inicio después del header compacto (80px en lugar de 120px)
     
     // ===== INFORMACIÓN DE LA VENTA =====
     ctx.fillStyle = '#1F2937';
-    ctx.font = 'bold 14px Arial, sans-serif'; // ✅ Fuentes más pequeñas
+    ctx.font = 'bold 14px Arial, sans-serif'; //  Fuentes más pequeñas
     ctx.textAlign = 'center';
     ctx.fillText(`COMPROBANTE #${codigoVenta}`, canvas.width / 2, yPos);
-    yPos += 20; // ✅ Espacios más compactos
+    yPos += 20; //  Espacios más compactos
     
-    ctx.font = '11px Arial, sans-serif'; // ✅ Fuente más pequeña
+    ctx.font = '11px Arial, sans-serif'; //  Fuente más pequeña
     ctx.fillText(`${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}`, canvas.width / 2, yPos);
     yPos += 18;
     
@@ -704,22 +704,22 @@ let yPos = 80; // ✅ Inicio después del header compacto (80px en lugar de 120p
         yPos += 15;
         ctx.font = '11px Arial, sans-serif';
       }
-      console.log('🎨 Cliente aplicado:', ventaData.cliente.nombre);
+      console.log(' Cliente aplicado:', ventaData.cliente.nombre);
     }
     
     yPos += 15;
     
     // ===== PRODUCTOS =====
     ctx.fillStyle = '#374151';
-    ctx.font = 'bold 12px Arial, sans-serif'; // ✅ Fuente más pequeña
+    ctx.font = 'bold 12px Arial, sans-serif'; //  Fuente más pequeña
     ctx.textAlign = 'left';
-    ctx.fillText('PRODUCTOS:', 25, yPos); // ✅ Márgenes más pequeños (25 en lugar de 50)
-    yPos += 20; // ✅ Espacio más compacto
+    ctx.fillText('PRODUCTOS:', 25, yPos); //  Márgenes más pequeños (25 en lugar de 50)
+    yPos += 20; //  Espacio más compacto
     
-    ctx.font = '10px Arial, sans-serif'; // ✅ Fuente más pequeña para productos
+    ctx.font = '10px Arial, sans-serif'; //  Fuente más pequeña para productos
     
     if (ventaData.items && ventaData.items.length > 0) {
-      console.log('🔍 Productos a dibujar:', ventaData.items.length);
+      console.log(' Productos a dibujar:', ventaData.items.length);
       
       ventaData.items.forEach((item, index) => {
         const descripcion = `${item.cantidad}× ${item.descripcion}`;
@@ -730,30 +730,30 @@ let yPos = 80; // ✅ Inicio después del header compacto (80px en lugar de 120p
         
         // Texto a la izquierda (más corto para espacio compacto)
         ctx.textAlign = 'left';
-        ctx.fillText(descripcion.substring(0, 25), 25, yPos); // ✅ Márgenes y texto más pequeños
+        ctx.fillText(descripcion.substring(0, 25), 25, yPos); //  Márgenes y texto más pequeños
         
         // Precio a la derecha
         ctx.textAlign = 'right';
-        ctx.fillText(precio, canvas.width - 25, yPos); // ✅ Margen más pequeño
+        ctx.fillText(precio, canvas.width - 25, yPos); //  Margen más pequeño
         
-        yPos += 18; // ✅ Espaciado más compacto
+        yPos += 18; //  Espaciado más compacto
         
-        console.log(`🎨 Producto ${index + 1} dibujado:`, descripcion);
+        console.log(` Producto ${index + 1} dibujado:`, descripcion);
       });
     } else {
       ctx.textAlign = 'center';
       ctx.fillText('Sin productos', canvas.width / 2, yPos);
       yPos += 18;
-      console.log('⚠️ Sin productos para dibujar');
+      console.log(' Sin productos para dibujar');
     }
     
     yPos += 15;
     
     // ===== LÍNEA SEPARADORA =====
     ctx.strokeStyle = '#E5E7EB';
-    ctx.lineWidth = 1; // ✅ Línea más fina
+    ctx.lineWidth = 1; //  Línea más fina
     ctx.beginPath();
-    ctx.moveTo(25, yPos); // ✅ Márgenes más pequeños
+    ctx.moveTo(25, yPos); //  Márgenes más pequeños
     ctx.lineTo(canvas.width - 25, yPos);
     ctx.stroke();
     yPos += 20;
@@ -768,11 +768,11 @@ let yPos = 80; // ✅ Inicio después del header compacto (80px en lugar de 120p
     
     const totalFinal = subtotal - (descuento || 0);
     
-    console.log('💰 Cálculos:', { subtotal, descuento, totalFinal });
+    console.log(' Cálculos:', { subtotal, descuento, totalFinal });
     
     // ===== SUBTOTAL Y DESCUENTO =====
     ctx.fillStyle = '#374151';
-    ctx.font = '11px Arial, sans-serif'; // ✅ Fuente más pequeña
+    ctx.font = '11px Arial, sans-serif'; //  Fuente más pequeña
     ctx.textAlign = 'left';
     
     ctx.fillText('Subtotal:', 25, yPos);
@@ -783,7 +783,7 @@ let yPos = 80; // ✅ Inicio después del header compacto (80px en lugar de 120p
     }) + ' Bs', canvas.width - 25, yPos);
     yPos += 18;
     
-    // ✅ MOSTRAR DESCUENTO SI EXISTE
+    //  MOSTRAR DESCUENTO SI EXISTE
     if (descuento > 0) {
       ctx.fillStyle = '#DC2626'; // Rojo para descuento
       ctx.textAlign = 'left';
@@ -797,28 +797,28 @@ let yPos = 80; // ✅ Inicio después del header compacto (80px en lugar de 120p
       
       // Mostrar motivo del descuento si existe
       if (ventaData.motivoDescuento) {
-        ctx.font = '9px Arial, sans-serif'; // ✅ Fuente más pequeña
+        ctx.font = '9px Arial, sans-serif'; //  Fuente más pequeña
         ctx.fillStyle = '#6B7280';
         ctx.textAlign = 'left';
-        ctx.fillText(`Motivo: ${ventaData.motivoDescuento.substring(0, 30)}`, 25, yPos); // ✅ Texto más corto
+        ctx.fillText(`Motivo: ${ventaData.motivoDescuento.substring(0, 30)}`, 25, yPos); //  Texto más corto
         yPos += 15;
         ctx.font = '11px Arial, sans-serif';
       }
       
-      console.log('🎨 Descuento aplicado:', descuento);
+      console.log(' Descuento aplicado:', descuento);
     }
     
     yPos += 10;
     
     // ===== TOTAL FINAL =====
     ctx.fillStyle = '#F0FDF4';
-    ctx.fillRect(25, yPos, canvas.width - 50, 60); // ✅ Caja más pequeña y márgenes ajustados
+    ctx.fillRect(25, yPos, canvas.width - 50, 60); //  Caja más pequeña y márgenes ajustados
     ctx.strokeStyle = '#22C55E';
     ctx.lineWidth = 2;
     ctx.strokeRect(25, yPos, canvas.width - 50, 60);
     
     ctx.fillStyle = '#15803D';
-    ctx.font = 'bold 20px Arial, sans-serif'; // ✅ Fuente más pequeña
+    ctx.font = 'bold 20px Arial, sans-serif'; //  Fuente más pequeña
     ctx.textAlign = 'center';
     const totalTexto = totalFinal.toLocaleString('es-ES', {
       minimumFractionDigits: 2,
@@ -826,13 +826,13 @@ let yPos = 80; // ✅ Inicio después del header compacto (80px en lugar de 120p
     }) + ' Bs';
     ctx.fillText(totalTexto, canvas.width / 2, yPos + 25);
     
-    ctx.font = '10px Arial, sans-serif'; // ✅ Fuente más pequeña
+    ctx.font = '10px Arial, sans-serif'; //  Fuente más pequeña
     ctx.fillText('TOTAL A PAGAR', canvas.width / 2, yPos + 45);
     
     yPos += 80;
     
 
-// ✅ MÉTODOS DE PAGO
+//  MÉTODOS DE PAGO
 if (ventaData.pagos && ventaData.pagos.length > 0) {
   const pagosConMonto = ventaData.pagos.filter(pago => pago.monto && parseFloat(pago.monto) > 0);
   
@@ -850,7 +850,7 @@ if (ventaData.pagos && ventaData.pagos.length > 0) {
     pagosConMonto.forEach((pago, index) => {
       const metodoTexto = pago.metodo.replace('_', ' ').toUpperCase();
       
-      // ✅ DETERMINAR MONEDA SEGÚN EL MÉTODO DE PAGO
+      //  DETERMINAR MONEDA SEGÚN EL MÉTODO DE PAGO
       let montoTexto;
       const monto = parseFloat(pago.monto);
       
@@ -887,14 +887,14 @@ if (ventaData.pagos && ventaData.pagos.length > 0) {
         ctx.fillStyle = '#374151';
       }
       
-      console.log(`🎨 Método de pago ${index + 1}:`, metodoTexto, montoTexto);
+      console.log(` Método de pago ${index + 1}:`, metodoTexto, montoTexto);
     });
     
     yPos += 10;
   }
 }
 
-// ✅ VUELTOS (también corregir aquí)
+//  VUELTOS (también corregir aquí)
 if (ventaData.vueltos && ventaData.vueltos.length > 0) {
   const vueltosConMonto = ventaData.vueltos.filter(vuelto => vuelto.monto && parseFloat(vuelto.monto) > 0);
   
@@ -912,7 +912,7 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
     vueltosConMonto.forEach((vuelto, index) => {
       const metodoTexto = vuelto.metodo.replace('_', ' ').toUpperCase();
       
-      // ✅ DETERMINAR MONEDA SEGÚN EL MÉTODO DE VUELTO
+      //  DETERMINAR MONEDA SEGÚN EL MÉTODO DE VUELTO
       let montoTexto;
       const monto = parseFloat(vuelto.monto);
       
@@ -938,7 +938,7 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
       
       yPos += 16;
       
-      console.log(`🎨 Vuelto ${index + 1}:`, metodoTexto, montoTexto);
+      console.log(` Vuelto ${index + 1}:`, metodoTexto, montoTexto);
     });
     
     yPos += 10;
@@ -949,7 +949,7 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
     
     // ===== FOOTER =====
     ctx.fillStyle = '#6B7280';
-    ctx.font = '10px Arial, sans-serif'; // ✅ Fuente más pequeña
+    ctx.font = '10px Arial, sans-serif'; //  Fuente más pequeña
     ctx.textAlign = 'center';
     ctx.fillText('WhatsApp: +58 257 251 1282', canvas.width / 2, yPos);
     yPos += 15;
@@ -957,10 +957,10 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
     yPos += 15;
     ctx.fillText('¡Gracias por su compra!', canvas.width / 2, yPos);
     
-    console.log('🎨 Footer aplicado');
+    console.log(' Footer aplicado');
     
     // ===== AJUSTAR ALTURA DEL CANVAS =====
-    const finalHeight = yPos + 30; // ✅ Margen final más pequeño
+    const finalHeight = yPos + 30; //  Margen final más pequeño
     if (finalHeight !== canvas.height) {
       // Crear nuevo canvas con altura ajustada
       const newCanvas = document.createElement('canvas');
@@ -974,7 +974,7 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
       // Usar el nuevo canvas
       const imagenBase64 = newCanvas.toDataURL('image/jpeg', 0.9);
       
-      console.log('📊 Imagen generada con altura ajustada (compacta):', {
+      console.log(' Imagen generada con altura ajustada (compacta):', {
         size_kb: Math.round(imagenBase64.length / 1024),
         width: newCanvas.width,
         height: finalHeight,
@@ -987,32 +987,32 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
     // ===== CONVERTIR A BASE64 =====
     const imagenBase64 = canvas.toDataURL('image/jpeg', 0.9);
     
-    console.log('📊 Imagen generada (compacta):', {
+    console.log(' Imagen generada (compacta):', {
       size_kb: Math.round(imagenBase64.length / 1024),
       width: canvas.width,
       starts_with: imagenBase64.substring(0, 50),
       total_length: imagenBase64.length
     });
     
-    // ✅ VERIFICAR QUE NO ESTÁ VACÍA
+    //  VERIFICAR QUE NO ESTÁ VACÍA
     if (imagenBase64.length < 1000) {
       throw new Error('Imagen generada está vacía o muy pequeña');
     }
     
-    console.log('📱 ===== IMAGEN WHATSAPP COMPACTA COMPLETADA =====');
+    console.log(' ===== IMAGEN WHATSAPP COMPACTA COMPLETADA =====');
     
     return imagenBase64;
     
   } catch (error) {
-    console.error('❌ Error generando imagen para WhatsApp:', error);
+    console.error(' Error generando imagen para WhatsApp:', error);
     throw error;
   }
 };
 
-// 🛡️ FUNCIÓN FALLBACK - Crear imagen con Canvas API nativo
+//  FUNCIÓN FALLBACK - Crear imagen con Canvas API nativo
 const generarImagenFallback = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
-    console.log('🎨 Generando imagen fallback con Canvas...');
+    console.log(' Generando imagen fallback con Canvas...');
     
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -1121,21 +1121,21 @@ const generarImagenFallback = async (ventaData, codigoVenta, tasaCambio, descuen
     ctx.fillStyle = '#666666';
     ctx.fillText('Gracias por su compra', canvas.width / 2, y);
     y += lineHeight;
-    ctx.fillText('📱 Enviado por WhatsApp', canvas.width / 2, y);
+    ctx.fillText(' Enviado por WhatsApp', canvas.width / 2, y);
     
     // Convertir a base64
     const imagenBase64 = canvas.toDataURL('image/png', 0.9);
     
-    console.log('✅ Imagen fallback generada exitosamente');
+    console.log(' Imagen fallback generada exitosamente');
     return imagenBase64;
     
   } catch (error) {
-    console.error('❌ Error en imagen fallback:', error);
+    console.error(' Error en imagen fallback:', error);
     throw new Error('No se pudo generar la imagen para WhatsApp');
   }
 };
 
-// 💾 NUEVO - Descargar PDF automáticamente
+//  NUEVO - Descargar PDF automáticamente
 export const descargarPDF = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
     const pdfBlob = await generarPDFFactura(ventaData, codigoVenta, tasaCambio, descuento);
@@ -1150,10 +1150,10 @@ export const descargarPDF = async (ventaData, codigoVenta, tasaCambio, descuento
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    console.log('✅ PDF descargado exitosamente');
+    console.log(' PDF descargado exitosamente');
     
   } catch (error) {
-    console.error('❌ Error descargando PDF:', error);
+    console.error(' Error descargando PDF:', error);
     throw error;
   }
 };

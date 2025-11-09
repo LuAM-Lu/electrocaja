@@ -19,7 +19,7 @@ const BarcodeScanner = ({
   const [lastKeyTime, setLastKeyTime] = useState(0);
 
   // Detectar scanner USB (escritura muy rápida)
- // ✅ NUEVO - Solo cuando presiona Enter
+ //  NUEVO - Solo cuando presiona Enter
 const handleKeyPress = (e) => {
   if (e.key === 'Enter' && value.length > 3) {
     e.preventDefault();
@@ -78,7 +78,7 @@ const handleKeyPress = (e) => {
     }
     
     onChange(newCode);
-    // ✅ SIN toast.success - solo cambiar el valor
+    //  SIN toast.success - solo cambiar el valor
   };
 
   // Limpiar código
@@ -175,7 +175,7 @@ const handleKeyPress = (e) => {
         {isScanning && (
           <div className="text-xs text-green-600 flex items-center space-x-1 animate-pulse">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-            <span>🔍 Escaneando código...</span>
+            <span> Escaneando código...</span>
           </div>
         )}
         
@@ -189,13 +189,13 @@ const handleKeyPress = (e) => {
         {value && !isDuplicate && !isScanning && (
           <div className="text-xs text-green-600 flex items-center space-x-1">
             <CheckCircle className="h-3 w-3" />
-            <span>✅ Código disponible - {value.length} caracteres</span>
+            <span> Código disponible - {value.length} caracteres</span>
           </div>
         )}
         
         {!value && !isScanning && (
           <div className="text-xs text-gray-500">
-            💡 Use el scanner USB, escriba manualmente o genere automático
+             Use el scanner USB, escriba manualmente o genere automático
           </div>
         )}
       </div>

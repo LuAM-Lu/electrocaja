@@ -4,26 +4,15 @@ import { Eye, Wrench, HandCoins, Trash2, Plus, Search, Filter, Calendar, Clock, 
 import { useCajaStore } from '../store/cajaStore';
 //import TransactionDetailModal from './TransactionDetailModal';
 import DeleteTransactionModal from './DeleteTransactionModal';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 import { api } from '../config/api';
-import { useAuthStore } from '../store/authStore'; // ✅ AGREGAR ESTA LÍNEA
+import { useAuthStore } from '../store/authStore'; //  AGREGAR ESTA LÍNEA
 
 
 
 
 const TransactionTable = () => {
   const { cajaActual, transacciones, eliminarTransaccion } = useCajaStore();
-  // ✅ DEBUG: Verificar si se está recargando
-    useEffect(() => {
-      console.log('📊 TransactionTable - Transacciones actualizadas:', transacciones.length);
-      console.log('📊 Últimas 3 transacciones:', transacciones.slice(0, 3).map(t => ({
-        id: t.id,
-        categoria: t.categoria,
-        usuario: t.usuario,
-        fecha: t.fechaHora
-      })));
-    }, [transacciones]);
-
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('todas');
@@ -123,7 +112,7 @@ const handleViewDetails = async (transaccion) => {
   };
 
  const obtenerMontosOriginales = (transaccion) => {
-    // ✅ MEJORAR PRESENTACIÓN DE VUELTOS
+    //  MEJORAR PRESENTACIÓN DE VUELTOS
     if (transaccion.categoria?.includes('Vuelto de venta')) {
       // Detectar moneda original del vuelto
       const esUSD = transaccion.metodoPagoPrincipal?.includes('usd') || 
@@ -198,10 +187,10 @@ const handleViewDetails = async (transaccion) => {
 
   const getInventarioIcon = (tipo) => {
     switch(tipo) {
-      case 'producto': return '📱';
-      case 'servicio': return '🔧';
-      case 'electrobar': return '🍿';
-      default: return '📦';
+      case 'producto': return '';
+      case 'servicio': return '';
+      case 'electrobar': return '';
+      default: return '';
     }
   };
 
@@ -292,7 +281,7 @@ const handleViewDetails = async (transaccion) => {
             {/* Controles de búsqueda y filtro */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" /> {/* 👈 AGREGADO: z-10 pointer-events-none */}
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" /> {/*  AGREGADO: z-10 pointer-events-none */}
                 <input
                   type="text"
                   placeholder="Buscar por categoría o descripción..."
@@ -303,7 +292,7 @@ const handleViewDetails = async (transaccion) => {
               </div>
               
               <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" /> {/* 👈 AGREGADO: z-10 pointer-events-none */}
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" /> {/*  AGREGADO: z-10 pointer-events-none */}
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}

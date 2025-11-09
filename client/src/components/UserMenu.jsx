@@ -5,7 +5,7 @@ import {
   ChevronDown, Bell, Activity 
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
 const UserMenu = () => {
   const { usuario, logout, getSessionInfo } = useAuthStore();

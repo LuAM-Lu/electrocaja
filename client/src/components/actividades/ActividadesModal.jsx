@@ -10,9 +10,9 @@ import RecordatoriosPanel from './RecordatoriosPanel';
 import CronometrosPanel from './CronometrosPanel';
 import ReservacionesPanel from './ReservacionesPanel';
 //import EstadisticasPanel from './EstadisticasPanel';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
-// 🎨 CONFIGURACIÓN DE TABS
+//  CONFIGURACIÓN DE TABS
 const TABS = [
   {
     id: 'recordatorios',
@@ -44,7 +44,7 @@ const TABS = [
   }
 ];
 
-// 🎨 OBTENER COLORES POR TAB
+//  OBTENER COLORES POR TAB
 const getTabColors = (color, isActive) => {
   const colors = {
     emerald: {
@@ -93,7 +93,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
   
   const { usuario, tienePermiso } = useAuthStore();
 
- // 🔄 INICIALIZACIÓN (temporalmente comentado)
+ //  INICIALIZACIÓN (temporalmente comentado)
   // useEffect(() => {
   //   if (isOpen) {
   //     setLoading(true);
@@ -101,7 +101,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
   //       .then(() => setLoading(false))
   //       .catch(() => {
   //         setLoading(false);
-  //         toast.error('❌ Error cargando actividades');
+  //         toast.error('Error cargando actividades');
   //       });
   //   }
   //   
@@ -112,7 +112,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
   //   };
   // }, [isOpen, inicializar, limpiarRecursos]);
 
-  // 📊 CONTADORES POR TAB
+  //  CONTADORES POR TAB
   // const getTabCounts = () => {
   //   const recordatorios = obtenerRecordatorios().filter(r => r.estado !== 'completado').length;
   //   const cronometros = cronometrosActivos.size;
@@ -132,19 +132,19 @@ const ActividadesModal = ({ isOpen, onClose }) => {
   const currentTab = TABS.find(tab => tab.id === activeTab);
   const tabColors = getTabColors(currentTab?.color || 'emerald', true);
 
-  // 🚪 MANEJAR CIERRE
+  //  MANEJAR CIERRE
   const handleClose = () => {
     // limpiarRecursos(); // temporal
     onClose();
   };
 
-  // 📱 MANEJAR SINCRONIZACIÓN
+  //  MANEJAR SINCRONIZACIÓN
   const handleSincronizar = async () => {
     try {
       // await sincronizar(); // temporal
-      toast.success('🔄 Sincronización temporal deshabilitada');
+      toast.success('Sincronización temporal deshabilitada');
     } catch (error) {
-      toast.error('❌ Error sincronizando');
+      toast.error('Error sincronizando');
     }
   };
 
@@ -154,7 +154,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl h-[85vh] overflow-hidden flex flex-col">
         
-        {/* 🎨 HEADER DINÁMICO */}
+        {/*  HEADER DINÁMICO */}
         <div className={`relative bg-gradient-to-r ${tabColors.header} overflow-hidden`}>
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{
@@ -185,7 +185,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
                     </span>
                     {counts.vencidas > 0 && (
                       <span className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold animate-pulse">
-                        🔔 {counts.vencidas} vencidas
+                         {counts.vencidas} vencidas
                       </span>
                     )}
                   </div>
@@ -233,7 +233,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* 📋 NAVEGACIÓN DE TABS */}
+        {/*  NAVEGACIÓN DE TABS */}
         <div className="bg-white border-b border-gray-200 px-8 py-4">
           <div className="flex items-center space-x-2 overflow-x-auto">
             {TABS.map((tab) => {
@@ -275,7 +275,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* 📄 CONTENIDO DE TABS */}
+        {/*  CONTENIDO DE TABS */}
         <div className="flex-1 overflow-hidden">
           {loading ? (
             /* Estado de carga */
@@ -313,7 +313,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
           )}
         </div>
 
-        {/* 📊 FOOTER CON ESTADÍSTICAS RÁPIDAS */}
+        {/*  FOOTER CON ESTADÍSTICAS RÁPIDAS */}
         {!loading && (
           <div className="bg-gray-50 px-8 py-3 border-t border-gray-200">
             <div className="flex items-center justify-between text-sm text-gray-600">
@@ -347,7 +347,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {/* 🔧 PANEL DE CONFIGURACIÓN (si está habilitado) */}
+        {/*  PANEL DE CONFIGURACIÓN (si está habilitado) */}
         {showConfiguracion && usuario?.rol === 'admin' && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-10">
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">

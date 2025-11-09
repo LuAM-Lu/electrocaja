@@ -130,7 +130,7 @@ model Pago {
   id            Int         @id @default(autoincrement())
   transaccionId Int         @map("transaccion_id")
   metodo        String
-  monto         Decimal     @db.Decimal(12, 2)
+  monto         Decimal     @db.Decimal(12, 4)
   moneda        String
   banco         String?
   referencia    String?

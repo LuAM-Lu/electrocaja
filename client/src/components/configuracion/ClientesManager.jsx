@@ -4,7 +4,7 @@ import {
   Users, Plus, Search, Edit2, Trash2, Eye, UserCheck, UserX, 
   Phone, Mail, MapPin, User, Building, Filter, X
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';
 
 // Helper function para requests API
@@ -57,9 +57,9 @@ const ClientesManager = () => {
       }
 
       const response = await apiRequest(`/clientes?${params.toString()}`);
-        console.log('🔧 DEBUG - response.data:', response.data);
-        console.log('🔧 DEBUG - response.data.data:', response.data.data);
-        console.log('🔧 DEBUG - Todas las propiedades de data.data:', Object.keys(response.data.data || {}));
+        console.log(' DEBUG - response.data:', response.data);
+        console.log(' DEBUG - response.data.data:', response.data.data);
+        console.log(' DEBUG - Todas las propiedades de data.data:', Object.keys(response.data.data || {}));
         setClientes(response.data?.data?.data?.clientes || []);
     } catch (error) {
       console.error('Error cargando clientes:', error);
@@ -323,7 +323,7 @@ const ClientesManager = () => {
                           ? 'bg-purple-100 text-purple-800' 
                           : 'bg-blue-100 text-blue-800'
                       }`}>
-                        {cliente.tipo === 'empresa' ? '🏢 Empresa' : '👤 Persona'}
+                        {cliente.tipo === 'empresa' ? ' Empresa' : ' Persona'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -332,7 +332,7 @@ const ClientesManager = () => {
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {cliente.activo ? '✅ Activo' : '❌ Inactivo'}
+                        {cliente.activo ? ' Activo' : ' Inactivo'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">

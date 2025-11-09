@@ -28,14 +28,6 @@ const Summary = () => {
     );
   }
 
-  // ✅ DEBUG: Montos calculados por hook unificado
-  console.log('🔍 MONTOS REACTIVOS:', {
-    efectivoBs: montosReales.efectivoBs,
-    efectivoUsd: montosReales.efectivoUsd,
-    pagoMovil: montosReales.pagoMovil,
-    transaccionesTotales: montosReales.transaccionesTotales
-  });
-
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">

@@ -1,28 +1,28 @@
 // components/DeleteTransactionModal.jsx (ACTUALIZADO CON INVENTARIO)
 import React, { useState } from 'react';
 import { X, AlertTriangle, Package, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
-import { useInventarioStore } from '../store/inventarioStore'; // 👈 NUEVO
-import toast from 'react-hot-toast';
+import { useInventarioStore } from '../store/inventarioStore'; //  NUEVO
+import toast from '../utils/toast.jsx';
 
 const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { aumentarStock } = useInventarioStore(); // 👈 INTEGRACIÓN
+  const { aumentarStock } = useInventarioStore(); //  INTEGRACIÓN
 
   if (!isOpen || !transaccion) return null;
 
-  // 👈 NUEVA FUNCIÓN: Formatear bolívares redondeados
+  //  NUEVA FUNCIÓN: Formatear bolívares redondeados
   const formatBolivares = (amount) => {
     return Math.round(amount).toLocaleString('es-VE');
   };
 
-  // 👈 NUEVA FUNCIÓN: Obtener icono del inventario
+  //  NUEVA FUNCIÓN: Obtener icono del inventario
   const getInventarioIcon = (tipo) => {
     switch(tipo) {
-      case 'producto': return '📱';
-      case 'servicio': return '🔧';
-      case 'electrobar': return '🍿'; // 👈 COTUFAS
-      default: return '📦';
+      case 'producto': return '';
+      case 'servicio': return '';
+      case 'electrobar': return ''; //  COTUFAS
+      default: return '';
     }
   };
 
@@ -36,7 +36,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
 
     setLoading(true);
     try {
-      // 👈 NUEVO: Si la transacción tiene item del inventario, devolver stock
+      //  NUEVO: Si la transacción tiene item del inventario, devolver stock
       if (transaccion.item_inventario && 
           (transaccion.item_inventario.tipo === 'producto' || transaccion.item_inventario.tipo === 'electrobar') &&
           transaccion.tipo === 'ingreso') { // Solo para ingresos (ventas)
@@ -48,9 +48,9 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
           
           // Mensaje específico para electrobar
           if (transaccion.item_inventario.tipo === 'electrobar') {
-            toast.success(`🍿 Stock devuelto: +${cantidad} ${transaccion.item_inventario.descripcion}`);
+            toast.success(`Stock devuelto: +${cantidad} ${transaccion.item_inventario.descripcion}`);
           } else {
-            toast.success(`📦 Stock devuelto: +${cantidad} ${transaccion.item_inventario.descripcion}`);
+            toast.success(`Stock devuelto: +${cantidad} ${transaccion.item_inventario.descripcion}`);
           }
         } catch (stockError) {
           toast.warning(`Transacción eliminada, pero no se pudo devolver el stock: ${stockError.message}`);
@@ -99,7 +99,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           
-          {/* 👈 NUEVA SECCIÓN: Alerta de inventario si aplica */}
+          {/*  NUEVA SECCIÓN: Alerta de inventario si aplica */}
           {transaccion.item_inventario && 
            (transaccion.item_inventario.tipo === 'producto' || transaccion.item_inventario.tipo === 'electrobar') &&
            transaccion.tipo === 'ingreso' && (
@@ -167,11 +167,11 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
                 <span className={`font-bold text-sm ${
                   transaccion.tipo === 'ingreso' ? 'text-emerald-700' : 'text-red-700'
                 }`}>
-                  {transaccion.tipo === 'ingreso' ? '+' : '-'}{formatBolivares(transaccion.total_bs)} Bs {/* 👈 REDONDEADO */}
+                  {transaccion.tipo === 'ingreso' ? '+' : '-'}{formatBolivares(transaccion.total_bs)} Bs {/*  REDONDEADO */}
                 </span>
               </div>
 
-              {/* 👈 NUEVO: Mostrar cantidad si viene del inventario */}
+              {/*  NUEVO: Mostrar cantidad si viene del inventario */}
               {transaccion.item_inventario && (
                 <div className="flex justify-between items-center border-t pt-2">
                   <span className="text-xs text-gray-600">Cantidad:</span>
@@ -203,7 +203,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
             </p>
           </div>
 
-          {/* 👈 NUEVA SECCIÓN: Advertencia adicional si hay inventario */}
+          {/*  NUEVA SECCIÓN: Advertencia adicional si hay inventario */}
           {transaccion.item_inventario && 
            (transaccion.item_inventario.tipo === 'producto' || transaccion.item_inventario.tipo === 'electrobar') &&
            transaccion.tipo === 'ingreso' && (

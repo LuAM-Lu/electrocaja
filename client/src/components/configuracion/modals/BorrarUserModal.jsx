@@ -1,7 +1,7 @@
 // components/BorrarUserModal.jsx
 import React, { useState } from 'react';
 import { AlertTriangle, Shield, Trash2, AlertCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../../utils/toast.jsx';
 
 const BorrarUserModal = ({ isOpen, usuario, onConfirm, onCancel }) => {
   const [clave, setClave] = useState('');
@@ -55,7 +55,7 @@ const BorrarUserModal = ({ isOpen, usuario, onConfirm, onCancel }) => {
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">⚠️ Confirmar Eliminación</h3>
+              <h3 className="text-lg font-bold"> Confirmar Eliminación</h3>
               <p className="text-sm text-red-100">Esta acción no se puede deshacer</p>
             </div>
           </div>
@@ -79,7 +79,7 @@ const BorrarUserModal = ({ isOpen, usuario, onConfirm, onCancel }) => {
             </div>
             
             <div className="text-sm text-red-800 space-y-1">
-              <p><strong>⚠️ ADVERTENCIA:</strong> Al borrar este usuario:</p>
+              <p><strong> ADVERTENCIA:</strong> Al borrar este usuario:</p>
               <ul className="list-disc list-inside space-y-1 text-red-700">
                 <li>Se eliminará permanentemente del sistema</li>
                 <li>No podrá recuperarse esta información</li>

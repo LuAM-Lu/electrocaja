@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, BarChart, Package, TrendingDown, DollarSign, Search, Users, FileText, Calendar } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 // Pestañas existentes
 import ReportesEgresos from './ReportesEgresos';
@@ -138,7 +138,7 @@ const ReportesModal = ({ isOpen, onClose }) => {
             <div className="flex space-x-3">
               <button
                 onClick={() => {
-                  toast.success('🔄 Actualizando datos...');
+                  toast.success('Actualizando datos...');
                   setLoading(true);
                   setTimeout(() => setLoading(false), 1000);
                 }}

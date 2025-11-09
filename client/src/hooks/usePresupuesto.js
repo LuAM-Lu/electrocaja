@@ -1,8 +1,8 @@
-// client/src/hooks/usePresupuesto.js - HOOK PARA MANEJAR PRESUPUESTOS 🎯
+// client/src/hooks/usePresupuesto.js - HOOK PARA MANEJAR PRESUPUESTOS 
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 import {
   generarPDFPresupuesto,
   descargarPDFPresupuesto,
@@ -23,7 +23,7 @@ export const usePresupuesto = () => {
   const [loading, setLoading] = useState({});
   const [exportando, setExportando] = useState(false);
 
-  // 📄 Generar PDF
+  //  Generar PDF
   const generarPDF = async (presupuestoData) => {
     try {
       setLoading(prev => ({ ...prev, pdf: true }));
@@ -35,11 +35,11 @@ export const usePresupuesto = () => {
 
       const pdfBlob = await generarPDFPresupuesto(presupuestoData, tasaCambio);
       
-      toast.success('📄 PDF generado exitosamente');
+      toast.success('PDF generado exitosamente');
       return pdfBlob;
       
     } catch (error) {
-      console.error('❌ Error generando PDF:', error);
+      console.error(' Error generando PDF:', error);
       toast.error('Error generando PDF: ' + error.message);
       throw error;
     } finally {
@@ -47,18 +47,18 @@ export const usePresupuesto = () => {
     }
   };
 
-  // 💾 Descargar PDF
+  //  Descargar PDF
   const descargarPDF = async (presupuestoData) => {
     try {
       setLoading(prev => ({ ...prev, descarga: true }));
       
       await descargarPDFPresupuesto(presupuestoData, tasaCambio);
       
-      toast.success('💾 PDF descargado exitosamente');
+      toast.success('PDF descargado exitosamente');
       return true;
       
     } catch (error) {
-      console.error('❌ Error descargando PDF:', error);
+      console.error(' Error descargando PDF:', error);
       toast.error('Error descargando PDF: ' + error.message);
       throw error;
     } finally {
@@ -66,18 +66,18 @@ export const usePresupuesto = () => {
     }
   };
 
-  // 🖨️ Imprimir presupuesto
+  //  Imprimir presupuesto
   const imprimir = async (presupuestoData) => {
     try {
       setLoading(prev => ({ ...prev, imprimir: true }));
       
       await imprimirPresupuesto(presupuestoData, tasaCambio);
       
-      toast.success('🖨️ Enviado a impresora');
+      toast.success('Enviado a impresora');
       return true;
       
     } catch (error) {
-      console.error('❌ Error imprimiendo:', error);
+      console.error(' Error imprimiendo:', error);
       toast.error('Error imprimiendo: ' + error.message);
       throw error;
     } finally {
@@ -85,7 +85,7 @@ export const usePresupuesto = () => {
     }
   };
 
-  // 📱 Enviar por WhatsApp
+  //  Enviar por WhatsApp
   const enviarWhatsApp = async (presupuestoData, numero, mensaje) => {
     try {
       setLoading(prev => ({ ...prev, whatsapp: true }));
@@ -102,14 +102,14 @@ export const usePresupuesto = () => {
       );
       
       if (resultado.success) {
-        toast.success('📱 Presupuesto enviado por WhatsApp');
+        toast.success('Presupuesto enviado por WhatsApp');
         return resultado.data;
       } else {
         throw new Error(resultado.message || 'Error enviando WhatsApp');
       }
       
     } catch (error) {
-      console.error('❌ Error enviando WhatsApp:', error);
+      console.error(' Error enviando WhatsApp:', error);
       toast.error('Error enviando WhatsApp: ' + error.message);
       throw error;
     } finally {
@@ -117,7 +117,7 @@ export const usePresupuesto = () => {
     }
   };
 
-  // 📧 Enviar por Email
+  //  Enviar por Email
   const enviarEmail = async (presupuestoData, destinatario) => {
     try {
       setLoading(prev => ({ ...prev, email: true }));
@@ -133,14 +133,14 @@ export const usePresupuesto = () => {
       );
       
       if (resultado.success) {
-        toast.success('📧 Presupuesto enviado por email');
+        toast.success('Presupuesto enviado por email');
         return resultado.data;
       } else {
         throw new Error(resultado.message || 'Error enviando email');
       }
       
     } catch (error) {
-      console.error('❌ Error enviando email:', error);
+      console.error(' Error enviando email:', error);
       toast.error('Error enviando email: ' + error.message);
       throw error;
     } finally {
@@ -148,12 +148,12 @@ export const usePresupuesto = () => {
     }
   };
 
-  // 🚀 Ejecutar múltiples exports
+  //  Ejecutar múltiples exports
   const ejecutarExports = async (presupuestoData, exportConfig) => {
     try {
       setExportando(true);
       
-      console.log('🚀 Ejecutando exports:', exportConfig);
+      console.log(' Ejecutando exports:', exportConfig);
       
       // Validar configuración
       const validacionConfig = validarExportConfig(exportConfig, presupuestoData);
@@ -169,22 +169,22 @@ export const usePresupuesto = () => {
       
       // Mostrar resumen de resultados
       if (resultado.success) {
-        const exitosos = resultado.resultados.filter(r => !r.includes('❌')).length;
+        const exitosos = resultado.resultados.filter(r => !r.includes('')).length;
         const fallidos = resultado.errores;
         
         if (fallidos > 0) {
-          toast.success(`✅ ${exitosos} exports exitosos, ${fallidos} fallidos`, {
+          toast.success(`${exitosos} exports exitosos, ${fallidos} fallidos`, {
             duration: 4000
           });
         } else {
-          toast.success(`🎉 Todos los exports completados exitosamente (${exitosos})`, {
+          toast.success(`Todos los exports completados exitosamente (${exitosos})`, {
             duration: 4000
           });
         }
         
         // Mostrar detalles
         resultado.resultados.forEach(resultado => {
-          if (resultado.includes('❌')) {
+          if (resultado.includes('')) {
             toast.error(resultado, { duration: 6000 });
           }
         });
@@ -193,7 +193,7 @@ export const usePresupuesto = () => {
       return resultado;
       
     } catch (error) {
-      console.error('❌ Error ejecutando exports:', error);
+      console.error(' Error ejecutando exports:', error);
       toast.error('Error ejecutando exports: ' + error.message);
       throw error;
     } finally {
@@ -201,7 +201,7 @@ export const usePresupuesto = () => {
     }
   };
 
-  // 📊 Generar imagen para vista previa
+  //  Generar imagen para vista previa
   const generarImagenPrevia = async (presupuestoData) => {
     try {
       setLoading(prev => ({ ...prev, vista_previa: true }));
@@ -211,7 +211,7 @@ export const usePresupuesto = () => {
       return imagen;
       
     } catch (error) {
-      console.error('❌ Error generando vista previa:', error);
+      console.error(' Error generando vista previa:', error);
       toast.error('Error generando vista previa');
       throw error;
     } finally {
@@ -219,17 +219,17 @@ export const usePresupuesto = () => {
     }
   };
 
-  // 🎯 Validar presupuesto
+  //  Validar presupuesto
   const validar = (presupuestoData) => {
     return validarPresupuesto(presupuestoData);
   };
 
-  // 📊 Validar configuración de export
+  //  Validar configuración de export
   const validarConfig = (exportConfig, presupuestoData) => {
     return validarExportConfig(exportConfig, presupuestoData);
   };
 
-  // 📋 Obtener resumen del presupuesto
+  //  Obtener resumen del presupuesto
   const obtenerResumen = (presupuestoData) => {
     if (!presupuestoData.items || presupuestoData.items.length === 0) {
       return null;

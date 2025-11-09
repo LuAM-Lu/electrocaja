@@ -4,7 +4,7 @@ import {
   X, Trash2, AlertTriangle, Shield, Lock, Key, Eye, EyeOff
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) {
   const { usuario } = useAuthStore();
@@ -52,12 +52,12 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
       // Simulación - en producción verificar contra backend
       if (adminPassword === 'admin123') { // Cambiar por verificación real
         setStep(2);
-        toast.success('✅ Verificación exitosa');
+        toast.success('Verificación exitosa');
       } else {
-        toast.error('❌ Contraseña incorrecta');
+        toast.error('Contraseña incorrecta');
       }
     } catch (error) {
-      toast.error('❌ Error en la verificación');
+      toast.error('Error en la verificación');
     } finally {
       setLoading(false);
     }
@@ -78,10 +78,10 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
         onConfirmar(servicio.id);
       }
       
-      toast.success('🗑️ Servicio eliminado permanentemente');
+      toast.success('Servicio eliminado permanentemente');
       onClose?.();
     } catch (error) {
-      toast.error('❌ Error al eliminar el servicio');
+      toast.error('Error al eliminar el servicio');
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-[70] p-4">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
 
-        {/* 🎨 HEADER PELIGROSO */}
+        {/*  HEADER PELIGROSO */}
         <div className="relative bg-gradient-to-r from-red-600 via-red-700 to-red-800 overflow-hidden">
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{
@@ -124,7 +124,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
           </div>
         </div>
 
-        {/* 📄 CONTENIDO */}
+        {/*  CONTENIDO */}
         <div className="p-6">
 
           {step === 1 ? (
@@ -136,7 +136,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-medium text-red-900 mb-1">⚠️ Acción Peligrosa</h3>
+                    <h3 className="font-medium text-red-900 mb-1"> Acción Peligrosa</h3>
                     <p className="text-red-700 text-sm">
                       Estás a punto de eliminar permanentemente este servicio. 
                       Esta acción <strong>no se puede deshacer</strong>.
@@ -232,7 +232,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
               {/* Confirmación final */}
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
                 <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-3" />
-                <h3 className="font-bold text-red-900 mb-2">⚠️ Confirmación Final</h3>
+                <h3 className="font-bold text-red-900 mb-2"> Confirmación Final</h3>
                 <p className="text-red-700 text-sm">
                   Esta acción eliminará permanentemente el servicio y todos sus datos asociados.
                   <br /><strong>No podrás recuperar esta información.</strong>

@@ -94,7 +94,7 @@ const LogoutConfirmModal = ({
                     <AlertTriangle className="h-4 w-4 text-amber-600" />
                   </div>
                   <div>
-                    <h5 className="font-semibold text-amber-900 mb-1">⚠️ Caja Abierta</h5>
+                    <h5 className="font-semibold text-amber-900 mb-1"> Caja Abierta</h5>
                     <p className="text-sm text-amber-700 leading-relaxed">
                       Actualmente tienes una caja abierta. Asegúrate de que esté todo en orden antes de cerrar sesión.
                     </p>
@@ -112,7 +112,7 @@ const LogoutConfirmModal = ({
                 </div>
                 <div className="flex justify-between">
                   <span>Datos guardados:</span>
-                  <span className="font-medium text-green-600">✓ Automáticamente</span>
+                  <span className="font-medium text-green-600"> Automáticamente</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tiempo de sesión:</span>

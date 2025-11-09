@@ -17,8 +17,8 @@ const cajaRoutes = require('./routes/cajas');
 const usersRoutes = require('./routes/users');
 const clientesRoutes = require('./routes/clientes');
 const proveedoresRoutes = require('./routes/proveedores');
-const auditoriaRoutes = require('./routes/auditoria')
-//const reporteEmpleadoRouter = require('./routes/reporteEmpleado');
+const auditoriaRoutes = require('./routes/auditoria');
+const cronRoutes = require('./routes/cronRoutes');
 
 const app = express();
 
@@ -343,8 +343,8 @@ app.use('/api/ventas', require('./routes/ventas')); // 🆕 RUTAS DE VENTAS
 app.use('/api/email', require('./routes/email')); // 🆕 RUTAS DE EMAIL
 app.use('/api/reportes', require('./routes/reportes')); // 🎯 RUTAS DE REPORTES
 app.use('/api/auditoria', require('./routes/auditoria')); // 🆕 RUTAS DE AUDITORIA INVENTARIO
-//app.use('/api/reportes', reporteEmpleadoRouter);// 🆕 RUTAS DE VENDEDOR
 app.use('/api/presupuestos', require('./routes/presupuestos')); // 🆕 RUTAS DE PRESUPUESTOS
+app.use('/api/cron', cronRoutes); // 🕐 RUTAS DE CRON JOBS (ADMIN)
 
 
 // 🔧 SOCKET.IO - EVENTOS COMPLETOS CON BLOQUEOS

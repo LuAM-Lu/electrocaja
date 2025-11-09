@@ -6,7 +6,7 @@ import {
   Tag, AlertCircle, Tags, Share2,
   MessageCircle, Instagram, Music
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 import JsBarcode from 'jsbarcode';
 import { api, getImageUrl } from '../config/api';
 import CompartirWhatsAppModal from './CompartirWhatsAppModal';
@@ -88,15 +88,15 @@ const ProductViewModal = ({ isOpen, onClose, product, tasaCambio, openedFrom, on
       printWindow.print();
       printWindow.onafterprint = function() { printWindow.close(); }
     }, 800);
-    toast.success('📄 Enviando a impresora...');
+    toast.success('Enviando a impresora...');
   };
 
   const getIconoTipo = (tipo) => {
     switch(tipo) {
-      case 'producto': return '📱';
-      case 'servicio': return '🔧';
-      case 'electrobar': return '🍿';
-      default: return '📦';
+      case 'producto': return '';
+      case 'servicio': return '';
+      case 'electrobar': return '';
+      default: return '';
     }
   };
 
@@ -175,231 +175,162 @@ const ProductViewModal = ({ isOpen, onClose, product, tasaCambio, openedFrom, on
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      {/* MODAL ajustado a altura de pantalla, con header/footer fijos y contenido scrolleable */}
-      <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full h-[92vh] flex flex-col overflow-hidden">
-        
-        {/* Header (fijo) */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      {/* MODAL ajustado a altura de pantalla, con header/footer fijos y contenido scrolleable - RESPONSIVE */}
+      <div ref={modalRef} className="bg-white rounded-lg sm:rounded-2xl shadow-2xl w-full sm:max-w-4xl h-[96vh] sm:h-[92vh] flex flex-col overflow-hidden">
+
+        {/* Header (fijo) - RESPONSIVE */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 sm:p-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="bg-white/20 p-3 rounded-xl">
-                <Eye className="h-8 w-8" />
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="bg-white/20 p-2 sm:p-3 rounded-lg sm:rounded-xl">
+                <Eye className="h-5 w-5 sm:h-8 sm:w-8" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Mostrador de Precio</h2>
-                <p className="text-blue-100">Vista para cliente</p>
+                <h2 className="text-lg sm:text-2xl font-bold">Mostrador de Precio</h2>
+                <p className="text-xs sm:text-sm text-blue-100 hidden sm:block">Vista para cliente</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               {product.codigo_barras && (
                 <button
                   onClick={handlePrintBarcode}
-                  className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+                  className="bg-white/20 hover:bg-white/30 p-1.5 sm:p-2 rounded-lg transition-colors"
                   title="Imprimir código de barras"
                 >
-                  <Printer className="h-5 w-5" />
+                  <Printer className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               )}
               <button
                 onClick={onClose}
-                className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+                className="bg-white/20 hover:bg-white/30 p-1.5 sm:p-2 rounded-lg transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Contenido Principal (scrollea) */}
-        <div className="p-8 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Columna Izquierda - Imagen y Info Básica */}
-            <div className="space-y-6">
+        {/* Contenido Principal (responsive y compacto) */}
+        <div className="p-2 sm:p-6 lg:p-8 flex-1 overflow-y-auto lg:overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 lg:h-full">
+
+            {/* Columna Izquierda - Imagen y Acciones */}
+            <div className="flex flex-col gap-3 sm:gap-6 lg:overflow-y-auto lg:pr-2 lg:-mr-2">
               
-              {/* Imagen del Producto (MÁS GRANDE) */}
-              <div className="relative">
+              {/* Contenedor de Imagen Flexible */}
+              <div className="relative flex-grow flex items-center justify-center">
                 {product.imagen_url ? (
-                  <img 
-                    src={getImageUrl(product.imagen_url)} 
+                  <img
+                    src={getImageUrl(product.imagen_url)}
                     alt={product.descripcion}
-                    className="w-full h-[28rem] lg:h-[32rem] object-contain bg-gray-50 rounded-xl shadow-lg border border-blue-100"
+                    className="w-full max-h-full object-contain bg-gray-50 rounded-lg sm:rounded-xl shadow-lg border border-blue-100"
                     onError={(e) => {
                       e.target.style.display = 'none';
                       e.target.nextSibling.style.display = 'flex';
                     }}
                   />
                 ) : (
-                  <div className="w-full h-[28rem] lg:h-[32rem] bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
+                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg sm:rounded-xl flex items-center justify-center min-h-[200px]">
                     <div className="text-center">
-                      <span className="text-7xl mb-4 block">{getIconoTipo(product.tipo)}</span>
-                      <p className="text-gray-500">Sin imagen</p>
+                      <span className="text-5xl sm:text-7xl mb-2 sm:mb-4 block">{getIconoTipo(product.tipo)}</span>
+                      <p className="text-sm sm:text-base text-gray-500">Sin imagen</p>
                     </div>
                   </div>
                 )}
-                
+
                 {/* Badge de Tipo */}
-                <div className="absolute top-4 left-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getColorTipo(product.tipo)}`}>
-                    {product.tipo === 'producto' ? 'Producto' : 
-                     product.tipo === 'servicio' ? 'Servicio' : 
-                     product.tipo === 'electrobar' ? 'Electrobar' : product.tipo}
+                <div className="absolute top-2 sm:top-4 left-2 sm:left-4">
+                  <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium border ${getColorTipo(product.tipo)}`}>
+                    {product.tipo.charAt(0).toUpperCase() + product.tipo.slice(1)}
                   </span>
                 </div>
               </div>
 
-              {/* 🚫 Se eliminó el CONTENEDOR del código de barras (imagen) */}
-              {/* (Si quieres dejar solo números de códigos, se ven abajo en "Códigos") */}
-
-              
-
               {/* Compartir */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-                <div className="flex items-center justify-center space-x-3">
-                  <button
-                    onClick={handleOpenWhatsApp}
-                    disabled={sharingLoading}
-                    className="group flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white rounded-lg px-4 py-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                  >
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-200">
+                <div className="flex items-center justify-center gap-2 sm:gap-3">
+                  <button onClick={handleOpenWhatsApp} disabled={sharingLoading} className="flex-1 group flex items-center justify-center space-x-2 bg-green-500 hover:bg-green-600 text-white rounded-lg px-3 py-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 shadow-md">
                     <MessageCircle className="h-4 w-4" />
                     <span className="text-sm font-medium">WhatsApp</span>
                   </button>
-                  <button
-                    onClick={handleInstagramShare}
-                    disabled={sharingLoading}
-                    className="group flex items-center space-x-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg px-4 py-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                  >
+                  <button onClick={handleInstagramShare} disabled={sharingLoading} className="flex-1 group flex items-center justify-center space-x-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg px-3 py-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 shadow-md">
                     <Instagram className="h-4 w-4" />
                     <span className="text-sm font-medium">Instagram</span>
                   </button>
-                  <button
-                    onClick={handleTikTokShare}
-                    disabled={sharingLoading}
-                    className="group flex items-center space-x-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg px-4 py-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                  >
+                  <button onClick={handleTikTokShare} disabled={sharingLoading} className="flex-1 group flex items-center justify-center space-x-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg px-3 py-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 shadow-md">
                     <Music className="h-4 w-4" />
                     <span className="text-sm font-medium">TikTok</span>
                   </button>
                 </div>
-
                 {sharingLoading && (
-                  <div className="mt-4 flex items-center justify-center space-x-2 text-purple-600">
+                  <div className="mt-3 flex items-center justify-center space-x-2 text-purple-600">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                    <span className="text-sm font-medium">Generando imagen...</span>
+                    <span className="text-xs font-medium">Generando imagen...</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Columna Derecha - Información y Precios */}
-            <div className="space-y-6">
+            <div className="flex flex-col gap-3 sm:gap-6 lg:overflow-y-auto lg:pr-2 lg:-mr-2">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.descripcion}</h1>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">{product.descripcion}</h1>
                 {product.categoria && (
-                  <p className="text-lg text-gray-600 flex items-center space-x-2">
+                  <p className="text-base sm:text-lg text-gray-600 flex items-center space-x-2">
                     <Tag className="h-4 w-4" />
                     <span>{product.categoria}</span>
                   </p>
                 )}
               </div>
 
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200 relative">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg sm:rounded-2xl p-3 sm:p-6 border border-green-200 relative">
                 {product.activo !== false ? (
-                  <div className="absolute -top-2 -right-2">
-                    <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                      <span>Disponible</span>
-                    </div>
-                  </div>
+                  <div className="absolute -top-2 -right-2"><div className="bg-green-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center space-x-1"><div className="w-2 h-2 bg-white rounded-full animate-pulse"></div><span>Disponible</span></div></div>
                 ) : (
-                  <div className="absolute -top-2 -right-2">
-                    <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                      <span>No Disponible</span>
+                  <div className="absolute -top-2 -right-2"><div className="bg-red-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center space-x-1"><div className="w-2 h-2 bg-white rounded-full"></div><span>No Disponible</span></div></div>
+                )}
+                <div className="absolute top-6 -right-2 sm:-right-2"><div className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium shadow-lg"><span className="hidden sm:inline">Incluye IVA 16%</span><span className="sm:hidden">IVA 16%</span></div></div>
+
+                <h2 className="text-base sm:text-xl font-semibold text-green-800 mb-3 sm:mb-4 flex items-center space-x-2"><Tags className="h-4 w-4 sm:h-6 sm:w-6" /><span>Precio de Venta</span></h2>
+                <div className="text-center space-y-2 sm:space-y-3">
+                  <div>
+                    <div className="text-3xl sm:text-5xl lg:text-6xl font-bold text-green-700">{precioVentaBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div className="text-lg sm:text-2xl font-bold text-green-600 mt-1">Bolívares</div>
+                  </div>
+                </div>
+                <div className="text-center mt-3 sm:mt-4 text-xs sm:text-sm text-green-600">BCV: {tasaCambio.toFixed(2)} Bs/USD</div>
+              </div>
+
+              <div className={`grid ${ (product.tipo === 'producto' || product.tipo === 'electrobar') ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                {(product.tipo === 'producto' || product.tipo === 'electrobar') && (
+                  <div className="bg-blue-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-blue-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2"><Package className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" /><span className="text-sm sm:text-base font-medium text-blue-900">Stock</span></div>
+                      <span className="text-xl sm:text-2xl font-bold text-blue-700">{product.stock || 0}</span>
                     </div>
+                    <div className="text-sm text-blue-600">unidades</div>
+                    {product.stock <= (product.stock_minimo || 5) && (
+                      <div className="mt-2 flex items-center space-x-2 text-amber-600"><AlertCircle className="h-4 w-4" /><span className="text-xs sm:text-sm">Stock bajo</span></div>
+                    )}
                   </div>
                 )}
-                <div className="absolute top-6 -right-2">
-                  <div className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium shadow-lg">
-                    <span>Incluye IVA 16%</span>
-                  </div>
-                </div>
 
-                <h2 className="text-xl font-semibold text-green-800 mb-4 flex items-center space-x-2">
-                  <Tags className="h-6 w-6" />
-                  <span>Precio de Venta</span>
-                </h2>
-                <div className="text-center space-y-3">
-                  <div>
-                    <div className="text-6xl font-bold text-green-700">
-                      {precioVentaBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </div>
-                    <div className="text-2xl font-bold text-green-600 mt-1">Bolívares</div>
+                <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-gray-200">
+                  <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center space-x-2"><Hash className="h-4 w-4" /><span>Códigos</span></h3>
+                  <div className="space-y-2 text-xs sm:text-sm">
+                    {product.codigo_interno && (<div className="flex justify-between items-center gap-2"><span className="text-gray-600">Interno:</span><span className="font-mono text-right break-all">{product.codigo_interno}</span></div>)}
+                    {product.codigo_barras && (<div className="flex justify-between items-center gap-2"><span className="text-gray-600">Barras:</span><span className="font-mono text-right break-all">{product.codigo_barras}</span></div>)}
                   </div>
-                </div>
-                <div className="text-center mt-4 text-sm text-green-600">
-                  BCV: {tasaCambio.toFixed(2)} Bs/USD
                 </div>
               </div>
 
-              {(product.tipo === 'producto' || product.tipo === 'electrobar') && (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Package className="h-5 w-5 text-blue-600" />
-                      <span className="font-medium text-blue-900">Stock Disponible</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl font-bold text-blue-700">{product.stock || 0}</span>
-                      <span className="text-blue-600">unidades</span>
-                    </div>
-                  </div>
-                  {product.stock <= (product.stock_minimo || 5) && (
-                    <div className="mt-2 flex items-center space-x-2 text-amber-600">
-                      <AlertCircle className="h-4 w-4" />
-                      <span className="text-sm">Stock bajo</span>
-                    </div>
-                  )}
+              {product.observaciones && (
+                <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                  <h3 className="font-semibold text-amber-900 mb-2 flex items-center space-x-2"><AlertCircle className="h-4 w-4" /><span>Notas Adicionales</span></h3>
+                  <p className="text-amber-800 text-sm">{product.observaciones}</p>
                 </div>
               )}
-
-              <div className="grid grid-cols-1 gap-4">
-                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                  <h3 className="font-semibold text-gray-900 mb-3 flex items-center space-x-2">
-                    <Hash className="h-4 w-4" />
-                    <span>Códigos</span>
-                  </h3>
-                  <div className="space-y-2 text-sm">
-                    {product.codigo_interno && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Código Interno:</span>
-                        <span className="font-mono">{product.codigo_interno}</span>
-                      </div>
-                    )}
-                    {product.codigo_barras && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Código de Barras:</span>
-                        <span className="font-mono">{product.codigo_barras}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Notas Adicionales */}
-              <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
-                <h3 className="font-semibold text-amber-900 mb-2 flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Notas Adicionales</span>
-                </h3>
-                {product.observaciones ? (
-                  <p className="text-amber-800 text-sm">{product.observaciones}</p>
-                ) : (
-                  <p className="text-amber-600 text-sm italic">Sin notas adicionales</p>
-                )}
-              </div>
-
             </div>
           </div>
         </div>
@@ -424,7 +355,7 @@ const ProductViewModal = ({ isOpen, onClose, product, tasaCambio, openedFrom, on
         </div>
       </div>
 
-      {/* 📱 Modal de WhatsApp */}
+      {/*  Modal de WhatsApp */}
       <CompartirWhatsAppModal
         isOpen={showWhatsAppModal}
         onClose={() => {

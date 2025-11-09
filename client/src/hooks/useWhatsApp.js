@@ -5,49 +5,49 @@ import { api } from '../config/api';
 export const useWhatsApp = () => {
   const { usuario } = useAuthStore();
 
-  // 📩 FUNCIÓN ORIGINAL - Mantener igual
+  //  FUNCIÓN ORIGINAL - Mantener igual
   const enviarNotificacion = async (tipo, datos) => {
     const configuraciones = {
       arqueo_diferencia: {
         numero: '+58414XXXXXXX', // Supervisor
-        plantilla: `🚨 ALERTA ARQUEO - DIFERENCIA\n` +
-                  `📍 Sucursal: ${datos.sucursal}\n` +
-                  `👤 Usuario: ${datos.usuario}\n` +
-                  `💰 Diferencia Bs: ${datos.diferencia_bs}\n` +
-                  `💵 Diferencia USD: ${datos.diferencia_usd}\n` +
-                  `🕐 ${new Date().toLocaleString('es-VE')}\n` +
-                  `📝 ${datos.observaciones || 'Sin observaciones'}`
+        plantilla: ` ALERTA ARQUEO - DIFERENCIA\n` +
+                  ` Sucursal: ${datos.sucursal}\n` +
+                  ` Usuario: ${datos.usuario}\n` +
+                  ` Diferencia Bs: ${datos.diferencia_bs}\n` +
+                  ` Diferencia USD: ${datos.diferencia_usd}\n` +
+                  ` ${new Date().toLocaleString('es-VE')}\n` +
+                  ` ${datos.observaciones || 'Sin observaciones'}`
       },
       arqueo_normal: {
         numero: '+58414XXXXXXX',
-        plantilla: `✅ Arqueo realizado\n` +
-                  `📍 ${datos.sucursal} - ${datos.usuario}\n` +
-                  `🕐 ${new Date().toLocaleTimeString('es-VE')}`
+        plantilla: ` Arqueo realizado\n` +
+                  ` ${datos.sucursal} - ${datos.usuario}\n` +
+                  ` ${new Date().toLocaleTimeString('es-VE')}`
       },
       caja_cerrada: {
         numero: '+58414XXXXXXX',
-        plantilla: `🔒 Caja cerrada\n` +
-                  `📍 ${datos.sucursal}\n` +
-                  `👤 ${datos.usuario}\n` +
-                  `💰 Balance: ${datos.balance_bs} Bs / $${datos.balance_usd}\n` +
-                  `🕐 ${new Date().toLocaleString('es-VE')}`
+        plantilla: ` Caja cerrada\n` +
+                  ` ${datos.sucursal}\n` +
+                  ` ${datos.usuario}\n` +
+                  ` Balance: ${datos.balance_bs} Bs / $${datos.balance_usd}\n` +
+                  ` ${new Date().toLocaleString('es-VE')}`
       }
     };
 
     const config = configuraciones[tipo];
     if (!config) return;
 
-    console.log('📱 WHATSAPP NOTIFICATION:', {
+    console.log(' WHATSAPP NOTIFICATION:', {
       to: config.numero,
       message: config.plantilla,
       silent: tipo === 'arqueo_normal'
     });
   };
 
-  // 📱 NUEVA FUNCIÓN - ENVIAR FACTURA POR WHATSAPP (SIN useState)
+  //  NUEVA FUNCIÓN - ENVIAR FACTURA POR WHATSAPP (SIN useState)
   const enviarFacturaWhatsApp = async (numero, ventaData, codigoVenta, tasaCambio, descuento = 0) => {
     try {
-      console.log('📱 Preparando envío de factura por WhatsApp...');
+      console.log(' Preparando envío de factura por WhatsApp...');
 
       // Generar imagen usando printUtils
       const { generarImagenWhatsApp } = await import('../utils/printUtils');
@@ -55,13 +55,13 @@ export const useWhatsApp = () => {
 
       // Preparar mensaje
       const clienteNombre = ventaData.cliente?.nombre || 'Cliente';
-      const mensaje = `Hola ${clienteNombre}, aquí tienes tu comprobante de compra #${codigoVenta}.\n\n¡Gracias por tu preferencia! 🛒✨`;
+      const mensaje = `Hola ${clienteNombre}, aquí tienes tu comprobante de compra #${codigoVenta}.\n\n¡Gracias por tu preferencia! `;
 
       // Limpiar número de teléfono
       const numeroLimpio = numero.replace(/\D/g, '');
       
-      console.log('📞 Enviando a número:', numeroLimpio);
-      console.log('🎯 Código venta:', codigoVenta);
+      console.log(' Enviando a número:', numeroLimpio);
+      console.log(' Código venta:', codigoVenta);
 
       // Enviar a la API del backend
       const response = await api.post('/whatsapp/enviar-factura', {
@@ -72,11 +72,11 @@ export const useWhatsApp = () => {
         mensaje
       });
 
-      console.log('✅ Respuesta del servidor:', response.data);
+      console.log(' Respuesta del servidor:', response.data);
       return response.data;
 
     } catch (error) {
-      console.error('❌ Error al enviar factura por WhatsApp:', error);
+      console.error(' Error al enviar factura por WhatsApp:', error);
       
       // Mensajes de error más específicos
       if (error.response?.status === 503) {
@@ -93,7 +93,7 @@ export const useWhatsApp = () => {
     }
   };
 
-  // 📊 OBTENER ESTADO DE WHATSAPP (sin useState)
+  //  OBTENER ESTADO DE WHATSAPP (sin useState)
   const obtenerEstado = async () => {
     try {
       const response = await api.get('/whatsapp/estado');

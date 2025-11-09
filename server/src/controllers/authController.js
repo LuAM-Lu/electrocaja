@@ -149,33 +149,30 @@ const login = async (req, res) => {
       .find(u => u.email === user.email);
 
     if (usuarioSocketConectado) {
-      console.log('⚠️ 13a. Usuario ya conectado via Socket.IO:', {
+      console.log('⚠️ 13a. Usuario ya conectado via Socket.IO - CERRANDO SESIÓN ANTERIOR:', {
         usuario: user.nombre,
         socket_id: usuarioSocketConectado.socket_id,
         ip: usuarioSocketConectado.ip_cliente,
         timestamp: usuarioSocketConectado.timestamp_conexion
       });
 
-      return res.status(409).json({
-        success: false,
-        message: `${user.nombre} ya tiene una sesión activa`,
-        error_code: 'SESSION_ACTIVE_SOCKET',
-        session_info: {
-          usuario: user.nombre,
-          rol: user.rol,
-          tipo_sesion: 'Tiempo Real (Socket.IO)',
-          ip_conectada: usuarioSocketConectado.ip_cliente || 'Desconocida',
-          tiempo_conectado: usuarioSocketConectado.timestamp_conexion,
-          sucursal: usuarioSocketConectado.sucursal,
-          socket_id: usuarioSocketConectado.socket_id
-        },
-        actions: {
-          force_logout: user.rol === 'admin' ? '/api/auth/force-logout' : null,
-          message: user.rol === 'admin' 
-            ? 'Como administrador, puedes cerrar la sesión activa'
-            : 'Contacta al administrador para cerrar la sesión activa'
-        }
-      });
+      // 🔧 CERRAR SESIÓN ANTERIOR AUTOMÁTICAMENTE
+      console.log('🚨 Forzando cierre de sesión anterior para:', user.nombre);
+
+      // Notificar al socket anterior que será desconectado
+      if (req.io) {
+        req.io.to(usuarioSocketConectado.socket_id).emit('force_logout', {
+          message: 'Tu sesión ha sido cerrada porque iniciaste sesión desde otro dispositivo',
+          reason: 'duplicate_session',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Eliminar sesión anterior
+      global.estadoApp.usuarios_conectados.delete(usuarioSocketConectado.socket_id);
+      global.estadoApp.sesiones_por_usuario.delete(user.id);
+
+      console.log('✅ Sesión anterior cerrada, permitiendo nuevo login');
     }
 
     // Verificar sesiones API REST
@@ -185,7 +182,7 @@ const login = async (req, res) => {
       const tiempoTranscurrido = Date.now() - new Date(usuarioApiConectado.timestamp).getTime();
       const minutosTranscurridos = Math.floor(tiempoTranscurrido / (1000 * 60));
 
-      console.log('🕐 Verificando expiración de sesión API:', {
+      console.log('🕐 Verificando sesión API existente:', {
         usuario: user.nombre,
         minutos_transcurridos: minutosTranscurridos,
         limite: 30
@@ -196,34 +193,17 @@ const login = async (req, res) => {
         console.log('🕐 Sesión API expirada por inactividad, removiendo...');
         global.estadoApp.sesiones_api.delete(user.email);
       } else {
-        console.log('⚠️ 13b. Usuario ya conectado via API REST:', {
+        // 🔧 CERRAR SESIÓN ANTERIOR AUTOMÁTICAMENTE (incluso si no está expirada)
+        console.log('⚠️ 13b. Usuario ya conectado via API REST - CERRANDO SESIÓN ANTERIOR:', {
           usuario: user.nombre,
           ip: usuarioApiConectado.ip,
           timestamp: usuarioApiConectado.timestamp,
           minutos_activo: minutosTranscurridos
         });
 
-        return res.status(409).json({
-          success: false,
-          message: `${user.nombre} ya tiene una sesión activa`,
-          error_code: 'SESSION_ACTIVE_API',
-          session_info: {
-            usuario: user.nombre,
-            rol: user.rol,
-            tipo_sesion: 'API REST',
-            ip_conectada: usuarioApiConectado.ip || 'Desconocida',
-            tiempo_conectado: usuarioApiConectado.timestamp,
-            minutos_activo: minutosTranscurridos,
-            sucursal: user.sucursal,
-            expira_en: `${30 - minutosTranscurridos} minutos`
-          },
-          actions: {
-            force_logout: user.rol === 'admin' ? '/api/auth/force-logout' : null,
-            message: user.rol === 'admin' 
-              ? 'Como administrador, puedes cerrar la sesión activa'
-              : `Espera ${30 - minutosTranscurridos} minutos o contacta al administrador`
-          }
-        });
+        console.log('🚨 Forzando cierre de sesión API anterior para:', user.nombre);
+        global.estadoApp.sesiones_api.delete(user.email);
+        console.log('✅ Sesión API anterior cerrada, permitiendo nuevo login');
       }
     }
 

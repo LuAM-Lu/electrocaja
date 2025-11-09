@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, Minus, Calculator, Trash2, DollarSign, Smartphone, CreditCard, Coins, ChevronDown, ChevronUp, Plus, Settings } from 'lucide-react';
 import { useCajaStore } from '../store/cajaStore';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
 const METODOS_PAGO = [
  { value: 'efectivo_bs', label: 'Efectivo Bs', requiere_referencia: false, moneda: 'bs' },
@@ -31,7 +31,7 @@ const CATEGORIAS_EGRESO = [
 ];
 
 // ===========================
-// 🔧 FUNCIONES DE FORMATEO VENEZOLANO
+//  FUNCIONES DE FORMATEO VENEZOLANO
 // ===========================
 
 const formatearVenezolano = (valor) => {
@@ -117,7 +117,7 @@ const limpiarNumero = (valor) => {
 };
 
 // ===========================
-// 🎯 COMPONENTE SELECTOR DE TASA
+//  COMPONENTE SELECTOR DE TASA
 // ===========================
 const SelectorTasaCambio = ({ tasaActual, onCambioTasa }) => {
  const [tipoTasa, setTipoTasa] = useState('bcv');
@@ -240,7 +240,7 @@ const SelectorTasaCambio = ({ tasaActual, onCambioTasa }) => {
 };
 
 // ===========================
-// 🎯 COMPONENTE PAGO ITEM
+//  COMPONENTE PAGO ITEM
 // ===========================
 const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
  const metodo = METODOS_PAGO.find(m => m.value === pago.metodo);
@@ -336,7 +336,7 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
 };
 
 // ===========================
-// 🎯 COMPONENTE PRINCIPAL
+//  COMPONENTE PRINCIPAL
 // ===========================
 const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
  const { agregarTransaccion, tasaCambio } = useCajaStore();
@@ -549,7 +549,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
        
-       {/* 🎨 HEADER MODERNIZADO CON PATRÓN */}
+       {/*  HEADER MODERNIZADO CON PATRÓN */}
        <div className="relative bg-gradient-to-br from-red-500 via-red-600 to-red-700 overflow-hidden">
          {/* Patrón de fondo sutil */}
          <div className="absolute inset-0 opacity-10">
@@ -751,7 +751,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
                 {estadisticas.completado ? (
                   <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>✓ Completo</span>
+                    <span> Completo</span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2 bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
@@ -852,7 +852,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
                ) : (
                  <>
                    <div className="text-lg font-bold text-green-700 flex items-center space-x-2">
-                     <span>✓ Completo</span>
+                     <span> Completo</span>
                    </div>
                    <div className="text-sm text-green-600">
                      Listo para procesar
@@ -882,7 +882,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
                  <>
                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                    <span className="text-sm font-semibold text-green-600">
-                     ✓ Egreso completo y listo
+                      Egreso completo y listo
                    </span>
                  </>
                )}

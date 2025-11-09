@@ -27,13 +27,13 @@ const ServiciosFloatingActions = ({ onNewService, onSettings, onReports, onPrueb
     },
     {
       icon: <Wifi className="h-5 w-5" />,
-      label: '🌐 Prueba Conexión Nube',
+      label: ' Prueba Conexión Nube',
       onClick: onPruebaConexion,
       color: 'from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
     }
   ];
 
-  // 🔧 CERRAR AL HACER CLIC FUERA
+  //  CERRAR AL HACER CLIC FUERA
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -49,7 +49,7 @@ const ServiciosFloatingActions = ({ onNewService, onSettings, onReports, onPrueb
     }
   }, [isExpanded]);
 
-  // 🔧 TOGGLE EN LUGAR DE HOVER
+  //  TOGGLE EN LUGAR DE HOVER
   const handleMainButtonClick = (e) => {
     e.stopPropagation();
     if (isExpanded) {
@@ -62,7 +62,7 @@ const ServiciosFloatingActions = ({ onNewService, onSettings, onReports, onPrueb
     }
   };
 
-  // 🔧 MANEJAR CLIC EN ACCIÓN SECUNDARIA
+  //  MANEJAR CLIC EN ACCIÓN SECUNDARIA
   const handleActionClick = (action, e) => {
     e.stopPropagation();
     action.onClick();

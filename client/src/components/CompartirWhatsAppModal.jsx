@@ -1,7 +1,7 @@
 // src/components/CompartirWhatsAppModal.jsx
 import React, { useState, useEffect } from 'react';
 import { X, Phone, Send, MessageCircle, Sparkles, Image as ImageIcon, XCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
 const STORAGE_KEY = 'ultimoNumeroWhatsApp';
 
@@ -89,48 +89,48 @@ const CompartirWhatsAppModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] p-3 sm:p-4 flex items-center justify-center">
-      <div className="w-full max-w-xl h-[92vh] flex flex-col rounded-2xl overflow-hidden shadow-[0_25px_80px_-20px_rgba(0,0,0,0.55)]">
-        <div className="bg-gradient-to-br from-emerald-500/60 via-green-500/50 to-teal-400/60 p-[1.5px] rounded-2xl h-full">
-          <div className="bg-white rounded-[calc(theme(borderRadius.2xl)-2px)] h-full flex flex-col overflow-hidden">
-            
-            {/* HEADER */}
-            <div className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] p-2 sm:p-3 md:p-4 flex items-center justify-center">
+      <div className="w-full max-w-xl h-[96vh] sm:h-[92vh] flex flex-col rounded-lg sm:rounded-2xl overflow-hidden shadow-[0_25px_80px_-20px_rgba(0,0,0,0.55)]">
+        <div className="bg-gradient-to-br from-emerald-500/60 via-green-500/50 to-teal-400/60 p-[1.5px] rounded-lg sm:rounded-2xl h-full">
+          <div className="bg-white rounded-[calc(theme(borderRadius.lg)-2px)] sm:rounded-[calc(theme(borderRadius.2xl)-2px)] h-full flex flex-col overflow-hidden">
+
+            {/* HEADER - RESPONSIVE */}
+            <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="bg-white/20 p-2 rounded-lg ring-1 ring-white/30">
-                    <MessageCircle className="h-4 w-4" />
+                  <div className="bg-white/20 p-1.5 sm:p-2 rounded-lg ring-1 ring-white/30">
+                    <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </div>
                   <div className="leading-none">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-semibold tracking-wide">Compartir por WhatsApp</h3>
+                      <h3 className="text-sm sm:text-base font-semibold tracking-wide">Compartir por WhatsApp</h3>
                     </div>
-                    <p className="text-emerald-100/90 text-xs">Imagen del producto</p>
+                    <p className="text-emerald-100/90 text-xs hidden sm:block">Imagen del producto</p>
                   </div>
                 </div>
                 <button
                   onClick={handleClose}
-                  className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors ring-1 ring-white/30"
+                  className="bg-white/20 hover:bg-white/30 p-1.5 sm:p-2 rounded-lg transition-colors ring-1 ring-white/30"
                   disabled={loading}
                   aria-label="Cerrar"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
               </div>
             </div>
 
-            {/* CONTENIDO */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-              
+            {/* CONTENIDO - RESPONSIVE */}
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-5 space-y-3 sm:space-y-5">
+
 
               <div>
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700">Número de WhatsApp *</label>
-                <span className="text-xs text-gray-500">+584141234567</span>
+                <label className="text-xs sm:text-sm font-medium text-gray-700">Número de WhatsApp *</label>
+                <span className="text-xs text-gray-500 hidden sm:inline">+584141234567</span>
               </div>
 
               <div className="relative mt-1">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Phone className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
 
                 {lastNumber && (
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -138,16 +138,17 @@ const CompartirWhatsAppModal = ({
                     <button
                       type="button"
                       onClick={() => setPhoneNumber(lastNumber)}
-                      className="text-xs px-2 py-0.5 rounded-full bg-green-50 hover:bg-green-100 text-green font-medium shadow hover:scale-105 hover:shadow-lg transition-transform animate-pulse"
+                      className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-green-50 hover:bg-green-100 text-green font-medium shadow hover:scale-105 hover:shadow-lg transition-transform animate-pulse"
                     >
-                      Último Número
+                      <span className="hidden sm:inline">Último Número</span>
+                      <span className="sm:hidden">Último</span>
                     </button>
 
                     {/* Botón Limpiar (pill rojo con animación) */}
                     <button
                       type="button"
                       onClick={() => setPhoneNumber('')}
-                      className="text-xs px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium shadow hover:scale-105 hover:shadow-lg transition-transform animate-pulse"
+                      className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium shadow hover:scale-105 hover:shadow-lg transition-transform animate-pulse"
                     >
                       Limpiar
                     </button>
@@ -159,7 +160,7 @@ const CompartirWhatsAppModal = ({
                   value={phoneNumber}
                   onChange={handlePhoneChange}
                   placeholder="+584141234567"
-                  className={`w-full pl-10 pr-40 py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white/80 hover:bg-white text-base ${
+                  className={`w-full pl-8 sm:pl-10 pr-28 sm:pr-40 py-2 sm:py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white/80 hover:bg-white text-sm sm:text-base ${
                     errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
                   disabled={loading}
@@ -173,11 +174,11 @@ const CompartirWhatsAppModal = ({
 
 
               <div className="relative w-[100%] mx-auto">
-                <div className="relative h-[100%] rounded-2xl overflow-hidden bg-white shadow ring-1 ring-emerald-100">
+                <div className="relative h-[100%] rounded-lg sm:rounded-2xl overflow-hidden bg-white shadow ring-1 ring-emerald-100">
                   <img
                     src={previewImage}
                     alt="Vista previa"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain sm:object-cover"
                   />
                 </div>
               </div>
@@ -185,22 +186,22 @@ const CompartirWhatsAppModal = ({
 
             </form>
 
-            {/* FOOTER */}
-            <div className="px-6 py-4 bg-white border-t">
-              <div className="flex gap-3">
+            {/* FOOTER - RESPONSIVE */}
+            <div className="px-3 sm:px-6 py-3 sm:py-4 bg-white border-t">
+              <div className="flex gap-2 sm:gap-3">
                 <button
                   onClick={handleSubmit}
                   disabled={loading || !phoneNumber.trim()}
-                  className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.6)]"
+                  className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_10px_30px_-10px_rgba(16,185,129,0.6)]"
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      <div className="animate-spin rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 border-b-2 border-white" />
                       <span>Enviando...</span>
                     </>
                   ) : (
                     <>
-                      <Send className="h-4 w-4" />
+                      <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span>Enviar</span>
                     </>
                   )}

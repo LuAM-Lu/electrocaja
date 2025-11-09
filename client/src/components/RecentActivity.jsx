@@ -36,10 +36,10 @@ const formatearFecha = (fechaHora) => {
 
  const getInventarioIcon = (tipo) => {
    switch(tipo) {
-     case 'producto': return '📱';
-     case 'servicio': return '🔧';
-     case 'electrobar': return '🍿';
-     default: return '📦';
+     case 'producto': return '';
+     case 'servicio': return '';
+     case 'electrobar': return '';
+     default: return '';
    }
  };
 
@@ -192,7 +192,7 @@ const obtenerMontosOriginales = (transaccion) => {
                        {ultimaActividad.item_inventario.cantidad}× ${ultimaActividad.item_inventario.precio_unitario.toFixed(2)}
                      </div>
                      <div className="text-xs text-blue-700">
-                       {ultimaActividad.item_inventario.tipo === 'electrobar' ? '🍿 Electrobar' : 
+                       {ultimaActividad.item_inventario.tipo === 'electrobar' ? ' Electrobar' : 
                         ultimaActividad.item_inventario.tipo === 'producto' ? 'Producto' : 'Servicio'}
                      </div>
                    </div>
@@ -205,7 +205,7 @@ const obtenerMontosOriginales = (transaccion) => {
                          ultimaActividad.item_inventario.stock_actual <= 5 ? 'text-orange-600' : 'text-green-600'
                        }`}>
                          {ultimaActividad.item_inventario.stock_actual}
-                         {ultimaActividad.item_inventario.stock_actual <= 5 && ' ⚠️'}
+                         {ultimaActividad.item_inventario.stock_actual <= 5 && ' '}
                        </div>
                      </div>
                    )}

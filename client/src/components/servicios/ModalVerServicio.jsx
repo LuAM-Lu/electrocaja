@@ -5,7 +5,7 @@ import {
   User, CalendarDays, DollarSign, StickyNote, ShoppingCart, AlertTriangle, 
   Printer, MessageCircle, Camera, Truck, Phone, Mail, MapPin, Zap
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const estadoConfig = {
   'Recibido': { color: 'bg-gradient-to-r from-purple-400 to-purple-600', headerColor: 'bg-gradient-to-r from-purple-800 to-purple-900', textColor: 'text-gray-100', icon: <Inbox size={14} />, progreso: 20 },
@@ -38,7 +38,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
 
   const [imagenExpandida, setImagenExpandida] = useState(null);
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState('');
-  const [tooltipAbierto, setTooltipAbierto] = useState(false); // ✨ Estado para tooltip clickeable
+  const [tooltipAbierto, setTooltipAbierto] = useState(false); //  Estado para tooltip clickeable
 
   // Variables calculadas
   const tecnicoAsignado = servicio.tecnico || 'Henderson Azuaje';
@@ -65,7 +65,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
     return () => clearInterval(interval);
   }, [servicio.ultimaActualizacion]);
 
-  // ✨ Cerrar tooltip al hacer click fuera
+  //  Cerrar tooltip al hacer click fuera
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (tooltipAbierto && !event.target.closest('.tooltip-container')) {
@@ -84,21 +84,21 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
           estado: 'Entregado',
           entregadoEn: new Date().toISOString()
         });
-        toast.success('✅ Dispositivo marcado como entregado');
+        toast.success('Dispositivo marcado como entregado');
       }
       if (typeof onClose === 'function') onClose();
     }
   };
 
   const handleReimprimirOrden = () => {
-    toast.success('🖨️ Función de reimprimir en desarrollo');
+    toast.success('Función de reimprimir en desarrollo');
   };
 
   const handleNotificarWhatsApp = () => {
-    toast.success('📱 Función de WhatsApp en desarrollo');
+    toast.success('Función de WhatsApp en desarrollo');
   };
 
-  // ✨ Componente de contacto con tooltip clickeable
+  //  Componente de contacto con tooltip clickeable
   const ContactoTooltip = () => (
     <div className="relative tooltip-container">
       <button 
@@ -110,7 +110,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
         <MessageCircle size={10} />
       </button>
       
-      {/* ✨ Tooltip que permanece abierto al hacer click */}
+      {/*  Tooltip que permanece abierto al hacer click */}
       {tooltipAbierto && (
         <div className="absolute bottom-full left-0 mb-2 z-20">
           <div className="bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-xl min-w-[240px]">
@@ -171,10 +171,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-      {/* ✨ Modal responsive que se adapta al contenido */}
+      {/*  Modal responsive que se adapta al contenido */}
       <div className="relative bg-gray-900 rounded-2xl w-full max-w-7xl max-h-[95vh] shadow-2xl overflow-hidden flex flex-col border border-gray-700">
 
-        {/* ✨ HEADER CON ALERTA INTEGRADA */}
+        {/*  HEADER CON ALERTA INTEGRADA */}
         <div className={`relative ${estado.headerColor} overflow-hidden flex-shrink-0`}>
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }} />
@@ -194,19 +194,19 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                       {tecnicoAsignado}
                     </span>
                     
-                    {/* ✨ ALERTA VENCIDO MOVIDA AL HEADER */}
+                    {/*  ALERTA VENCIDO MOVIDA AL HEADER */}
                     {estaVencido && (
                       <span className="bg-red-500/40 px-3 py-1 rounded-full text-red-100 text-xs font-medium flex items-center gap-1 animate-pulse border border-red-400/50">
                         <AlertTriangle size={12} />
-                        ⚠️ Servicio vencido - Contactar cliente urgente ({diasTranscurridos}d)
+                         Servicio vencido - Contactar cliente urgente ({diasTranscurridos}d)
                       </span>
                     )}
                     
-                    {/* ✨ ALERTA LISTO TAMBIÉN EN HEADER */}
+                    {/*  ALERTA LISTO TAMBIÉN EN HEADER */}
                     {servicio.estado === 'Listo para Retiro' && (
                       <span className="bg-green-500/40 px-3 py-1 rounded-full text-green-100 text-xs font-medium flex items-center gap-1 border border-green-400/50">
                         <CheckCircle size={12} />
-                        ✅ Dispositivo listo - Notificar cliente
+                         Dispositivo listo - Notificar cliente
                       </span>
                     )}
                     
@@ -233,7 +233,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
           </div>
         </div>
 
-        {/* ✨ CONTENIDO PRINCIPAL - ALTURA FLEXIBLE */}
+        {/*  CONTENIDO PRINCIPAL - ALTURA FLEXIBLE */}
         <div className="flex-1 overflow-hidden p-6 bg-gray-900">
           <div className="grid grid-cols-[45fr_55fr] gap-6 h-full">
             
@@ -259,7 +259,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                 </div>
               </div>
               
-              {/* ✨ INFORMACIÓN BÁSICA MÁS COMPACTA */}
+              {/*  INFORMACIÓN BÁSICA MÁS COMPACTA */}
               <div className="bg-gray-800/70 rounded-xl p-4 border border-gray-700 flex-shrink-0">
                 <h3 className="text-sm font-semibold text-gray-100 mb-3 flex items-center gap-2">
                   <User className="h-4 w-4 text-red-400" />
@@ -267,13 +267,13 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                 </h3>
 
                 <div className="space-y-2">
-                  {/* ✨ Cliente más compacto */}
+                  {/*  Cliente más compacto */}
                   <div className="flex items-center justify-between">
                     <span className="text-gray-400 text-xs">Cliente:</span>
                     <ContactoTooltip />
                   </div>
 
-                  {/* ✨ Grid compacto 2x2 */}
+                  {/*  Grid compacto 2x2 */}
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                     <div>
                       <span className="text-gray-400">Dispositivo:</span>
@@ -296,7 +296,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                     </div>
                   </div>
 
-                  {/* ✨ Estado más compacto */}
+                  {/*  Estado más compacto */}
                   <div className="flex justify-between items-center pt-1 border-t border-gray-700">
                     <span className="text-gray-400 text-xs">Estado:</span>
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-md font-medium ${estado.color} ${estado.textColor} shadow-md`}>
@@ -305,7 +305,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                     </span>
                   </div>
 
-                  {/* ✨ QUICK STATS MÁS COMPACTOS */}
+                  {/*  QUICK STATS MÁS COMPACTOS */}
                   <div className="grid grid-cols-3 gap-2 mt-2">
                     <div className="bg-blue-900/30 rounded-md p-1.5 text-center">
                       <div className="text-blue-300 text-xs font-bold">{diasTranscurridos}</div>
@@ -323,7 +323,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                 </div>
               </div>
 
-              {/* ✨ PRODUCTOS Y SERVICIOS - ALTURA FLEXIBLE */}
+              {/*  PRODUCTOS Y SERVICIOS - ALTURA FLEXIBLE */}
               <div className="bg-gray-800/70 rounded-xl border border-gray-700 flex-1 flex flex-col min-h-0">
                 <div className="p-3 border-b border-gray-700 flex-shrink-0">
                   <h3 className="text-sm font-semibold text-gray-100 flex items-center gap-2">

@@ -6,12 +6,12 @@ import {
   ShoppingCart, FileText, MapPin, Phone, Mail, Star, Tag,
   Loader2, AlertCircle, Printer, Send
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 import { imprimirFacturaTermica } from '../utils/printUtils';
 import { useWhatsApp } from '../hooks/useWhatsApp';
 import { useCajaStore } from '../store/cajaStore';
 
-// 🔎 Normaliza la tasa histórica desde distintos nombres y formatos
+//  Normaliza la tasa histórica desde distintos nombres y formatos
 function getTasaHistorica(tx) {
   const candidatos = [
     tx?.tasa_cambio_usada,
@@ -34,12 +34,12 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
 
   if (!isOpen || !transaccion) return null;
 
-  // 🟥 DEBUG - Entrada al modal con la transacción cruda
-  console.log("🔴 MODAL TransactionDetail - transaccion:", transaccion);
-  console.log("🔴 MODAL TransactionDetail - tasa_cambio_usada:", transaccion?.tasa_cambio_usada, 
+  //  DEBUG - Entrada al modal con la transacción cruda
+  console.log(" MODAL TransactionDetail - transaccion:", transaccion);
+  console.log(" MODAL TransactionDetail - tasa_cambio_usada:", transaccion?.tasa_cambio_usada, 
               "| tasaCambioUsada:", transaccion?.tasaCambioUsada);
 
-  // 📄 ESTADO DE CARGA
+  //  ESTADO DE CARGA
   if (transaccion.loading) {
     return (
       <div className="w-full h-full flex items-center justify-center p-4">
@@ -53,7 +53,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
     );
   }
 
-  // 📅 FORMATEAR FECHA
+  //  FORMATEAR FECHA
   function formatearFecha(fechaIso) {
     if (!fechaIso) return '';
     const fecha = new Date(fechaIso);
@@ -75,7 +75,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
     return `${fechaFormateada} - ${horaFormateada}`;
   }
 
-  // 💰 FORMATEAR MONTOS
+  //  FORMATEAR MONTOS
   const formatearMonto = (amount) => {
     if (!amount && amount !== 0) return '0,00';
     const number = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
@@ -88,12 +88,12 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
     return Math.round(number).toLocaleString('es-VE');
   };
 
-  // 🧮 CALCULAR TOTALES CORRECTAMENTE CON TASA HISTÓRICA
+  //  CALCULAR TOTALES CORRECTAMENTE CON TASA HISTÓRICA
   const calcularTotales = () => {
-    // ✅ PRIORIZAR TASA HISTÓRICA - NO USAR TASA ACTUAL
+    //  PRIORIZAR TASA HISTÓRICA - NO USAR TASA ACTUAL
     let tasaCambioUsada = getTasaHistorica(transaccion);
 
-    console.log('💱 DEBUG Tasa de cambio (entrada):', {
+    console.log(' DEBUG Tasa de cambio (entrada):', {
       transaccion_id: transaccion.id,
       tasa_cambio_usada: transaccion?.tasa_cambio_usada,
       tasaCambioUsada: transaccion?.tasaCambioUsada,
@@ -103,38 +103,38 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
       categoria: transaccion.categoria
     });
 
-    // ⚠️ SOLO HACER FALLBACK SI REALMENTE NO EXISTE
+    //  SOLO HACER FALLBACK SI REALMENTE NO EXISTE
     if (!tasaCambioUsada || isNaN(tasaCambioUsada) || tasaCambioUsada <= 0) {
       const esVenta = transaccion.items && transaccion.items.length > 0;
       const esVuelto = transaccion.categoria?.includes('Vuelto de venta');
       
       if (esVenta) {
-        console.error('🚨 ERROR CRÍTICO: Venta sin tasa de cambio histórica!', {
+        console.error(' ERROR CRÍTICO: Venta sin tasa de cambio histórica!', {
           transaccion_id: transaccion.id,
           fecha: transaccion.fechaHora,
           categoria: transaccion.categoria
         });
       } else if (esVuelto) {
-        console.log('ℹ️ Vuelto sin tasa histórica (puede usar tasa de venta original)');
+        console.log('ℹ Vuelto sin tasa histórica (puede usar tasa de venta original)');
       } else {
-        console.log('ℹ️ Transacción administrativa sin tasa histórica (normal)');
+        console.log('ℹ Transacción administrativa sin tasa histórica (normal)');
       }
       
       // Usar tasa actual como último recurso
       tasaCambioUsada = tasaCambioStore || 37.50;
-      console.warn('📊 FALLBACK: Usando tasa actual:', tasaCambioUsada);
+      console.warn(' FALLBACK: Usando tasa actual:', tasaCambioUsada);
     }
 
-    console.log('✅ TASA FINAL SELECCIONADA:', tasaCambioUsada);
+    console.log(' TASA FINAL SELECCIONADA:', tasaCambioUsada);
 
-    console.log('🔍 DEBUG calcularTotales - Datos originales:', {
+    console.log(' DEBUG calcularTotales - Datos originales:', {
       total_bs_original: transaccion.total_bs,
       items: transaccion.items?.length || 0,
       pagos: transaccion.pagos?.length || 0,
       tasaCambioUsada
     });
 
-    // 💡 CALCULAR TOTAL REAL DESDE LOS ITEMS
+    //  CALCULAR TOTAL REAL DESDE LOS ITEMS
     let totalRealBs = 0;
     let totalRealUsd = 0;
 
@@ -178,7 +178,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
       return total + monto;
     }, 0) || 0;
 
-    console.log('📊 DEBUG calcularTotales - OUT:', {
+    console.log(' DEBUG calcularTotales - OUT:', {
       totalRealBs,
       totalRealUsd,
       totalConDescuento,
@@ -202,7 +202,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
 
   const totales = calcularTotales();
 
-  // 🖨️ FUNCIÓN DE REIMPRIMIR - CORREGIDA
+  //  FUNCIÓN DE REIMPRIMIR - CORREGIDA
   const handleReimprimir = async () => {
     if (!transaccion.items || transaccion.items.length === 0) {
       toast.error('No se puede reimprimir: transacción sin productos');
@@ -212,8 +212,8 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
     try {
       setLoading(true);
       
-      // 🔄 NORMALIZAR DATOS PARA COMPATIBILIDAD CON printUtils.js
-      console.log('🔍 DEBUG - Transacción original:', transaccion);
+      //  NORMALIZAR DATOS PARA COMPATIBILIDAD CON printUtils.js
+      console.log(' DEBUG - Transacción original:', transaccion);
 
       const ventaData = {
         items: transaccion.items?.map(item => ({
@@ -233,9 +233,9 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
         motivoDescuento: transaccion.motivoDescuento || ''
       };
 
-      // ✅ USAR TASA HISTÓRICA ORIGINAL (normalizada)
+      //  USAR TASA HISTÓRICA ORIGINAL (normalizada)
       const tasaCambioHistorica = getTasaHistorica(transaccion);
-      console.log('🖨️ DEBUG Reimprimir - tasaCambioHistorica:', tasaCambioHistorica);
+      console.log(' DEBUG Reimprimir - tasaCambioHistorica:', tasaCambioHistorica);
 
       const codigoVenta = `RE-${transaccion.id}`;
       const descuento = parseFloat(transaccion.descuentoTotal) || 0;
@@ -247,8 +247,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
         
         if (esVenta) {
           const fechaTransaccion = formatearFecha(transaccion.fechaHora || transaccion.fecha_hora);
-          toast(`🚨 VENTA #${transaccion.id} sin tasa histórica`, {
-            icon: '⚠️',
+          toast(`VENTA #${transaccion.id} sin tasa histórica`, {
             duration: 5000,
             style: {
               background: '#FEF3C7',
@@ -256,7 +255,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
               border: '1px solid #F59E0B'
             }
           });
-          console.error('🚨 PROBLEMA EN BD: Venta sin tasa_cambio_usada:', {
+          console.error(' PROBLEMA EN BD: Venta sin tasa_cambio_usada:', {
             id: transaccion.id,
             fecha: fechaTransaccion,
             total_bs: transaccion.total_bs,
@@ -265,10 +264,10 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
         }
         
         tasaCambioFinal = tasaCambioStore || 37.50;
-        console.log(`📊 FALLBACK: Usando tasa actual (${tasaCambioFinal}) para transacción #${transaccion.id}`);
+        console.log(` FALLBACK: Usando tasa actual (${tasaCambioFinal}) para transacción #${transaccion.id}`);
       }
 
-      console.log('✅ DEBUG - Datos normalizados para printUtils:', {
+      console.log(' DEBUG - Datos normalizados para printUtils:', {
         totalBs: ventaData.totalBs,
         itemsCount: ventaData.items.length,
         usuario: ventaData.usuario.nombre,
@@ -289,7 +288,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
     }
   };
 
-  // 📱 FUNCIÓN DE ENVIAR POR WHATSAPP - CORREGIDA
+  //  FUNCIÓN DE ENVIAR POR WHATSAPP - CORREGIDA
   const handleEnviarWhatsApp = async () => {
     if (!transaccion.items || transaccion.items.length === 0) {
       toast.error('No se puede enviar: transacción sin productos');
@@ -304,7 +303,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
     try {
       setLoading(true);
       
-      // 🔄 NORMALIZAR DATOS PARA COMPATIBILIDAD CON printUtils.js
+      //  NORMALIZAR DATOS PARA COMPATIBILIDAD CON printUtils.js
       const ventaData = {
         items: transaccion.items?.map(item => ({
           cantidad: parseFloat(item.cantidad || 1),
@@ -323,9 +322,9 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
         motivoDescuento: transaccion.motivoDescuento || ''
       };
 
-      // ✅ USAR TASA HISTÓRICA ORIGINAL (normalizada)
+      //  USAR TASA HISTÓRICA ORIGINAL (normalizada)
       const tasaCambioHistorica = getTasaHistorica(transaccion);
-      console.log('📲 DEBUG WhatsApp - tasaCambioHistorica:', tasaCambioHistorica);
+      console.log(' DEBUG WhatsApp - tasaCambioHistorica:', tasaCambioHistorica);
 
       const codigoVenta = `WA-${transaccion.id}`;
       const descuento = parseFloat(transaccion.descuentoTotal) || 0;
@@ -337,8 +336,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
         
         if (esVenta) {
           const fechaTransaccion = formatearFecha(transaccion.fechaHora || transaccion.fecha_hora);
-          toast(`🚨 VENTA #${transaccion.id} sin tasa histórica`, {
-            icon: '⚠️',
+          toast(`VENTA #${transaccion.id} sin tasa histórica`, {
             duration: 5000,
             style: {
               background: '#FEF3C7',
@@ -346,7 +344,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
               border: '1px solid #F59E0B'
             }
           });
-          console.error('🚨 PROBLEMA EN BD: Venta sin tasa_cambio_usada:', {
+          console.error(' PROBLEMA EN BD: Venta sin tasa_cambio_usada:', {
             id: transaccion.id,
             fecha: fechaTransaccion,
             total_bs: transaccion.total_bs,
@@ -355,10 +353,10 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
         }
         
         tasaCambioFinal = tasaCambioStore || 37.50;
-        console.log(`📊 FALLBACK: Usando tasa actual (${tasaCambioFinal}) para transacción #${transaccion.id}`);
+        console.log(` FALLBACK: Usando tasa actual (${tasaCambioFinal}) para transacción #${transaccion.id}`);
       }
 
-      console.log('📱 DEBUG WhatsApp - Datos normalizados:', {
+      console.log(' DEBUG WhatsApp - Datos normalizados:', {
         totalBs: ventaData.totalBs,
         usuario: ventaData.usuario.nombre,
         codigoVenta,
@@ -385,7 +383,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
     }
   };
 
-  // 🎨 MÉTODOS DE PAGO
+  //  MÉTODOS DE PAGO
   const getMetodoInfo = (metodo) => {
     const metodos = {
       'efectivo_bs': { 
@@ -431,7 +429,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
     <div className="fixed inset-0 bg-gradient-to-br from-blue-900/40 via-blue-800/30 to-blue-900/40 backdrop-blur-sm z-[80] flex items-center justify-center p-4 animate-modal-backdrop-enter">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col relative z-10 animate-modal-enter">
         
-        {/* 🏢 HEADER CON INFO DE TRANSACCIÓN */}
+        {/*  HEADER CON INFO DE TRANSACCIÓN */}
         <div className={`relative px-8 py-4 text-white ${
           transaccion.tipo === 'INGRESO' 
             ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700' 
@@ -457,7 +455,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
               </div>
             </div>
 
-            {/* 📊 INFO PRINCIPAL EN EL HEADER */}
+            {/*  INFO PRINCIPAL EN EL HEADER */}
             <div className="grid grid-cols-3 gap-3">
               {/* Tarjeta 1 */}
               <div className="flex flex-col items-center bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
@@ -490,7 +488,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
               </div>
             </div>
 
-            {/* 🔧 DEBUG: Tasa usada por el modal */}
+            {/*  DEBUG: Tasa usada por el modal */}
             <div className="mt-3 flex items-center justify-end">
               {(() => {
                 const tHist = getTasaHistorica(transaccion);
@@ -514,10 +512,10 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
           </div>
         </div>
 
-        {/* 📋 CONTENIDO DE LA FACTURA */}
+        {/*  CONTENIDO DE LA FACTURA */}
         <div className="p-8 space-y-6 overflow-y-auto flex-1">
           
-          {/* 👤 INFORMACIÓN DEL CLIENTE */}
+          {/*  INFORMACIÓN DEL CLIENTE */}
           {transaccion.cliente && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200/50 rounded-2xl p-4 shadow-lg backdrop-blur-sm">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
@@ -559,7 +557,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
             </div>
           )}
 
-          {/* 📦 PRODUCTOS / DETALLES */}
+          {/*  PRODUCTOS / DETALLES */}
           <div className="bg-gradient-to-br from-gray-50 to-slate-50 border-2 border-gray-200/50 rounded-2xl overflow-hidden shadow-xl backdrop-blur-sm">
             <div className="bg-gradient-to-r from-slate-600 to-slate-700 px-6 py-4 text-white">
               <h3 className="font-semibold flex items-center">
@@ -612,7 +610,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
             </div>
           </div>
 
-          {/* 💰 RESUMEN FINANCIERO MEJORADO */}
+          {/*  RESUMEN FINANCIERO MEJORADO */}
           <div className="bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200/50 rounded-2xl overflow-hidden shadow-xl backdrop-blur-sm">
             <div className="bg-gradient-to-r from-emerald-600 to-green-700 px-6 py-4 text-white">
               <h3 className="font-semibold flex items-center">
@@ -678,11 +676,11 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
                         <span className="font-medium">{formatearMonto(totales.tasaCambioUsada)} Bs/$</span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        ℹ️ Tasa usada al momento de la transacción ({formatearFecha(transaccion.fechaHora || transaccion.fecha_hora)})
+                        ℹ Tasa usada al momento de la transacción ({formatearFecha(transaccion.fechaHora || transaccion.fecha_hora)})
                       </div>
                       {tasaCambioStore && Math.abs(totales.tasaCambioUsada - tasaCambioStore) > 1 && (
                         <div className="text-xs text-amber-600 mt-1">
-                          💡 Tasa actual: {formatearMonto(tasaCambioStore)} Bs/$ (diferencia: {formatearMonto(Math.abs(totales.tasaCambioUsada - tasaCambioStore))} Bs/$)
+                           Tasa actual: {formatearMonto(tasaCambioStore)} Bs/$ (diferencia: {formatearMonto(Math.abs(totales.tasaCambioUsada - tasaCambioStore))} Bs/$)
                         </div>
                       )}
                     </div>
@@ -743,7 +741,7 @@ const TransactionDetailModal = ({ isOpen, onClose, transaccion }) => {
          </div>
        </div>
 
-       {/* 🔻 FOOTER MEJORADO CON BOTONES DE ACCIÓN */}
+       {/*  FOOTER MEJORADO CON BOTONES DE ACCIÓN */}
        <div className="bg-gradient-to-r from-gray-100 to-gray-200 px-8 py-6 border-t-2 border-gray-200 mt-auto">
          <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
            <div className="flex items-center space-x-3 text-sm text-gray-600">

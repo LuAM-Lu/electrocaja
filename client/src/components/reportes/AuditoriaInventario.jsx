@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Package, Check, X, AlertTriangle, Eye, Download, FileText, Plus, Minus, Camera, User } from 'lucide-react';
 import { api } from '../../config/api';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const AuditoriaInventario = () => {
   const [loading, setLoading] = useState(false);
@@ -558,7 +558,7 @@ const AuditoriaInventario = () => {
                           <div className={`flex items-center justify-center space-x-1 ${getColorDiferencia(diferencia)}`}>
                             {getIconoDiferencia(diferencia)}
                             <span className="font-semibold">
-                              {diferencia !== 0 ? Math.abs(diferencia) : '✓'}
+                              {diferencia !== 0 ? Math.abs(diferencia) : ''}
                             </span>
                           </div>
                         ) : (

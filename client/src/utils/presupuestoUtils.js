@@ -2,7 +2,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import html2canvas from 'html2canvas';
-import toast from 'react-hot-toast';
+import toast from './toast.jsx';
 import api from '../config/api';
 
 // FUNCIÓN PARA FORMATEAR NÚMEROS VENEZOLANOS

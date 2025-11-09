@@ -5,7 +5,7 @@ import {
   Monitor, Activity, Globe, Trash2, X, AlertCircle, Eye
 } from 'lucide-react';
 import { api } from '../../config/api';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import CrearUsuarioModal from './modals/CrearUsuarioModal';
 import BorrarUserModal from './modals/BorrarUserModal';
 
@@ -60,15 +60,15 @@ const UsuariosPanel = ({ usuario }) => {
   const cargarUsuarios = async () => {
     try {
       setLoadingUsuarios(true);
-      console.log('📋 Cargando usuarios del backend...');
+      console.log(' Cargando usuarios del backend...');
       
       const response = await api.get('/users');
       const { data } = response.data;
-      console.log('✅ Usuarios cargados del backend:', data);
+      console.log(' Usuarios cargados del backend:', data);
       setUsuarios(data);
       setPaginaActual(1);
     } catch (error) {
-      console.error('💥 Error cargando usuarios:', error);
+      console.error(' Error cargando usuarios:', error);
       setUsuarios([
         { 
           id: 1, 
@@ -163,27 +163,27 @@ const resetearPassword = async (user) => {
     try {
       await api.post('/whatsapp/enviar', {
         numero: '+584120552931',
-        mensaje: `🔑 *RESET PASSWORD - ELECTRO CAJA*
+        mensaje: ` *RESET PASSWORD - ELECTRO CAJA*
 
-👤 *Usuario:* ${usuario_nombre}
-📧 *Email:* ${user.email}
-🔐 *Nueva contraseña:* ${nuevaPassword}
-⏰ *Fecha:* ${new Date().toLocaleString('es-VE')}
+ *Usuario:* ${usuario_nombre}
+ *Email:* ${user.email}
+ *Nueva contraseña:* ${nuevaPassword}
+ *Fecha:* ${new Date().toLocaleString('es-VE')}
 
-⚠️ *IMPORTANTE:*
+ *IMPORTANTE:*
 - Entregar esta contraseña al usuario
 - Solicitar cambio inmediato en primer login
 - Esta contraseña es temporal
 
-🔒 Generado por: ${usuario?.nombre}`
+ Generado por: ${usuario?.nombre}`
       });
       
-      toast.success(`🔑 Nueva contraseña: ${nuevaPassword} (Enviada por WhatsApp)`, {
+      toast.success(`Nueva contraseña: ${nuevaPassword} (Enviada por WhatsApp)`, {
         duration: 10000
       });
     } catch (whatsappError) {
       console.warn('WhatsApp no disponible:', whatsappError);
-      toast.success(`🔑 Nueva contraseña generada: ${nuevaPassword}`, {
+      toast.success(`Nueva contraseña generada: ${nuevaPassword}`, {
         duration: 10000,
         style: {
           background: '#FEF3C7',
@@ -216,7 +216,9 @@ const resetearPassword = async (user) => {
         reason: 'Desconectado por administrador desde panel de control'
       });
 
-      toast.success(`Usuario ${sesion.usuario || sesion.nombre} desconectado`);
+      toast.success(`${sesion.nombre || sesion.usuario} desconectado exitosamente`, {
+        id: `user-disconnect-${sesion.id}`
+      });
     } catch (error) {
       toast.error('Error al desconectar usuario');
     }

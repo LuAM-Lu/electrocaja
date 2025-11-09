@@ -1,30 +1,30 @@
-// components/Footer.jsx (CON TEMAS DINÁMICOS + STICKY)
+// components/Footer.jsx (FULL RESPONSIVE MOBILE + TEMAS DINÁMICOS + STICKY)
 import React, { useState, useEffect } from 'react';
 import { Users, Activity, Wifi, WifiOff, Zap, MessageCircle, Calendar, Clock, Package } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
-import { useDashboardStore } from '../store/dashboardStore'; // 🆕 NUEVO IMPORT
+import { useDashboardStore } from '../store/dashboardStore';
 import { useWhatsApp } from '../hooks/useWhatsApp';
 import { api } from '../config/api';
 
 const Footer = () => {
-  const { 
-    usuario, 
-    usuariosConectados, 
-    actualizarActividad, 
+  const {
+    usuario,
+    usuariosConectados,
+    actualizarActividad,
     getSessionInfo,
     isSocketConnected,
-    isBackendConnected 
+    isBackendConnected
   } = useAuthStore();
 
   const { cajaActual } = useCajaStore();
-  const { theme, isDarkTheme } = useDashboardStore(); // 🆕 NUEVO HOOK
+  const { theme, isDarkTheme } = useDashboardStore();
   const { enviarNotificacion } = useWhatsApp();
 
   const [currentTime, setCurrentTime] = useState(getCurrentTime());
   const [whatsappStatus, setWhatsappStatus] = useState('checking');
 
-  // 🆕 CONFIGURACIÓN DE TEMAS
+  //  CONFIGURACIÓN DE TEMAS
   const themeConfig = {
     blue: {
       gradient: 'bg-gradient-to-r from-blue-600 to-blue-700',
@@ -33,7 +33,7 @@ const Footer = () => {
       separatorColor: 'bg-white/30',
       statusIndicators: {
         online: 'bg-green-400',
-        warning: 'bg-yellow-400', 
+        warning: 'bg-yellow-400',
         offline: 'bg-blue-400',
         error: 'bg-red-400',
         checking: 'bg-gray-400'
@@ -69,7 +69,6 @@ const Footer = () => {
   const currentTheme = themeConfig[theme];
 
   useEffect(() => {
-    // Actualizar actividad cada 30 segundos
     const interval = setInterval(() => {
       if (usuario) {
         actualizarActividad(usuario.id);
@@ -79,7 +78,6 @@ const Footer = () => {
     return () => clearInterval(interval);
   }, [usuario, actualizarActividad]);
 
-  // Timer para la hora
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(getCurrentTime());
@@ -88,7 +86,6 @@ const Footer = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Verificar estado de WhatsApp al cargar
   useEffect(() => {
     checkWhatsAppStatus();
   }, []);
@@ -109,7 +106,6 @@ const Footer = () => {
     });
   };
 
-  // Verificar estado real de WhatsApp API
   const checkWhatsAppStatus = async () => {
     try {
       const isBackend = isBackendConnected();
@@ -118,12 +114,11 @@ const Footer = () => {
         return;
       }
 
-      // Usar API centralizada que maneja HTTPS automáticamente
       const response = await api.get('/whatsapp/estado');
-      
+
       if (response.data.success) {
         const { conectado, qrCode } = response.data.data;
-        
+
         if (conectado) {
           setWhatsappStatus('connected');
         } else if (qrCode) {
@@ -140,12 +135,10 @@ const Footer = () => {
     }
   };
 
-  // Función para obtener color por rol
   const getRoleColor = (rol) => {
     return currentTheme.badges[rol] || currentTheme.badges.viewer;
   };
 
-  // Estados de conexión
   const getConnectionStatus = () => {
     const isBackend = isBackendConnected();
     const socketConnected = isSocketConnected();
@@ -153,64 +146,69 @@ const Footer = () => {
     if (isBackend && socketConnected) {
       return {
         color: currentTheme.statusIndicators.online,
-        icon: <Wifi className={`h-3.5 w-3.5 ${currentTheme.iconColor}`} />,
+        icon: <Wifi className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${currentTheme.iconColor}`} />,
         text: 'Online',
         description: 'API + Socket'
       };
     } else if (isBackend) {
       return {
         color: currentTheme.statusIndicators.warning,
-        icon: <Zap className={`h-3.5 w-3.5 ${currentTheme.iconColor}`} />,
+        icon: <Zap className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${currentTheme.iconColor}`} />,
         text: 'API Only',
         description: 'Sin tiempo real'
       };
     } else {
       return {
         color: currentTheme.statusIndicators.offline,
-        icon: <WifiOff className={`h-3.5 w-3.5 ${currentTheme.iconColor}`} />,
+        icon: <WifiOff className={`h-3 w-3 sm:h-3.5 sm:w-3.5 ${currentTheme.iconColor}`} />,
         text: 'Local',
         description: 'Sin servidor'
       };
     }
   };
 
-  // Estados de WhatsApp
   const getWhatsAppStatus = () => {
     const statusConfig = {
       connected: {
         color: currentTheme.statusIndicators.online,
-        icon: <MessageCircle className={`h-3 w-3 ${currentTheme.iconColor}`} />,
-        text: 'WhatsApp OK',
+        icon: <MessageCircle className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${currentTheme.iconColor}`} />,
+        text: 'WA OK',
+        textFull: 'WhatsApp OK',
         description: 'Notificaciones activas'
       },
       qr_pending: {
         color: currentTheme.statusIndicators.warning,
-        icon: <MessageCircle className={`h-3 w-3 ${currentTheme.iconColor}`} />,
-        text: 'WhatsApp QR',
+        icon: <MessageCircle className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${currentTheme.iconColor}`} />,
+        text: 'WA QR',
+        textFull: 'WhatsApp QR',
         description: 'Esperando escaneo'
       },
       disconnected: {
         color: 'bg-orange-400',
-        icon: <MessageCircle className={`h-3 w-3 ${currentTheme.iconColor}`} />,
-        text: 'WhatsApp OFF',
+        icon: <MessageCircle className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${currentTheme.iconColor}`} />,
+        text: 'WA OFF',
+        textFull: 'WhatsApp OFF',
         description: 'Desconectado'
       },
       error: {
         color: currentTheme.statusIndicators.error,
-        icon: <MessageCircle className={`h-3 w-3 ${currentTheme.iconColor}`} />,
-        text: 'WhatsApp Error',
+        icon: <MessageCircle className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${currentTheme.iconColor}`} />,
+        text: 'WA Err',
+        textFull: 'WhatsApp Error',
         description: 'Fallo de conexión'
       },
       not_configured: {
         color: currentTheme.statusIndicators.checking,
-        icon: <MessageCircle className={`h-3 w-3 ${currentTheme.iconColor}`} />,
-        text: 'WhatsApp N/A',
+        icon: <MessageCircle className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${currentTheme.iconColor}`} />,
+        text: 'WA N/A',
+        textFull: 'WhatsApp N/A',
         description: 'No configurado'
       },
       checking: {
         color: `${currentTheme.statusIndicators.checking} animate-pulse`,
-        icon: <MessageCircle className={`h-3 w-3 ${currentTheme.iconColor}`} />,
-        text: 'Verificando...',
+        icon: <MessageCircle className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${currentTheme.iconColor}`} />,
+        text: '...',
+        textFull: 'Verificando...',
         description: 'Comprobando estado'
       }
     };
@@ -218,20 +216,21 @@ const Footer = () => {
     return statusConfig[whatsappStatus] || statusConfig.checking;
   };
 
-  // Estados de caja
   const getCajaStatus = () => {
     if (cajaActual) {
       return {
         color: `${currentTheme.statusIndicators.online} animate-pulse`,
-        icon: <Package className={`h-3 w-3 ${currentTheme.iconColor}`} />,
-        text: 'Caja Abierta',
+        icon: <Package className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${currentTheme.iconColor}`} />,
+        text: 'Abierta',
+        textFull: 'Caja Abierta',
         description: `Desde ${cajaActual.hora_apertura}`
       };
     } else {
       return {
         color: currentTheme.statusIndicators.checking,
-        icon: <Package className={`h-3 w-3 ${currentTheme.iconColor}`} />,
-        text: 'Caja Cerrada',
+        icon: <Package className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${currentTheme.iconColor}`} />,
+        text: 'Cerrada',
+        textFull: 'Caja Cerrada',
         description: 'Sistema en espera'
       };
     }
@@ -244,84 +243,87 @@ const Footer = () => {
 
   return (
     <footer className={`sticky bottom-0 z-40 ${currentTheme.gradient} shadow-lg mt-auto transition-all duration-300`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center h-10">
-          
-          {/* ELEMENTOS CENTRADOS EN UNA SOLA FILA */}
-          <div className={`flex items-center space-x-4 text-sm ${currentTheme.text}`}>
-            
-            {/* 🌐 CONEXIÓN + WHATSAPP */}
-            <div className="flex items-center space-x-3">
-              {/* Estado API/Socket */}
-              <div className="flex items-center space-x-1">
-                <div className={`w-2 h-2 rounded-full ${connectionStatus.color}`}></div>
-                {connectionStatus.icon}
-                <span className="text-xs font-medium" title={connectionStatus.description}>
-                  {connectionStatus.text}
-                </span>
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="flex items-center justify-center h-8 sm:h-10">
+
+          {/* ELEMENTOS CENTRADOS - FULL RESPONSIVE */}
+          <div className={`flex items-center space-x-2 sm:space-x-3 lg:space-x-4 text-xs sm:text-sm ${currentTheme.text} flex-wrap justify-center`}>
+
+            {/*  CONEXIÓN - RESPONSIVE */}
+            <div className="flex items-center space-x-1 sm:space-x-1.5">
+              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${connectionStatus.color}`}></div>
+              <div className="hidden sm:block">{connectionStatus.icon}</div>
+              <span className="text-[10px] sm:text-xs font-medium" title={connectionStatus.description}>
+                {connectionStatus.text}
+              </span>
+            </div>
+
+            {/* WHATSAPP - Solo Admin - RESPONSIVE */}
+            {usuario?.rol === 'admin' && (
+              <>
+                <div className={`h-2.5 sm:h-3 w-px ${currentTheme.separatorColor}`}></div>
+                <div className="flex items-center space-x-1 sm:space-x-1.5">
+                  <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${whatsappStatusInfo.color}`}></div>
+                  {whatsappStatusInfo.icon}
+                  <span className="text-[10px] sm:text-xs font-medium hidden sm:inline">
+                    {whatsappStatusInfo.textFull}
+                  </span>
+                  <span className="text-[10px] sm:text-xs font-medium sm:hidden">
+                    {whatsappStatusInfo.text}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {/* Separador */}
+            <div className={`h-3 sm:h-4 w-px ${currentTheme.separatorColor}`}></div>
+
+            {/*  FECHA + HORA - RESPONSIVE */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="flex items-center space-x-0.5 sm:space-x-1">
+                <Calendar className={`h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 ${currentTheme.iconColor}`} />
+                <span className="font-medium text-[10px] sm:text-xs">{getCurrentDate()}</span>
               </div>
-              
-              {/* Separador mini + WhatsApp - Solo Admin */}
-              {usuario?.rol === 'admin' && (
-                <>
-                  <div className={`h-3 w-px ${currentTheme.separatorColor}`}></div>
-                  <div className="flex items-center space-x-1">
-                    <div className={`w-2 h-2 rounded-full ${whatsappStatusInfo.color}`}></div>
-                    {whatsappStatusInfo.icon}
-                    <span className="text-xs font-medium">
-                      {whatsappStatusInfo.text}
-                    </span>
-                  </div>
-                </>
-              )}
+
+              <div className="flex items-center space-x-0.5 sm:space-x-1">
+                <Clock className={`h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 ${currentTheme.iconColor}`} />
+                <span className={`font-mono ${currentTheme.text} text-[10px] sm:text-xs`}>{currentTime}</span>
+              </div>
             </div>
 
             {/* Separador */}
-            <div className={`h-4 w-px ${currentTheme.separatorColor}`}></div>
+            <div className={`h-3 sm:h-4 w-px ${currentTheme.separatorColor}`}></div>
 
-            {/* 📅 FECHA + HORA */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-1">
-                <Calendar className={`h-3.5 w-3.5 ${currentTheme.iconColor}`} />
-                <span className="font-medium">{getCurrentDate()}</span>
-              </div>
-              
-              <div className="flex items-center space-x-1">
-                <Clock className={`h-3.5 w-3.5 ${currentTheme.iconColor}`} />
-                <span className={`font-mono ${currentTheme.text}`}>{currentTime}</span>
-              </div>
-            </div>
-
-            {/* Separador */}
-            <div className={`h-4 w-px ${currentTheme.separatorColor}`}></div>
-
-            {/* 📦 ESTADO DE CAJA */}
-            <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${cajaStatus.color}`}></div>
+            {/*  ESTADO DE CAJA - RESPONSIVE */}
+            <div className="flex items-center space-x-1 sm:space-x-1.5">
+              <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${cajaStatus.color}`}></div>
               {cajaStatus.icon}
-              <span className="font-medium text-xs" title={cajaStatus.description}>
+              <span className="font-medium text-[10px] sm:text-xs hidden sm:inline" title={cajaStatus.description}>
+                {cajaStatus.textFull}
+              </span>
+              <span className="font-medium text-[10px] sm:text-xs sm:hidden" title={cajaStatus.description}>
                 {cajaStatus.text}
               </span>
             </div>
 
             {/* Separador */}
-            <div className={`h-4 w-px ${currentTheme.separatorColor}`}></div>
+            <div className={`h-3 sm:h-4 w-px ${currentTheme.separatorColor}`}></div>
 
-            {/* 👥 SESIONES ACTIVAS DINÁMICAS */}
-            <div className="flex items-center space-x-2">
-              <Users className={`h-3.5 w-3.5 ${currentTheme.iconColor}`} />
-              <span className="font-medium">{usuariosConectados.length}</span>
-              <span className={`${isDarkTheme() ? 'text-gray-400' : 'text-white/70'} text-xs`}>
+            {/*  SESIONES ACTIVAS - RESPONSIVE */}
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <Users className={`h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 ${currentTheme.iconColor}`} />
+              <span className="font-medium text-[10px] sm:text-xs">{usuariosConectados.length}</span>
+              <span className={`${isDarkTheme() ? 'text-gray-400' : 'text-white/70'} text-[10px] sm:text-xs hidden sm:inline`}>
                 {usuariosConectados.length === 1 ? 'sesión' : 'sesiones'}
               </span>
-              
-              {/* 🎯 AVATARES DINÁMICOS CON INICIALES */}
+
+              {/*  AVATARES - RESPONSIVE */}
               {usuariosConectados.length > 0 && (
-                <div className="flex items-center space-x-1 ml-2">
-                  {usuariosConectados.slice(0, 4).map((user) => (
+                <div className="flex items-center space-x-0.5 sm:space-x-1 ml-1 sm:ml-2">
+                  {usuariosConectados.slice(0, 3).map((user) => (
                     <div
                       key={user.id}
-                      className={`w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold ${getRoleColor(user.rol)} border ${
+                      className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full text-[9px] sm:text-xs flex items-center justify-center font-bold ${getRoleColor(user.rol)} border ${
                         isDarkTheme() ? 'border-gray-600' : 'border-white/30'
                       } shadow-sm backdrop-blur-sm`}
                       title={`${user.nombre} (${user.rol.toUpperCase()}) - ${user.sucursal}`}
@@ -329,27 +331,27 @@ const Footer = () => {
                       {user.nombre.charAt(0).toUpperCase()}
                     </div>
                   ))}
-                  {usuariosConectados.length > 4 && (
-                    <div 
-                      className={`w-5 h-5 rounded-full ${
+                  {usuariosConectados.length > 3 && (
+                    <div
+                      className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${
                         isDarkTheme() ? 'bg-gray-700' : 'bg-white/20'
-                      } ${currentTheme.text} text-xs flex items-center justify-center font-bold border ${
+                      } ${currentTheme.text} text-[9px] sm:text-xs flex items-center justify-center font-bold border ${
                         isDarkTheme() ? 'border-gray-600' : 'border-white/30'
                       } shadow-sm backdrop-blur-sm`}
-                      title={`${usuariosConectados.length - 4} usuarios más`}
+                      title={`${usuariosConectados.length - 3} usuarios más`}
                     >
-                      +{usuariosConectados.length - 4}
+                      +{usuariosConectados.length - 3}
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Separador + Mi Sesión - Solo Admin */}
+            {/* Sesión Info - Solo Admin Desktop - RESPONSIVE */}
             {sessionInfo && usuario?.rol === 'admin' && (
               <>
-                <div className={`h-4 w-px ${currentTheme.separatorColor}`}></div>
-                <div className="flex items-center space-x-2">
+                <div className={`hidden lg:block h-4 w-px ${currentTheme.separatorColor}`}></div>
+                <div className="hidden lg:flex items-center space-x-2">
                   <Activity className={`h-3.5 w-3.5 ${currentTheme.iconColor}`} />
                   <span className={`text-xs ${isDarkTheme() ? 'text-gray-400' : 'text-white/70'}`}>
                     Mi sesión:

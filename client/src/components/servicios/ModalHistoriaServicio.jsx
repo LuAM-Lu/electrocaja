@@ -5,7 +5,7 @@ import {
   Edit3, Trash2, MessageSquarePlus, Camera, Mic, AlertTriangle, Eye, EyeOff,
   History, Settings, FileText, Package, CameraIcon, StopCircle
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 // ====== Estados (SIN "Entregado") ======
 const estadosConEstilo = {
@@ -90,7 +90,7 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
   // Notas en edición (draft) -> incluyen las del backend + locales previas
   const [notasDraft, setNotasDraft] = useState([]);
 
-  // 📱 ESTADOS DE CÁMARA MÓVIL
+  //  ESTADOS DE CÁMARA MÓVIL
   const [camaraActiva, setCamaraActiva] = useState(false);
   const [streamActual, setStreamActual] = useState(null);
   const [facingMode, setFacingMode] = useState('environment'); // 'user' para frontal, 'environment' para trasera
@@ -158,11 +158,11 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
         videoRef.current.srcObject = stream;
         setStreamActual(stream);
         setCamaraActiva(true);
-        toast.success('📷 Cámara activada');
+        toast.success('Cámara activada');
       }
     } catch (error) {
       console.error('Error accediendo a la cámara:', error);
-      toast.error('❌ No se pudo acceder a la cámara');
+      toast.error('No se pudo acceder a la cámara');
     }
   };
 
@@ -212,7 +212,7 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
 
       setNotasDraft(prev => [...prev, nuevaEvidencia]);
       setNota('');
-      toast.success('📸 Foto capturada y agregada al historial');
+      toast.success('Foto capturada y agregada al historial');
       
       detenerCamara();
     }
@@ -318,7 +318,7 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
         mediaRecorderRef.current = rec;
         rec.start();
         setGrabando(true);
-        toast('🎙️ Grabando... (máx 30s)', { icon: '▶️' });
+        toast.loading('Grabando... (máx 30s)');
         setTimeout(() => {
           if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
@@ -493,7 +493,7 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
                   </div>
                 </div>
 
-                {/* 📱 VISTA PREVIA DE CÁMARA - SOLO CUANDO ESTÁ ACTIVA */}
+                {/*  VISTA PREVIA DE CÁMARA - SOLO CUANDO ESTÁ ACTIVA */}
                 {camaraActiva && (
                   <div className="p-4 bg-gray-900 border-b border-gray-700">
                     <div className="relative bg-black rounded-lg overflow-hidden">
@@ -631,7 +631,7 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
                           Nota
                         </button>
 
-                        {/* 📱 BOTÓN CÁMARA MÓVIL PROTAGONISTA */}
+                        {/*  BOTÓN CÁMARA MÓVIL PROTAGONISTA */}
                         <button
                           onClick={camaraActiva ? detenerCamara : iniciarCamara}
                           className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md font-medium transition-colors ${

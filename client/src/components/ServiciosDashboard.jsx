@@ -9,9 +9,9 @@ import ServiciosFloatingActions from './servicios/ServiciosFloatingActions';
 import ModalVerServicio from './servicios/ModalVerServicio';
 import ModalEditarServicio from './servicios/ModalHistoriaServicio'; 
 import BorrarServicioModal from './servicios/BorrarServicioModal';
-// ✨ IMPORTAR EL WIZARD COMPLETO
+//  IMPORTAR EL WIZARD COMPLETO
 import RegistroServicioWizard from './servicios/RegistroServicioWizard';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
 const ServiciosDashboard = () => {
   const { switchToMain, getTransitionClass } = useDashboardStore();
@@ -23,7 +23,7 @@ const ServiciosDashboard = () => {
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState(null);
 
-    // 🆕 ESTADO PARA PRUEBA DE CONEXIÓN
+    //  ESTADO PARA PRUEBA DE CONEXIÓN
   const [showPruebaConexion, setShowPruebaConexion] = useState(false);
   
 
@@ -34,11 +34,11 @@ const ServiciosDashboard = () => {
   const [modalBorrar, setModalBorrar] = useState(false);
   const [servicioBorrar, setServicioBorrar] = useState(null);
 
-  // ✨ NUEVOS ESTADOS PARA EDICIÓN CON WIZARD
+  //  NUEVOS ESTADOS PARA EDICIÓN CON WIZARD
   const [modalEditarWizard, setModalEditarWizard] = useState(false);
   const [servicioAEditar, setServicioAEditar] = useState(null);
 
-  // ✨ ESTADOS PARA MODAL DE HISTORIAL
+  //  ESTADOS PARA MODAL DE HISTORIAL
   const [modalHistorial, setModalHistorial] = useState(false);
   const [servicioHistorial, setServicioHistorial] = useState(null);
 
@@ -221,14 +221,14 @@ const ServiciosDashboard = () => {
    switchToMain();
  };
 
- // ✨ MANEJAR CREACIÓN DE NUEVA ORDEN DE SERVICIO
+ //  MANEJAR CREACIÓN DE NUEVA ORDEN DE SERVICIO
  const handleNewService = () => {
    setShowNewServiceModal(true);
  };
 
- // ✨ MANEJAR SERVICIO CREADO DESDE EL WIZARD
+ //  MANEJAR SERVICIO CREADO DESDE EL WIZARD
  const handleServicioCreado = (nuevoServicio) => {
-   console.log('🆕 Nuevo servicio creado:', nuevoServicio);
+   console.log(' Nuevo servicio creado:', nuevoServicio);
    
    // Agregar a la lista de servicios
    setServiciosLista(prev => [nuevoServicio, ...prev]);
@@ -242,16 +242,16 @@ const ServiciosDashboard = () => {
    }, 500);
  };
 
- // ✨ MANEJAR BOTÓN EDITAR (WIZARD)
+ //  MANEJAR BOTÓN EDITAR (WIZARD)
  const handleEditarServicioWizard = (servicio) => {
-   console.log('📝 Editando servicio con wizard:', servicio);
+   console.log(' Editando servicio con wizard:', servicio);
    setServicioAEditar(servicio);
    setModalEditarWizard(true);
  };
 
- // ✨ MANEJAR ACTUALIZACIÓN DE SERVICIO DESDE WIZARD
+ //  MANEJAR ACTUALIZACIÓN DE SERVICIO DESDE WIZARD
  const handleServicioActualizado = (servicioActualizado) => {
-   console.log('✅ Servicio actualizado:', servicioActualizado);
+   console.log(' Servicio actualizado:', servicioActualizado);
    
    // Actualizar en la lista de servicios
    setServiciosLista(prev => prev.map(s => 
@@ -268,9 +268,9 @@ const ServiciosDashboard = () => {
    }, 500);
  };
 
-// ✅ FUNCIÓN PARA MANEJAR HISTORIAL
+//  FUNCIÓN PARA MANEJAR HISTORIAL
  const handleVerHistorial = (servicio) => {
-   console.log('📋 Ver historial completo del servicio:', servicio);
+   console.log(' Ver historial completo del servicio:', servicio);
    setServicioHistorial(servicio);
    setModalHistorial(true);
  };
@@ -283,7 +283,7 @@ const ServiciosDashboard = () => {
    setShowReportsModal(true);
  };
 
-  // 🆕 FUNCIÓN PARA PRUEBA DE CONEXIÓN NUBE
+  //  FUNCIÓN PARA PRUEBA DE CONEXIÓN NUBE
  const handlePruebaConexion = () => {
    setShowPruebaConexion(true);
  };
@@ -335,7 +335,7 @@ const ServiciosDashboard = () => {
              servicios={serviciosLista}
              filtroEstado={filtroEstado}
              onVerServicio={setServicioSeleccionado}
-             onEditarServicio={handleEditarServicioWizard} // ✨ USAR WIZARD PARA EDITAR
+             onEditarServicio={handleEditarServicioWizard} //  USAR WIZARD PARA EDITAR
              onBorrarServicio={(servicio) => {
                setServicioBorrar(servicio);
                setModalBorrar(true);
@@ -392,7 +392,7 @@ const ServiciosDashboard = () => {
        />
      </div>
 
-     {/* ✨ MODALES CON Z-INDEX ALTO PARA ESTAR SOBRE HEADER/FOOTER STICKY */}
+     {/*  MODALES CON Z-INDEX ALTO PARA ESTAR SOBRE HEADER/FOOTER STICKY */}
      
      {/* WIZARD DE NUEVA ORDEN */}
      {showNewServiceModal && (
@@ -404,7 +404,7 @@ const ServiciosDashboard = () => {
        />
      )}
 
-     {/* ✨ WIZARD DE EDICIÓN */}
+     {/*  WIZARD DE EDICIÓN */}
      {modalEditarWizard && servicioAEditar && (
        <RegistroServicioWizard
          isOpen={modalEditarWizard}
@@ -456,7 +456,7 @@ const ServiciosDashboard = () => {
            servicio={servicioSeleccionado}
            onClose={() => setServicioSeleccionado(null)}
            actualizarEstado={(id, data) => {
-             // ✨ ACTUALIZAR SERVICIO EN LA LISTA
+             //  ACTUALIZAR SERVICIO EN LA LISTA
              setServiciosLista(prev => prev.map(s => 
                s.id === id ? { ...s, ...data } : s
              ));
@@ -476,7 +476,7 @@ const ServiciosDashboard = () => {
              setServicioEditando(null);
            }}
            onGuardar={(id, data) => {
-             // ✨ ACTUALIZAR SERVICIO EN LA LISTA
+             //  ACTUALIZAR SERVICIO EN LA LISTA
              setServiciosLista(prev => prev.map(s => 
                s.id === id ? { ...s, ...data } : s
              ));
@@ -497,7 +497,7 @@ const ServiciosDashboard = () => {
              setServicioBorrar(null);
            }}
            onConfirmar={(id) => {
-             // ✨ ELIMINAR SERVICIO DE LA LISTA
+             //  ELIMINAR SERVICIO DE LA LISTA
              setServiciosLista(prev => prev.filter(s => s.id !== id));
              setModalBorrar(false);
              setServicioBorrar(null);
@@ -507,7 +507,7 @@ const ServiciosDashboard = () => {
        </div>
      )}
 
-     {/* ✨ MODAL DE HISTORIAL TÉCNICO */}
+     {/*  MODAL DE HISTORIAL TÉCNICO */}
      {modalHistorial && servicioHistorial && (
        <ModalEditarServicio
          servicio={servicioHistorial}
@@ -516,7 +516,7 @@ const ServiciosDashboard = () => {
            setServicioHistorial(null);
          }}
          onGuardar={(id, data) => {
-           // ✨ ACTUALIZAR SERVICIO EN LA LISTA
+           //  ACTUALIZAR SERVICIO EN LA LISTA
            setServiciosLista(prev => prev.map(s => 
              s.id === id ? { ...s, ...data } : s
            ));
@@ -528,11 +528,11 @@ const ServiciosDashboard = () => {
        />
      )}
 
-     {/* 🆕 MODAL DE PRUEBA DE CONEXIÓN NUBE */}
+     {/*  MODAL DE PRUEBA DE CONEXIÓN NUBE */}
      {showPruebaConexion && (
        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-center animate-fadeIn">
          <div className="bg-gray-800 rounded-2xl p-8 max-w-lg w-full mx-4 border border-gray-700 shadow-2xl animate-scaleIn">
-           <h3 className="text-xl font-bold text-gray-100 mb-4">🌐 Prueba de Conexión Nube</h3>
+           <h3 className="text-xl font-bold text-gray-100 mb-4"> Prueba de Conexión Nube</h3>
            <div className="space-y-4">
              <div>
                <label className="block text-sm font-medium text-gray-300 mb-2">Cliente de Prueba</label>
@@ -552,7 +552,7 @@ const ServiciosDashboard = () => {
              </div>
              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
                <p className="text-blue-300 text-sm">
-                 📡 Esta prueba creará una orden local y la enviará a la nube para verificar la conexión.
+                  Esta prueba creará una orden local y la enviará a la nube para verificar la conexión.
                </p>
              </div>
            </div>
@@ -560,12 +560,12 @@ const ServiciosDashboard = () => {
              <button
                onClick={() => {
                  // TODO: Implementar lógica de prueba
-                 toast.success('🚀 Enviando prueba a la nube...');
+                 toast.success('Enviando prueba a la nube...');
                  setShowPruebaConexion(false);
                }}
                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
              >
-               🚀 Enviar Prueba
+                Enviar Prueba
              </button>
              <button
                onClick={() => setShowPruebaConexion(false)}

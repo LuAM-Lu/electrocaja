@@ -4,9 +4,9 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { api } from '../config/api';
 import { useAuthStore } from './authStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 
-// 🎯 TIPOS Y CONSTANTES (mismo que antes)
+//  TIPOS Y CONSTANTES (mismo que antes)
 export const TIPOS_ACTIVIDAD = {
   RECORDATORIO: 'recordatorio',
   CRONOMETRO: 'cronometro', 
@@ -19,9 +19,9 @@ export const TIPOS_ALQUILER = {
 };
 
 export const PRIORIDADES = {
-  ALTA: { valor: 'alta', color: 'red', emoji: '🔴' },
-  MEDIA: { valor: 'media', color: 'yellow', emoji: '🟡' },
-  BAJA: { valor: 'baja', color: 'green', emoji: '🟢' }
+  ALTA: { valor: 'alta', color: 'red', emoji: '' },
+  MEDIA: { valor: 'media', color: 'yellow', emoji: '' },
+  BAJA: { valor: 'baja', color: 'green', emoji: '' }
 };
 
 export const ESTADOS = {
@@ -33,11 +33,11 @@ export const ESTADOS = {
 };
 
 export const TIPOS_RESERVACION = {
-  CUMPLEANOS: { valor: 'cumpleanos', emoji: '🎂', nombre: 'Cumpleaños' },
-  EVENTO: { valor: 'evento', emoji: '🎉', nombre: 'Evento Especial' }
+  CUMPLEANOS: { valor: 'cumpleanos', emoji: '', nombre: 'Cumpleaños' },
+  EVENTO: { valor: 'evento', emoji: '', nombre: 'Evento Especial' }
 };
 
-// ⏱️ CÁLCULO DE TIEMPO (mismo que antes)
+//  CÁLCULO DE TIEMPO (mismo que antes)
 const calcularCostoTiempo = (minutos, precioPorHora) => {
   if (minutos <= 0) return 0;
   
@@ -60,17 +60,17 @@ const calcularCostoTiempo = (minutos, precioPorHora) => {
   return horasACobrar * precioPorHora;
 };
 
-// 🏪 STORE CON API + SOCKETS
+//  STORE CON API + SOCKETS
 export const useActividadesStore = create(
   subscribeWithSelector((set, get) => ({
-    // 📊 ESTADO
+    //  ESTADO
     actividades: [],
     cronometrosActivos: new Map(),
     loading: false,
     error: null,
     socketConnected: false,
     
-    // 🔗 INICIALIZACIÓN CON SOCKETS
+    //  INICIALIZACIÓN CON SOCKETS
     inicializar: async () => {
       const { emitirEvento } = useSocketEvents();
       
@@ -92,7 +92,7 @@ export const useActividadesStore = create(
       const { socket } = useAuthStore.getState();
       if (!socket) return;
       
-      // 📡 EVENTOS DE SOCKET PARA ACTIVIDADES
+      //  EVENTOS DE SOCKET PARA ACTIVIDADES
       
       // Cronómetro iniciado por otro usuario
       socket.on('cronometro_iniciado', (data) => {
@@ -101,7 +101,9 @@ export const useActividadesStore = create(
           cronometrosActivos: new Map(state.cronometrosActivos.set(data.cronometro.equipoId, data.cronometro))
         }));
         
-        toast.success(`🎮 ${data.cronometro.equipoNombre} iniciado por ${data.usuario}`);
+        toast.success(`${data.cronometro.equipoNombre} iniciado por ${data.nombre || data.usuario}`, {
+          id: `cronometro-${data.cronometro.id}`
+        });
       });
       
       // Cronómetro actualizado
@@ -128,7 +130,7 @@ export const useActividadesStore = create(
           };
         });
         
-        toast.success(`✅ Sesión finalizada: ${data.cronometro.equipoNombre} - $${data.costoTotal.toFixed(2)}`);
+        toast.success(`Sesión finalizada: ${data.cronometro.equipoNombre} - $${data.costoTotal.toFixed(2)}`);
       });
       
       // Nueva actividad creada
@@ -138,27 +140,26 @@ export const useActividadesStore = create(
         }));
         
         if (data.actividad.tipo === TIPOS_ACTIVIDAD.RECORDATORIO) {
-          toast.info(`📝 Nuevo recordatorio de ${data.creadorNombre}: ${data.actividad.titulo}`);
+          toast.info(`Nuevo recordatorio de ${data.creadorNombre}: ${data.actividad.titulo}`);
         }
       });
       
       // Recordatorio vencido
       socket.on('recordatorio_vencido', (data) => {
-        toast.warning(`⏰ Recordatorio vencido: ${data.recordatorio.titulo}`, {
+        toast.warning(`Recordatorio vencido: ${data.recordatorio.titulo}`, {
           duration: 8000,
-          icon: '🔔'
         });
       });
       
       // Reservación próxima
       socket.on('reservacion_proxima', (data) => {
-        toast.info(`🎉 Reservación en 1 hora: ${data.reservacion.titulo}`, {
+        toast.info(`Reservación en 1 hora: ${data.reservacion.titulo}`, {
           duration: 6000
         });
       });
     },
     
-    // 📡 API CALLS
+    //  API CALLS
     cargarActividades: async () => {
       set({ loading: true, error: null });
       try {
@@ -179,11 +180,11 @@ export const useActividadesStore = create(
       } catch (error) {
         console.error('Error cargando actividades:', error);
         set({ error: error.message, loading: false });
-        toast.error('❌ Error cargando actividades');
+        toast.error('Error cargando actividades');
       }
     },
     
-    // 📝 RECORDATORIOS CON API
+    //  RECORDATORIOS CON API
     crearRecordatorio: async (datos) => {
       const { emitirEvento } = useSocketEvents();
       
@@ -209,17 +210,17 @@ export const useActividadesStore = create(
           asignadoA: datos.asignadoA
         });
         
-        toast.success(`📝 Recordatorio creado: ${datos.titulo}`);
+        toast.success(`Recordatorio creado: ${datos.titulo}`);
         return nuevoRecordatorio;
         
       } catch (error) {
         console.error('Error creando recordatorio:', error);
-        toast.error('❌ Error creando recordatorio');
+        toast.error('Error creando recordatorio');
         throw error;
       }
     },
     
-    // ⏱️ CRONÓMETROS CON API + REAL TIME
+    //  CRONÓMETROS CON API + REAL TIME
     iniciarCronometro: async (datos, inventario) => {
       const { equipoId, clienteNombre, tipoAlquiler, duracionMinutos } = datos;
       const { emitirEvento } = useSocketEvents();
@@ -232,14 +233,14 @@ export const useActividadesStore = create(
       );
       
       if (!equipo) {
-        toast.error('❌ Equipo no encontrado');
+        toast.error('Equipo no encontrado');
         return null;
       }
       
       // Verificar disponibilidad
       const { cronometrosActivos } = get();
       if (cronometrosActivos.has(equipoId)) {
-        toast.error('❌ El equipo ya está en uso');
+        toast.error('El equipo ya está en uso');
         return null;
       }
       
@@ -270,12 +271,12 @@ export const useActividadesStore = create(
           equipoId
         });
         
-        toast.success(`⏰ ${equipo.descripcion} iniciado para ${clienteNombre}`);
+        toast.success(`${equipo.descripcion} iniciado para ${clienteNombre}`);
         return nuevoCronometro;
         
       } catch (error) {
         console.error('Error iniciando cronómetro:', error);
-        toast.error('❌ Error iniciando cronómetro');
+        toast.error('Error iniciando cronómetro');
         throw error;
       }
     },
@@ -302,10 +303,10 @@ export const useActividadesStore = create(
         // Manejar intervals
         if (cronometroActualizado.estado === ESTADOS.PAUSADO) {
           get().pararActualizacionTiempoReal(equipoId);
-          toast.success(`⏸️ ${cronometro.equipoNombre} pausado`);
+          toast.success(`${cronometro.equipoNombre} pausado`);
         } else {
           get().actualizarCronometroTiempoReal(equipoId);
-          toast.success(`▶️ ${cronometro.equipoNombre} reanudado`);
+          toast.success(`${cronometro.equipoNombre} reanudado`);
         }
         
         // Emitir evento
@@ -316,7 +317,7 @@ export const useActividadesStore = create(
         
       } catch (error) {
         console.error('Error pausando cronómetro:', error);
-        toast.error('❌ Error pausando cronómetro');
+        toast.error('Error pausando cronómetro');
       }
     },
     
@@ -353,17 +354,17 @@ export const useActividadesStore = create(
           costoTotal: resultado.costoTotal
         });
         
-        toast.success(`🎮 Sesión finalizada: ${resultado.minutosTotal} min - $${resultado.costoTotal.toFixed(2)}`);
+        toast.success(`Sesión finalizada: ${resultado.minutosTotal} min - $${resultado.costoTotal.toFixed(2)}`);
         return resultado;
         
       } catch (error) {
         console.error('Error finalizando cronómetro:', error);
-        toast.error('❌ Error finalizando cronómetro');
+        toast.error('Error finalizando cronómetro');
         throw error;
       }
     },
     
-    // ⚡ TIEMPO REAL LOCAL (COMPLEMENTA API)
+    //  TIEMPO REAL LOCAL (COMPLEMENTA API)
     actualizarCronometroTiempoReal: (equipoId) => {
       const { cronometrosActivos } = get();
       const cronometro = cronometrosActivos.get(equipoId);
@@ -394,7 +395,7 @@ export const useActividadesStore = create(
             minutosTranscurridos >= cronActual.duracionMinutos) {
           
           get().finalizarCronometro(equipoId);
-          toast.warning(`⏰ Tiempo agotado: ${cronActual.equipoNombre}`);
+          toast.warning(`Tiempo agotado: ${cronActual.equipoNombre}`);
           return;
         }
         
@@ -464,7 +465,7 @@ export const useActividadesStore = create(
       }
     },
     
-    // 🎂 RESERVACIONES CON API
+    //  RESERVACIONES CON API
     crearReservacion: async (datos) => {
       const { emitirEvento } = useSocketEvents();
       
@@ -491,17 +492,17 @@ export const useActividadesStore = create(
           reservacion: nuevaReservacion
         });
         
-        toast.success(`🎉 Reservación creada: ${datos.titulo}`);
+        toast.success(`Reservación creada: ${datos.titulo}`);
         return nuevaReservacion;
         
       } catch (error) {
         console.error('Error creando reservación:', error);
-        toast.error('❌ Error creando reservación');
+        toast.error('Error creando reservación');
         throw error;
       }
     },
     
-    // 🗑️ ELIMINAR CON API
+    //  ELIMINAR CON API
     eliminarActividad: async (id) => {
       try {
         await api.delete(`/actividades/${id}`);
@@ -510,14 +511,14 @@ export const useActividadesStore = create(
           actividades: state.actividades.filter(act => act.id !== id)
         }));
         
-        toast.success('🗑️ Actividad eliminada');
+        toast.success('Actividad eliminada');
       } catch (error) {
         console.error('Error eliminando actividad:', error);
-        toast.error('❌ Error eliminando actividad');
+        toast.error('Error eliminando actividad');
       }
     },
     
-    // 📊 GETTERS (mismo que antes)
+    //  GETTERS (mismo que antes)
     obtenerRecordatorios: () => {
       return get().actividades.filter(act => act.tipo === TIPOS_ACTIVIDAD.RECORDATORIO);
     },
@@ -573,7 +574,7 @@ export const useActividadesStore = create(
      };
    },
    
-   // 🧹 LIMPIAR COMPLETADOS
+   //  LIMPIAR COMPLETADOS
    limpiarCompletados: async () => {
      try {
        await api.delete('/actividades/completados');
@@ -582,20 +583,20 @@ export const useActividadesStore = create(
          actividades: state.actividades.filter(act => act.estado !== ESTADOS.COMPLETADO)
        }));
        
-       toast.success('🧹 Actividades completadas eliminadas');
+       toast.success('Actividades completadas eliminadas');
      } catch (error) {
        console.error('Error limpiando completados:', error);
-       toast.error('❌ Error limpiando actividades');
+       toast.error('Error limpiando actividades');
      }
    },
    
-   // 🔄 SINCRONIZACIÓN MANUAL
+   //  SINCRONIZACIÓN MANUAL
    sincronizar: async () => {
      await get().cargarActividades();
-     toast.success('🔄 Actividades sincronizadas');
+     toast.success('Actividades sincronizadas');
    },
    
-   // 🧹 CLEANUP AL CERRAR
+   //  CLEANUP AL CERRAR
    limpiarRecursos: () => {
      const { cronometrosActivos } = get();
      
@@ -625,7 +626,7 @@ export const useActividadesStore = create(
  }))
 );
 
-// 🎣 HOOK PERSONALIZADO PARA FÁCIL USO
+//  HOOK PERSONALIZADO PARA FÁCIL USO
 export const useActividades = () => {
  const store = useActividadesStore();
  
@@ -642,7 +643,7 @@ export const useActividades = () => {
  return store;
 };
 
-// 🎯 SELECTORES OPTIMIZADOS (para evitar re-renders innecesarios)
+//  SELECTORES OPTIMIZADOS (para evitar re-renders innecesarios)
 export const selectRecordatorios = (state) => state.obtenerRecordatorios();
 export const selectCronometros = (state) => state.obtenerCronometros();
 export const selectReservaciones = (state) => state.obtenerReservaciones();
@@ -650,7 +651,7 @@ export const selectCronometrosActivos = (state) => Array.from(state.cronometrosA
 export const selectActividadesVencidas = (state) => state.obtenerActividadesVencidas();
 export const selectEstadisticasGaming = (state) => state.obtenerEstadisticasGaming();
 
-// 🔔 HOOK PARA NOTIFICACIONES AUTOMÁTICAS
+//  HOOK PARA NOTIFICACIONES AUTOMÁTICAS
 export const useNotificacionesActividades = () => {
  const obtenerActividadesVencidas = useActividadesStore(selectActividadesVencidas);
  
@@ -660,10 +661,9 @@ export const useNotificacionesActividades = () => {
      
      vencidas.forEach(actividad => {
        if (actividad.tipo === TIPOS_ACTIVIDAD.RECORDATORIO) {
-         toast.warning(`⏰ Recordatorio vencido: ${actividad.titulo}`, {
+         toast.warning(`Recordatorio vencido: ${actividad.titulo}`, {
            id: `recordatorio-${actividad.id}`, // Evitar duplicados
            duration: 8000,
-           icon: '🔔'
          });
        }
      });

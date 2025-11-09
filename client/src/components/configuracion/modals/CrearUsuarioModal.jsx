@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, UserPlus, Check, AlertCircle, Crown, Shield, UserCheck, Eye } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
-import toast from 'react-hot-toast';
+import toast from '../../../utils/toast.jsx';
 import { api } from '../../../config/api';
 
 const CrearUsuarioModal = ({ isOpen, onClose, onUserCreated }) => {
@@ -80,7 +80,7 @@ const CrearUsuarioModal = ({ isOpen, onClose, onUserCreated }) => {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(`✅ Usuario ${formData.nombre} creado exitosamente`);
+        toast.success(`Usuario ${formData.nombre} creado exitosamente`);
         
         // Limpiar formulario
         setFormData({
@@ -105,9 +105,9 @@ const CrearUsuarioModal = ({ isOpen, onClose, onUserCreated }) => {
     } catch (error) {
       console.error('Error:', error);
       
-      // 🔥 OPCIÓN 2: Simulación si no hay backend
-      console.log('🔄 Simulando creación de usuario:', formData);
-      toast.success(`✅ Usuario ${formData.nombre} creado exitosamente (simulado)`);
+      //  OPCIÓN 2: Simulación si no hay backend
+      console.log(' Simulando creación de usuario:', formData);
+      toast.success(`Usuario ${formData.nombre} creado exitosamente (simulado)`);
       
       // Limpiar formulario
       setFormData({

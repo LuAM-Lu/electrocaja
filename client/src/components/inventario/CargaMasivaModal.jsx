@@ -6,10 +6,10 @@ import {
 } from 'lucide-react';
 import { useInventarioStore } from '../../store/inventarioStore';
 import BarcodeScanner from './BarcodeScanner';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';
 
-// 🔧 CONSTANTES
+//  CONSTANTES
 // Estado de proveedores cargados desde backend
 let PROVEEDORES_CACHE = [];
 
@@ -18,7 +18,7 @@ const CATEGORIAS_DEFAULT = [
   'Electrobar', 'Servicios Técnicos', 'Otros'
 ];
 
-// 🔧 FUNCIÓN PARA CARGAR PROVEEDORES DESDE BACKEND
+//  FUNCIÓN PARA CARGAR PROVEEDORES DESDE BACKEND
 const cargarProveedoresDesdeBackend = async () => {
   try {
     const response = await api.get('/proveedores');
@@ -34,7 +34,7 @@ const cargarProveedoresDesdeBackend = async () => {
 const CargaMasivaModal = ({ isOpen, onClose, onSuccess }) => {
   const { inventario, agregarItem, actualizarItem } = useInventarioStore();
 
- // 🏢 Estados del Proveedor
+ //  Estados del Proveedor
 const [proveedorData, setProveedorData] = useState({
   proveedor: '',
   telefono: '',
@@ -43,21 +43,21 @@ const [proveedorData, setProveedorData] = useState({
   proveedorFacturaIva: true
 });
 
-  // 📦 Estados de Productos
+  //  Estados de Productos
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 🆕 Estados para selección de duplicados
+  //  Estados para selección de duplicados
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateResults, setDuplicateResults] = useState([]);
   const [currentProductId, setCurrentProductId] = useState(null);
   const [selectedDuplicateIndex, setSelectedDuplicateIndex] = useState(0);
 
-  // 🆕 Estado para modal de confirmación
+  //  Estado para modal de confirmación
   const [showExitModal, setShowExitModal] = useState(false);
 
-  // 🆕 Agregar producto vacío
-// 🆕 Agregar producto vacío con validación
+  //  Agregar producto vacío
+//  Agregar producto vacío con validación
   const agregarProductoVacio = () => {
     // Validar que el último producto esté completo
     if (productos.length > 0) {
@@ -66,7 +66,7 @@ const [proveedorData, setProveedorData] = useState({
       
       for (const campo of camposRequeridos) {
         if (!ultimoProducto[campo] || ultimoProducto[campo].toString().trim() === '') {
-          toast.error(`❌ Complete el Producto #${productos.length} antes de agregar otro\n🔍 Falta: ${campo.replace('_', ' ')}`);
+          toast.error(`Producto #${productos.length} incompleto. Falta: ${campo.replace('_', ' ')}`);
           return;
         }
       }
@@ -85,8 +85,8 @@ const [proveedorData, setProveedorData] = useState({
   margen_porcentaje: '30',
   calculoAutomatico: false,
   existingProduct: null,
-  moneda_costo: 'USD', // 🆕 NUEVO CAMPO
-  moneda_venta: 'USD'   // 🆕 NUEVO CAMPO
+  moneda_costo: 'USD', //  NUEVO CAMPO
+  moneda_venta: 'USD'   //  NUEVO CAMPO
 };
     
     setProductos([...productos, nuevoProducto]);
@@ -99,20 +99,20 @@ const [proveedorData, setProveedorData] = useState({
     }, 100);
   };
 
-// 🔄 Actualizar producto
+//  Actualizar producto
   const actualizarProducto = (id, campo, valor) => {
     setProductos(productos.map(p => {
       if (p.id === id) {
         const updated = { ...p, [campo]: valor };
         
-        // 💰 Calcular precio automático cuando se activa o cuando cambian valores
+        //  Calcular precio automático cuando se activa o cuando cambian valores
 if (campo === 'calculoAutomatico' && valor === true) {
   // Al activar modo automático, recalcular inmediatamente
   if (updated.precio_costo && updated.margen_porcentaje) {
     const costo = parseFloat(updated.precio_costo) || 0;
     const margen = parseFloat(updated.margen_porcentaje) || 0;
     if (costo > 0 && margen >= 0) {
-      // 🎯 LÓGICA IVA VENEZOLANA CORRECTA
+      //  LÓGICA IVA VENEZOLANA CORRECTA
       let costoBase;
       if (proveedorData.proveedorFacturaIva) {
         // Proveedor CON factura: descontar IVA del costo
@@ -127,7 +127,7 @@ if (campo === 'calculoAutomatico' && valor === true) {
       updated.precio_venta = precioVenta.toFixed(2);
       
       const tipoFactura = proveedorData.proveedorFacturaIva ? 'CON factura' : 'SIN factura';
-      toast.success(`💰 Modo automático activado: $${updated.precio_venta} (${tipoFactura})`, { duration: 2000 });
+      toast.success(`Modo automático activado: $${updated.precio_venta} (${tipoFactura})`, { duration: 2000 });
     }
   }
 }
@@ -138,7 +138,7 @@ if ((campo === 'precio_costo' || campo === 'margen_porcentaje') && updated.calcu
   const margen = parseFloat(updated.margen_porcentaje) || 0;
   
   if (costo > 0 && margen >= 0) {
-    // 🎯 LÓGICA IVA VENEZOLANA CORRECTA
+    //  LÓGICA IVA VENEZOLANA CORRECTA
     let costoBase;
     if (proveedorData.proveedorFacturaIva) {
       // Proveedor CON factura: descontar IVA del costo
@@ -157,13 +157,12 @@ if ((campo === 'precio_costo' || campo === 'margen_porcentaje') && updated.calcu
       const ganancia = (precioVenta - costoBase).toFixed(2);
       const tipoFactura = proveedorData.proveedorFacturaIva ? 'CON factura' : 'SIN factura';
       
-      toast.success(`🤖 Auto-calculado: $${updated.precio_venta} (${tipoFactura})\n📊 ${margen}% margen, +$${ganancia} ganancia`, { 
+      toast.success(`Auto-calculado: $${updated.precio_venta} (${tipoFactura}) | ${margen}% margen`, { 
         duration: 3000,
-        icon: '💰'
       });
     }
   } else if (costo <= 0 && campo === 'precio_costo') {
-    toast.error('💰 Ingrese un precio de costo válido para el cálculo automático');
+    toast.error('Ingrese un precio de costo válido para el cálculo automático');
   }
 }
         
@@ -172,7 +171,7 @@ if ((campo === 'precio_costo' || campo === 'margen_porcentaje') && updated.calcu
       return p;
     }));
   };
-// 🔄 EFECTO PARA RECALCULAR PRECIOS CUANDO CAMBIA IVA
+//  EFECTO PARA RECALCULAR PRECIOS CUANDO CAMBIA IVA
 useEffect(() => {
   if (productos.length > 0) {
     setProductos(prevProductos => 
@@ -183,7 +182,7 @@ useEffect(() => {
           const margen = parseFloat(producto.margen_porcentaje) || 30;
           
           if (costo > 0) {
-            // 🎯 LÓGICA IVA VENEZOLANA CORRECTA
+            //  LÓGICA IVA VENEZOLANA CORRECTA
             let costoBase;
             if (proveedorData.proveedorFacturaIva) {
               // Proveedor CON factura: descontar IVA del costo
@@ -208,9 +207,8 @@ useEffect(() => {
     // Mostrar notificación solo si hay productos en modo automático
     const productosAutomaticos = productos.filter(p => p.calculoAutomatico).length;
     if (productosAutomaticos > 0) {
-      toast.success(`🔄 ${productosAutomaticos} productos recalculados según ${proveedorData.proveedorFacturaIva ? 'CON' : 'SIN'} factura IVA`, {
+      toast.success(`${productosAutomaticos} productos recalculados según ${proveedorData.proveedorFacturaIva ? 'CON' : 'SIN'} factura IVA`, {
         duration: 3000,
-        icon: '⚡'
       });
     }
   }
@@ -223,12 +221,12 @@ useEffect(() => {
   }
 }, [isOpen]);
 
-  // 🗑️ Eliminar producto
+  //  Eliminar producto
   const eliminarProducto = (id) => {
     setProductos(productos.filter(producto => producto.id !== id));
   };
 
-  // 🔍 Buscar productos duplicados
+  //  Buscar productos duplicados
   const buscarDuplicados = (codigoBarras) => {
     if (!codigoBarras) return [];
     return inventario.filter(item => 
@@ -236,7 +234,7 @@ useEffect(() => {
     );
   };
 
-  // 📱 Manejar escaneo de código de barras
+  //  Manejar escaneo de código de barras
   const handleBarcodeScan = useCallback((productId, codigoBarras) => {
     const duplicados = buscarDuplicados(codigoBarras);
     
@@ -250,8 +248,8 @@ useEffect(() => {
     }
   }, [inventario, productos]);
 
-  // ✅ Seleccionar producto duplicado
-// ✅ Seleccionar producto duplicado
+  //  Seleccionar producto duplicado
+//  Seleccionar producto duplicado
   const seleccionarDuplicado = () => {
     const productoSeleccionado = duplicateResults[selectedDuplicateIndex];
     
@@ -281,20 +279,20 @@ useEffect(() => {
     setDuplicateResults([]);
     setCurrentProductId(null);
     
-    toast.success(`✅ Producto "${productoSeleccionado.descripcion}" cargado correctamente`);
+    toast.success(`Producto "${productoSeleccionado.descripcion}" cargado correctamente`);
   };
 
-  // 💾 Procesar importación
+  //  Procesar importación
   const procesarImportacion = async () => {
-    // 🔍 Validar número de factura
+    //  Validar número de factura
     if (!proveedorData.numeroFactura.trim()) {
-      toast.error('❌ El número de factura es obligatorio');
+      toast.error('El número de factura es obligatorio');
       return;
     }
 
     // Validar que hay productos
     if (productos.length === 0) {
-      toast.error('❌ Debe agregar al menos un producto');
+      toast.error('Debe agregar al menos un producto');
       return;
     }
 
@@ -302,7 +300,7 @@ useEffect(() => {
 for (const producto of productos) {
   if (!producto.descripcion || !producto.codigo_barras || !producto.cantidad || 
       !producto.precio_costo || !producto.precio_venta || !producto.categoria) {
-    toast.error(`❌ Producto ${producto.descripcion || 'sin nombre'} tiene campos vacíos`);
+    toast.error(`Producto ${producto.descripcion || 'sin nombre'} tiene campos vacíos`);
     return;
   }
 }
@@ -366,8 +364,8 @@ for (const producto of productos) {
         }
       }
 
-      toast.success(`✅ Importación completada:\n• ${productosCreados} productos creados\n• ${productosActualizados} productos actualizados`);
-      // 🔄 FORZAR RECARGA DEL INVENTARIO
+      toast.success(`Importación completada: ${productosCreados} creados, ${productosActualizados} actualizados`);
+      //  FORZAR RECARGA DEL INVENTARIO
       setTimeout(() => {
         useInventarioStore.getState().obtenerInventario();
       }, 500);
@@ -384,7 +382,7 @@ for (const producto of productos) {
     }
   };
 
-  // 🧹 Limpiar formulario
+  //  Limpiar formulario
 const limpiarFormulario = () => {
   setProveedorData({
     proveedor: '',
@@ -396,7 +394,7 @@ const limpiarFormulario = () => {
   setProductos([]);
 };
 
-  // 🚪 Manejar cierre con confirmación
+  //  Manejar cierre con confirmación
   const handleClose = () => {
     if (productos.length > 0 || proveedorData.proveedor || proveedorData.numeroFactura) {
       setShowExitModal(true);
@@ -405,14 +403,14 @@ const limpiarFormulario = () => {
     }
   };
 
-  // ✅ Confirmar salida
+  //  Confirmar salida
   const handleConfirmExit = () => {
     limpiarFormulario();
     setShowExitModal(false);
     onClose();
   };
 
-  // ❌ Cancelar salida
+  //  Cancelar salida
   const handleCancelExit = () => {
     setShowExitModal(false);
   };
@@ -457,7 +455,7 @@ const limpiarFormulario = () => {
         {/* Contenido */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
           
-          {/* 🏢 DATOS DEL PROVEEDOR - VERSIÓN COMPACTA */}
+          {/*  DATOS DEL PROVEEDOR - VERSIÓN COMPACTA */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
                 <h3 className="text-base font-semibold text-blue-800 mb-3 flex items-center">
                   <Building2 className="h-4 w-4 mr-2" />
@@ -469,9 +467,9 @@ const limpiarFormulario = () => {
                     if (!proveedorSeleccionado) return null;
                     
                     const infos = [];
-                    if (proveedorSeleccionado.telefono) infos.push(`📞 ${proveedorSeleccionado.telefono}`);
-                    if (proveedorSeleccionado.contacto) infos.push(`👤 ${proveedorSeleccionado.contacto}`);
-                    if (proveedorSeleccionado.direccion) infos.push(`📍 ${proveedorSeleccionado.direccion}`);
+                    if (proveedorSeleccionado.telefono) infos.push(` ${proveedorSeleccionado.telefono}`);
+                    if (proveedorSeleccionado.contacto) infos.push(` ${proveedorSeleccionado.contacto}`);
+                    if (proveedorSeleccionado.direccion) infos.push(` ${proveedorSeleccionado.direccion}`);
                     
                     return infos.length > 0 ? (
                       <span className="ml-4 text-sm text-blue-600 font-normal">
@@ -530,8 +528,8 @@ const limpiarFormulario = () => {
                       onChange={(e) => setProveedorData({...proveedorData, proveedorFacturaIva: e.target.value === 'true'})}
                       className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
                     >
-                      <option value="true">✅ Con IVA (16%)</option>
-                      <option value="false">❌ Sin IVA</option>
+                      <option value="true"> Con IVA (16%)</option>
+                      <option value="false"> Sin IVA</option>
                     </select>
                   </div>
 
@@ -553,7 +551,7 @@ const limpiarFormulario = () => {
               </div>
               </div>
 
-                        {/* 📦 PRODUCTOS */}
+                        {/*  PRODUCTOS */}
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
                           <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
@@ -593,7 +591,7 @@ const limpiarFormulario = () => {
                           )}
                         </div>
 
-{/* 📊 RESUMEN - Versión horizontal que se actualiza con selector IVA */}
+{/*  RESUMEN - Versión horizontal que se actualiza con selector IVA */}
 {productos.length > 0 && (() => {
 
 // Cálculos corregidos - Precio venta YA INCLUYE IVA
@@ -601,7 +599,7 @@ const totalUnidades = productos.reduce((sum, p) => sum + (parseInt(p.cantidad) |
 const costoTotal = productos.reduce((sum, p) => sum + (parseFloat(p.precio_costo) || 0) * (parseInt(p.cantidad) || 0), 0);
 const ventaTotal = productos.reduce((sum, p) => sum + (parseFloat(p.precio_venta) || 0) * (parseInt(p.cantidad) || 0), 0);
 
-// 🎯 LÓGICA CORRECTA: ventaTotal ($1.50) YA INCLUYE IVA
+//  LÓGICA CORRECTA: ventaTotal ($1.50) YA INCLUYE IVA
 const precioFinalTotal = ventaTotal; // $1.50 = Lo que paga el cliente
 const baseImponible = ventaTotal / 1.16; // $1.29 = Base sin IVA  
 const ivaTotal = ventaTotal - baseImponible; // $0.21 = IVA desglosado
@@ -609,7 +607,7 @@ const gananciaBruta = ventaTotal - costoTotal; // Ganancia sobre costos
   return (
     <div key={`resumen-${proveedorData.proveedorFacturaIva}`} className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
       <h3 className="text-lg font-semibold text-green-800 mb-4 flex items-center">
-        📊 Resumen de Importación
+         Resumen de Importación
         <span className="ml-2 text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
           Incluye IVA 16%
         </span>
@@ -711,7 +709,7 @@ const gananciaBruta = ventaTotal - costoTotal; // Ganancia sobre costos
         </div>
       </div>
 
-      {/* 🆕 Modal de Selección de Duplicados */}
+      {/*  Modal de Selección de Duplicados */}
       {showDuplicateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80]">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
@@ -721,7 +719,7 @@ const gananciaBruta = ventaTotal - costoTotal; // Ganancia sobre costos
               <div className="flex items-center justify-between text-white">
                 <div className="flex items-center space-x-3">
                   <div className="bg-white/20 p-2 rounded-lg">
-                    ⚠️
+                    
                   </div>
                   <div>
                     <h3 className="text-lg font-bold">{duplicateResults.length} Productos con este Código</h3>
@@ -732,7 +730,7 @@ const gananciaBruta = ventaTotal - costoTotal; // Ganancia sobre costos
                   onClick={() => setShowDuplicateModal(false)}
                   className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
                 >
-                  ✕
+                  
                 </button>
               </div>
             </div>
@@ -786,7 +784,7 @@ const gananciaBruta = ventaTotal - costoTotal; // Ganancia sobre costos
         </div>
       )}
 
-      {/* 🆕 Modal de Confirmación de Salida */}
+      {/*  Modal de Confirmación de Salida */}
       {showExitModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70]">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
@@ -795,7 +793,7 @@ const gananciaBruta = ventaTotal - costoTotal; // Ganancia sobre costos
             <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 rounded-t-xl">
               <div className="flex items-center space-x-3 text-white">
                 <div className="bg-white/20 p-2 rounded-lg">
-                  <span className="text-xl">⚠️</span>
+                  <span className="text-xl"></span>
                 </div>
                 <div>
                   <h3 className="text-lg font-bold">¿Cerrar sin guardar?</h3>
@@ -844,7 +842,7 @@ const gananciaBruta = ventaTotal - costoTotal; // Ganancia sobre costos
   );
 };
 
-// 🔧 COMPONENTE FILA DE PRODUCTO
+//  COMPONENTE FILA DE PRODUCTO
 const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, existingCodes, proveedorData }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -901,8 +899,8 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
            onChange={(e) => onUpdate(producto.id, 'tipo', e.target.value)}
            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
          >
-           <option value="producto">📱 Producto</option>
-           <option value="electrobar">🍿 Electrobar</option>
+           <option value="producto"> Producto</option>
+           <option value="electrobar"> Electrobar</option>
          </select>
        </div>
 
@@ -1010,7 +1008,7 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
     const margen = parseFloat(producto.margen_porcentaje) || 30;
     
     if (costo > 0) {
-      // 🎯 LÓGICA IVA VENEZOLANA CORRECTA
+      //  LÓGICA IVA VENEZOLANA CORRECTA
       let costoBase;
       if (proveedorData.proveedorFacturaIva) {
         // Proveedor CON factura: descontar IVA del costo
@@ -1025,9 +1023,8 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
       onUpdate(producto.id, 'precio_venta', precioVenta.toFixed(2));
       
       const tipoFactura = proveedorData.proveedorFacturaIva ? 'CON factura' : 'SIN factura';
-      toast.success(`💰 Precio calculado: $${precioVenta.toFixed(2)} (${tipoFactura}, ${margen}% margen)`, {
+      toast.success(`Precio calculado: $${precioVenta.toFixed(2)} (${tipoFactura}, ${margen}% margen)`, {
         duration: 2000,
-        icon: '⚡'
       });
     }
   }
@@ -1085,7 +1082,7 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
     const costo = parseFloat(producto.precio_costo) || 0;
     
     if (venta > 0 && costo > 0) {
-      // 🎯 LÓGICA IVA VENEZOLANA CORRECTA PARA MARGEN
+      //  LÓGICA IVA VENEZOLANA CORRECTA PARA MARGEN
       let costoBase;
       
       if (proveedorData.proveedorFacturaIva) {
@@ -1131,7 +1128,7 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
                      className="px-1 py-2 bg-green-600 text-white rounded-r-lg hover:bg-green-700 transition-colors flex items-center justify-center min-w-[28px]"
                      title="Desactivar cálculo automático"
                    >
-                     🤖
+                     
                    </button>
                  </div>
                ) : (
@@ -1141,7 +1138,7 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
                    className="px-2 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors flex items-center justify-center min-w-[32px]"
                    title="Activar cálculo automático"
                  >
-                   ✏️
+                   
                  </button>
                )}
              </div>
@@ -1152,7 +1149,7 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
          {/* Info adicional del cálculo automático */}
          {producto.calculoAutomatico && (
            <div className="mt-2 text-xs text-green-600 flex items-center space-x-1">
-             <span>🤖</span>
+             <span></span>
              <span>Auto-calculado con {producto.margen_porcentaje}% de margen</span>
            </div>
          )}
@@ -1160,7 +1157,7 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
          {/* Observación personalizada */}
          <div className="mt-3 flex items-center space-x-2">
            <div className="flex-1 text-xs text-gray-600">
-             📝 Observación: Importado desde factura • {new Date().toISOString().split('T')[0]}
+              Observación: Importado desde factura • {new Date().toISOString().split('T')[0]}
              {producto.observacion_personalizada && (
                <span className="text-blue-600"> • {producto.observacion_personalizada}</span>
              )}
@@ -1176,7 +1173,7 @@ const ProductoRow = ({ producto, index, onUpdate, onDelete, onBarcodeScan, exist
              className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors text-xs"
              title="Agregar observación personalizada"
            >
-             💬
+             
            </button>
          </div>
        </div>

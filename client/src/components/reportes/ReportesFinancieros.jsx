@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, PieChart, BarChart3, Calendar, Download, Filter } from 'lucide-react';
 import { api } from '../../config/api';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const ReportesFinancieros = () => {
   const [loading, setLoading] = useState(false);
@@ -38,13 +38,13 @@ const ReportesFinancieros = () => {
   const cargarDatosFinancieros = async () => {
     setLoading(true);
     try {
-      console.log('🔄 Cargando datos financieros...', { periodo, tipoMoneda });
+      console.log(' Cargando datos financieros...', { periodo, tipoMoneda });
       
       const response = await api.get('/reportes/financieros', { 
         params: { periodo, moneda: tipoMoneda } 
       });
       
-      console.log('✅ Datos financieros cargados:', response.data);
+      console.log(' Datos financieros cargados:', response.data);
       
       if (response.data.success) {
         setDatos(response.data.data);
@@ -54,13 +54,13 @@ const ReportesFinancieros = () => {
       }
       
     } catch (error) {
-      console.error('❌ Error cargando datos financieros:', error);
+      console.error(' Error cargando datos financieros:', error);
       
       const errorMessage = error.response?.data?.message || error.message || 'Error al cargar datos financieros';
       toast.error(`Error: ${errorMessage}`);
       
       // Datos de ejemplo como fallback
-      console.log('📝 Usando datos de ejemplo debido al error');
+      console.log(' Usando datos de ejemplo debido al error');
       setDatos({
         flujoEfectivo: {
           ingresos: { bs: 3500000, usd: 1750 },
@@ -125,7 +125,7 @@ const ReportesFinancieros = () => {
 
   return (
     <div className="space-y-6">
-      {/* 🎛️ CONTROLES */}
+      {/*  CONTROLES */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Reportes Financieros</h3>
@@ -169,7 +169,7 @@ const ReportesFinancieros = () => {
         </div>
       </div>
 
-      {/* 💰 FLUJO DE EFECTIVO */}
+      {/*  FLUJO DE EFECTIVO */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Ingresos */}
         <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
@@ -184,7 +184,7 @@ const ReportesFinancieros = () => {
             <TrendingUp className="h-8 w-8 text-green-200" />
           </div>
           <div className="text-green-100 text-sm">
-            ↗ +12.5% vs período anterior
+             +12.5% vs período anterior
           </div>
         </div>
 
@@ -201,7 +201,7 @@ const ReportesFinancieros = () => {
             <TrendingDown className="h-8 w-8 text-red-200" />
           </div>
           <div className="text-red-100 text-sm">
-            ↗ +8.3% vs período anterior
+             +8.3% vs período anterior
           </div>
         </div>
 
@@ -218,12 +218,12 @@ const ReportesFinancieros = () => {
             <DollarSign className="h-8 w-8 text-blue-200" />
           </div>
           <div className="text-blue-100 text-sm">
-            ↗ +18.7% vs período anterior
+             +18.7% vs período anterior
           </div>
         </div>
       </div>
 
-      {/* 📊 INDICADORES DE RENTABILIDAD */}
+      {/*  INDICADORES DE RENTABILIDAD */}
       <div className="bg-white rounded-xl p-6 shadow-sm border">
         <h4 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
           <BarChart3 className="h-5 w-5 text-purple-500 mr-2" />
@@ -251,7 +251,7 @@ const ReportesFinancieros = () => {
         </div>
       </div>
 
-      {/* 📈 DISTRIBUCIÓN DE INGRESOS Y EGRESOS */}
+      {/*  DISTRIBUCIÓN DE INGRESOS Y EGRESOS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Distribución de Ingresos */}
@@ -325,7 +325,7 @@ const ReportesFinancieros = () => {
         </div>
       </div>
 
-      {/* 📈 TENDENCIA MENSUAL */}
+      {/*  TENDENCIA MENSUAL */}
       <div className="bg-white rounded-xl p-6 shadow-sm border">
         <h4 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
           <BarChart3 className="h-5 w-5 text-blue-500 mr-2" />
@@ -358,7 +358,7 @@ const ReportesFinancieros = () => {
         </div>
       </div>
 
-      {/* 📊 COMPARATIVO ANUAL */}
+      {/*  COMPARATIVO ANUAL */}
       <div className="bg-white rounded-xl p-6 shadow-sm border">
         <h4 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
           <Calendar className="h-5 w-5 text-orange-500 mr-2" />

@@ -14,11 +14,12 @@ import ClienteSelector from './presupuesto/ClienteSelector';
 import ItemsTable from './presupuesto/ItemsTable';
 import PagosPanel from './venta/PagosPanel';
 import FinalizarVentaPanel from './venta/FinalizarVentaPanel';
-import { 
-  generarPDFFactura, 
-  generarImagenWhatsApp, 
+import ConfirmacionVentaModal from './venta/ConfirmacionVentaModal';
+import {
+  generarPDFFactura,
+  generarImagenWhatsApp,
   imprimirFacturaTermica,
-  descargarPDF 
+  descargarPDF
 } from '../utils/printUtils'; // ✅ AGREGAR ESTA LÍNEA
 import { api } from '../config/api'; // 🆕 IMPORTAR API BACKEND
 //import { socket } from '../services/socket';
@@ -37,9 +38,8 @@ const ConexionIndicador = ({ socket }) => {
       if (ultimaDesconexion) {
         const tiempoDesconectado = Date.now() - ultimaDesconexion;
         if (tiempoDesconectado > 2000) { // Más de 2 segundos
-          toast.success(' Conexión restaurada', {
-            duration: 2000,
-            icon: '✅'
+          toast.success('Conexión restaurada', {
+            duration: 2000
           });
         }
         setUltimaDesconexion(null);
@@ -329,7 +329,7 @@ const DescuentoAdminModal = ({ isOpen, onClose, totalVenta, tasaCambio, onDescue
       // QR válido - habilitar inputs
       setIsQRValidated(true);
       setNeedsAdminValidation(false);
-      toast.success('✅ Código validado - Puede aplicar descuento');
+      toast.success('Código validado - Puede aplicar descuento');
     } catch (error) {
       toast.error('Error validando código de admin');
     } finally {
@@ -821,6 +821,9 @@ const [showExitModal, setShowExitModal] = useState(false);
   const [showStockConflictsModal, setShowStockConflictsModal] = useState(false);
   const [stockConflicts, setStockConflicts] = useState([]);
 
+  // ✅ ESTADO PARA MODAL DE CONFIRMACIÓN DE VENTA
+  const [showConfirmacionModal, setShowConfirmacionModal] = useState(false);
+
   // 🧹 ESTADO PARA AUTO-LIMPIEZA INTELIGENTE
   const [totalAnterior, setTotalAnterior] = useState(0);
   const [hayPagosConfigurados, setHayPagosConfigurados] = useState(false);
@@ -891,16 +894,16 @@ const [showExitModal, setShowExitModal] = useState(false);
   // 🕒 MANEJAR CIERRE AUTOMÁTICO POR AFK (20 MIN)
   useEffect(() => {
     if (!isOpen || !socket || typeof socket.on !== 'function') return;
-    
-    console.log('🔍 Configurando eventos AFK...');
-    
+
     const handleModalAFK = (data) => {
-      console.log('🚨 Modal cerrado por AFK:', data);
-      
+      // ✅ NO CERRAR SI EL MODAL DE DESCUENTO ESTÁ ABIERTO
+      if (showDescuentoModal) {
+        return;
+      }
+
       // Mostrar notificación al usuario
       toast.error(data.message, {
         duration: 8000,
-        icon: '⏰',
         style: {
           background: '#FEE2E2',
           border: '2px solid #F87171',
@@ -909,7 +912,7 @@ const [showExitModal, setShowExitModal] = useState(false);
           maxWidth: '400px'
         }
       });
-      
+
       // Cerrar modal automáticamente
       limpiarYCerrar();
     };
@@ -944,16 +947,16 @@ const [showExitModal, setShowExitModal] = useState(false);
 
   socket.on('venta_procesada', handleVentaProcesada);
   socket.on('inventario_actualizado', handleInventarioActualizado);
-    
+
     socket.on('cerrar_modal_venta_afk', handleModalAFK);
-    
+
     // Cleanup
     return () => {
       socket.off('cerrar_modal_venta_afk', handleModalAFK);
         socket.off('venta_procesada', handleVentaProcesada);
         socket.off('inventario_actualizado', handleInventarioActualizado);
     };
-  }, [isOpen, socket]);
+  }, [isOpen, socket, showDescuentoModal]);
 
   // 🔄 RE-VALIDACIÓN AL RECONECTAR (PARA MÓVILES)
   useEffect(() => {
@@ -975,9 +978,8 @@ const [showExitModal, setShowExitModal] = useState(false);
       console.log('📡 Stock liberado por desconexión de otro usuario:', data);
       
       // Mostrar notificación discreta de que hay stock disponible
-      toast.success(` Stock disponible: ${data.productos.join(', ')}`, {
+      toast.success(`Stock disponible: ${data.productos.join(', ')}`, {
         duration: 4000,
-        icon: '📦',
         style: {
           background: '#F0FDF4',
           border: '1px solid #22C55E',
@@ -1021,9 +1023,8 @@ const [showExitModal, setShowExitModal] = useState(false);
       
       if (response.data.success) {
         console.log('✅ Re-validación exitosa - Stock reservado nuevamente');
-        toast.success(' Conexión restaurada - Stock reservado', {
-          duration: 3000,
-          icon: '📱'
+        toast.success('Conexión restaurada - Stock reservado', {
+          duration: 3000
         });
       }
       
@@ -1032,9 +1033,8 @@ const [showExitModal, setShowExitModal] = useState(false);
       
       if (error.response?.status === 409 && error.response?.data?.errors) {
         // Stock no disponible - mostrar opciones
-        toast.warning(' Algunos productos ya no están disponibles', {
-          duration: 5000,
-          icon: '⚠️'
+        toast.warning('Algunos productos ya no están disponibles', {
+          duration: 5000
         });
         
         // Opcional: Mostrar burbuja de conflictos
@@ -1043,7 +1043,7 @@ const [showExitModal, setShowExitModal] = useState(false);
         : Object.values(error.response.data.errors || {});
         mostrarBurbujaConflictos(conflictos);
       } else {
-        toast.error('❌ Error al reconectar - Verifica tu venta', {
+        toast.error('Error al reconectar - Verifica tu venta', {
           duration: 4000
         });
       }
@@ -1211,9 +1211,8 @@ const handleItemsChange = async (items) => {
       referencia: ''
     }];
     
-    toast.success(' Pagos limpiados - Total de venta cambió', {
-      duration: 4000,
-      icon: '🧹'
+    toast.success('Pagos limpiados - Total de venta cambió', {
+      duration: 4000
     });
     
     // Actualizar estados
@@ -1229,8 +1228,7 @@ const handleItemsChange = async (items) => {
       // Item eliminado - liberar todo el stock
       try {
         await liberarStockAPI(itemAnterior.id || itemAnterior.codigo, sesionId);
-        toast(` Stock liberado: ${itemAnterior.descripcion}`, {
-          icon: '🔓',
+        toast(`Stock liberado: ${itemAnterior.descripcion}`, {
           duration: 3000
         });
       } catch (error) {
@@ -1271,14 +1269,8 @@ const handleItemsChange = async (items) => {
           const stockDisponible = stockInfo?.stock?.stockDisponible || 0;
           
           if (item.cantidad > stockDisponible) {
-            toast(` Stock ajustado: ${item.descripcion}\n💡 Disponible: ${stockDisponible} unidades`, {
-              icon: '⚠️',
-              duration: 4000,
-              style: {
-                background: '#ffffffff',
-                border: '1px solid #F59E0B',
-                color: '#92400E'
-              }
+            toast.warning(`Stock ajustado: ${item.descripcion}\nDisponible: ${stockDisponible} unidades`, {
+              duration: 4000
             });
             
             // Auto-ajustar a stock disponible
@@ -1299,7 +1291,7 @@ const handleItemsChange = async (items) => {
         } catch (error) {
           console.error('❌ Error consultando stock:', error);
           // En caso de error, rechazar cambio
-          toast.error(`❌ Error consultando stock de ${item.descripcion}`);
+          toast.error(`Error consultando stock de ${item.descripcion}`);
           return {
             ...item,
             cantidad: Math.max(item.cantidad, 0),
@@ -1415,9 +1407,8 @@ const handleItemsChange = async (items) => {
       const response = await api.post('/ventas/guardar-espera', ventaEsperaData);
       
       if (response.data.success) {
-        toast.success(' Venta guardada en espera exitosamente', {
-          duration: 4000,
-          icon: '💾'
+        toast.success('Venta guardada en espera exitosamente', {
+          duration: 4000
         });
         setHasUnsavedChanges(false);
         
@@ -1435,27 +1426,12 @@ const handleItemsChange = async (items) => {
   };
 
 
-const confirmarProcesamiento = () => {
-  const opcionesActivas = Object.entries(opcionesProcesamiento)
-    .filter(([key, value]) => value)
-    .map(([key]) => {
-      switch(key) {
-        case 'imprimirRecibo': return '📄 Generar PDF';
-        case 'generarFactura': return '🖨️ Imprimir factura';
-        case 'enviarWhatsApp': return '📱 Enviar WhatsApp';
-        case 'enviarEmail': return '📧 Enviar Email';
-        default: return key;
-      }
-    });
+// 🔄 Función para procesar la venta (se ejecuta al confirmar en el modal)
+const procesarVentaConfirmada = async () => {
+  // Cerrar modal de confirmación
+  setShowConfirmacionModal(false);
 
-  const mensaje = opcionesActivas.length > 0 
-    ? `¿Procesar venta y ejecutar estas opciones?\n\n${opcionesActivas.join('\n')}`
-    : '¿Procesar venta?';
-
-  return window.confirm(mensaje);
-};
-
-const handleProcesarVenta = async () => {
+  // Continuar con el procesamiento normal
   console.log('🚀 ===== INICIANDO PROCESAMIENTO DE VENTA =====');
   console.log('🔍 Opciones seleccionadas:', opcionesProcesamiento);
   console.log('🔍 Cliente:', ventaData.cliente);
@@ -1477,7 +1453,7 @@ const handleProcesarVenta = async () => {
     const { totales } = validarYCalcularTotales(ventaData, descuento, tasaCambio);
     
     if (!totales) {
-      toast.error('❌ Error calculando totales de la venta');
+      toast.error('Error calculando totales de la venta');
       setLoading(false);
       return;
     }
@@ -1576,16 +1552,16 @@ const handleProcesarVenta = async () => {
     if (opcionesProcesamiento.imprimirRecibo) {
       try {
         console.log('📄 Ejecutando: Generar PDF...');
-        toast.loading('📄 Generando PDF...', { id: 'pdf-process' });
+        toast.loading('Generando PDF...', { id: 'pdf-process' });
         
         await descargarPDF(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
         
         opcionesEjecutadas.push('📄 PDF descargado');
-        toast.success('📄 PDF generado', { id: 'pdf-process' });
+        toast.success('PDF generado', { id: 'pdf-process' });
       } catch (error) {
         console.error('❌ Error generando PDF:', error);
         erroresOpciones.push('PDF falló');
-        toast.error('❌ Error generando PDF', { id: 'pdf-process' });
+        toast.error('Error generando PDF', { id: 'pdf-process' });
       }
     }
       // 🖨️ IMPRIMIR FACTURA TÉRMICA (si está seleccionado)
@@ -1594,12 +1570,12 @@ const handleProcesarVenta = async () => {
           console.log('🖨️ ===== INICIANDO IMPRESIÓN TÉRMICA =====');
           console.log('🖨️ Código venta:', ventaProcesada?.codigoVenta || codigoVenta);
           
-          toast.loading('🖨️ Preparando impresión...', { id: 'print-process' });
+          toast.loading('Preparando impresión...', { id: 'print-process' });
           
           // 🛡️ ESPERAR UN POCO PARA EVITAR CONFLICTOS CON OTRAS OPERACIONES
           await new Promise(resolve => setTimeout(resolve, 1000));
           
-          toast.loading('🖨️ Abriendo ventana de impresión...', { id: 'print-process' });
+          toast.loading('Abriendo ventana de impresión...', { id: 'print-process' });
           
          const resultadoImpresion = await imprimirFacturaTermica(
           ventaDataConUsuario, 
@@ -1611,7 +1587,7 @@ const handleProcesarVenta = async () => {
           console.log('✅ Resultado impresión:', resultadoImpresion);
           
           opcionesEjecutadas.push('🖨️ Enviado a impresora térmica');
-          toast.success('🖨️ Impresión completada', { id: 'print-process' });
+          toast.success('Impresión completada', { id: 'print-process' });
           
         } catch (error) {
           console.error('❌ ===== ERROR IMPRESIÓN =====');
@@ -1621,12 +1597,12 @@ const handleProcesarVenta = async () => {
           erroresOpciones.push('Impresión falló');
           
           if (error.message.includes('bloqueada')) {
-            toast.error('⚠️ Popup bloqueado. Habilita popups para esta página', { 
+            toast.error('Popup bloqueado. Habilita popups para esta página', {
               id: 'print-process',
               duration: 8000 
             });
           } else {
-            toast.error(`❌ Error de impresión: ${error.message}`, { 
+            toast.error(`Error de impresión: ${error.message}`, {
               id: 'print-process',
               duration: 6000 
             });
@@ -1641,7 +1617,7 @@ const handleProcesarVenta = async () => {
         console.log('📱 Cliente:', ventaData.cliente.nombre, 'Tel:', ventaData.cliente.telefono);
         console.log('📱 Código venta:', ventaProcesada?.codigoVenta || codigoVenta);
         
-        toast.loading('📱 Enviando WhatsApp...', { id: 'whatsapp-process' });
+        toast.loading('Enviando WhatsApp...', { id: 'whatsapp-process' });
         
         const imagenBase64 = await generarImagenWhatsApp(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
         
@@ -1662,13 +1638,13 @@ const handleProcesarVenta = async () => {
           
           if (whatsappResponse.data.data?.tipo_fallback === 'simple_sin_imagen') {
             opcionesEjecutadas.push('📱 WhatsApp enviado (sin imagen)');
-            toast.success('📱 WhatsApp enviado (sin imagen)', { id: 'whatsapp-process' });
+            toast.success('WhatsApp enviado (sin imagen)', { id: 'whatsapp-process' });
           } else if (whatsappResponse.data.data?.fallback) {
             opcionesEjecutadas.push('📱 WhatsApp enviado (texto)');
-            toast.success('📱 WhatsApp enviado (solo texto)', { id: 'whatsapp-process' });
+            toast.success('WhatsApp enviado (solo texto)', { id: 'whatsapp-process' });
           } else {
             opcionesEjecutadas.push('📱 WhatsApp con imagen enviado');
-            toast.success('📱 WhatsApp con imagen enviado', { id: 'whatsapp-process' });
+            toast.success('WhatsApp con imagen enviado', { id: 'whatsapp-process' });
           }
         } else {
           console.error('❌ Respuesta fallida de API WhatsApp:', whatsappResponse.data);
@@ -1684,7 +1660,7 @@ const handleProcesarVenta = async () => {
         erroresOpciones.push('WhatsApp falló');
         
         const errorMsg = error.response?.data?.message || error.message || 'Error desconocido';
-        toast.error(`❌ Error WhatsApp: ${errorMsg}`, { id: 'whatsapp-process' });
+        toast.error(`Error WhatsApp: ${errorMsg}`, { id: 'whatsapp-process' });
       }
     } else {
       console.log('⚠️ WhatsApp NO ejecutado:', {
@@ -1698,7 +1674,7 @@ const handleProcesarVenta = async () => {
     if (opcionesProcesamiento.enviarEmail && ventaData.cliente?.email) {
       try {
         console.log('📧 Ejecutando: Enviar Email...');
-        toast.loading('📧 Enviando email...', { id: 'email-process' });
+        toast.loading('Enviando email...', { id: 'email-process' });
         
         const pdfBlob = await generarPDFFactura(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
         
@@ -1720,14 +1696,14 @@ const handleProcesarVenta = async () => {
         
         if (emailResponse.data.success) {
           opcionesEjecutadas.push('📧 Email enviado');
-          toast.success('📧 Email enviado', { id: 'email-process' });
+          toast.success('Email enviado', { id: 'email-process' });
         } else {
           throw new Error('Error enviando email');
         }
       } catch (error) {
         console.error('❌ Error enviando email:', error);
         erroresOpciones.push('Email falló');
-        toast.error('❌ Error enviando email', { id: 'email-process' });
+        toast.error('Error enviando email', { id: 'email-process' });
       }
     }
 
@@ -1739,30 +1715,22 @@ const handleProcesarVenta = async () => {
     }
     
     if (erroresOpciones.length > 0) {
-      mensajeFinal += `\n\n⚠️ Con errores:\n${erroresOpciones.join(', ')}`;
+      mensajeFinal += `\n\nCon errores:\n${erroresOpciones.join(', ')}`;
     }
 
-    toast.success(mensajeFinal, {
-      duration: 8000,
-      icon: '🚀',
-      style: {
-        maxWidth: '400px'
-      }
-    });
-    
     // ✅ VENTA PROCESADA - LIMPIAR PARA NUEVA VENTA PERO NO CERRAR
     console.log('✅ ===== VENTA PROCESADA EXITOSAMENTE =====');
     console.log('✅ Opciones ejecutadas:', opcionesEjecutadas);
     console.log('✅ Errores (si los hay):', erroresOpciones);
     
     // 🎉 MOSTRAR RESULTADO FINAL SIN CERRAR MODAL
-    toast.success(' ¡Venta procesada exitosamente!\n\n' + mensajeFinal, {
+    toast.success('¡Venta procesada exitosamente!\n\n' + mensajeFinal, {
       duration: 50000, // 10 segundos para que vea el resultado
-      icon: '🚀',
       style: {
         maxWidth: '450px',
         fontSize: '14px'
-      }
+      },
+      id: 'venta-exitosa-modal'
     });
     
     // 🔄 LIMPIAR PARA NUEVA VENTA (SIN CERRAR MODAL)
@@ -1817,7 +1785,7 @@ const handleProcesarVenta = async () => {
 
     } catch (error) {
       console.error('❌ Error procesando venta:', error);
-      toast.error(`❌ Error al procesar venta: ${error.response?.data?.message || error.message}`);
+      toast.error(`Error al procesar venta: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
     }
@@ -1857,7 +1825,7 @@ const limpiarYCerrar = async () => {
     // No mostrar toast si es cierre automático por AFK
     const esLimpiezaManual = !document.querySelector('[data-afk-cleanup]');
     if (esLimpiezaManual) {
-      toast.success(`🔓 Reservas liberadas para sesión`);
+      toast.success('Reservas liberadas para sesión');
     }
   } catch (error) {
     console.error('❌ Error en liberación masiva:', error);
@@ -1915,7 +1883,7 @@ const limpiarYCerrar = async () => {
   // 🆕 MARCAR COMO LIMPIEZA COMPLETADA (para casos AFK)
   const esLimpiezaManual = !document.body.hasAttribute('data-afk-cleanup');
   if (esLimpiezaManual) {
-    toast.success('🗑️ Venta cancelada y limpiada');
+    toast.success('Venta cancelada y limpiada');
   }
   
   document.body.setAttribute('data-afk-cleanup', 'true');
@@ -1976,7 +1944,7 @@ const limpiarYCerrar = async () => {
       if (response.data.success) {
         console.log('✅ Stock reservado exitosamente, navegando a PAGOS');
         setActiveTab('pagos');
-        toast.success(`🔒 Stock reservado: ${response.data.data.reservadosExitosamente} productos`);
+        toast.success(`Stock reservado: ${response.data.data.reservadosExitosamente} productos`);
       }
       
           } catch (error) {
@@ -1994,7 +1962,7 @@ const limpiarYCerrar = async () => {
         mostrarBurbujaConflictos(conflictos);
       } else {
       console.log('🔍 NO ES STOCK_RESERVADO, mostrando toast normal');
-      toast.error(`❌ Error al reservar stock: ${error.response?.data?.message || error.message}`);
+      toast.error(`Error al reservar stock: ${error.response?.data?.message || error.message}`);
     }
     } finally {
       setLoading(false);
@@ -2027,13 +1995,13 @@ const limpiarYCerrar = async () => {
       }
       
       setActiveTab('items');
-      toast.success(`🔓 Stock liberado: ${itemsConReserva.length} productos`);
+      toast.success(`Stock liberado: ${itemsConReserva.length} productos`);
       
     } catch (error) {
       console.error('❌ Error liberando stock al retroceder:', error);
       // Aún así permitir navegación
       setActiveTab('items');
-      toast.warning('⚠️ Navegación permitida, pero revisa las reservas');
+      toast.warning('Navegación permitida, pero revisa las reservas');
     }
   };
 
@@ -2063,14 +2031,14 @@ const limpiarYCerrar = async () => {
     );
     
     setVentaData(prev => ({ ...prev, items: updatedItems }));
-    toast.success(`✅ Cantidad ajustada a ${nuevaCantidad} unidades`);
+    toast.success(`Cantidad ajustada a ${nuevaCantidad} unidades`);
   };
 
   // 🗑️ RESOLVER CONFLICTO: ELIMINAR PRODUCTO
   const resolverEliminarProducto = (productoId) => {
     const updatedItems = ventaData.items.filter(item => item.productoId !== productoId);
     setVentaData(prev => ({ ...prev, items: updatedItems }));
-    toast.success('🗑️ Producto eliminado del carrito');
+    toast.success('Producto eliminado del carrito');
   };
 
   // 🔄 REINTENTAR RESERVA DESPUÉS DE RESOLVER
@@ -2243,9 +2211,9 @@ const limpiarYCerrar = async () => {
       }));
       setHayPagosConfigurados(false);
       setPagosValidos(false);
-      toast.success('🧹 Pagos limpiados - Descuento eliminado');
+      toast.success('Pagos limpiados - Descuento eliminado');
     } else {
-      toast.success('🗑️ Descuento eliminado');
+      toast.success('Descuento eliminado');
     }
     setDescuento(0);
   }}
@@ -2308,11 +2276,7 @@ const limpiarYCerrar = async () => {
                     {/* Procesar venta (solo en última pestaña) */}
                     {activeTab === 'finalizar' && (
                       <button
-                        onClick={() => {
-                            if (confirmarProcesamiento()) {
-                              handleProcesarVenta();
-                            }
-                          }}
+                        onClick={() => setShowConfirmacionModal(true)}
                         disabled={loading || !allValid || !ventaValida}
                         className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           ventaValida && allValid && !loading
@@ -2431,14 +2395,14 @@ const limpiarYCerrar = async () => {
             }));
             setHayPagosConfigurados(false);
             setPagosValidos(false);
-            toast.success(`🧹 Pagos limpiados - Se aplicó descuento de ${formatearVenezolano(montoDescuento)} Bs`);
+            toast.success(`Pagos limpiados - Se aplicó descuento de ${formatearVenezolano(montoDescuento)} Bs`);
           } else {
             setVentaData(prev => ({
               ...prev,
               descuentoAutorizado: montoDescuento,
               motivoDescuento: motivoDescuento
             }));
-            toast.success(`✅ Descuento de ${formatearVenezolano(montoDescuento)} Bs aplicado`);
+            toast.success(`Descuento de ${formatearVenezolano(montoDescuento)} Bs aplicado`);
           }
           setShowDescuentoModal(false);
         }}
@@ -2557,6 +2521,14 @@ const limpiarYCerrar = async () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Confirmación de Venta */}
+      <ConfirmacionVentaModal
+        isOpen={showConfirmacionModal}
+        onConfirm={procesarVentaConfirmada}
+        onCancel={() => setShowConfirmacionModal(false)}
+        opciones={opcionesProcesamiento}
+      />
     </>
   );
 };

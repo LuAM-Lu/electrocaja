@@ -1,37 +1,37 @@
 // src/utils/shareUtils.js
 import html2canvas from 'html2canvas';
 import { api, getImageUrl } from '../config/api';
-import toast from 'react-hot-toast';
+import toast from './toast.jsx';
 
 
-// 🖼️ Función helper para cargar imágenes
+//  Función helper para cargar imágenes
 const loadImage = (src) => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      console.log('✅ Imagen cargada exitosamente:', img.src);
+      console.log(' Imagen cargada exitosamente:', img.src);
       resolve(img);
     };
     img.onerror = (error) => {
-      console.error('❌ Error cargando imagen:', img.src, error);
+      console.error(' Error cargando imagen:', img.src, error);
       reject(error);
     };
     
     // Construir URL completa
     if (src && !src.startsWith('http') && !src.startsWith('data:')) {
       const imageUrl = getImageUrl(src);
-      console.log('🔧 URL original:', src);
-      console.log('🔧 URL construida:', imageUrl);
+      console.log(' URL original:', src);
+      console.log(' URL construida:', imageUrl);
       img.src = imageUrl;
     } else {
       img.src = src;
-      console.log('🔧 URL directa:', img.src);
+      console.log(' URL directa:', img.src);
     }
   });
 };
 
-// 📸 Capturar screenshot del modal
+//  Capturar screenshot del modal
 // Buscar y reemplazar la función completa:
 export const captureModalScreenshot = async (modalRef, productName = 'producto', productData = {}) => {
   try {
@@ -53,15 +53,15 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     let productImage = null;
     if (productData && productData.imagen_url) {
       try {
-        console.log('🔍 Intentando cargar imagen:', productData.imagen_url);
+        console.log(' Intentando cargar imagen:', productData.imagen_url);
         productImage = await loadImage(productData.imagen_url);
-        console.log('🖼️ Imagen cargada - Dimensiones:', productImage.width, 'x', productImage.height);
-        console.log('✅ Imagen del producto cargada correctamente');
+        console.log(' Imagen cargada - Dimensiones:', productImage.width, 'x', productImage.height);
+        console.log(' Imagen del producto cargada correctamente');
       } catch (error) {
-        console.log('❌ Error cargando imagen del producto:', error.message);
+        console.log(' Error cargando imagen del producto:', error.message);
       }
     } else {
-      console.log('⚠️ No hay imagen_url en productData:', productData);
+      console.log(' No hay imagen_url en productData:', productData);
     }
 
     
@@ -114,7 +114,7 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     
     // Establecer altura del canvas
     canvas.height = yPos;
-    console.log('📐 Canvas dinámico - Ancho:', canvas.width, 'Alto:', canvas.height);
+    console.log(' Canvas dinámico - Ancho:', canvas.width, 'Alto:', canvas.height);
     
     // ===== AHORA DIBUJAR TODO =====
     yPos = 0; // Resetear posición
@@ -134,17 +134,17 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     try {
       const logoUrl = `${window.location.origin}/android-chrome-512x512.png`;
       const logo = await loadImage(logoUrl);
-      const logoSize = 55; // ✅ Logo más grande (era 45)
+      const logoSize = 55; //  Logo más grande (era 45)
       
       // Calcular posiciones más hacia la izquierda
       const totalWidth = logoSize + 15 + 300; // logo + espacio + texto estimado
-      const startX = (canvas.width - totalWidth) / 2 - 40; // ✅ Mover 40px a la izquierda
+      const startX = (canvas.width - totalWidth) / 2 - 40; //  Mover 40px a la izquierda
       
       const logoX = startX;
       const logoY = 12; // Ajustar para centrar mejor
       const textX = startX + logoSize + 15;
       
-      // ✅ SIN fondo - logo transparente
+      //  SIN fondo - logo transparente
       // (Eliminamos el círculo blanco)
       
       ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
@@ -158,7 +158,7 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
       ctx.fillText('        J-405903333 - Guanare, Venezuela', textX, 55);
       
     } catch (error) {
-      console.log('⚠️ No se pudo cargar el logo:', error.message);
+      console.log(' No se pudo cargar el logo:', error.message);
       // Fallback centrado
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 24px Arial, sans-serif';
@@ -208,7 +208,7 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
       ctx.fillStyle = '#9CA3AF';
       ctx.font = '32px Arial, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('📱', canvas.width / 2, yPos + 38);
+      ctx.fillText('', canvas.width / 2, yPos + 38);
       
       yPos += iconSize + 20;
     }
@@ -250,9 +250,9 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     // Agregar "Incluye IVA" en el espacio libre
     ctx.font = '12px Arial, sans-serif';
     ctx.fillStyle = '#16A34A';
-    ctx.fillText('✓ Incluye IVA 16%', canvas.width / 2, yPos + 80);
+    ctx.fillText(' Incluye IVA 16%', canvas.width / 2, yPos + 80);
     
-    yPos += priceBoxHeight + 25; // ✅ Menos espacio después del precio
+    yPos += priceBoxHeight + 25; //  Menos espacio después del precio
     
     // ===== INFORMACIÓN ADICIONAL (más compacta) =====
     ctx.fillStyle = '#374151';
@@ -261,13 +261,13 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     
     // Códigos (si existen)
     if (codigoBarras) {
-      ctx.fillText('📱 Código: ' + codigoBarras, 60, yPos);
+      ctx.fillText(' Código: ' + codigoBarras, 60, yPos);
       yPos += 25;
     }
     
     // Stock (si es producto)
     if (stockElement) {
-      ctx.fillText('📦 Stock: ' + stockElement.textContent + ' unidades', 60, yPos);
+      ctx.fillText(' Stock: ' + stockElement.textContent + ' unidades', 60, yPos);
       yPos += 25;
     }
     
@@ -279,7 +279,7 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     ctx.fillStyle = '#4B5563';
     ctx.font = 'bold 16px Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('📱 CONSULTA DISPONIBILIDAD', canvas.width / 2, yPos + 25);
+    ctx.fillText(' CONSULTA DISPONIBILIDAD', canvas.width / 2, yPos + 25);
     
     ctx.font = '14px Arial, sans-serif';
     ctx.fillText('WhatsApp: +58 257 251 1282', canvas.width / 2, yPos + 45);
@@ -303,7 +303,7 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
         const base64 = canvas.toDataURL('image/jpeg', 0.7);
         
         // DEBUG de la imagen generada
-        console.log('🖼️ Imagen generada:', {
+        console.log(' Imagen generada:', {
           blob_size_kb: Math.round(blob.size / 1024),
           base64_length: base64.length,
           base64_starts_with: base64.substring(0, 50),
@@ -323,22 +323,22 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
   }
 };
 
-// 🔧 Verificar estado de WhatsApp
+//  Verificar estado de WhatsApp
 export const checkWhatsAppStatus = async () => {
   try {
     const response = await api.get('/whatsapp/estado');
-    console.log('🔧 Estado WhatsApp:', response.data);
+    console.log(' Estado WhatsApp:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error verificando WhatsApp:', error);
+    console.error(' Error verificando WhatsApp:', error);
     return { success: false, error: error.message };
   }
 };
 
 export const shareViaWhatsApp = async (imageBase64, phoneNumber, productName, price) => {
   try {
-    // 🔧 VERIFICAR ESTADO PRIMERO
-    console.log('🔧 Verificando estado de WhatsApp...');
+    //  VERIFICAR ESTADO PRIMERO
+    console.log(' Verificando estado de WhatsApp...');
     const status = await checkWhatsAppStatus();
     
     if (!status.success || !status.data?.conectado) {
@@ -349,11 +349,11 @@ export const shareViaWhatsApp = async (imageBase64, phoneNumber, productName, pr
     toast.loading('Enviando por WhatsApp...', { id: 'whatsapp' });
 
     // Mensaje predeterminado
-    const mensaje = `🛍️ *${productName}*\n💰 Precio: *${price}*\n\n📱 Consulta disponibilidad y más detalles`;
+    const mensaje = ` *${productName}*\n Precio: *${price}*\n\n Consulta disponibilidad y más detalles`;
 
     // Validar tamaño de imagen
     const imageSizeMB = imageBase64 ? (imageBase64.length * 0.75) / 1024 / 1024 : 0;
-    console.log('🔧 Enviando WhatsApp:', {
+    console.log(' Enviando WhatsApp:', {
       numero: phoneNumber,
       mensaje: mensaje.substring(0, 50) + '...',
       imagen_size_MB: imageSizeMB.toFixed(2)
@@ -365,7 +365,7 @@ export const shareViaWhatsApp = async (imageBase64, phoneNumber, productName, pr
     }
 
     // Debug completo
-    console.log('🔧 DEBUG COMPLETO:', {
+    console.log(' DEBUG COMPLETO:', {
       numero: phoneNumber,
       mensaje_length: mensaje.length,
       imagen_presente: !!imageBase64,
@@ -379,7 +379,7 @@ export const shareViaWhatsApp = async (imageBase64, phoneNumber, productName, pr
       imagen: imageBase64 // Imagen completa
     });
 
-    console.log('📡 Respuesta backend completa:', {
+    console.log(' Respuesta backend completa:', {
       success: response.data.success,
       message: response.data.message,
       data: response.data.data,
@@ -389,9 +389,9 @@ export const shareViaWhatsApp = async (imageBase64, phoneNumber, productName, pr
     if (response.data.success) {
       // Verificar si menciona imagen en la respuesta
       if (response.data.message?.includes('imagen') || response.data.data?.imagen_enviada) {
-        toast.success('✅ Mensaje e imagen enviados por WhatsApp', { id: 'whatsapp' });
+        toast.success('Mensaje e imagen enviados por WhatsApp', { id: 'whatsapp' });
       } else {
-        toast.success('📝 Mensaje enviado (verificar imagen)', { id: 'whatsapp' });
+        toast.success('Mensaje enviado (verificar imagen)', { id: 'whatsapp' });
       }
       return true;
     } else {
@@ -399,7 +399,7 @@ export const shareViaWhatsApp = async (imageBase64, phoneNumber, productName, pr
     }
 
   } catch (error) {
-    console.error('❌ Error enviando WhatsApp:', error);
+    console.error(' Error enviando WhatsApp:', error);
     
     // Mostrar error específico
     if (error.response?.status === 500) {
@@ -414,14 +414,13 @@ export const shareViaWhatsApp = async (imageBase64, phoneNumber, productName, pr
   }
 };
 
-// 📱 Compartir en Instagram (descarga)
+//  Compartir en Instagram (descarga)
 export const shareViaInstagram = async (blob, productName) => {
   try {
     downloadImage(blob, `instagram_${productName}.png`);
     
     toast.success('¡Imagen descargada! Compártela en Instagram', {
       duration: 4000,
-      icon: '📷'
     });
 
     // Opcional: Abrir Instagram en nueva pestaña
@@ -435,14 +434,13 @@ export const shareViaInstagram = async (blob, productName) => {
   }
 };
 
-// 🎵 Compartir en TikTok (descarga)
+//  Compartir en TikTok (descarga)
 export const shareViaTikTok = async (blob, productName) => {
   try {
     downloadImage(blob, `tiktok_${productName}.png`);
     
     toast.success('¡Imagen descargada! Compártela en TikTok', {
       duration: 4000,
-      icon: '🎵'
     });
 
     // Opcional: Abrir TikTok en nueva pestaña
@@ -456,7 +454,7 @@ export const shareViaTikTok = async (blob, productName) => {
   }
 };
 
-// 💾 Función auxiliar para descargar imagen
+//  Función auxiliar para descargar imagen
 const downloadImage = (blob, filename) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -468,10 +466,10 @@ const downloadImage = (blob, filename) => {
   URL.revokeObjectURL(url);
 };
 
-// 🔧 Limpiar nombre para archivo (sin guiones bajos)
+//  Limpiar nombre para archivo (sin guiones bajos)
 export const cleanProductName = (name) => {
   return name
-    .replace(/[^a-zA-Z0-9\s]/g, '') // ✅ Mantener mayúsculas y minúsculas
+    .replace(/[^a-zA-Z0-9\s]/g, '') //  Mantener mayúsculas y minúsculas
     .replace(/\s+/g, '-')           // Espacios a guiones
     .replace(/-+/g, '-')            // Múltiples guiones a uno solo
     .replace(/^-|-$/g, '')          // Remover guiones al inicio/final

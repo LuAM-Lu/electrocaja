@@ -4,7 +4,7 @@ import {
   Smartphone, Camera, X, Upload, User, 
   AlertCircle, CheckCircle, CameraIcon, FolderOpen, ChevronDown
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../../utils/toast.jsx';
 
 // Datos predefinidos para pills
 const MARCAS_POPULARES = [
@@ -68,7 +68,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
       actualizarDispositivo('accesorios', [...accesorios, otroAccesorio.trim()]);
       setOtroAccesorio('');
       setMostrarOtroAccesorio(false);
-      toast.success('✅ Accesorio agregado');
+      toast.success('Accesorio agregado');
     }
   };
 
@@ -102,7 +102,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
       actualizarDispositivo('problema', nuevosProblemas.join(', '));
       setOtroProblema('');
       setMostrarOtroProblema(false);
-      toast.success('✅ Problema agregado');
+      toast.success('Problema agregado');
     }
   };
 
@@ -114,7 +114,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
     const nuevosProblemas = problemasActuales.filter(p => p !== problemaAEliminar);
     actualizarDispositivo('problemas', nuevosProblemas);
     actualizarDispositivo('problema', nuevosProblemas.join(', '));
-    toast.success('🗑️ Problema eliminado');
+    toast.success('Problema eliminado');
   };
 
   // Iniciar cámara
@@ -132,11 +132,11 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
         videoRef.current.srcObject = stream;
         setStreamActual(stream);
         setCamaraActiva(true);
-        toast.success('📷 Cámara activada');
+        toast.success('Cámara activada');
       }
     } catch (error) {
       console.error('Error accediendo a la cámara:', error);
-      toast.error('❌ No se pudo acceder a la cámara');
+      toast.error('No se pudo acceder a la cámara');
     }
   };
 
@@ -172,7 +172,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
 
       const evidencias = datos.dispositivo.evidencias || [];
       actualizarDispositivo('evidencias', [...evidencias, nuevaEvidencia]);
-      toast.success('📸 Foto capturada');
+      toast.success('Foto capturada');
       
       detenerCamara();
     }
@@ -201,7 +201,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
 
         const evidencias = datos.dispositivo.evidencias || [];
         actualizarDispositivo('evidencias', [...evidencias, nuevaEvidencia]);
-        toast.success('📸 Imagen agregada');
+        toast.success('Imagen agregada');
 
       } catch (error) {
         toast.error('Error procesando imagen');
@@ -214,7 +214,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
   const eliminarEvidencia = (id) => {
     const evidencias = (datos.dispositivo.evidencias || []).filter(e => e.id !== id);
     actualizarDispositivo('evidencias', evidencias);
-    toast.success('🗑️ Imagen eliminada');
+    toast.success('Imagen eliminada');
   };
 
   // Comprimir imagen
@@ -278,7 +278,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                           : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
                       }`}
                     >
-                      {datos.dispositivo.marca === marca && '✓ '}
+                      {datos.dispositivo.marca === marca && ' '}
                       {marca}
                     </button>
                   ))}
@@ -290,7 +290,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                   placeholder="O escribe otra marca..."
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                {errores.marca && <p className="text-red-400 text-xs mt-1">⚠️ {errores.marca}</p>}
+                {errores.marca && <p className="text-red-400 text-xs mt-1"> {errores.marca}</p>}
               </div>
 
               {/* Modelo y Color en la misma fila */}
@@ -307,7 +307,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                     placeholder="Ej: iPhone 16 Pro Max..."
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  {errores.modelo && <p className="text-red-400 text-xs mt-1">⚠️ {errores.modelo}</p>}
+                  {errores.modelo && <p className="text-red-400 text-xs mt-1"> {errores.modelo}</p>}
                 </div>
 
                 {/* Color */}
@@ -337,7 +337,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                   placeholder="Marca *#06# para ver IMEI..."
                   className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                {errores.imei && <p className="text-red-400 text-xs mt-1">⚠️ {errores.imei}</p>}
+                {errores.imei && <p className="text-red-400 text-xs mt-1"> {errores.imei}</p>}
               </div>
             </div>
           </div>
@@ -360,7 +360,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
                   }`}
                 >
-                  {(datos.dispositivo.accesorios || []).includes(accesorio) && '✓ '}
+                  {(datos.dispositivo.accesorios || []).includes(accesorio) && ' '}
                   {accesorio}
                 </button>
               ))}
@@ -400,7 +400,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
 
             {(datos.dispositivo.accesorios || []).length > 0 && (
               <div className="text-sm text-gray-400">
-                ✅ {datos.dispositivo.accesorios.length} accesorio(s) seleccionado(s)
+                 {datos.dispositivo.accesorios.length} accesorio(s) seleccionado(s)
               </div>
             )}
           </div>
@@ -433,7 +433,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                           : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
                       }`}
                     >
-                      {problemasActuales.includes(problema) && '✓ '}
+                      {problemasActuales.includes(problema) && ' '}
                       {problema}
                     </button>
                   ))}
@@ -498,7 +498,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                 </div>
               )}
 
-              {errores.problema && <p className="text-red-400 text-xs">⚠️ {errores.problema}</p>}
+              {errores.problema && <p className="text-red-400 text-xs"> {errores.problema}</p>}
 
               {/* Observaciones adicionales - COMPACTO */}
               <div>
@@ -534,7 +534,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
-                {errores.tecnico && <p className="text-red-400 text-xs mt-1">⚠️ {errores.tecnico}</p>}
+                {errores.tecnico && <p className="text-red-400 text-xs mt-1"> {errores.tecnico}</p>}
               </div>
             </div>
           </div>

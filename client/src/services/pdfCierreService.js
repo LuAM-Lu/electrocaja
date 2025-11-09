@@ -1,11 +1,11 @@
-// services/pdfCierreService.js - GENERADOR DE PDF PROFESIONAL DE CIERRE 📄
+// services/pdfCierreService.js - GENERADOR DE PDF PROFESIONAL DE CIERRE 
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
 class PDFCierreService {
   
-  // 🎨 GENERAR HTML PROFESIONAL PARA EL PDF
+  //  GENERAR HTML PROFESIONAL PARA EL PDF
   static generarHTMLCierre(datosCompletos) {
     const {
       caja,
@@ -43,7 +43,7 @@ class PDFCierreService {
                 overflow: hidden;
             }
             
-            /* 🎯 HEADER ELEGANTE */
+            /*  HEADER ELEGANTE */
             .header {
                 background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
                 color: white;
@@ -85,7 +85,7 @@ class PDFCierreService {
                 z-index: 2;
             }
             
-            /* 📊 INFORMACIÓN PRINCIPAL */
+            /*  INFORMACIÓN PRINCIPAL */
             .info-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -124,7 +124,7 @@ class PDFCierreService {
                 font-size: 1.1rem;
             }
             
-            /* 💰 RESUMEN FINANCIERO */
+            /*  RESUMEN FINANCIERO */
             .financial-summary {
                 padding: 40px;
                 background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -165,7 +165,7 @@ class PDFCierreService {
                 text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
             }
             
-            /* 📋 TABLA DE TRANSACCIONES */
+            /*  TABLA DE TRANSACCIONES */
             .transactions-section {
                 padding: 40px;
             }
@@ -220,7 +220,7 @@ class PDFCierreService {
                 font-weight: 600;
             }
             
-            /* 🚨 DIFERENCIAS */
+            /*  DIFERENCIAS */
             .diferencias-section {
                 background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
                 padding: 30px 40px;
@@ -233,7 +233,7 @@ class PDFCierreService {
                 margin-bottom: 15px;
             }
             
-            /* 📝 OBSERVACIONES */
+            /*  OBSERVACIONES */
             .observaciones-section {
                 padding: 30px 40px;
                 background: #f1f5f9;
@@ -245,7 +245,7 @@ class PDFCierreService {
                 margin-bottom: 15px;
             }
             
-            /* 📸 EVIDENCIA */
+            /*  EVIDENCIA */
             .evidencia-section {
                 padding: 30px 40px;
                 text-align: center;
@@ -253,7 +253,7 @@ class PDFCierreService {
                 border-left: 5px solid #10b981;
             }
             
-            /* 🔒 FOOTER */
+            /*  FOOTER */
             .footer {
                 background: #1f2937;
                 color: white;
@@ -267,7 +267,7 @@ class PDFCierreService {
                 margin-top: 10px;
             }
             
-            /* 📱 RESPONSIVE */
+            /*  RESPONSIVE */
             @media (max-width: 768px) {
                 .info-grid {
                     grid-template-columns: 1fr;
@@ -290,9 +290,9 @@ class PDFCierreService {
     </head>
     <body>
         <div class="container">
-            <!-- 🎯 HEADER -->
+            <!--  HEADER -->
             <div class="header">
-                <h1>🏪 ELECTRO CAJA</h1>
+                <h1> ELECTRO CAJA</h1>
                 <div class="subtitle">Reporte de Cierre de Caja - ${new Date(fechaGeneracion).toLocaleDateString('es-VE', { 
                     weekday: 'long', 
                     year: 'numeric', 
@@ -301,10 +301,10 @@ class PDFCierreService {
                 })}</div>
             </div>
             
-            <!-- 📊 INFORMACIÓN PRINCIPAL -->
+            <!--  INFORMACIÓN PRINCIPAL -->
             <div class="info-grid">
                 <div class="info-card">
-                    <h3>👤 Información del Usuario</h3>
+                    <h3> Información del Usuario</h3>
                     <div class="info-item">
                         <span>Nombre:</span>
                         <span>${usuario.nombre}</span>
@@ -320,7 +320,7 @@ class PDFCierreService {
                 </div>
                 
                 <div class="info-card">
-                    <h3>⏰ Horarios de Operación</h3>
+                    <h3> Horarios de Operación</h3>
                     <div class="info-item">
                         <span>Apertura:</span>
                         <span>${caja.fecha} - ${caja.horaApertura}</span>
@@ -336,7 +336,7 @@ class PDFCierreService {
                 </div>
                 
                 <div class="info-card">
-                    <h3>📈 Estadísticas Generales</h3>
+                    <h3> Estadísticas Generales</h3>
                     <div class="info-item">
                         <span>Total Transacciones:</span>
                         <span>${transacciones.length}</span>
@@ -352,28 +352,28 @@ class PDFCierreService {
                 </div>
             </div>
             
-            <!-- 💰 RESUMEN FINANCIERO -->
+            <!--  RESUMEN FINANCIERO -->
             <div class="financial-summary">
-                <h2>💰 Resumen Financiero Final</h2>
+                <h2> Resumen Financiero Final</h2>
                 <div class="financial-grid">
                     <div class="financial-card">
-                        <h4>💵 Efectivo Bolívares</h4>
+                        <h4> Efectivo Bolívares</h4>
                         <div class="amount">${this.formatearBolivares(caja.montoFinalBs || 0)} Bs</div>
                     </div>
                     <div class="financial-card">
-                        <h4>💵 Efectivo Dólares</h4>
+                        <h4> Efectivo Dólares</h4>
                         <div class="amount">$${this.formatearDolares(caja.montoFinalUsd || 0)}</div>
                     </div>
                     <div class="financial-card">
-                        <h4>📱 Pago Móvil</h4>
+                        <h4> Pago Móvil</h4>
                         <div class="amount">${this.formatearBolivares(caja.montoFinalPagoMovil || 0)} Bs</div>
                     </div>
                 </div>
             </div>
             
-            <!-- 📋 TRANSACCIONES DETALLADAS -->
+            <!--  TRANSACCIONES DETALLADAS -->
             <div class="transactions-section">
-                <h2>📋 Registro Detallado de Transacciones</h2>
+                <h2> Registro Detallado de Transacciones</h2>
                 <table class="transaction-table">
                     <thead>
                         <tr>
@@ -407,9 +407,9 @@ class PDFCierreService {
             </div>
             
             ${diferencias ? `
-            <!-- 🚨 DIFERENCIAS -->
+            <!--  DIFERENCIAS -->
             <div class="diferencias-section">
-                <h3>⚠️ Diferencias Detectadas</h3>
+                <h3> Diferencias Detectadas</h3>
                 ${diferencias.bs !== 0 ? `<p><strong>Bolívares:</strong> ${diferencias.bs > 0 ? '+' : ''}${this.formatearBolivares(diferencias.bs)} Bs</p>` : ''}
                 ${diferencias.usd !== 0 ? `<p><strong>Dólares:</strong> ${diferencias.usd > 0 ? '+' : ''}$${this.formatearDolares(diferencias.usd)}</p>` : ''}
                 ${diferencias.pagoMovil !== 0 ? `<p><strong>Pago Móvil:</strong> ${diferencias.pagoMovil > 0 ? '+' : ''}${this.formatearBolivares(diferencias.pagoMovil)} Bs</p>` : ''}
@@ -418,28 +418,28 @@ class PDFCierreService {
             ` : ''}
             
             ${observaciones ? `
-            <!-- 📝 OBSERVACIONES -->
+            <!--  OBSERVACIONES -->
             <div class="observaciones-section">
-                <h3>📝 Observaciones del Cierre</h3>
+                <h3> Observaciones del Cierre</h3>
                 <p>${observaciones}</p>
             </div>
             ` : ''}
             
             ${evidenciaFotografica ? `
-            <!-- 📸 EVIDENCIA -->
+            <!--  EVIDENCIA -->
             <div class="evidencia-section">
-                <h3>📸 Evidencia Fotográfica</h3>
-                <p>✅ Evidencia automática capturada y almacenada en el sistema</p>
+                <h3> Evidencia Fotográfica</h3>
+                <p> Evidencia automática capturada y almacenada en el sistema</p>
                 <p><em>Timestamp: ${fechaGeneracion}</em></p>
             </div>
             ` : ''}
             
-            <!-- 🔒 FOOTER -->
+            <!--  FOOTER -->
             <div class="footer">
                 <p><strong>Electro Caja</strong> - Sistema de Control de Ventas</p>
                 <p>Reporte generado automáticamente</p>
                 <div class="timestamp">
-                    📅 ${new Date(fechaGeneracion).toLocaleString('es-VE')}
+                     ${new Date(fechaGeneracion).toLocaleString('es-VE')}
                 </div>
             </div>
         </div>
@@ -448,7 +448,7 @@ class PDFCierreService {
     `;
   }
 
-  // 🎨 FORMATEAR MONTOS
+  //  FORMATEAR MONTOS
   static formatearBolivares(amount) {
     return (amount || 0).toLocaleString('es-ES', {
       minimumFractionDigits: 2,
@@ -463,12 +463,12 @@ class PDFCierreService {
     });
   }
 
-  // 🚀 GENERAR PDF FINAL
+  //  GENERAR PDF FINAL
   static async generarPDFCierre(datosCompletos) {
     let browser;
     
     try {
-      console.log('🚀 Iniciando generación de PDF de cierre...');
+      console.log(' Iniciando generación de PDF de cierre...');
       
       // Generar HTML
       const htmlContent = this.generarHTMLCierre(datosCompletos);
@@ -514,7 +514,7 @@ class PDFCierreService {
         preferCSSPageSize: true
       });
       
-      console.log(`✅ PDF generado exitosamente: ${rutaPDF}`);
+      console.log(` PDF generado exitosamente: ${rutaPDF}`);
       
       return {
         success: true,
@@ -524,7 +524,7 @@ class PDFCierreService {
       };
       
     } catch (error) {
-      console.error('❌ Error generando PDF:', error);
+      console.error(' Error generando PDF:', error);
       throw error;
       
     } finally {

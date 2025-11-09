@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, Lock, Calendar, User, Shield } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
-import toast from 'react-hot-toast';
+import toast from '../utils/toast.jsx';
 import CerrarCajaModal from './CerrarCajaModal';
 import ConteoDirectoModal from './ConteoDirectoModal';
 
@@ -13,14 +13,14 @@ const BloqueoCojeModal = ({ cajaPendiente, esResponsable }) => {
 
  const handleRealizarConteo = () => {
   if (!esResponsable && usuario?.rol?.toLowerCase() !== 'admin') {
-    toast.error('🚫 Solo el responsable o un administrador pueden realizar el conteo');
+    toast.error('Solo el responsable o un administrador pueden realizar el conteo');
     return;
   }
   setShowCerrarCajaModal(true);
 };
 
   const handleCierreCompleto = async (cajaResuelta) => {
-    console.log('✅ Caja pendiente resuelta localmente:', cajaResuelta);
+    console.log(' Caja pendiente resuelta localmente:', cajaResuelta);
     
     try {
       // Usar la función del cajaStore para resolver
@@ -43,11 +43,11 @@ const BloqueoCojeModal = ({ cajaPendiente, esResponsable }) => {
       
       setShowCerrarCajaModal(false);
       
-      toast.success('✅ Caja pendiente resuelta exitosamente');
+      toast.success('Caja pendiente resuelta exitosamente');
       
     } catch (error) {
-      console.error('❌ Error resolviendo caja pendiente:', error);
-      toast.error('❌ Error al resolver caja pendiente: ' + error.message);
+      console.error(' Error resolviendo caja pendiente:', error);
+      toast.error('Error al resolver caja pendiente: ' + error.message);
     }
   };
 
@@ -64,7 +64,7 @@ const BloqueoCojeModal = ({ cajaPendiente, esResponsable }) => {
             <div className="flex items-center space-x-3 text-white">
               <AlertTriangle className="h-8 w-8 animate-pulse" />
               <div>
-                <h2 className="text-xl font-bold">🚨 Sistema Bloqueado</h2>
+                <h2 className="text-xl font-bold"> Sistema Bloqueado</h2>
                 <p className="text-sm text-red-100">Cierre de caja pendiente</p>
               </div>
             </div>
@@ -113,7 +113,7 @@ const BloqueoCojeModal = ({ cajaPendiente, esResponsable }) => {
               </button>
 
               <div className="text-center text-xs text-gray-500">
-                <p>⚠️ No se puede cancelar esta operación</p>
+                <p> No se puede cancelar esta operación</p>
                 <p>El sistema permanecerá bloqueado hasta completar el conteo</p>
               </div>
             </div>

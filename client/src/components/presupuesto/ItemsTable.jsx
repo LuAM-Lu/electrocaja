@@ -1,4 +1,4 @@
-// components/presupuesto/ItemsTable.jsx - VERSIÓN COMPLETA ACTUALIZADA 🎯
+// components/presupuesto/ItemsTable.jsx - VERSIÓN COMPLETA ACTUALIZADA 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Plus, Search, Edit3, Trash2, Save, X, 
@@ -8,10 +8,10 @@ import {
   Barcode, Info, Star
 } from 'lucide-react';
 import { useInventarioStore } from "../../store/inventarioStore";
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';
 
-// 🆕 FUNCIONES API PARA STOCK (desde IngresoModal)
+//  FUNCIONES API PARA STOCK (desde IngresoModal)
 const liberarStockAPI = async (productoId, sesionId, cantidad = null) => {
   try {
     const payload = { productoId, sesionId };
@@ -22,11 +22,11 @@ const liberarStockAPI = async (productoId, sesionId, cantidad = null) => {
     const response = await api.post('/ventas/stock/liberar', payload);
     
     if (response.data.success) {
-      console.log('✅ Stock liberado en backend:', response.data.data);
+      console.log(' Stock liberado en backend:', response.data.data);
       return response.data.data;
     }
   } catch (error) {
-    console.error('❌ Error liberando stock:', error);
+    console.error(' Error liberando stock:', error);
     throw error;
   }
 };
@@ -42,7 +42,7 @@ const obtenerStockDisponibleAPI = async (productoId, sesionId = null) => {
     }
     return null;
   } catch (error) {
-    console.error('❌ Error obteniendo stock:', error);
+    console.error(' Error obteniendo stock:', error);
     return null;
   }
 };
@@ -52,28 +52,28 @@ const validarStockAntesDe = async (producto, cantidadSolicitada, itemsCarrito = 
     // Los servicios siempre tienen stock ilimitado
     if (producto.tipo === 'SERVICIO') return true;
     
-    // 🆕 SIEMPRE consultar API para obtener stock real
+    //  SIEMPRE consultar API para obtener stock real
     const stockInfo = await obtenerStockDisponibleAPI(producto.id, sesionId);
     
     if (stockInfo && stockInfo.stock) {
       const stockDisponible = stockInfo.stock.stockDisponible || 0;
-      console.log(`🔍 Stock API - Producto: ${producto.descripcion}, Disponible: ${stockDisponible}, Solicitado: ${cantidadSolicitada}`);
+      console.log(` Stock API - Producto: ${producto.descripcion}, Disponible: ${stockDisponible}, Solicitado: ${cantidadSolicitada}`);
       const resultado = stockDisponible >= cantidadSolicitada;
-      console.log(`🔍 RESULTADO VALIDACIÓN: ${resultado} (Disponible: ${stockDisponible}, Solicitado: ${cantidadSolicitada})`);
+      console.log(` RESULTADO VALIDACIÓN: ${resultado} (Disponible: ${stockDisponible}, Solicitado: ${cantidadSolicitada})`);
       return resultado;
     }
     
     // Si API falla, rechazar por seguridad
-    console.error('❌ API no disponible, rechazando por seguridad');
+    console.error(' API no disponible, rechazando por seguridad');
     return false;
     
   } catch (error) {
-    console.error('❌ Error validando stock:', error);
+    console.error(' Error validando stock:', error);
     return false;
   }
 };
 
-// 🔧 FUNCIONES HELPER
+//  FUNCIONES HELPER
 const formatearVenezolano = (valor) => {
   if (!valor && valor !== 0) return '';
   const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
@@ -104,7 +104,7 @@ const limpiarNumero = (valor) => {
   return numero > 0 ? numero : 0;
 };
 
-// 🆕 FUNCIÓN PARA DETECTAR SERVICIOS
+//  FUNCIÓN PARA DETECTAR SERVICIOS
 const esServicio = (producto) => {
   const tipo = (producto.tipo || '').toLowerCase();
   const categoria = (producto.categoria || '').toLowerCase();
@@ -125,7 +125,7 @@ const esServicio = (producto) => {
          descripcion.includes('promocion');
 };
 
-// 🧩 MODAL ITEM PERSONALIZADO
+//  MODAL ITEM PERSONALIZADO
 const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1, theme = 'light' }) => {
   const [formData, setFormData] = useState({
     descripcion: '',
@@ -136,7 +136,7 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1, th
   const [errores, setErrores] = useState({});
   const [loading, setLoading] = useState(false);
 
-  // 🆕 ESTILOS BASADOS EN THEME
+  //  ESTILOS BASADOS EN THEME
   const getThemeStyles = () => {
     if (theme === 'dark') {
       return {
@@ -196,7 +196,7 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1, th
     try {
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // 🔧 Convertir precio según moneda seleccionada
+      //  Convertir precio según moneda seleccionada
       let precioEnUsd;
       if (monedaSeleccionada === 'bs') {
         precioEnUsd = parseFloat(formData.precio.replace(',', '.')) / tasaCambio;
@@ -228,7 +228,7 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1, th
       setMonedaSeleccionada('bs');
       setErrores({});
       
-      toast.success(`✅ Item personalizado agregado (${monedaSeleccionada === 'bs' ? 'desde Bs' : 'desde USD'})`);
+      toast.success(`Item personalizado agregado (${monedaSeleccionada === 'bs' ? 'desde Bs' : 'desde USD'})`);
       onClose();
       
     } catch (error) {
@@ -317,7 +317,7 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1, th
                     : `${styles.pillInactive} border-gray-300`
                 }`}
               >
-                💰 Precio en Bs
+                 Precio en Bs
               </button>
               <button
                 type="button"
@@ -328,7 +328,7 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1, th
                     : `${styles.pillInactive} border-gray-300`
                 }`}
               >
-                💵 Precio en USD
+                 Precio en USD
               </button>
             </div>
             
@@ -412,7 +412,7 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1, th
   );
 };
 
-// 🎯 COMPONENTE PRINCIPAL - ITEMS TABLE
+//  COMPONENTE PRINCIPAL - ITEMS TABLE
 const ItemsTable = ({ 
   items = [], 
   onItemsChange,
@@ -421,12 +421,12 @@ const ItemsTable = ({
   title = "Productos y Servicios",
   showAddCustom = true,
   maxVisibleItems = 5,
-  // 🆕 NUEVOS PROPS PARA VALIDACIÓN DE STOCK
+  //  NUEVOS PROPS PARA VALIDACIÓN DE STOCK
   reservarStock = false,
   mostrarStockDisponible = false,
   validarStockAntes = false,
   sesionId = null,
-  theme = 'light' // 🆕 PROP PARA THEMING
+  theme = 'light' //  PROP PARA THEMING
 }) => {
   const { inventario } = useInventarioStore();
   
@@ -438,7 +438,7 @@ const ItemsTable = ({
   const [selectedProductIndex, setSelectedProductIndex] = useState(-1);
   const searchInputRef = useRef(null);
 
-  // 🆕 ESTILOS BASADOS EN THEME
+  //  ESTILOS BASADOS EN THEME
   const getThemeStyles = () => {
     if (theme === 'dark') {
       return {
@@ -492,7 +492,7 @@ const ItemsTable = ({
     producto.codigo_interno?.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 10);
 
-  // 🔍 Búsqueda automática con Enter y navegación con flechas
+  //  Búsqueda automática con Enter y navegación con flechas
   const handleSearchKeyPress = (e) => {
     // Solo procesar si el dropdown está visible
     if (!showProductSearch && e.key !== 'Enter') return;
@@ -532,7 +532,7 @@ const ItemsTable = ({
         setSearchQuery('');
         setShowProductSearch(false);
         setSelectedProductIndex(-1);
-        toast.success(`✅ Producto seleccionado: ${producto.descripcion}`);
+        toast.success(`Producto seleccionado: ${producto.descripcion}`);
         return;
       }
       
@@ -550,11 +550,10 @@ const ItemsTable = ({
           setSearchQuery('');
           setShowProductSearch(false);
           setSelectedProductIndex(-1);
-          toast.success(`✅ Producto encontrado: ${producto.descripcion}`);
+          toast.success(`Producto encontrado: ${producto.descripcion}`);
         } else {
-          toast.error('❌ Producto no encontrado', {
+          toast.error('Producto no encontrado', {
             duration: 3000,
-            icon: '🔍',
             style: {
               background: theme === 'dark' ? '#374151' : '#FEE2E2',
               border: `1px solid ${theme === 'dark' ? '#6B7280' : '#F87171'}`,
@@ -575,7 +574,7 @@ const ItemsTable = ({
     }
   };
 
-  // ➕ Agregar producto del inventario - CON VALIDACIÓN DE STOCK API CORREGIDA
+  //  Agregar producto del inventario - CON VALIDACIÓN DE STOCK API CORREGIDA
   const handleAddProduct = async (producto) => {
     try {
       const existingItem = items.find(item => item.codigo === producto.codigo_barras);
@@ -584,7 +583,7 @@ const ItemsTable = ({
       // Verificar si es servicio
       const esProductoServicio = esServicio(producto);
       
-      console.log('🔍 DEBUG - Validando producto:', {
+      console.log(' DEBUG - Validando producto:', {
         descripcion: producto.descripcion,
         tipo: producto.tipo,
         categoria: producto.categoria,
@@ -595,33 +594,22 @@ const ItemsTable = ({
         esServicio: esProductoServicio
       });
       
-      // 🔍 VALIDACIÓN VISUAL FIFO - SOLO PARA PRODUCTOS FÍSICOS, NO SERVICIOS
+      //  VALIDACIÓN VISUAL FIFO - SOLO PARA PRODUCTOS FÍSICOS, NO SERVICIOS
       if (!esProductoServicio) {
         const stockTotal = producto.stock || 0;
         const stockReservadoPorOtros = producto.stockReservado || 0;
         const stockVisualDisponible = Math.max(0, stockTotal - stockReservadoPorOtros);
         
         if (stockVisualDisponible < cantidadSolicitada) {
-          toast.error(`❌ Stock insuficiente: ${producto.descripcion}\n📦 Disponible: ${stockVisualDisponible}\n📋 Solicitado: ${cantidadSolicitada}`, {
-            duration: 4000,
-            style: {
-              background: theme === 'dark' ? '#451A03' : '#FEF3C7',
-              border: `1px solid ${theme === 'dark' ? '#92400E' : '#F59E0B'}`,
-              color: theme === 'dark' ? '#FCD34D' : '#92400E'
-            }
+          toast.error(`Stock insuficiente para ${producto.descripcion}. Solicitado: ${cantidadSolicitada}, Disponible: ${stockVisualDisponible}`, {
+            duration: 4000
           });
           return;
         }
         
         if (stockVisualDisponible <= 5 && stockVisualDisponible > 0) {
-          toast(`⚠️ Stock bajo: ${producto.descripcion} (${stockVisualDisponible} disponibles)`, {
-            duration: 3000,
-            icon: '📦',
-            style: {
-              background: theme === 'dark' ? '#451A03' : '#FEF3C7',
-              border: `1px solid ${theme === 'dark' ? '#92400E' : '#F59E0B'}`,
-              color: theme === 'dark' ? '#FCD34D' : '#92400E'
-            }
+          toast.warning(`Stock bajo: ${producto.descripcion} (${stockVisualDisponible} disponibles)`, {
+            duration: 3000
           });
         }
       }
@@ -637,7 +625,7 @@ const ItemsTable = ({
             : item
         );
         onItemsChange(updatedItems);
-        toast.success(`➕ Cantidad aumentada: ${producto.descripcion}`);
+        toast.success(`Cantidad aumentada: ${producto.descripcion}`);
       } else {
         const stockDisponible = esProductoServicio ? 999 : (producto.stock || 0) - (producto.stockReservado || 0);
         
@@ -663,7 +651,7 @@ const ItemsTable = ({
           ? '(Servicio - Sin límite de stock)'
           : `(Stock disponible: ${stockDisponible})`;
           
-        toast.success(`✅ Producto agregado: ${producto.descripcion} ${mensajeStock}`);
+        toast.success(`Producto agregado: ${producto.descripcion} ${mensajeStock}`);
       }
       
       setSearchQuery('');
@@ -675,12 +663,12 @@ const ItemsTable = ({
     }
   };
 
-  // ➕ Agregar item personalizado
+  //  Agregar item personalizado
   const handleAddPersonalizado = (itemPersonalizado) => {
     onItemsChange([...items, itemPersonalizado]);
   };
 
-  // ⬆️⬇️ Mover items
+  //  Mover items
   const handleMoveItem = (itemId, direction) => {
     const currentIndex = items.findIndex(item => item.id === itemId);
     
@@ -697,21 +685,21 @@ const ItemsTable = ({
     [newItems[currentIndex], newItems[targetIndex]] = [newItems[targetIndex], newItems[currentIndex]];
     
     onItemsChange(newItems);
-    toast.success('📦 Item reordenado', { duration: 2000 });
+    toast.success('Item reordenado', { duration: 2000 });
   };
 
-  // 🗑️ Eliminar item
+  //  Eliminar item
   const handleDeleteItem = async (itemId) => {
     const itemAEliminar = items.find(item => item.id === itemId);
     
-    console.log('🗑️ Eliminando item del carrito (sin liberar stock individual):', itemAEliminar?.descripcion);
+    console.log(' Eliminando item del carrito (sin liberar stock individual):', itemAEliminar?.descripcion);
     
     const updatedItems = items.filter(item => item.id !== itemId);
     onItemsChange(updatedItems);
-    toast.success('🗑️ Item eliminado del carrito');
+    toast.success('Item eliminado del carrito');
   };
 
-  // ✏️ Editar item inline
+  //  Editar item inline
   const handleStartEdit = (item) => {
     setEditingRowId(item.id);
     setEditingData({
@@ -755,7 +743,7 @@ const ItemsTable = ({
    onItemsChange(updatedItems);
    setEditingRowId(null);
    setEditingData({});
-   toast.success('✅ Item actualizado');
+   toast.success('Item actualizado');
  };
 
  const handleCancelEdit = () => {
@@ -763,7 +751,7 @@ const ItemsTable = ({
    setEditingData({});
  };
 
- // 🎨 Obtener color por categoría
+ //  Obtener color por categoría
  const getCategoryColor = (categoria) => {
    const colors = {
      smartphones: 'bg-blue-100 text-blue-700',
@@ -781,7 +769,7 @@ const ItemsTable = ({
  return (
    <div className="space-y-4">
      
-     {/* 🔍 BARRA DE BÚSQUEDA Y CONTROLES */}
+     {/*  BARRA DE BÚSQUEDA Y CONTROLES */}
      {isEditable && (
        <div className={`${styles.container} border rounded-lg p-3`}>
          <div className="flex items-center justify-between mb-3">
@@ -866,7 +854,7 @@ const ItemsTable = ({
                                    ? 'bg-green-100 text-green-700' 
                                    : 'bg-red-100 text-red-700'
                                }`}>
-                                 📦 {producto.stock - (producto.stockReservado || 0)} disp.
+                                  {producto.stock - (producto.stockReservado || 0)} disp.
                                </span>
                              </>
                            )}
@@ -875,7 +863,7 @@ const ItemsTable = ({
                              <>
                                <span>•</span>
                                <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                                 🛠️ Servicio
+                                  Servicio
                                </span>
                              </>
                            )}
@@ -914,7 +902,7 @@ const ItemsTable = ({
        </div>
      )}
 
-     {/* 📋 TABLA DE ITEMS */}
+     {/*  TABLA DE ITEMS */}
      <div className={`${styles.container} border rounded-lg overflow-hidden`}>
        {items.length === 0 ? (
          /* Estado vacío */
@@ -1078,19 +1066,14 @@ const ItemsTable = ({
                                  const stockInfo = await obtenerStockDisponibleAPI(item.productoId, sesionId);
                                  const stockTotal = stockInfo?.stock?.stockTotal || 0;
 
-                                 console.log('🔍 DEBUG stockInfo completo:', stockInfo);
-                                 console.log('🔍 DEBUG stockTotal (real):', stockTotal);
-                                 console.log('🔍 DEBUG nuevaCantidad:', nuevaCantidad);
-                                 console.log('🔍 DEBUG stockTotal < nuevaCantidad:', stockTotal < nuevaCantidad);
+                                 console.log(' DEBUG stockInfo completo:', stockInfo);
+                                 console.log(' DEBUG stockTotal (real):', stockTotal);
+                                 console.log(' DEBUG nuevaCantidad:', nuevaCantidad);
+                                 console.log(' DEBUG stockTotal < nuevaCantidad:', stockTotal < nuevaCantidad);
 
                                  if (stockTotal < nuevaCantidad) {
-                                   toast.error(`❌ Stock insuficiente: ${item.descripcion}\n📦 Stock total: ${stockTotal}\n📋 Intentaste: ${nuevaCantidad}`, {
-                                     duration: 4000,
-                                     style: {
-                                       background: theme === 'dark' ? '#374151' : '#FEE2E2',
-                                       border: `1px solid ${theme === 'dark' ? '#6B7280' : '#F87171'}`,
-                                       color: theme === 'dark' ? '#F87171' : '#991B1B'
-                                     }
+                                   toast.error(`Stock insuficiente para ${item.descripcion}. Intentaste: ${nuevaCantidad}, Disponible: ${stockTotal}`, {
+                                     duration: 4000
                                    });
                                    
                                    const cantidadAjustada = Math.max(0, Math.min(nuevaCantidad, stockTotal));
@@ -1225,7 +1208,7 @@ const ItemsTable = ({
        )}
      </div>
 
-     {/* 📊 RESUMEN RÁPIDO */}
+     {/*  RESUMEN RÁPIDO */}
      {items.length > 0 && (
        <div className={`${styles.summaryCard} border rounded-lg p-4`}>
          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">

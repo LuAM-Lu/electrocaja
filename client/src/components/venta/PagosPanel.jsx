@@ -1,13 +1,13 @@
-// components/venta/PagosPanel.jsx - SISTEMA DE PAGOS MODULAR CON HYBRID CHIPS 💳
+// components/venta/PagosPanel.jsx - SISTEMA DE PAGOS MODULAR CON HYBRID CHIPS 
 import React from 'react';
 import { 
  X, Plus, CreditCard, DollarSign, RefreshCw,
  AlertTriangle, CheckCircle, Percent, MousePointerClick, Trash2, HandCoins, BanknoteArrowUp
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 // ===================================
-// 🔧 FUNCIONES HELPER
+//  FUNCIONES HELPER
 // ===================================
 const formatearVenezolano = (valor) => {
  if (!valor && valor !== 0) return '';
@@ -21,27 +21,28 @@ const formatearVenezolano = (valor) => {
 const limpiarNumero = (valor) => {
  if (!valor && valor !== 0) return 0;
  if (typeof valor === 'number' && valor > 0) return valor;
- 
+
  let valorLimpio = valor.toString().replace(/[^\d.,]/g, '');
- 
+
  if (valorLimpio.includes(',')) {
    const partes = valorLimpio.split(',');
    const entero = partes[0].replace(/\./g, '');
-   const decimal = partes[1] || '00';
-   const decimalLimitado = decimal.substring(0, 2).padEnd(2, '0');
+   const decimal = partes[1] || '0000';
+   //  CAMBIO CRÍTICO: Soportar hasta 4 decimales para pagos digitales exactos
+   const decimalLimitado = decimal.substring(0, 4);
    const numero = parseFloat(entero + '.' + decimalLimitado);
    return numero > 0 ? numero : 0;
  } else if (valorLimpio.includes('.')) {
    const numero = parseFloat(valorLimpio);
    return numero > 0 ? numero : 0;
  }
- 
+
  const numero = parseFloat(valorLimpio) || 0;
  return numero > 0 ? numero : 0;
 };
 
 // ===================================
-// 🦀 CONFIGURACIÓN DE MÉTODOS DE PAGO
+//  CONFIGURACIÓN DE MÉTODOS DE PAGO
 // ===================================
 const METODOS_PAGO = [
  { value: 'efectivo_bs', label: 'Efectivo Bs', moneda: 'bs', requiere_referencia: false },
@@ -89,7 +90,7 @@ const obtenerMetodosDisponibles = (pagosActuales, idActual = null) => {
  return METODOS_PAGO.filter(metodo => !metodosUsados.includes(metodo.value));
 };
 
-// 🆕 FUNCIÓN PARA OBTENER MONEDA PREDOMINANTE
+//  FUNCIÓN PARA OBTENER MONEDA PREDOMINANTE
 const obtenerMonedaPredominante = (pagos) => {
   if (!pagos || pagos.length === 0) return 'bs';
   
@@ -110,7 +111,7 @@ const obtenerMonedaPredominante = (pagos) => {
 };
 
 // ===================================
-// 🔥 COMPONENTE HYBRID CHIP COMPACTO
+//  COMPONENTE HYBRID CHIP COMPACTO
 // ===================================
 const PagoItemHybrid = ({ 
  pago, index, onUpdate, onDelete, canDelete, tipo = "pago",
@@ -121,23 +122,23 @@ const PagoItemHybrid = ({
  const esVuelto = tipo === "vuelto";
  const monto = limpiarNumero(pago.monto);
  
- // 🎨 Obtener icono y colores por método
+ //  Obtener icono y colores por método
  const getMetodoConfig = (metodoValue) => {
    const configs = {
-     efectivo_bs: { icon: '💰', color: 'emerald', label: 'Efectivo Bs' },
-     efectivo_usd: { icon: '💵', color: 'green', label: 'Efectivo USD' },
-     pago_movil: { icon: '📱', color: 'blue', label: 'Pago Móvil' },
-     transferencia: { icon: '🏦', color: 'indigo', label: 'Transferencia' },
-     zelle: { icon: '💳', color: 'purple', label: 'Zelle' },
-     binance: { icon: '🟡', color: 'yellow', label: 'Binance' },
-     tarjeta: { icon: '💳', color: 'gray', label: 'Tarjeta' }
+     efectivo_bs: { icon: '', color: 'emerald', label: 'Efectivo Bs' },
+     efectivo_usd: { icon: '', color: 'green', label: 'Efectivo USD' },
+     pago_movil: { icon: '', color: 'blue', label: 'Pago Móvil' },
+     transferencia: { icon: '', color: 'indigo', label: 'Transferencia' },
+     zelle: { icon: '', color: 'purple', label: 'Zelle' },
+     binance: { icon: '', color: 'yellow', label: 'Binance' },
+     tarjeta: { icon: '', color: 'gray', label: 'Tarjeta' }
    };
    return configs[metodoValue] || configs.efectivo_bs;
  };
  
  const config = getMetodoConfig(pago.metodo);
  
- // 🎨 Colores dinámicos
+ //  Colores dinámicos
  const getColorClasses = (color, isVuelto) => {
    const baseColors = {
      emerald: isVuelto ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800',
@@ -151,34 +152,34 @@ const PagoItemHybrid = ({
    return baseColors[color] || baseColors.emerald;
  };
  
- // 🔍 Estado del pago
+ //  Estado del pago
  const getEstadoPago = () => {
-   if (!pago.monto || monto === 0) return { icon: '⚠️', text: 'Pendiente', color: 'text-orange-600' };
-   if (metodo?.requiere_referencia && (!pago.banco || !pago.referencia)) return { icon: '◗', text: 'Incompleto', color: 'text-red-600' };
-   return { icon: '✅', text: 'OK', color: 'text-green-600' };
+   if (!pago.monto || monto === 0) return { icon: '', text: 'Pendiente', color: 'text-orange-600' };
+   if (metodo?.requiere_referencia && (!pago.banco || !pago.referencia)) return { icon: '', text: 'Incompleto', color: 'text-red-600' };
+   return { icon: '', text: 'OK', color: 'text-green-600' };
  };
  
  const estado = getEstadoPago();
  const colorClasses = getColorClasses(config.color, esVuelto);
  
- // 🆕 FUNCIÓN PARA VALIDAR EXCESO DE VUELTO
+ //  FUNCIÓN PARA VALIDAR EXCESO DE VUELTO
 const validarExcesoVuelto = (valorActual) => {
   if (tipo !== "vuelto" || !valorActual) return true;
   
   const montoNumerico = parseFloat(valorActual.replace(',', '.')) || 0;
   const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
   
-  console.log('🔍 ===== VALIDACIÓN DE VUELTO =====');
-  console.log('🔍 Exceso total (Bs):', exceso);
-  console.log('🔍 Total vueltos ya dados (Bs):', totalVueltoActual);
-  console.log('🔍 Método actual:', metodoInfo?.label, metodoInfo?.moneda);
-  console.log('🔍 Monto solicitado:', montoNumerico);
+  console.log(' ===== VALIDACIÓN DE VUELTO =====');
+  console.log(' Exceso total (Bs):', exceso);
+  console.log(' Total vueltos ya dados (Bs):', totalVueltoActual);
+  console.log(' Método actual:', metodoInfo?.label, metodoInfo?.moneda);
+  console.log(' Monto solicitado:', montoNumerico);
   
-  // ✅ NO VALIDAR LÍMITE - PERMITIR VUELTOS MÚLTIPLES
+  //  NO VALIDAR LÍMITE - PERMITIR VUELTOS MÚLTIPLES
   // El usuario puede dar $4 USD + equivalente en Bs del resto
   // Solo validar que no sea negativo
   if (montoNumerico <= 0) {
-    toast('⚠️ El monto debe ser mayor a 0', {
+    toast('El monto debe ser mayor a 0', {
       style: {
         background: '#FEF3C7',
         border: '1px solid #F59E0B',
@@ -189,13 +190,13 @@ const validarExcesoVuelto = (valorActual) => {
     return false;
   }
   
-  console.log('✅ Validación pasada - Monto válido');
+  console.log(' Validación pasada - Monto válido');
   return true;
 };
  
- // 🆕 FUNCIÓN MEJORADA PARA MANEJO DE MONTO SIN VALIDACIÓN TEMPRANA
+ //  FUNCIÓN MEJORADA PARA MANEJO DE MONTO SIN VALIDACIÓN TEMPRANA
  const handleMontoChange = (valor) => {
-   // ✅ CONVERTIR PUNTO A COMA AUTOMÁTICAMENTE
+   //  CONVERTIR PUNTO A COMA AUTOMÁTICAMENTE
    let valorLimpio = valor.replace(/[^\d.,]/g, '').replace(/\./g, ',');
    
    // Solo permitir una coma decimal
@@ -205,15 +206,14 @@ const validarExcesoVuelto = (valorActual) => {
      valorLimpio = valorLimpio.substring(0, ultimaComa).replace(/,/g, '') + valorLimpio.substring(ultimaComa);
    }
    
-   // ✅ ACTUALIZAR SIN VALIDAR (permite escribir libremente)
+   //  ACTUALIZAR SIN VALIDAR (permite escribir libremente)
    onUpdate(pago.id, 'monto', valorLimpio);
  };
  
- // 🆕 FUNCIÓN PARA GUARDAR CON VALIDACIÓN
+ //  FUNCIÓN PARA GUARDAR CON VALIDACIÓN
  const handleGuardar = () => {
    if (!pago.monto || parseFloat(pago.monto.replace(',', '.')) <= 0) {
      toast('Ingresa un monto válido antes de guardar', {
-       icon: '⚠️',
        style: {
          background: '#FEF3C7',
          border: '1px solid #F59E0B',
@@ -223,13 +223,13 @@ const validarExcesoVuelto = (valorActual) => {
      return;
    }
    
-   // ✅ VALIDAR EXCESO SOLO AL GUARDAR
+   //  VALIDAR EXCESO SOLO AL GUARDAR
    if (validarExcesoVuelto(pago.monto)) {
      setIsEditing(false);
    }
  };
  
- // 🆕 MANEJAR ENTER EN INPUT
+ //  MANEJAR ENTER EN INPUT
  const handleKeyPress = (e) => {
    if (e.key === 'Enter') {
      e.preventDefault();
@@ -271,7 +271,7 @@ const validarExcesoVuelto = (valorActual) => {
              type="text"
              value={pago.monto}
              onChange={(e) => handleMontoChange(e.target.value)}
-             onKeyPress={handleKeyPress} // ✅ VALIDAR AL PRESIONAR ENTER
+             onKeyPress={handleKeyPress} //  VALIDAR AL PRESIONAR ENTER
              placeholder={metodo?.moneda === 'usd' ? '0,00' : '0,00'}
              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
              autoFocus
@@ -301,7 +301,7 @@ const validarExcesoVuelto = (valorActual) => {
                  type="text"
                  value={pago.referencia || ''}
                  onChange={(e) => onUpdate(pago.id, 'referencia', e.target.value)}
-                 onKeyPress={handleKeyPress} // ✅ TAMBIÉN PUEDE GUARDAR CON ENTER
+                 onKeyPress={handleKeyPress} //  TAMBIÉN PUEDE GUARDAR CON ENTER
                  placeholder="Nº referencia"
                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                />
@@ -313,18 +313,17 @@ const validarExcesoVuelto = (valorActual) => {
          <div className="flex justify-end space-x-2 pt-2">
            <button
               onClick={() => {
-                // ✅ LIMPIAR DATOS CORRECTAMENTE
-                console.log('🧹 Limpiando chip:', pago.id);
+                //  LIMPIAR DATOS CORRECTAMENTE
+                console.log(' Limpiando chip:', pago.id);
                 onUpdate(pago.id, 'monto', '');
                 if (metodo?.requiere_referencia) {
                   onUpdate(pago.id, 'banco', '');
                   onUpdate(pago.id, 'referencia', '');
                 }
-                toast('🧹 Datos del chip limpiados', {
-                  icon: '🧹',
+                toast('Datos del chip limpiados', {
                   duration: 2000
                 });
-                // ✅ FORZAR RE-RENDER DEL COMPONENTE
+                //  FORZAR RE-RENDER DEL COMPONENTE
                 setIsEditing(false);
                 setTimeout(() => setIsEditing(true), 100);
               }}
@@ -344,13 +343,13 @@ const validarExcesoVuelto = (valorActual) => {
    );
  }
  
- // ✅ CHIP COMPACTO CON INFORMACIÓN COMPLETA EN UNA FILA
+ //  CHIP COMPACTO CON INFORMACIÓN COMPLETA EN UNA FILA
  return (
    <div 
      className={`${colorClasses} border-2 rounded-lg p-3 transition-all duration-200 hover:shadow-md cursor-pointer group relative w-full flex-shrink-0`}
      onClick={() => setIsEditing(true)}
    >
-     {/* ✅ LAYOUT HORIZONTAL OPTIMIZADO CON INFORMACIÓN COMPLETA */}
+     {/*  LAYOUT HORIZONTAL OPTIMIZADO CON INFORMACIÓN COMPLETA */}
      <div className="flex items-center justify-between">
        
        {/* Lado izquierdo: Método completo y monto */}
@@ -408,7 +407,7 @@ const validarExcesoVuelto = (valorActual) => {
 };
 
 // ===================================
-// 🎯 COMPONENTE PRINCIPAL PAGOS PANEL
+//  COMPONENTE PRINCIPAL PAGOS PANEL
 // ===================================
 const PagosPanel = ({ 
  pagos, 
@@ -426,57 +425,59 @@ const PagosPanel = ({
  const [descuentoClicked, setDescuentoClicked] = React.useState(false);
  
  // ===================================
- // 📊 CALCULAR TOTALES CON REDONDEO MEJORADO
+ //  CALCULAR TOTALES CON REDONDEO MEJORADO
  // ===================================
  const calcularTotalPagado = () => {
    const total = pagos.reduce((total, pago) => {
      const monto = limpiarNumero(pago.monto);
      const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
-     
+
      if (metodoInfo?.moneda === 'bs') {
        return total + monto;
      } else {
        return total + (monto * tasaCambio);
      }
    }, 0);
-   
-   // ✅ REDONDEAR PARA EVITAR ERRORES DE PRECISIÓN
-   return Math.round(total * 100) / 100;
+
+   //  PRECISIÓN ALTA - Redondear a 4 decimales para evitar errores flotantes
+   // pero preservar precisión para pagos digitales exactos
+   return Math.round(total * 10000) / 10000;
  };
 
  const calcularTotalVuelto = () => {
-  console.log('🔍 ===== CALCULANDO TOTAL VUELTO =====');
-  console.log('🔍 vueltos:', vueltos);
-  console.log('🔍 tasaCambio:', tasaCambio);
-  
+  console.log(' ===== CALCULANDO TOTAL VUELTO =====');
+  console.log(' vueltos:', vueltos);
+  console.log(' tasaCambio:', tasaCambio);
+
   const total = vueltos.reduce((total, vuelto) => {
     const monto = limpiarNumero(vuelto.monto);
     const metodoInfo = METODOS_PAGO.find(m => m.value === vuelto.metodo);
-    
-    console.log(`🔍 Vuelto procesado:`, {
+
+    console.log(` Vuelto procesado:`, {
       metodo: vuelto.metodo,
       montoOriginal: vuelto.monto,
       montoLimpio: monto,
       monedaDetectada: metodoInfo?.moneda,
       tasaCambio: tasaCambio
     });
-    
+
     if (metodoInfo?.moneda === 'bs') {
       const resultado = total + monto;
-      console.log(`🔍 Vuelto en Bs: ${monto} → Total acumulado: ${resultado}`);
+      console.log(` Vuelto en Bs: ${monto} → Total acumulado: ${resultado}`);
       return resultado;
     } else {
       const montoConvertido = monto * tasaCambio;
       const resultado = total + montoConvertido;
-      console.log(`🔍 Vuelto en USD: ${monto} × ${tasaCambio} = ${montoConvertido} → Total acumulado: ${resultado}`);
+      console.log(` Vuelto en USD: ${monto} × ${tasaCambio} = ${montoConvertido} → Total acumulado: ${resultado}`);
       return resultado;
     }
   }, 0);
-  
-  const totalFinal = Math.round(total * 100) / 100;
-  console.log('🔍 TOTAL VUELTO FINAL:', totalFinal);
-  console.log('🔍 ===== FIN CALCULO VUELTO =====');
-  
+
+  //  PRECISIÓN ALTA - Redondear a 4 decimales para preservar exactitud
+  const totalFinal = Math.round(total * 10000) / 10000;
+  console.log(' TOTAL VUELTO FINAL:', totalFinal);
+  console.log(' ===== FIN CALCULO VUELTO =====');
+
   return totalFinal;
 };
 
@@ -486,18 +487,18 @@ const PagosPanel = ({
  const diferencia = totalPagado - totalConDescuento;
  const faltante = Math.max(0, -diferencia);
  const exceso = Math.max(0, diferencia);
- const excesoPendiente = Math.round((exceso - totalVuelto) * 100) / 100; // ✅ FIX PRECISIÓN
+ const excesoPendiente = Math.round((exceso - totalVuelto) * 100) / 100; //  FIX PRECISIÓN
 
  // Estado de la transacción
  const transaccionCompleta = faltante <= 0.01;
  const necesitaVuelto = excesoPendiente > 0.01;
 
  React.useEffect(() => {
-  // ✅ SOLO VALIDAR - NO AUTO-ELIMINAR
+  //  SOLO VALIDAR - NO AUTO-ELIMINAR
   const excesoPendienteSignificativo = Math.abs(excesoPendiente) > 0.01 ? excesoPendiente : 0;
   onValidationChange(transaccionCompleta, excesoPendienteSignificativo);
   
-  console.log('🔍 Validación de pagos:', {
+  console.log(' Validación de pagos:', {
     excesoPendiente,
     transaccionCompleta,
     vueltos: vueltos.length
@@ -505,13 +506,12 @@ const PagosPanel = ({
 }, [transaccionCompleta, excesoPendiente, onValidationChange]);
 
  // ===================================
- // 🎮 MANEJADORES DE EVENTOS
+ //  MANEJADORES DE EVENTOS
  // ===================================
  const agregarPago = () => {
    const metodosDisponibles = obtenerMetodosDisponibles(pagos);
    if (metodosDisponibles.length === 0) {
      toast('Todos los métodos de pago ya están en uso', {
-       icon: '⚠️',
        style: {
          background: '#FEF3C7',
          border: '1px solid #F59E0B',
@@ -536,7 +536,6 @@ const PagosPanel = ({
    const metodosDisponibles = obtenerMetodosDisponibles(vueltos);
    if (metodosDisponibles.length === 0) {
      toast('Todos los métodos de vuelto ya están en uso', {
-       icon: '⚠️',
        style: {
          background: '#FEF3C7',
          border: '1px solid #F59E0B',
@@ -546,13 +545,13 @@ const PagosPanel = ({
      return;
    }
 
-   // 🆕 OBTENER MONEDA PREDOMINANTE Y PRESELECCIONAR
+   //  OBTENER MONEDA PREDOMINANTE Y PRESELECCIONAR
    const monedaPredominante = obtenerMonedaPredominante(pagos);
    const metodoPreferido = metodosDisponibles.find(m => m.moneda === monedaPredominante) || metodosDisponibles[0];
 
    const nuevosVueltos = [...vueltos, {
      id: crypto.randomUUID(),
-     metodo: metodoPreferido.value, // ✅ PRESELECCIONAR MÉTODO SEGÚN MONEDA
+     metodo: metodoPreferido.value, //  PRESELECCIONAR MÉTODO SEGÚN MONEDA
      monto: '',
      banco: '',
      referencia: ''
@@ -599,10 +598,9 @@ const PagosPanel = ({
      }
      
      actualizarPago(primerPagoVacio.id, 'monto', montoAEnviar);
-     toast.success(`💰 Monto enviado al ${metodoInfo.label}`);
+     toast.success(`Monto enviado al ${metodoInfo.label}`);
    } else {
      toast('Todos los métodos de pago ya tienen montos asignados', {
-       icon: '⚠️',
        style: {
          background: '#FEF3C7',
          border: '1px solid #F59E0B',
@@ -622,9 +620,9 @@ const PagosPanel = ({
 
    if (onDescuentoLimpiar) {
      onDescuentoLimpiar();
-     toast.success('🗑️ Descuento eliminado');
+     toast.success('Descuento eliminado');
    } else {
-     toast.error('❌ Función onDescuentoLimpiar no disponible');
+     toast.error('Función onDescuentoLimpiar no disponible');
    }
  };
 
@@ -632,7 +630,7 @@ const PagosPanel = ({
    <div className="space-y-4">
      
      {/* ===================================
-         💰 RESUMEN VISUAL DE TOTALES
+          RESUMEN VISUAL DE TOTALES
          =================================== */}
      <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-6">
        <div className="flex items-center justify-between mb-4">
@@ -755,11 +753,11 @@ const PagosPanel = ({
      </div>
 
      {/* ===================================
-         💳 LAYOUT UNIFICADO DE 2 COLUMNAS: PAGOS Y VUELTOS
+          LAYOUT UNIFICADO DE 2 COLUMNAS: PAGOS Y VUELTOS
          =================================== */}
      <div className="grid grid-cols-2 gap-6">
        
-       {/* 🟢 COLUMNA IZQUIERDA: MÉTODOS DE PAGO */}
+       {/*  COLUMNA IZQUIERDA: MÉTODOS DE PAGO */}
        <div className="space-y-3">
          {/* Header de Pagos */}
          <div className="bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 backdrop-blur-sm border border-gray-200/50 rounded-xl p-3 shadow-lg flex items-center justify-between">
@@ -801,7 +799,7 @@ const PagosPanel = ({
          </div>
        </div>
 
-       {/* 🟣 COLUMNA DERECHA: MÉTODOS DE VUELTO */}
+       {/*  COLUMNA DERECHA: MÉTODOS DE VUELTO */}
        <div className="space-y-3">
          {/* Header de Vueltos */}
          <div className={`bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 backdrop-blur-sm border border-gray-200/50 rounded-xl p-3 shadow-lg flex items-center justify-between ${!necesitaVuelto ? 'opacity-50' : ''}`}>
@@ -834,7 +832,7 @@ const PagosPanel = ({
          {/* Chips de Vueltos o Mensaje */}
 <div className="space-y-2 max-h-80 overflow-y-auto">
   {vueltos.length > 0 ? (
-    // ✅ MOSTRAR VUELTOS SIEMPRE QUE EXISTAN
+    //  MOSTRAR VUELTOS SIEMPRE QUE EXISTAN
     vueltos.map((vuelto, index) => (
       <PagoItemHybrid
         key={vuelto.id}
@@ -850,7 +848,7 @@ const PagosPanel = ({
       />
     ))
   ) : necesitaVuelto ? (
-    // ✅ MOSTRAR MENSAJE SOLO SI NECESITA VUELTO Y NO HAY CHIPS
+    //  MOSTRAR MENSAJE SOLO SI NECESITA VUELTO Y NO HAY CHIPS
     <div className="bg-purple-50 border-2 border-dashed border-purple-300 rounded-xl p-6 text-center">
       <RefreshCw className="h-8 w-8 text-purple-400 mx-auto mb-2" />
       <p className="text-purple-700 font-medium">Hay exceso por entregar</p>
@@ -859,7 +857,7 @@ const PagosPanel = ({
       </p>
     </div>
   ) : (
-    // ✅ MENSAJE CUANDO NO HAY EXCESO
+    //  MENSAJE CUANDO NO HAY EXCESO
     <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
       <CheckCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
       <p className="text-gray-600 font-medium">No hay vuelto pendiente</p>

@@ -4,7 +4,7 @@ import {
   Settings, Database, Download, Upload, RefreshCw, Shield, 
   Server, HardDrive, Wifi, Clock, Bell, Palette
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const GeneralPanel = () => {
   const [configuraciones, setConfiguraciones] = useState({

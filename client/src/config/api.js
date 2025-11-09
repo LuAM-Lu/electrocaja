@@ -1,7 +1,7 @@
 // client/src/config/api.js
 import axios from 'axios';
 
-// 🔧 DETECCIÓN AUTOMÁTICA DE IP/HOST
+//  DETECCIÓN AUTOMÁTICA DE IP/HOST
 const getBaseURL = () => {
   // Usar variable de entorno si está disponible
   const envApiUrl = import.meta.env.VITE_API_URL;
@@ -21,7 +21,7 @@ const getBaseURL = () => {
   return `https://${hostname}:3001/api`;
 };
 
-// 🌐 CONFIGURACIÓN PRINCIPAL
+//  CONFIGURACIÓN PRINCIPAL
 export const API_CONFIG = {
   BASE_URL: getBaseURL(),
   SOCKET_URL: getBaseURL()
@@ -32,7 +32,7 @@ export const API_CONFIG = {
   RETRY_ATTEMPTS: 3
 };
 
-// 📡 INSTANCIA AXIOS PRINCIPAL
+//  INSTANCIA AXIOS PRINCIPAL
 export const api = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
@@ -41,7 +41,7 @@ export const api = axios.create({
   }
 });
 
-// 🔐 INTERCEPTOR DE AUTENTICACIÓN
+//  INTERCEPTOR DE AUTENTICACIÓN
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth-token');
@@ -49,27 +49,27 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    console.log(` API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
   (error) => {
-    console.error('❌ API Request Error:', error);
+    console.error(' API Request Error:', error);
     return Promise.reject(error);
   }
 );
 
-// 🔥 INTERCEPTOR DE RESPUESTAS (MEJORADO PARA TOKEN EXPIRADO)
+//  INTERCEPTOR DE RESPUESTAS (MEJORADO PARA TOKEN EXPIRADO)
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
+    console.log(` API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
     return response;
   },
   (error) => {
-    console.error(`❌ API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.response?.status || 'Network Error'}`);
+    console.error(` API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.response?.status || 'Network Error'}`);
     
-    // 🚨 MANEJO ESPECÍFICO DE TOKEN EXPIRADO
+    //  MANEJO ESPECÍFICO DE TOKEN EXPIRADO
     if (error.response?.status === 401) {
-      console.log('🚨 Token expirado detectado en interceptor');
+      console.log(' Token expirado detectado en interceptor');
       
       // 1. Limpiar token inmediatamente
       localStorage.removeItem('auth-token');
@@ -80,7 +80,7 @@ api.interceptors.response.use(
                            error.config?.url?.includes('/auth/me');
       
       if (!isLoginRequest) {
-        console.log('🧹 Despachando evento token-expired...');
+        console.log(' Despachando evento token-expired...');
         
         // 3. Despachar evento para que authStore limpie el estado
         window.dispatchEvent(new CustomEvent('token-expired', {
@@ -97,25 +97,25 @@ api.interceptors.response.use(
   }
 );
 
-// 🧪 FUNCIÓN DE PRUEBA DE CONECTIVIDAD
+//  FUNCIÓN DE PRUEBA DE CONECTIVIDAD
 export const testConnection = async () => {
   try {
     const response = await api.get('/test-cors');
-    console.log('✅ Conexión API exitosa:', response.data);
+    console.log(' Conexión API exitosa:', response.data);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('❌ Error de conexión API:', error.message);
+    console.error(' Error de conexión API:', error.message);
     return { success: false, error: error.message };
   }
 };
 
-// 🔄 FUNCIÓN DE RETRY AUTOMÁTICO
+//  FUNCIÓN DE RETRY AUTOMÁTICO
 export const apiWithRetry = async (requestFunction, maxRetries = API_CONFIG.RETRY_ATTEMPTS) => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await requestFunction();
     } catch (error) {
-      console.warn(`⚠️ Intento ${attempt}/${maxRetries} falló:`, error.message);
+      console.warn(` Intento ${attempt}/${maxRetries} falló:`, error.message);
       
       if (attempt === maxRetries) {
         throw error;
@@ -127,15 +127,15 @@ export const apiWithRetry = async (requestFunction, maxRetries = API_CONFIG.RETR
   }
 };
 
-// 📊 DEBUG INFO
-console.log('🔧 API Configuration:', {
+//  DEBUG INFO
+console.log(' API Configuration:', {
   BASE_URL: API_CONFIG.BASE_URL,
   SOCKET_URL: API_CONFIG.SOCKET_URL,
   HOSTNAME: window.location.hostname,
   PROTOCOL: window.location.protocol
 });
 
-// 🖼️ HELPER PARA URLs DE IMÁGENES
+//  HELPER PARA URLs DE IMÁGENES
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return '';
   

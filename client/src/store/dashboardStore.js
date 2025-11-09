@@ -96,7 +96,7 @@ export const useDashboardStore = create((set, get) => ({
     return 'transform translate-x-0 opacity-100';
   },
   
-  // 🆕 Nuevo getter para obtener clase de entrada inicial
+  //  Nuevo getter para obtener clase de entrada inicial
   getInitialTransitionClass: () => {
     const { transitionDirection, transitionPhase } = get();
     

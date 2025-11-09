@@ -5,7 +5,7 @@ import {
   Download, Filter, Search, Smartphone
 } from 'lucide-react';
 import { api } from '../../config/api';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 import DetalleCajaModal from './DetalleCajaModal';
 
 // Modal de evidencias (se mantiene local aquí)
@@ -457,21 +457,21 @@ const ReportesCaja = () => {
                                 Math.abs(difBs) < 1000 ? 'text-gray-600' : difBs > 0 ? 'text-green-600' : 'text-red-600'
                               }`}
                             >
-                              Bs: {Math.abs(difBs) < 1000 ? '✓' : (difBs > 0 ? '+' : '') + formatearBs(difBs)}
+                              Bs: {Math.abs(difBs) < 1000 ? '' : (difBs > 0 ? '+' : '') + formatearBs(difBs)}
                             </div>
                             <div
                               className={`text-xs ${
                                 Math.abs(difUsd) < 1 ? 'text-gray-600' : difUsd > 0 ? 'text-green-600' : 'text-red-600'
                               }`}
                             >
-                              USD: {Math.abs(difUsd) < 1 ? '✓' : (difUsd > 0 ? '+' : '') + Number(difUsd).toFixed(2)}
+                              USD: {Math.abs(difUsd) < 1 ? '' : (difUsd > 0 ? '+' : '') + Number(difUsd).toFixed(2)}
                             </div>
                             <div
                               className={`text-xs ${
                                 Math.abs(difPM) < 1000 ? 'text-gray-600' : difPM > 0 ? 'text-green-600' : 'text-red-600'
                               }`}
                             >
-                              PM: {Math.abs(difPM) < 1000 ? '✓' : (difPM > 0 ? '+' : '') + formatearBs(difPM)}
+                              PM: {Math.abs(difPM) < 1000 ? '' : (difPM > 0 ? '+' : '') + formatearBs(difPM)}
                             </div>
                           </div>
                         </td>

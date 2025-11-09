@@ -5,7 +5,7 @@ import {
   Wrench, CheckCircle, PackageCheck, Flag, Info, History
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import toast from 'react-hot-toast'; // ✅ IMPORT AGREGADO
+import toast from '../../utils/toast.jsx'; //  IMPORT AGREGADO
 
 const estadoConfig = {
   'Recibido': { 
@@ -62,14 +62,14 @@ export default function ServicioPage({
   onVerServicio, 
   onEditarServicio, 
   onBorrarServicio,
-  onVerHistorial // ✅ NUEVA PROP
+  onVerHistorial //  NUEVA PROP
 }) {
   const { usuario } = useAuthStore();
   const [filtroEstado, setFiltroEstado] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // ✅ DATOS SIMULADOS RESTAURADOS
+  //  DATOS SIMULADOS RESTAURADOS
   const [servicios, setServicios] = useState([
     {
       id: 1,
@@ -356,7 +356,7 @@ export default function ServicioPage({
                           <Eye size={16} className="text-gray-400 group-hover:text-white" />
                         </button>
                         
-                        {/* ✅ Botón Editar - AHORA SOLO MUESTRA MENSAJE */}
+                        {/*  Botón Editar - AHORA SOLO MUESTRA MENSAJE */}
                         <button
                           onClick={() => onEditarServicio?.(s)}
                           className="p-2 rounded-md bg-slate-700/50 border border-slate-600 hover:bg-amber-600 hover:border-amber-500 transition-all duration-200 group"
@@ -365,7 +365,7 @@ export default function ServicioPage({
                           <Pencil size={16} className="text-gray-400 group-hover:text-white" />
                         </button>
 
-                        {/* ✅ Botón Historial - ABRE MODAL DE HISTORIAL */}
+                        {/*  Botón Historial - ABRE MODAL DE HISTORIAL */}
                         <button
                           onClick={() => onVerHistorial?.(s)}
                           className="p-2 rounded-md bg-slate-700/50 border border-slate-600 hover:bg-purple-600 hover:border-purple-500 transition-all duration-200 group"
@@ -409,7 +409,7 @@ export default function ServicioPage({
                 className="px-4 py-2 text-sm font-medium bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-gray-500"
                 disabled={currentPage === 1}
               >
-                ⬅️ Anterior
+                 Anterior
               </button>
 
               {/* Números de página */}
@@ -434,7 +434,7 @@ export default function ServicioPage({
                 className="px-4 py-2 text-sm font-medium bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-gray-500"
                 disabled={currentPage === totalPages}
               >
-                Siguiente ➡️
+                Siguiente 
               </button>
             </div>
           </div>

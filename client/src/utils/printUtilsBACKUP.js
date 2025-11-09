@@ -3,7 +3,7 @@ import 'jspdf-autotable';
 import { Instagram, MessageCircle } from 'lucide-react';
 import { FaInstagram, FaWhatsapp, FaDumbbell } from 'react-icons/fa';
 
-// 🔧 FUNCIÓN PARA FORMATEAR NÚMEROS VENEZOLANOS
+//  FUNCIÓN PARA FORMATEAR NÚMEROS VENEZOLANOS
 const formatearVenezolano = (valor) => {
  if (!valor && valor !== 0) return '';
  const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
@@ -13,15 +13,15 @@ const formatearVenezolano = (valor) => {
  });
 };
 
-// 🎨 FUNCIÓN PARA CARGAR LOGO
+//  FUNCIÓN PARA CARGAR LOGO
 const cargarLogo = () => {
   return new Promise((resolve) => {
-    console.log('🔍 Cargando logo desde /favicon-96x96.png...');
+    console.log(' Cargando logo desde /favicon-96x96.png...');
     
     const img = new Image();
     
     img.onload = function() {
-      console.log('✅ Logo cargado exitosamente');
+      console.log(' Logo cargado exitosamente');
       try {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -29,16 +29,16 @@ const cargarLogo = () => {
         canvas.height = 50;
         ctx.drawImage(img, 0, 0, 50, 50);
         const dataUrl = canvas.toDataURL('image/png');
-        console.log('✅ Logo convertido a base64, longitud:', dataUrl.length);
+        console.log(' Logo convertido a base64, longitud:', dataUrl.length);
         resolve(dataUrl);
       } catch (error) {
-        console.error('❌ Error procesando logo:', error);
+        console.error(' Error procesando logo:', error);
         resolve(null);
       }
     };
     
     img.onerror = (error) => {
-      console.error('❌ Error cargando logo:', error);
+      console.error(' Error cargando logo:', error);
       resolve(null);
     };
     
@@ -47,7 +47,7 @@ const cargarLogo = () => {
   });
 };
 
-// 📄 GENERAR PDF DE FACTURA
+//  GENERAR PDF DE FACTURA
 export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio) => {
  const doc = new jsPDF();
  const fechaActual = new Date().toLocaleDateString('es-ES', {
@@ -157,11 +157,11 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio) => {
  doc.save(`Factura_${codigoVenta}_${new Date().getTime()}.pdf`);
 };
 
-// 🖨️ IMPRIMIR EN IMPRESORA TÉRMICA DE FORMA TRADICIONAL
+//  IMPRIMIR EN IMPRESORA TÉRMICA DE FORMA TRADICIONAL
 export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
-    console.log('🖨️ Generando impresión térmica tradicional...');
-    console.log('🔍 printUtils - imprimirFacturaTermica recibió:', { 
+    console.log(' Generando impresión térmica tradicional...');
+    console.log(' printUtils - imprimirFacturaTermica recibió:', { 
       descuento, 
       ventaDataDescuento: ventaData.descuentoAutorizado,
       motivoDescuento: ventaData.motivoDescuento,
@@ -455,15 +455,15 @@ ${[260].map(top => `
       }, 500);
     };
     
-    console.log('✅ Ventana de impresión térmica abierta');
+    console.log(' Ventana de impresión térmica abierta');
     
   } catch (error) {
-    console.error('❌ Error en impresión térmica tradicional:', error);
+    console.error(' Error en impresión térmica tradicional:', error);
     throw error;
   }
 };
 
-// 📄 GENERAR PDF DE RECIBO SIMPLE
+//  GENERAR PDF DE RECIBO SIMPLE
 export const generarPDFRecibo = async (ventaData, codigoVenta, tasaCambio) => {
  const doc = new jsPDF();
  const fechaActual = new Date().toLocaleDateString('es-ES', {

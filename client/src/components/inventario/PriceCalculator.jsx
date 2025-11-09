@@ -4,7 +4,7 @@ import {
   Calculator, DollarSign, TrendingUp, Zap, RotateCcw, 
   Target, Percent, ArrowRightLeft, AlertTriangle, CheckCircle
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '../../utils/toast.jsx';
 
 const PriceCalculator = ({ 
   formData, 
@@ -49,7 +49,7 @@ const calcularPrecioVenta = (costo = null, margen = null) => {
   const margenValue = cleanNumber(margen || formData.margen_porcentaje);
   const tieneFacturaIva = formData.proveedor_factura_iva !== false;
   
-  // 🆕 LÓGICA DE IVA VENEZOLANA
+  //  LÓGICA DE IVA VENEZOLANA
   let costoBase;
   if (formData.tipo === 'servicio') {
     // Servicios: el costo es base (sin IVA)
@@ -63,13 +63,13 @@ const calcularPrecioVenta = (costo = null, margen = null) => {
   }
     
     if (costoValue <= 0) {
-  toast.error('💰 Ingrese un precio de costo válido');
+  toast.error('Ingrese un precio de costo válido');
   setIsCalculating(false);
   return;
 }
 
 if (margenValue < 0) {
-  toast.error('📊 El margen no puede ser negativo');
+  toast.error('El margen no puede ser negativo');
   setIsCalculating(false);
   return;
 }
@@ -94,16 +94,15 @@ setLastCalculation({
 setTimeout(() => {
   setIsCalculating(false);
   
-  // 🆕 MENSAJE MEJORADO CON CONTEXTO IVA
+  //  MENSAJE MEJORADO CON CONTEXTO IVA
   const mensajeIva = formData.tipo === 'servicio' 
     ? ' (se agregará 16% IVA en venta)'
     : tieneFacturaIva 
       ? ' (base sin IVA, se agregará 16% en venta)'
       : ' (se agregará 16% IVA en venta)';
       
-  toast.success(`💰 Precio calculado: $${formatNumber(precioVentaBase)}${mensajeIva}\n📊 Ganancia: $${formatNumber(gananciaReal)}`, {
+  toast.success(`Precio calculado: $${formatNumber(precioVentaBase)}${mensajeIva}\n Ganancia: $${formatNumber(gananciaReal)}`, {
     duration: 3000,
-    icon: '✅'
   });
 }, 300);
   };
@@ -116,19 +115,19 @@ setTimeout(() => {
     const ventaValue = cleanNumber(formData.precio_venta);
     
     if (costoValue <= 0) {
-      toast.error('💰 Ingrese un precio de costo válido');
+      toast.error('Ingrese un precio de costo válido');
       setIsCalculating(false);
       return;
     }
     
     if (ventaValue <= 0) {
-      toast.error('💵 Ingrese un precio de venta válido');
+      toast.error('Ingrese un precio de venta válido');
       setIsCalculating(false);
       return;
     }
 
     if (ventaValue <= costoValue) {
-      toast.error('⚠️ El precio de venta debe ser mayor al costo');
+      toast.error('El precio de venta debe ser mayor al costo');
       setIsCalculating(false);
       return;
     }
@@ -151,9 +150,8 @@ setTimeout(() => {
 
     setTimeout(() => {
       setIsCalculating(false);
-      toast.success(`📊 Margen calculado: ${formatNumber(margen, 1)}%\n💰 Ganancia: $${formatNumber(ganancia)}`, {
+      toast.success(`Margen calculado: ${formatNumber(margen, 1)}%\n Ganancia: $${formatNumber(ganancia)}`, {
         duration: 3000,
-        icon: '📈'
       });
     }, 300);
   };
@@ -166,13 +164,13 @@ setTimeout(() => {
     const margenValue = cleanNumber(formData.margen_porcentaje);
     
     if (ventaValue <= 0) {
-      toast.error('💵 Ingrese un precio de venta válido');
+      toast.error('Ingrese un precio de venta válido');
       setIsCalculating(false);
       return;
     }
     
     if (margenValue < 0) {
-      toast.error('📊 El margen no puede ser negativo');
+      toast.error('El margen no puede ser negativo');
       setIsCalculating(false);
       return;
     }
@@ -195,9 +193,8 @@ setTimeout(() => {
 
     setTimeout(() => {
       setIsCalculating(false);
-      toast.success(`💰 Costo calculado: $${formatNumber(costo)}\n📊 Ganancia: $${formatNumber(ganancia)}`, {
+      toast.success(`Costo calculado: $${formatNumber(costo)}\n Ganancia: $${formatNumber(ganancia)}`, {
         duration: 3000,
-        icon: '🎯'
       });
     }, 300);
   };
@@ -212,9 +209,8 @@ setTimeout(() => {
         calcularPrecioVenta(null, porcentaje);
       }, 100);
     } else {
-      toast.info(`📊 Margen establecido en ${porcentaje}%\n💡 Ingrese el costo para calcular precio`, {
+      toast.info(`Margen establecido en ${porcentaje}%\n Ingrese el costo para calcular precio`, {
         duration: 2000,
-        icon: '⚡'
       });
     }
   };
@@ -222,7 +218,7 @@ setTimeout(() => {
   // Resetear calculadora
   const resetCalculator = () => {
     setLastCalculation(null);
-    toast.success('🔄 Calculadora reiniciada');
+    toast.success('Calculadora reiniciada');
   };
 
   // Obtener estado de validación

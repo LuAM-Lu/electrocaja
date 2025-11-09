@@ -1041,14 +1041,20 @@ class PDFCierreService {
        timeout: 30000 
      });
      
-     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+     // BUG #2 CORREGIDO: Usar fecha de la caja, no fecha actual
+     const fechaCaja = datosCompletos.caja.fecha || datosCompletos.caja.fechaApertura || new Date();
+     const fechaCajaObj = new Date(fechaCaja);
+
+     // Formatear fecha con hora de cierre: YYYY-MM-DD-HHmmss (BUG #6 MEJORADO)
+     const timestamp = fechaCajaObj.toISOString().replace(/[:.]/g, '-').replace('T', '-').split('.')[0];
+
      const tienesDif = datosCompletos.diferencias && (
-       datosCompletos.diferencias.bs !== 0 || 
-       datosCompletos.diferencias.usd !== 0 || 
+       datosCompletos.diferencias.bs !== 0 ||
+       datosCompletos.diferencias.usd !== 0 ||
        datosCompletos.diferencias.pagoMovil !== 0
      );
-     
-     const nombreArchivo = `cierre-detallado-${timestamp}-${Date.now()}${tienesDif ? '-DIF' : ''}.pdf`;
+
+     const nombreArchivo = `cierre-detallado-${timestamp}${tienesDif ? '-DIF' : ''}.pdf`;
      
      const uploadsDir = path.join(__dirname, '../../uploads');
      if (!fs.existsSync(uploadsDir)) {
