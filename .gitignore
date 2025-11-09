@@ -42,4 +42,21 @@ Thumbs.db
 # Otros temporales
 *.cache
 *.tmp
+.wwebjs_cache/
+**/nul
+nul
+*.md
+!README.md
+!client/README.md
+CLAUDE.md
+ANALISIS_*.md
+CLEANUP_*.md
+FIXES_*.md
+FIX_*.md
+MEJORAS_*.md
+REPORTE_*.md
+PLAN_*.md
+QA_*.md
+COMPONENTES_*.md
+backupbasededatos/
 
