@@ -1,18 +1,20 @@
 // components/servicios/BorrarServicioModal.jsx (SOLO ADMIN - ESTILO ELECTRO CAJA)
 import React, { useState } from 'react';
 import {
-  X, Trash2, AlertTriangle, Shield, Lock, Key, Eye, EyeOff
+  X, Trash2, AlertTriangle, Shield, Key, ScanLine
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from '../../utils/toast.jsx';
+import { api } from '../../config/api';
 
 export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) {
   const { usuario } = useAuthStore();
-  const [adminPassword, setAdminPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [adminToken, setAdminToken] = useState('');
+  const [motivoEliminacion, setMotivoEliminacion] = useState('');
   const [confirmText, setConfirmText] = useState('');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Verificación admin, 2: Confirmación final
+  const [adminVerificado, setAdminVerificado] = useState(null);
 
   // Solo admins pueden acceder
   if (usuario?.rol !== 'admin') {
@@ -38,26 +40,34 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
   if (!servicio) return null;
 
   const verificarAdmin = async () => {
-    if (!adminPassword.trim()) {
-      toast.error('Ingresa tu contraseña de administrador');
+    if (!adminToken.trim()) {
+      toast.error('Ingresa el token de acceso rápido de un administrador');
       return;
     }
 
     setLoading(true);
     try {
-      // Simular verificación de contraseña admin
-      // En producción, esto debería ser una llamada a la API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulación - en producción verificar contra backend
-      if (adminPassword === 'admin123') { // Cambiar por verificación real
-        setStep(2);
-        toast.success('Verificación exitosa');
+      // ✅ Validar token de admin usando el endpoint existente
+      const response = await api.post('/auth/validate-admin-token', {
+        token: adminToken.toUpperCase().trim()
+      });
+
+      if (response.data.success && response.data.user) {
+        const adminUser = response.data.user;
+        
+        if (adminUser.rol === 'admin') {
+          setAdminVerificado(adminUser);
+          setStep(2);
+          toast.success(`Token verificado: ${adminUser.nombre}`);
+        } else {
+          toast.error('El token no pertenece a un administrador');
+        }
       } else {
-        toast.error('Contraseña incorrecta');
+        toast.error('Token de administrador inválido');
       }
     } catch (error) {
-      toast.error('Error en la verificación');
+      console.error('Error verificando token:', error);
+      toast.error(error.response?.data?.message || 'Error al verificar el token');
     } finally {
       setLoading(false);
     }
@@ -69,19 +79,36 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
       return;
     }
 
+    if (!motivoEliminacion.trim() || motivoEliminacion.trim().length < 10) {
+      toast.error('Debe proporcionar un motivo de eliminación (mínimo 10 caracteres)');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Simular eliminación
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // ✅ Llamar al endpoint de eliminación con motivo y token
+      const response = await api.delete(`/servicios/${servicio.id}`, {
+        data: {
+          motivoEliminacion: motivoEliminacion.trim(),
+          adminToken: adminToken.toUpperCase().trim()
+        }
+      });
       
-      if (typeof onConfirmar === 'function') {
-        onConfirmar(servicio.id);
+      if (response.data.success) {
+        toast.success('Servicio eliminado exitosamente');
+        
+        // Cerrar modal primero
+        onClose?.();
+        
+        // Luego llamar al callback si existe (para recargar la lista)
+        if (typeof onConfirmar === 'function') {
+          // Pasar los parámetros necesarios si el callback los necesita
+          onConfirmar(servicio.id, motivoEliminacion.trim(), adminToken.toUpperCase().trim());
+        }
       }
-      
-      toast.success('Servicio eliminado permanentemente');
-      onClose?.();
     } catch (error) {
-      toast.error('Error al eliminar el servicio');
+      console.error('Error eliminando servicio:', error);
+      toast.error(error.response?.data?.message || 'Error al eliminar el servicio');
     } finally {
       setLoading(false);
     }
@@ -168,31 +195,30 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
                 </div>
               </div>
 
-              {/* Verificación de contraseña admin */}
+              {/* Verificación de token de acceso rápido de admin */}
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-900">
                   <Key className="h-4 w-4 inline mr-2" />
-                  Contraseña de Administrador
+                  Token de Acceso Rápido (Admin)
                 </label>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    placeholder="Ingresa tu contraseña de admin..."
+                    type="password"
+                    value={adminToken}
+                    onChange={(e) => {
+                      // Normalizar: convertir a mayúsculas y eliminar espacios
+                      const valorNormalizado = e.target.value.toUpperCase().trim().replace(/\s+/g, '');
+                      setAdminToken(valorNormalizado);
+                    }}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-lg tracking-wider"
+                    placeholder="Escanea o ingresa el código..."
                     onKeyPress={(e) => e.key === 'Enter' && verificarAdmin()}
+                    autoFocus
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+                  <ScanLine className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 </div>
                 <p className="text-xs text-gray-500">
-                  Se requiere verificación de identidad para eliminar servicios
+                  Escanea el código QR de acceso rápido de cualquier administrador para autorizar esta acción
                 </p>
               </div>
 
@@ -207,7 +233,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
                 </button>
                 <button
                   onClick={verificarAdmin}
-                  disabled={loading || !adminPassword.trim()}
+                  disabled={loading || !adminToken.trim()}
                   className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading ? (
@@ -218,7 +244,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
                   ) : (
                     <>
                       <Shield size={16} />
-                      Verificar
+                      Verificar Token
                     </>
                   )}
                 </button>
@@ -229,13 +255,43 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
             /* PASO 2: Confirmación final */
             <div className="space-y-6">
               
+              {/* Admin verificado */}
+              {adminVerificado && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-medium text-green-900">Token verificado</p>
+                      <p className="text-xs text-green-700">{adminVerificado.nombre} ({adminVerificado.email})</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Confirmación final */}
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
                 <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-3" />
                 <h3 className="font-bold text-red-900 mb-2"> Confirmación Final</h3>
                 <p className="text-red-700 text-sm">
-                  Esta acción eliminará permanentemente el servicio y todos sus datos asociados.
-                  <br /><strong>No podrás recuperar esta información.</strong>
+                  Esta acción marcará el servicio como eliminado (soft-delete).
+                  <br />El servicio quedará oculto pero los datos se conservarán para auditoría.
+                </p>
+              </div>
+
+              {/* Campo de motivo de eliminación */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-900">
+                  Motivo de Eliminación <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={motivoEliminacion}
+                  onChange={(e) => setMotivoEliminacion(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                  placeholder="Describe el motivo por el cual se está eliminando este servicio (mínimo 10 caracteres)..."
+                  rows={4}
+                />
+                <p className="text-xs text-gray-500">
+                  {motivoEliminacion.length}/10 caracteres mínimos
                 </p>
               </div>
 
@@ -264,7 +320,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
                 </button>
                 <button
                   onClick={confirmarEliminacion}
-                  disabled={loading || confirmText !== `ELIMINAR-${servicio.id}`}
+                  disabled={loading || confirmText !== `ELIMINAR-${servicio.id}` || !motivoEliminacion.trim() || motivoEliminacion.trim().length < 10}
                   className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading ? (
@@ -275,7 +331,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
                   ) : (
                     <>
                       <Trash2 size={16} />
-                      Eliminar Definitivamente
+                      Eliminar Servicio
                     </>
                   )}
                 </button>

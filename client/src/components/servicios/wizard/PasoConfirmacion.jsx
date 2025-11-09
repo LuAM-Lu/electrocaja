@@ -3,10 +3,13 @@ import React, { useState } from 'react';
 import {
   User, Smartphone, Package, Calendar,
   DollarSign, Clock, Star, Camera,
-  MessageCircle, Printer, CheckCircle, Wrench
+  MessageCircle, Printer, CheckCircle, Wrench,
+  CreditCard
 } from 'lucide-react';
+import { useCajaStore } from '../../../store/cajaStore';
 
 export default function PasoConfirmacion({ datos, onActualizar, loading }) {
+  const { tasaCambio } = useCajaStore();
   const [opcionesProcesamiento, setOpcionesProcesamiento] = useState({
     enviarWhatsapp: false,
     imprimir: false
@@ -52,9 +55,32 @@ export default function PasoConfirmacion({ datos, onActualizar, loading }) {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-gray-400 text-sm">Técnico asignado:</span>
-                <span className="text-gray-100 font-medium">{datos.diagnostico.tecnico || 'No asignado'}</span>
+                <span className="text-gray-100 font-medium">
+                  {(() => {
+                    const tecnico = datos.diagnostico.tecnico;
+                    // Si es un objeto, extraer el nombre
+                    if (tecnico && typeof tecnico === 'object') {
+                      return tecnico.nombre || tecnico.email || 'No asignado';
+                    }
+                    // Si es un string, usarlo directamente
+                    return tecnico || 'No asignado';
+                  })()}
+                </span>
               </div>
-              
+
+              {datos.diagnostico.fechaEstimada && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Fecha estimada:</span>
+                  <span className="text-blue-400 font-medium">
+                    {new Date(datos.diagnostico.fechaEstimada + 'T00:00:00').toLocaleDateString('es-VE', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </span>
+                </div>
+              )}
+
               {datos.diagnostico.observaciones && (
                 <div>
                   <div className="text-gray-400 text-sm mb-1">Observaciones:</div>
@@ -88,10 +114,13 @@ export default function PasoConfirmacion({ datos, onActualizar, loading }) {
                     </div>
                     <div className="text-right">
                       <div className="text-gray-100 text-sm">
-                        {item.cantidad} × ${item.precio_unitario.toFixed(2)}
+                        {item.cantidad} × {(item.precio_unitario * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
                       </div>
                       <div className="text-emerald-400 font-semibold text-sm">
-                        ${(item.cantidad * item.precio_unitario).toFixed(2)}
+                        {(item.cantidad * item.precio_unitario * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        ${(item.cantidad * item.precio_unitario).toFixed(2)} USD
                       </div>
                     </div>
                   </div>
@@ -112,7 +141,10 @@ export default function PasoConfirmacion({ datos, onActualizar, loading }) {
                 <div className="flex justify-between text-sm">
                   <span className="text-emerald-200">Items/Servicios:</span>
                   <span className="text-emerald-100 font-medium">
-                    ${datos.items.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0).toFixed(2)}
+                    {(total * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                  </span>
+                  <span className="text-emerald-300/70 text-xs ml-2">
+                    (${total.toFixed(2)} USD)
                   </span>
                 </div>
               )}
@@ -120,9 +152,14 @@ export default function PasoConfirmacion({ datos, onActualizar, loading }) {
               <div className="border-t border-emerald-700/50 pt-2">
                 <div className="flex justify-between items-center">
                   <span className="text-emerald-100 font-semibold">Total Estimado:</span>
-                  <span className="text-emerald-100 font-bold text-xl">
-                    ${total.toFixed(2)}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-emerald-100 font-bold text-xl">
+                      {(total * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                    </span>
+                    <div className="text-emerald-300/70 text-xs">
+                      ${total.toFixed(2)} USD
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -133,6 +170,94 @@ export default function PasoConfirmacion({ datos, onActualizar, loading }) {
               )}
             </div>
           </div>
+
+          {/* MODALIDAD DE PAGO */}
+          {datos.modalidadPago && (
+            <div className="bg-gray-800/70 rounded-xl p-4 border border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-100 mb-3 flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-green-400" />
+                Modalidad de Pago
+              </h3>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Tipo:</span>
+                  <span className="text-gray-100 font-medium">
+                    {datos.modalidadPago === 'TOTAL_ADELANTADO' && 'Pago Total por Adelantado'}
+                    {datos.modalidadPago === 'ABONO' && 'Abono Inicial'}
+                    {datos.modalidadPago === 'PAGO_POSTERIOR' && 'Pago al Retirar'}
+                  </span>
+                </div>
+
+                {datos.pagoInicial && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400 text-sm">Monto pagado:</span>
+                      <div className="text-right">
+                        <span className="text-green-400 font-semibold">
+                          {(datos.pagoInicial.monto * tasaCambio || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                        </span>
+                        <div className="text-xs text-green-300/70">
+                          ${datos.pagoInicial.monto?.toFixed(2) || '0.00'} USD
+                        </div>
+                      </div>
+                    </div>
+
+                    {datos.modalidadPago === 'ABONO' && total > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400 text-sm">Saldo pendiente:</span>
+                        <div className="text-right">
+                          <span className="text-orange-400 font-semibold">
+                            {((total - (datos.pagoInicial.monto || 0)) * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                          </span>
+                          <div className="text-xs text-orange-300/70">
+                            ${(total - (datos.pagoInicial.monto || 0)).toFixed(2)} USD
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {datos.pagoInicial.pagos && datos.pagoInicial.pagos.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-gray-700">
+                        <div className="text-gray-400 text-xs mb-1">Métodos de pago:</div>
+                        <div className="flex flex-wrap gap-1">
+                          {datos.pagoInicial.pagos.map((pago, index) => {
+                            const montoBs = pago.moneda === 'bs' 
+                              ? parseFloat(pago.monto) 
+                              : parseFloat(pago.monto) * tasaCambio;
+                            const montoUsd = pago.moneda === 'usd' 
+                              ? parseFloat(pago.monto) 
+                              : parseFloat(pago.monto) / tasaCambio;
+                            
+                            const metodoLabel = pago.metodo === 'efectivo_bs' ? 'Efectivo Bs' :
+                              pago.metodo === 'efectivo_usd' ? 'Efectivo USD' :
+                              pago.metodo === 'pago_movil' ? 'Pago Móvil' :
+                              pago.metodo === 'transferencia' ? 'Transferencia' :
+                              pago.metodo === 'zelle' ? 'Zelle' :
+                              pago.metodo === 'binance' ? 'Binance' :
+                              pago.metodo === 'tarjeta' ? 'Tarjeta' : pago.metodo;
+                            
+                            return (
+                              <span key={index} className="text-xs bg-gray-700/50 px-2 py-1 rounded">
+                                {metodoLabel}: {montoBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                                {pago.moneda === 'usd' && ` ($${montoUsd.toFixed(2)})`}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {datos.modalidadPago === 'PAGO_POSTERIOR' && (
+                  <div className="bg-blue-900/20 border border-blue-700/50 rounded p-2 text-sm text-blue-200">
+                    El cliente pagará al retirar el dispositivo
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* COLUMNA DERECHA 40% - CLIENTE Y DISPOSITIVO */}
@@ -147,45 +272,93 @@ export default function PasoConfirmacion({ datos, onActualizar, loading }) {
             
             {datos.cliente ? (
               <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3">
-                <div className="space-y-2">
-                  {/* Grid 2x2 para información del cliente */}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <div>
-                      <div className="text-blue-300 text-xs">CI/RIF:</div>
-                      <div className="text-blue-100 font-semibold">
-                        {datos.cliente.cedula_rif || 'No especificado'}
+                {(() => {
+                  // ✅ Normalizar cliente: asegurar que sea un objeto con las propiedades correctas
+                  const clienteNormalizado = (() => {
+                    if (!datos.cliente) return null;
+                    
+                    // Si ya es un objeto con las propiedades correctas (sin id, createdAt, etc.)
+                    if (typeof datos.cliente === 'object' && !Array.isArray(datos.cliente)) {
+                      // Si tiene propiedades del backend (id, createdAt, etc.), extraer solo las necesarias
+                      if ('id' in datos.cliente || 'createdAt' in datos.cliente) {
+                        return {
+                          nombre: datos.cliente.nombre || '',
+                          telefono: datos.cliente.telefono || '',
+                          email: datos.cliente.email || '',
+                          direccion: datos.cliente.direccion || '',
+                          cedula_rif: datos.cliente.cedula_rif || ''
+                        };
+                      }
+                      // Si ya es el formato correcto, usarlo directamente
+                      return datos.cliente;
+                    }
+                    
+                    // Si es un string, crear objeto con ese nombre
+                    if (typeof datos.cliente === 'string') {
+                      return {
+                        nombre: datos.cliente,
+                        telefono: '',
+                        email: '',
+                        direccion: '',
+                        cedula_rif: ''
+                      };
+                    }
+                    
+                    return null;
+                  })();
+                  
+                  if (!clienteNormalizado) {
+                    return (
+                      <div className="text-gray-400 italic text-center py-4">
+                        No hay cliente seleccionado
                       </div>
-                    </div>
-                    <div>
-                      <div className="text-blue-300 text-xs">Nombre:</div>
-                      <div className="text-blue-100 font-semibold">
-                        {datos.cliente.nombre || 'No especificado'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-blue-300 text-xs">TLF:</div>
-                      <div className="text-blue-100 font-semibold">
-                        {datos.cliente.telefono || 'No especificado'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-blue-300 text-xs">Dirección:</div>
-                      <div className="text-blue-100 font-semibold text-xs">
-                        {datos.cliente.direccion || 'No especificada'}
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  }
+                  
+                  return (
+                    <>
+                      <div className="space-y-2">
+                        {/* Grid 2x2 para información del cliente */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                          <div>
+                            <div className="text-blue-300 text-xs">CI/RIF:</div>
+                            <div className="text-blue-100 font-semibold">
+                              {clienteNormalizado.cedula_rif || 'No especificado'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-blue-300 text-xs">Nombre:</div>
+                            <div className="text-blue-100 font-semibold">
+                              {clienteNormalizado.nombre || 'No especificado'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-blue-300 text-xs">TLF:</div>
+                            <div className="text-blue-100 font-semibold">
+                              {clienteNormalizado.telefono || 'No especificado'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-blue-300 text-xs">Dirección:</div>
+                            <div className="text-blue-100 font-semibold text-xs">
+                              {clienteNormalizado.direccion || 'No especificada'}
+                            </div>
+                          </div>
+                        </div>
 
-                  {/* Email en fila separada si existe */}
-                  {datos.cliente.email && (
-                    <div className="pt-1 border-t border-blue-700/30">
-                      <div className="text-blue-300 text-xs">Email:</div>
-                      <div className="text-blue-100 font-semibold text-xs">
-                        {datos.cliente.email}
+                        {/* Email en fila separada si existe */}
+                        {clienteNormalizado.email && (
+                          <div className="pt-1 border-t border-blue-700/30">
+                            <div className="text-blue-300 text-xs">Email:</div>
+                            <div className="text-blue-100 font-semibold text-xs">
+                              {clienteNormalizado.email}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
+                    </>
+                  );
+                })()}
               </div>
             ) : (
               <div className="text-gray-400 italic text-center py-4">

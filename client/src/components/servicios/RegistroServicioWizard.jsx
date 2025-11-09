@@ -1,16 +1,19 @@
 // components/servicios/RegistroServicioWizard.jsx - COMPLETO CON MODO EDICIÓN
 import React, { useState } from 'react';
 import {
-  X, User, Smartphone, ShoppingCart, CheckCircle, 
+  X, User, Smartphone, ShoppingCart, CheckCircle,
   ChevronLeft, ChevronRight, Save, Edit3, Eye
 } from 'lucide-react';
 import ClienteSelector from '../presupuesto/ClienteSelector';
 import ItemsTable from '../presupuesto/ItemsTable';
 import toast from '../../utils/toast.jsx';
+import { useServiciosStore } from '../../store/serviciosStore';
 
 // Pasos del wizard
 import PasoDispositivo from './wizard/PasoDispositivo';
+import PasoModalidadPago from './wizard/PasoModalidadPago';
 import PasoConfirmacion from './wizard/PasoConfirmacion';
+import { CreditCard } from 'lucide-react';
 
 const PASOS = [
   {
@@ -33,21 +36,30 @@ const PASOS = [
   },
   {
     id: 4,
+    titulo: 'Pago',
+    icono: <CreditCard className="h-5 w-5" />,
+    descripcion: 'Modalidad de pago'
+  },
+  {
+    id: 5,
     titulo: 'Confirmar',
     icono: <CheckCircle className="h-5 w-5" />,
     descripcion: 'Revisar y crear orden'
   }
 ];
 
-export default function RegistroServicioWizard({ 
-  isOpen, 
-  onClose, 
+export default function RegistroServicioWizard({
+  isOpen,
+  onClose,
   onServicioCreado,
   //  NUEVAS PROPS PARA MODO EDICIÓN
   modoEdicion = false,
   servicioAEditar = null,
   onServicioActualizado = null
 }) {
+  // Store de servicios
+  const { crearServicio, actualizarServicio } = useServiciosStore();
+
   // Inicializar en paso 3 si es modo edición
   const [pasoActual, setPasoActual] = useState(modoEdicion ? 3 : 1);
   const [loading, setLoading] = useState(false);
@@ -57,13 +69,46 @@ export default function RegistroServicioWizard({
     if (modoEdicion && servicioAEditar) {
       return {
         // Paso 1: Cliente (pre-cargado)
-        cliente: {
-          nombre: servicioAEditar.cliente,
-          telefono: servicioAEditar.telefono || '',
-          email: servicioAEditar.email || '',
-          direccion: servicioAEditar.direccion || '',
-          cedula_rif: servicioAEditar.cedula_rif || ''
-        },
+        cliente: (() => {
+          // Si cliente es un objeto del backend, extraer las propiedades
+          if (servicioAEditar.cliente && typeof servicioAEditar.cliente === 'object' && !Array.isArray(servicioAEditar.cliente)) {
+            return {
+              nombre: servicioAEditar.cliente.nombre || servicioAEditar.clienteNombre || '',
+              telefono: servicioAEditar.cliente.telefono || servicioAEditar.clienteTelefono || servicioAEditar.telefono || '',
+              email: servicioAEditar.cliente.email || servicioAEditar.clienteEmail || servicioAEditar.email || '',
+              direccion: servicioAEditar.cliente.direccion || servicioAEditar.clienteDireccion || servicioAEditar.direccion || '',
+              cedula_rif: servicioAEditar.cliente.cedula_rif || servicioAEditar.cedula_rif || ''
+            };
+          }
+          // Si cliente es un string (nombre), crear objeto con ese nombre
+          if (typeof servicioAEditar.cliente === 'string') {
+            return {
+              nombre: servicioAEditar.cliente,
+              telefono: servicioAEditar.telefono || servicioAEditar.clienteTelefono || '',
+              email: servicioAEditar.email || servicioAEditar.clienteEmail || '',
+              direccion: servicioAEditar.direccion || servicioAEditar.clienteDireccion || '',
+              cedula_rif: servicioAEditar.cedula_rif || ''
+            };
+          }
+          // Si hay clienteNombre como string separado
+          if (servicioAEditar.clienteNombre && typeof servicioAEditar.clienteNombre === 'string') {
+            return {
+              nombre: servicioAEditar.clienteNombre,
+              telefono: servicioAEditar.clienteTelefono || servicioAEditar.telefono || '',
+              email: servicioAEditar.clienteEmail || servicioAEditar.email || '',
+              direccion: servicioAEditar.clienteDireccion || servicioAEditar.direccion || '',
+              cedula_rif: servicioAEditar.cedula_rif || ''
+            };
+          }
+          // Fallback: objeto vacío
+          return {
+            nombre: '',
+            telefono: '',
+            email: '',
+            direccion: '',
+            cedula_rif: ''
+          };
+        })(),
         
         // Paso 2: Dispositivo & Diagnóstico (pre-cargado)
         dispositivo: {
@@ -77,20 +122,44 @@ export default function RegistroServicioWizard({
           evidencias: servicioAEditar.evidencias || []
         },
         diagnostico: {
-          tecnico: servicioAEditar.tecnico || '',
+          tecnico: (() => {
+            // Si tecnico es un objeto, extraer el nombre
+            if (servicioAEditar.tecnico && typeof servicioAEditar.tecnico === 'object') {
+              return servicioAEditar.tecnico.nombre || servicioAEditar.tecnico.email || '';
+            }
+            // Si es un string, usarlo directamente
+            if (typeof servicioAEditar.tecnico === 'string') {
+              return servicioAEditar.tecnico;
+            }
+            // Si hay tecnicoAsignado, usarlo
+            if (servicioAEditar.tecnicoAsignado && typeof servicioAEditar.tecnicoAsignado === 'string') {
+              return servicioAEditar.tecnicoAsignado;
+            }
+            // Fallback
+            return '';
+          })(),
+          tecnicoId: servicioAEditar.tecnicoId || 
+            (servicioAEditar.tecnico && typeof servicioAEditar.tecnico === 'object' ? servicioAEditar.tecnico.id : null) ||
+            null,
           estado: servicioAEditar.estado || 'En Diagnóstico',
-          observaciones: servicioAEditar.observaciones || ''
+          observaciones: servicioAEditar.observaciones || '',
+          fechaEstimada: servicioAEditar.fechaEstimada || ''
         },
         
         // Paso 3: Items (pre-cargados y editables)
-        items: (servicioAEditar.productos || []).map(p => ({
+        items: (servicioAEditar.items || servicioAEditar.productos || []).map(p => ({
           id: p.id || Date.now() + Math.random(),
-          descripcion: p.nombre,
-          cantidad: p.cantidad,
-          precio_unitario: p.precio,
-          esPersonalizado: p.esPersonalizado || false
+          descripcion: p.descripcion || p.nombre,
+          cantidad: p.cantidad || 1,
+          precio_unitario: p.precioUnitario || p.precio_unitario || p.precio || 0,
+          producto_id: p.productoId || p.producto_id || null, // ✅ Incluir productoId para manejo de stock
+          esPersonalizado: p.esPersonalizado || p.es_personalizado || false
         })),
-        
+
+        // Paso 4: Modalidad de Pago (pre-cargado)
+        modalidadPago: servicioAEditar.modalidadPago || 'PAGO_POSTERIOR',
+        pagoInicial: servicioAEditar.pagoInicial || null,
+
         // Totales
         subtotal: 0,
         total: 0
@@ -98,6 +167,11 @@ export default function RegistroServicioWizard({
     }
     
     // Datos vacíos para nuevo servicio
+    // Calcular fecha de mañana por defecto (+1 día)
+    const manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    const fechaManana = manana.toISOString().split('T')[0];
+
     return {
       cliente: null,
       dispositivo: {
@@ -112,10 +186,14 @@ export default function RegistroServicioWizard({
       },
       diagnostico: {
         tecnico: '',
+        tecnicoId: null,
         estado: 'En Diagnóstico',
-        observaciones: ''
+        observaciones: '',
+        fechaEstimada: fechaManana
       },
       items: [],
+      modalidadPago: 'PAGO_POSTERIOR',
+      pagoInicial: null,
       subtotal: 0,
       total: 0
     };
@@ -162,6 +240,9 @@ export default function RegistroServicioWizard({
           if (!datosServicio.diagnostico.tecnico) {
             errores.tecnico = 'Debe asignar un técnico';
           }
+          if (!datosServicio.diagnostico.fechaEstimada) {
+            errores.fechaEstimada = 'Debe indicar la fecha estimada de entrega';
+          }
         }
         break;
 
@@ -170,6 +251,17 @@ export default function RegistroServicioWizard({
         const itemsInvalidos = datosServicio.items.filter(item => item.cantidad <= 0);
         if (itemsInvalidos.length > 0) {
           errores.items = 'Todos los items deben tener cantidad mayor a 0';
+        }
+        break;
+
+      case 4:
+        // Validar modalidad de pago solo si NO es modo edición
+        if (!modoEdicion) {
+          const { modalidadPago, pagoInicial } = datosServicio;
+          if ((modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO') &&
+              (!pagoInicial || !pagoInicial.pagos || pagoInicial.pagos.length === 0)) {
+            errores.pago = 'Debes registrar el pago inicial';
+          }
         }
         break;
     }
@@ -181,8 +273,8 @@ export default function RegistroServicioWizard({
   // Navegación
   const irAlPaso = (numeroPaso) => {
     if (modoEdicion) {
-      // En modo edición, solo permitir pasos 3 y 4
-      if (numeroPaso >= 3 && numeroPaso <= 4) {
+      // En modo edición, solo permitir pasos 3, 4 y 5
+      if (numeroPaso >= 3 && numeroPaso <= 5) {
         setPasoActual(numeroPaso);
         setErroresPaso({});
       }
@@ -198,7 +290,12 @@ export default function RegistroServicioWizard({
   const siguientePaso = () => {
     if (validarPaso(pasoActual)) {
       if (pasoActual < PASOS.length) {
-        setPasoActual(pasoActual + 1);
+        // En modo edición, saltar del paso 3 al paso 5 (omitir pago)
+        if (modoEdicion && pasoActual === 3) {
+          setPasoActual(5);
+        } else {
+          setPasoActual(pasoActual + 1);
+        }
         setErroresPaso({});
       }
     }
@@ -206,9 +303,9 @@ export default function RegistroServicioWizard({
 
   const pasoAnterior = () => {
     if (modoEdicion) {
-      // En modo edición, solo permitir retroceder al paso 3
-      if (pasoActual > 3) {
-        setPasoActual(pasoActual - 1);
+      // En modo edición, solo permitir retroceder entre pasos 3 y 5
+      if (pasoActual === 5) {
+        setPasoActual(3); // Saltar de 5 a 3 (omitir paso 4)
         setErroresPaso({});
       }
     } else {
@@ -230,76 +327,93 @@ export default function RegistroServicioWizard({
 
   // Finalizar y crear/actualizar servicio
   const finalizarAccion = async () => {
-    if (!validarPaso(4)) return;
+    if (!validarPaso(5)) return;
 
     setLoading(true);
     try {
-      // Simular procesamiento
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       if (modoEdicion) {
-        //  MODO EDICIÓN - ACTUALIZAR SERVICIO EXISTENTE
-        const servicioActualizado = {
-          ...servicioAEditar,
-          productos: datosServicio.items.map(item => ({
-            id: item.id || Date.now() + Math.random(),
-            nombre: item.descripcion,
+        // 🔧 MODO EDICIÓN - ACTUALIZAR SERVICIO EXISTENTE VÍA API
+        const datosActualizacion = {
+          items: datosServicio.items.map(item => ({
+            productoId: item.producto_id || item.productoId || null, // ✅ Enviar como productoId (backend espera este formato)
+            descripcion: item.descripcion,
             cantidad: item.cantidad,
-            precio: item.precio_unitario,
+            precio_unitario: item.precio_unitario,
             esPersonalizado: item.esPersonalizado || false
           })),
-          total: `$${datosServicio.items.reduce((sum, item) => 
-            sum + (item.cantidad * item.precio_unitario), 0).toFixed(2)}`,
-          observaciones: datosServicio.diagnostico.observaciones,
-          ultimaActualizacion: new Date().toISOString()
+          observaciones: datosServicio.diagnostico?.observaciones || null
         };
 
-        onServicioActualizado?.(servicioActualizado);
-        toast.success('Servicio actualizado exitosamente');
-        
+        const servicioActualizado = await actualizarServicio(
+          servicioAEditar.id,
+          datosActualizacion
+        );
+
+        toast.success('✅ Servicio actualizado exitosamente');
+        if (onServicioActualizado) {
+          onServicioActualizado(servicioActualizado);
+        }
+
       } else {
-        //  MODO CREACIÓN - CREAR NUEVO SERVICIO
-        const nuevoServicio = {
-          id: Date.now(),
-          cliente: datosServicio.cliente.nombre,
-          telefono: datosServicio.cliente.telefono,
-          email: datosServicio.cliente.email,
-          direccion: datosServicio.cliente.direccion,
-          cedula_rif: datosServicio.cliente.cedula_rif,
-          dispositivo: `${datosServicio.dispositivo.marca} ${datosServicio.dispositivo.modelo}`,
-          color: datosServicio.dispositivo.color,
-          imei: datosServicio.dispositivo.imei,
-          accesorios: datosServicio.dispositivo.accesorios,
-          problema: datosServicio.dispositivo.problema,
-          problemas: datosServicio.dispositivo.problemas,
-          evidencias: datosServicio.dispositivo.evidencias,
-          estado: datosServicio.diagnostico.estado,
-          fechaIngreso: new Date().toISOString(),
-          fechaEntrega: datosServicio.diagnostico.fechaEstimada,
-          total: `$${datosServicio.items.reduce((sum, item) => 
-            sum + (item.cantidad * item.precio_unitario), 0).toFixed(2)}`,
-          tecnico: datosServicio.diagnostico.tecnico,
-          observaciones: datosServicio.diagnostico.observaciones,
-          productos: datosServicio.items.map(item => ({
-            id: item.id || Date.now() + Math.random(),
-            nombre: item.descripcion,
+        // 🔧 MODO CREACIÓN - CREAR NUEVO SERVICIO VÍA API
+        const datosCreacion = {
+          // Cliente
+          cliente: {
+            id: datosServicio.cliente?.id || null,
+            nombre: datosServicio.cliente?.nombre || '',
+            telefono: datosServicio.cliente?.telefono || null,
+            email: datosServicio.cliente?.email || null,
+            direccion: datosServicio.cliente?.direccion || null,
+            cedula_rif: datosServicio.cliente?.cedula_rif || null
+          },
+
+          // Dispositivo
+          dispositivo: {
+            marca: datosServicio.dispositivo.marca,
+            modelo: datosServicio.dispositivo.modelo,
+            color: datosServicio.dispositivo.color || null,
+            imei: datosServicio.dispositivo.imei,
+            patron: datosServicio.dispositivo.patron || null,
+            accesorios: datosServicio.dispositivo.accesorios || [],
+            problema: datosServicio.dispositivo.problema ||
+                     datosServicio.dispositivo.problemas?.join(', ') || '',
+            evidencias: datosServicio.dispositivo.evidencias || []
+          },
+
+          // Diagnóstico
+          diagnostico: {
+            tecnico: datosServicio.diagnostico.tecnico || '',
+            tecnicoId: datosServicio.diagnostico.tecnicoId || null,
+            observaciones: datosServicio.diagnostico.observaciones || null,
+            fechaEstimadaEntrega: datosServicio.diagnostico.fechaEstimada || null
+          },
+
+          // Items/Productos
+          items: datosServicio.items.map(item => ({
+            producto_id: item.producto_id || null,
+            descripcion: item.descripcion,
             cantidad: item.cantidad,
-            precio: item.precio_unitario,
-            esPersonalizado: item.esPersonalizado || false
+            precio_unitario: item.precio_unitario
           })),
-          notasTecnicas: [],
-          historialNotas: []
+
+          // Modalidad de pago
+          modalidadPago: datosServicio.modalidadPago,
+          pagoInicial: datosServicio.pagoInicial || null
         };
 
-        onServicioCreado?.(nuevoServicio);
-        toast.success('Orden de servicio creada exitosamente');
+        const nuevoServicio = await crearServicio(datosCreacion);
+
+        toast.success('✅ Orden de servicio creada exitosamente');
+        if (onServicioCreado) {
+          onServicioCreado(nuevoServicio);
+        }
       }
-      
+
       onClose();
 
     } catch (error) {
       console.error('Error procesando servicio:', error);
-      toast.error('Error al procesar la solicitud');
+      toast.error(error.message || 'Error al procesar la solicitud');
     } finally {
       setLoading(false);
     }
@@ -415,12 +529,12 @@ export default function RegistroServicioWizard({
         <div className="flex-1 overflow-y-auto p-8 bg-gray-900">
           {pasoActual === 1 && (
             <div className="max-w-2xl mx-auto">
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-xl font-semibold text-gray-100">
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                <h2 className="text-xs font-medium text-gray-500">
                    {modoEdicion ? 'Cliente del Servicio' : 'Seleccionar Cliente'}
                 </h2>
                 {modoEdicion && (
-                  <span className="px-3 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm font-medium">
+                  <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-300 rounded text-[10px]">
                     Solo lectura
                   </span>
                 )}
@@ -440,12 +554,12 @@ export default function RegistroServicioWizard({
 
           {pasoActual === 2 && (
             <div>
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-xl font-semibold text-gray-100">
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                <h2 className="text-xs font-medium text-gray-500">
                    {modoEdicion ? 'Información del Dispositivo' : 'Dispositivo y Diagnóstico'}
                 </h2>
                 {modoEdicion && (
-                  <span className="px-3 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm font-medium">
+                  <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-300 rounded text-[10px]">
                     Solo lectura
                   </span>
                 )}
@@ -463,12 +577,12 @@ export default function RegistroServicioWizard({
 
           {pasoActual === 3 && (
             <div className="max-w-5xl mx-auto">
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-xl font-semibold text-gray-100">
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                <h2 className="text-xs font-medium text-gray-500">
                    {modoEdicion ? 'Editar Productos y Servicios' : 'Productos y Servicios (Opcional)'}
                 </h2>
                 {modoEdicion && (
-                  <span className="px-3 py-1 bg-green-600/20 text-green-300 rounded-full text-sm font-medium">
+                  <span className="px-1.5 py-0.5 bg-green-600/20 text-green-300 rounded text-[10px]">
                     Editable
                   </span>
                 )}
@@ -490,13 +604,35 @@ export default function RegistroServicioWizard({
           )}
 
           {pasoActual === 4 && (
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-center mb-1.5">
+                <h2 className="text-xs font-medium text-gray-500">
+                  Modalidad de Pago
+                </h2>
+              </div>
+
+              <PasoModalidadPago
+                datos={datosServicio}
+                onActualizar={(datosPago) => {
+                  setDatosServicio(prev => ({
+                    ...prev,
+                    ...datosPago
+                  }));
+                }}
+                errores={erroresPaso}
+                loading={loading}
+              />
+            </div>
+          )}
+
+          {pasoActual === 5 && (
             <div>
-              <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-xl font-semibold text-gray-100">
+              <div className="flex items-center justify-center mb-1.5">
+                <h2 className="text-xs font-medium text-gray-500">
                    {modoEdicion ? 'Confirmar Cambios' : 'Confirmar y Crear'}
                 </h2>
               </div>
-              
+
               <PasoConfirmacion
                 datos={datosServicio}
                 onActualizar={actualizarDatos}
@@ -520,9 +656,9 @@ export default function RegistroServicioWizard({
             </button>
 
             <div className="text-center text-gray-400 text-sm">
-              {pasoActual === 4 
-                ? modoEdicion 
-                  ? '¡Listo para actualizar!' 
+              {pasoActual === 5
+                ? modoEdicion
+                  ? '¡Listo para actualizar!'
                   : '¡Listo para crear!'
                 : `Paso ${pasoActual} de ${PASOS.length}`
               }

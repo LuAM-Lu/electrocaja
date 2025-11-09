@@ -3,12 +3,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   X, User, Clock, CheckCircle, StickyNote, Save, XCircle, Plus, CalendarDays, 
   Edit3, Trash2, MessageSquarePlus, Camera, Mic, AlertTriangle, Eye, EyeOff,
-  History, Settings, FileText, Package, CameraIcon, StopCircle
+  History, Settings, FileText, Package, CameraIcon, Zap
 } from 'lucide-react';
 import toast from '../../utils/toast.jsx';
+import { useServiciosStore } from '../../store/serviciosStore';
 
 // ====== Estados (SIN "Entregado") ======
 const estadosConEstilo = {
+  'Recibido': {
+    color: 'bg-gradient-to-r from-purple-400 to-purple-600',
+    headerColor: 'bg-gradient-to-r from-purple-800 to-purple-900',
+    textColor: 'text-gray-100',
+    icon: <Clock size={14} className="text-white" />
+  },
   'En Diagnóstico': {
     color: 'bg-gradient-to-r from-amber-700 to-yellow-800',
     headerColor: 'bg-gradient-to-r from-amber-800 to-yellow-900',
@@ -32,7 +39,72 @@ const estadosConEstilo = {
     headerColor: 'bg-gradient-to-r from-emerald-800 to-green-900',
     textColor: 'text-emerald-100',
     icon: <CheckCircle size={14} className="text-white" />
+  },
+  'Entregado': {
+    color: 'bg-gradient-to-r from-gray-800 to-gray-900',
+    headerColor: 'bg-gradient-to-r from-gray-900 to-slate-900',
+    textColor: 'text-gray-200',
+    icon: <Package size={14} className="text-white" />
   }
+};
+
+// Función para obtener colores de un estado (acepta formato backend o frontend)
+const obtenerColorEstado = (estado) => {
+  // Normalizar estado: convertir EN_DIAGNOSTICO -> En Diagnóstico
+  let estadoNormalizado = estado;
+  if (estado.includes('_')) {
+    estadoNormalizado = estado.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  
+  const config = estadosConEstilo[estadoNormalizado] || estadosConEstilo['En Diagnóstico'];
+  
+  // Determinar colores específicos según el estado
+  let bgColor, textColor, borderColor, iconColor;
+  
+  if (estadoNormalizado === 'Recibido') {
+    bgColor = 'bg-gradient-to-r from-purple-400 to-purple-600';
+    textColor = 'text-gray-100';
+    borderColor = 'border-purple-500/30';
+    iconColor = 'bg-purple-400';
+  } else if (estadoNormalizado === 'En Diagnóstico') {
+    bgColor = 'bg-gradient-to-r from-amber-700 to-yellow-800';
+    textColor = 'text-amber-100';
+    borderColor = 'border-amber-500/30';
+    iconColor = 'bg-amber-400';
+  } else if (estadoNormalizado === 'Esperando Aprobación') {
+    bgColor = 'bg-gradient-to-r from-orange-700 to-red-800';
+    textColor = 'text-orange-100';
+    borderColor = 'border-orange-500/30';
+    iconColor = 'bg-orange-400';
+  } else if (estadoNormalizado === 'En Reparación') {
+    bgColor = 'bg-gradient-to-r from-red-800 to-red-900';
+    textColor = 'text-red-100';
+    borderColor = 'border-red-500/30';
+    iconColor = 'bg-red-400';
+  } else if (estadoNormalizado === 'Listo para Retiro') {
+    bgColor = 'bg-gradient-to-r from-emerald-700 to-green-800';
+    textColor = 'text-emerald-100';
+    borderColor = 'border-emerald-500/30';
+    iconColor = 'bg-emerald-400';
+  } else if (estadoNormalizado === 'Entregado') {
+    bgColor = 'bg-gradient-to-r from-gray-800 to-gray-900';
+    textColor = 'text-gray-200';
+    borderColor = 'border-gray-500/30';
+    iconColor = 'bg-gray-400';
+  } else {
+    // Default
+    bgColor = config.color;
+    textColor = config.textColor;
+    borderColor = 'border-amber-500/30';
+    iconColor = 'bg-amber-400';
+  }
+  
+  return {
+    bg: bgColor,
+    text: textColor,
+    border: borderColor,
+    icon: iconColor
+  };
 };
 
 // ====== Utils ======
@@ -43,6 +115,44 @@ const formatearHora = (date) =>
   new Date(date).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
 
 const uid = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+// Mapeo de estados backend -> frontend
+const mapearEstadoAFrontend = (estadoBackend) => {
+  const mapa = {
+    'EN_DIAGNOSTICO': 'En Diagnóstico',
+    'ESPERANDO_APROBACION': 'Esperando Aprobación',
+    'EN_REPARACION': 'En Reparación',
+    'LISTO_RETIRO': 'Listo para Retiro',
+    'RECIBIDO': 'Recibido',
+    'ENTREGADO': 'Entregado',
+    'CANCELADO': 'Cancelado'
+  };
+  return mapa[estadoBackend] || 'En Diagnóstico';
+};
+
+// Mapeo de estados frontend -> backend
+const mapearEstadoABackend = (estadoFrontend) => {
+  const mapa = {
+    'En Diagnóstico': 'EN_DIAGNOSTICO',
+    'Esperando Aprobación': 'ESPERANDO_APROBACION',
+    'En Reparación': 'EN_REPARACION',
+    'Listo para Retiro': 'LISTO_RETIRO',
+    'Recibido': 'RECIBIDO',
+    'Entregado': 'ENTREGADO',
+    'Cancelado': 'CANCELADO'
+  };
+  return mapa[estadoFrontend] || estadoFrontend;
+};
+
+// Mapeo de tipos de nota frontend -> backend
+const mapearTipoNotaABackend = (tipoFrontend) => {
+  const mapa = {
+    'texto': 'TEXTO',
+    'imagen': 'IMAGEN',
+    'audio': 'AUDIO'
+  };
+  return mapa[tipoFrontend] || 'TEXTO';
+};
 
 async function fileToDataURL(file) {
   return new Promise((resolve, reject) => {
@@ -75,23 +185,66 @@ async function compressImageToDataURL(file, maxSide = 1280, quality = 0.8) {
   });
 }
 
-export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
+export default function ModalEditarServicio({ servicio: servicioInicial, onClose, onGuardar }) {
+  // Store de servicios
+  const { cambiarEstado, actualizarServicio, agregarNota, obtenerServicio } = useServiciosStore();
+  const [servicio, setServicio] = useState(servicioInicial);
+  const [loadingServicio, setLoadingServicio] = useState(false);
+
+  // Recargar servicio desde backend al abrir el modal
+  useEffect(() => {
+    if (servicioInicial?.id) {
+      setLoadingServicio(true);
+      obtenerServicio(servicioInicial.id)
+        .then(servicioCompleto => {
+          if (servicioCompleto) {
+            setServicio(servicioCompleto);
+          }
+        })
+        .catch(error => {
+          console.error('Error cargando servicio:', error);
+          toast.error('Error al cargar servicio desde el servidor');
+        })
+        .finally(() => {
+          setLoadingServicio(false);
+        });
+    }
+  }, [servicioInicial?.id, obtenerServicio]);
+
   if (!servicio) return null;
 
   // ======= STATE =======
-  const estadosDisponibles = Object.keys(estadosConEstilo);
-  const estadoInicialValido = estadosDisponibles.includes(servicio?.estado) ? servicio?.estado : 'En Diagnóstico';
+  const estadosDisponibles = Object.keys(estadosConEstilo).filter(
+    estado => estado !== 'Recibido' && estado !== 'Entregado'
+  );
+  // Normalizar estado desde backend (ENUM) a frontend (string legible)
+  const estadoBackend = servicio?.estado || 'EN_DIAGNOSTICO';
+  const estadoNormalizado = mapearEstadoAFrontend(estadoBackend);
+  // Si el estado actual es "Recibido" o "Entregado", usar "En Diagnóstico" como default
+  const estadoInicialValido = estadosDisponibles.includes(estadoNormalizado) 
+    ? estadoNormalizado 
+    : (estadoNormalizado === 'Recibido' || estadoNormalizado === 'Entregado' 
+        ? 'En Diagnóstico' 
+        : 'En Diagnóstico');
 
   const [estado, setEstado] = useState(estadoInicialValido);
   const [nota, setNota] = useState('');
-  const [nuevaFecha, setNuevaFecha] = useState(servicio?.fechaEntrega || '');
+  // Normalizar fecha desde backend
+  const fechaInicial = servicio?.fechaEntregaEstimada 
+    ? new Date(servicio.fechaEntregaEstimada).toISOString().split('T')[0]
+    : '';
+  const [nuevaFecha, setNuevaFecha] = useState(fechaInicial);
   const [loading, setLoading] = useState(false);
 
-  // Notas en edición (draft) -> incluyen las del backend + locales previas
-  const [notasDraft, setNotasDraft] = useState([]);
+  // Notas del backend (solo lectura)
+  const [notasBackend, setNotasBackend] = useState([]);
+  // Notas nuevas en draft (se guardan al hacer clic en Guardar)
+  const [notasNuevas, setNotasNuevas] = useState([]);
+  // Notas combinadas para mostrar (backend + nuevas)
+  const notasDraft = [...notasBackend, ...notasNuevas];
 
-  //  ESTADOS DE CÁMARA MÓVIL
-  const [camaraActiva, setCamaraActiva] = useState(false);
+  //  ESTADOS DE CÁMARA MÓVIL - Modal separado
+  const [showModalCamara, setShowModalCamara] = useState(false);
   const [streamActual, setStreamActual] = useState(null);
   const [facingMode, setFacingMode] = useState('environment'); // 'user' para frontal, 'environment' para trasera
   
@@ -106,42 +259,118 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
   const audioChunksRef = useRef([]);
 
   // Cálculos
-  const tecnicoAsignado = servicio?.tecnico || 'Técnico';
   const estadoConfig = estadosConEstilo[estado] || estadosConEstilo['En Diagnóstico'];
-  const historialKey = `historial_servicio_${servicio.id}`;
+  
+  // 🔧 Extraer nombre del técnico (puede ser objeto o string)
+  const tecnicoAsignado = (() => {
+    // Si ya es un string, usarlo directamente
+    if (typeof servicio?.tecnicoAsignado === 'string') {
+      return servicio.tecnicoAsignado;
+    }
+    
+    // Si tecnico es un objeto, extraer el nombre
+    if (servicio?.tecnico && typeof servicio.tecnico === 'object') {
+      return servicio.tecnico.nombre || servicio.tecnico.email || 'Sin asignar';
+    }
+    
+    // Si tecnico es un string, usarlo
+    if (typeof servicio?.tecnico === 'string') {
+      return servicio.tecnico;
+    }
+    
+    // Fallback
+    return 'Sin asignar';
+  })();
+  
+  // 🔧 Extraer nombre del cliente (puede ser objeto o string)
+  const clienteNombre = servicio?.clienteNombre || 
+    (typeof servicio?.cliente === 'object' && servicio?.cliente?.nombre) || 
+    servicio?.cliente || 
+    'Sin nombre';
+  
+  // 🔧 Extraer datos del dispositivo
+  const dispositivoTexto = servicio?.dispositivo || 
+    (servicio?.dispositivoMarca && servicio?.dispositivoModelo 
+      ? `${servicio.dispositivoMarca} ${servicio.dispositivoModelo}`.trim()
+      : servicio?.dispositivoMarca || servicio?.dispositivoModelo || '—');
 
   // Detectar si es móvil
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   // ======= EFFECTS =======
   useEffect(() => {
-    // Cargar notas guardadas en localStorage (si existen) y unir con backend
-    let saved = [];
-    try {
-      const raw = localStorage.getItem(historialKey);
-      if (raw) saved = JSON.parse(raw) || [];
-    } catch (_) {}
-    const base = (servicio?.notasTecnicas || []).map((n) => ({ ...n }));
-    const merged = [...base, ...saved].map((n) => ({ id: n.id || uid(), ...n }));
-    setNotasDraft(merged);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicio?.id]);
+    // 🔧 Cargar notas del backend (solo lectura)
+    if (!servicio?.notas) {
+      setNotasBackend([]);
+      return;
+    }
+    
+    const notasDelBackend = servicio.notas || [];
+    // Normalizar notas del backend para mostrar en el UI
+    const notasNormalizadas = notasDelBackend.map((n) => ({ 
+      id: n.id, // Usar ID del backend
+      esDelBackend: true, // Marcar como nota del backend
+      tipo: (n.tipo?.toLowerCase() || 'texto'),
+      contenido: n.contenido || '',
+      texto: n.contenido || '', // Para compatibilidad con el UI
+      archivoUrl: n.archivoUrl || null,
+      imagen: n.archivoUrl && (n.tipo === 'IMAGEN' || n.tipo === 'imagen') ? n.archivoUrl : null,
+      audio: n.archivoUrl && (n.tipo === 'AUDIO' || n.tipo === 'audio') ? n.archivoUrl : null,
+      fecha: n.fecha || n.createdAt || new Date().toISOString(),
+      tecnico: (() => {
+        // Si n.tecnico es un objeto, extraer el nombre
+        if (n.tecnico && typeof n.tecnico === 'object') {
+          return n.tecnico.nombre || n.tecnico.email || tecnicoAsignado;
+        }
+        // Si es un string, usarlo directamente
+        if (typeof n.tecnico === 'string') {
+          return n.tecnico;
+        }
+        // Fallback
+        return tecnicoAsignado;
+      })(),
+      estadoAnterior: n.estadoAnterior || null,
+      estadoNuevo: n.estadoNuevo || null
+    }));
+    
+    setNotasBackend(notasNormalizadas);
+    // Limpiar notas nuevas cuando cambia el servicio
+    setNotasNuevas([]);
+  }, [servicio?.notas, servicio?.id, tecnicoAsignado]);
 
-  // Limpiar stream al cerrar
+  // Inicializar video cuando se abre el modal
   useEffect(() => {
+    if (showModalCamara && streamActual && videoRef.current) {
+      videoRef.current.srcObject = streamActual;
+      videoRef.current.play().catch(err => {
+        console.error('Error reproduciendo video:', err);
+      });
+    }
+  }, [showModalCamara, streamActual]);
+
+  // Limpiar stream al cerrar modal de cámara
+  useEffect(() => {
+    if (!showModalCamara && streamActual) {
+      streamActual.getTracks().forEach(track => track.stop());
+      setStreamActual(null);
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    }
     return () => {
       if (streamActual) {
         streamActual.getTracks().forEach(track => track.stop());
       }
     };
-  }, [streamActual]);
+  }, [showModalCamara, streamActual]);
 
   // ======= FUNCIONES DE CÁMARA =======
-  const iniciarCamara = async () => {
+  const abrirModalCamara = async () => {
     try {
       // Detener stream anterior si existe
       if (streamActual) {
         streamActual.getTracks().forEach(track => track.stop());
+        setStreamActual(null);
       }
 
       const constraints = {
@@ -153,91 +382,140 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      setStreamActual(stream);
+      setShowModalCamara(true);
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setStreamActual(stream);
-        setCamaraActiva(true);
-        toast.success('Cámara activada');
-      }
+      // Esperar a que el modal se monte antes de asignar el stream al video
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
     } catch (error) {
       console.error('Error accediendo a la cámara:', error);
-      toast.error('No se pudo acceder a la cámara');
+      toast.error('No se pudo acceder a la cámara. Verifica los permisos.');
+      setShowModalCamara(false);
     }
   };
 
-  const detenerCamara = () => {
+  const cerrarModalCamara = () => {
     if (streamActual) {
       streamActual.getTracks().forEach(track => track.stop());
       setStreamActual(null);
     }
-    setCamaraActiva(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setShowModalCamara(false);
   };
 
   const cambiarCamara = async () => {
     const nuevaFacing = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(nuevaFacing);
     
-    if (camaraActiva) {
-      detenerCamara();
-      // Pequeño delay para que se libere la cámara anterior
-      setTimeout(() => {
-        iniciarCamara();
-      }, 100);
+    if (streamActual) {
+      streamActual.getTracks().forEach(track => track.stop());
+      setStreamActual(null);
     }
+    
+    // Pequeño delay para que se libere la cámara anterior
+    setTimeout(async () => {
+      try {
+        const constraints = {
+          video: {
+            width: { ideal: 1920, max: 1920 },
+            height: { ideal: 1080, max: 1080 },
+            facingMode: nuevaFacing
+          }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setStreamActual(stream);
+        }
+      } catch (error) {
+        console.error('Error cambiando cámara:', error);
+        toast.error('Error al cambiar cámara');
+      }
+    }, 100);
   };
 
-  const tomarFoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
+  const capturarFoto = () => {
+    if (!videoRef.current) {
+      toast.error('La cámara no está lista');
+      return;
+    }
+
+    try {
+      // Crear canvas temporal si no existe
+      const canvas = canvasRef.current || document.createElement('canvas');
       const video = videoRef.current;
-      const context = canvas.getContext('2d');
       
+      if (!video.videoWidth || !video.videoHeight) {
+        toast.error('El video aún no está listo. Espera un momento.');
+        return;
+      }
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
       context.drawImage(video, 0, 0);
       
       const dataURL = canvas.toDataURL('image/jpeg', 0.8);
       
-      const nuevaEvidencia = {
-        id: uid(),
+      // Agregar foto al draft (no se guarda hasta hacer clic en Guardar)
+      const nuevaNota = {
+        id: uid(), // ID temporal
+        esDelBackend: false, // Es una nota nueva
         tipo: 'imagen',
-        texto: nota.trim() || '',
-        fecha: new Date().toISOString(),
-        tecnico: tecnicoAsignado,
+        contenido: '',
+        texto: '', // Se puede escribir después
         imagen: dataURL,
-        nombreArchivo: `captura_${Date.now()}.jpg`,
-        mime: 'image/jpeg'
+        archivoUrl: dataURL,
+        fecha: new Date().toISOString(),
+        tecnico: tecnicoAsignado
       };
-
-      setNotasDraft(prev => [...prev, nuevaEvidencia]);
-      setNota('');
-      toast.success('Foto capturada y agregada al historial');
       
-      detenerCamara();
+      setNotasNuevas(prev => [...prev, nuevaNota]);
+      cerrarModalCamara();
+      toast.success('Foto capturada. Escribe una descripción y haz clic en Guardar para guardarla.');
+    } catch (error) {
+      console.error('Error capturando foto:', error);
+      toast.error('Error al capturar la foto');
     }
   };
 
-  // ======= NOTAS (Draft) =======
+  // ======= NOTAS (Draft - se guardan al hacer clic en Guardar) =======
   const handleAgregarNotaRapida = () => {
     if (!nota.trim()) return toast.error('Escriba una nota antes de agregar');
-    setNotasDraft((prev) => [
-      ...prev,
-      {
-        id: uid(),
-        tipo: 'texto',
-        texto: nota.trim(),
-        fecha: new Date().toISOString(),
-        tecnico: tecnicoAsignado
-      }
-    ]);
+    
+    // Agregar nota al draft
+    const nuevaNota = {
+      id: uid(),
+      esDelBackend: false,
+      tipo: 'texto',
+      contenido: nota.trim(),
+      texto: nota.trim(),
+      fecha: new Date().toISOString(),
+      tecnico: tecnicoAsignado
+    };
+    
+    setNotasNuevas(prev => [...prev, nuevaNota]);
     setNota('');
     toast.success('Nota agregada (pendiente de guardar)');
   };
 
   const handleEliminarNota = (id) => {
-    setNotasDraft((prev) => prev.filter((n) => n.id !== id));
-    toast.success('Nota eliminada (pendiente de guardar)');
+    // Solo se pueden eliminar notas nuevas (draft), no las del backend
+    setNotasNuevas(prev => prev.filter(n => n.id !== id));
+    toast.success('Nota eliminada del draft');
+  };
+
+  const handleEditarNotaNueva = (id, nuevoTexto) => {
+    // Solo se pueden editar notas nuevas
+    setNotasNuevas(prev => prev.map(n => 
+      n.id === id ? { ...n, texto: nuevoTexto, contenido: nuevoTexto } : n
+    ));
   };
 
   const handleAdjuntarImagen = () => {
@@ -252,27 +530,24 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
 
     try {
       const dataURL = await compressImageToDataURL(file, 1280, 0.8);
-      const approxSizeKB = Math.round((dataURL.length * 3) / 4 / 1024);
-      if (approxSizeKB > 900) {
-        toast.error('Imagen muy grande para almacenamiento local (≥900KB). Intenta otra más ligera.');
-        return;
-      }
-
-      setNotasDraft((prev) => [
-        ...prev,
-        {
-          id: uid(),
-          tipo: 'imagen',
-          texto: nota.trim() || '',
-          fecha: new Date().toISOString(),
-          tecnico: tecnicoAsignado,
-          imagen: dataURL,
-          nombreArchivo: file.name,
-          mime: 'image/jpeg'
-        }
-      ]);
+      
+      // Agregar imagen al draft
+      const nuevaNota = {
+        id: uid(),
+        esDelBackend: false,
+        tipo: 'imagen',
+        contenido: nota.trim() || `Imagen: ${file.name}`,
+        texto: nota.trim() || `Imagen: ${file.name}`,
+        imagen: dataURL,
+        archivoUrl: dataURL,
+        nombreArchivo: file.name,
+        fecha: new Date().toISOString(),
+        tecnico: tecnicoAsignado
+      };
+      
+      setNotasNuevas(prev => [...prev, nuevaNota]);
       setNota('');
-      toast.success('Imagen añadida (pendiente de guardar)');
+      toast.success('Imagen agregada (pendiente de guardar)');
     } catch (err) {
       console.error(err);
       toast.error('No se pudo procesar la imagen');
@@ -281,58 +556,123 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
 
   const handleNotaVoz = async () => {
     if (!grabando) {
+      // Iniciar grabación
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const rec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        const mimeTypes = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'];
+        let mimeType = 'audio/webm';
+        
+        // Verificar qué tipo de audio soporta el navegador
+        for (const mime of mimeTypes) {
+          if (MediaRecorder.isTypeSupported(mime)) {
+            mimeType = mime;
+            break;
+          }
+        }
+
+        const rec = new MediaRecorder(stream, { mimeType });
         audioChunksRef.current = [];
-        rec.ondataavailable = (ev) => ev.data.size && audioChunksRef.current.push(ev.data);
-        rec.onstop = async () => {
-          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        rec.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) {
+            audioChunksRef.current.push(ev.data);
+          }
+        };
+        
+        rec.onstop = () => {
+          if (audioChunksRef.current.length === 0) {
+            toast.error('No se grabó ningún audio');
+            stream.getTracks().forEach((t) => t.stop());
+            setGrabando(false);
+            return;
+          }
+
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
           const reader = new FileReader();
+          
           reader.onloadend = () => {
             const base64 = reader.result;
             const approxKB = Math.round((base64.length * 3) / 4 / 1024);
+            
             if (approxKB > 1500) {
               toast.error('Audio muy grande (≥1.5MB). Intente grabar menos tiempo.');
               stream.getTracks().forEach((t) => t.stop());
+              setGrabando(false);
               return;
             }
-            setNotasDraft((prev) => [
-              ...prev,
-              {
-                id: uid(),
-                tipo: 'audio',
-                texto: nota.trim() || '',
-                fecha: new Date().toISOString(),
-                tecnico: tecnicoAsignado,
-                audio: base64,
-                mime: 'audio/webm'
-              }
-            ]);
+            
+            // Agregar audio al draft
+            const nuevaNota = {
+              id: uid(),
+              esDelBackend: false,
+              tipo: 'audio',
+              contenido: nota.trim() || 'Nota de voz',
+              texto: nota.trim() || 'Nota de voz',
+              audio: base64,
+              archivoUrl: base64,
+              fecha: new Date().toISOString(),
+              tecnico: tecnicoAsignado,
+              mime: mimeType
+            };
+            
+            setNotasNuevas(prev => [...prev, nuevaNota]);
             setNota('');
-            toast.success('Nota de voz añadida (pendiente de guardar)');
+            toast.success('Nota de voz agregada (pendiente de guardar)');
+            stream.getTracks().forEach((t) => t.stop());
+            setGrabando(false);
           };
+          
+          reader.onerror = () => {
+            toast.error('Error al procesar el audio');
+            stream.getTracks().forEach((t) => t.stop());
+            setGrabando(false);
+          };
+          
           reader.readAsDataURL(blob);
-          stream.getTracks().forEach((t) => t.stop());
         };
+
+        rec.onerror = (error) => {
+          console.error('Error en MediaRecorder:', error);
+          toast.error('Error durante la grabación');
+          stream.getTracks().forEach((t) => t.stop());
+          setGrabando(false);
+        };
+
         mediaRecorderRef.current = rec;
-        rec.start();
+        // Agregar timeslice para que capture datos continuamente
+        rec.start(1000); // Capturar datos cada segundo
         setGrabando(true);
-        toast.loading('Grabando... (máx 30s)');
+        // No mostrar toast.loading aquí, solo cambiar el estado del botón
+        
+        // Auto-detener después de 30 segundos
         setTimeout(() => {
           if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
-            setGrabando(false);
+            toast.success('Grabación completada (30s máximo)');
           }
         }, 30000);
       } catch (err) {
-        console.error(err);
-        toast.error('No se pudo iniciar la grabación (permiso de micrófono requerido)');
+        console.error('Error iniciando grabación:', err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          toast.error('Permiso de micrófono denegado. Por favor, permite el acceso al micrófono.');
+        } else if (err.name === 'NotFoundError') {
+          toast.error('No se encontró ningún micrófono.');
+        } else {
+          toast.error('No se pudo iniciar la grabación. Verifica los permisos del micrófono.');
+        }
+        setGrabando(false);
       }
     } else {
+      // Detener grabación manualmente
       try {
-        mediaRecorderRef.current?.stop();
-      } finally {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop();
+          // El toast se mostrará en el onstop handler
+        } else {
+          setGrabando(false);
+        }
+      } catch (err) {
+        console.error('Error deteniendo grabación:', err);
         setGrabando(false);
       }
     }
@@ -342,28 +682,123 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
   const handleGuardar = async () => {
     if (!nuevaFecha) return toast.error('La fecha de entrega es requerida');
     setLoading(true);
+    
     try {
-      const datosActualizados = {
-        estado,
-        fechaEntrega: nuevaFecha,
-        notasTecnicas: notasDraft,
-        ultimaActualizacion: new Date().toISOString()
-      };
+      const servicioId = servicio.id;
 
-      // Persistir en localStorage SOLO al guardar
-      localStorage.setItem(historialKey, JSON.stringify(notasDraft));
+      // 1. Actualizar estado si cambió
+      const estadoBackend = mapearEstadoABackend(estado);
+      const estadoActualBackend = servicio.estado || 'EN_DIAGNOSTICO';
+      if (estadoActualBackend !== estadoBackend) {
+        console.log(`🔄 Cambiando estado de ${estadoActualBackend} a ${estadoBackend}`);
+        await cambiarEstado(servicioId, estadoBackend);
+      }
 
-      await new Promise((r) => setTimeout(r, 400));
-      onGuardar?.(servicio.id, datosActualizados);
-      toast.success('Historial actualizado');
+      // 2. Actualizar fecha de entrega si cambió
+      const fechaActual = servicio.fechaEntregaEstimada 
+        ? new Date(servicio.fechaEntregaEstimada).toISOString().split('T')[0]
+        : null;
+      if (fechaActual !== nuevaFecha) {
+        console.log(`📅 Actualizando fecha de entrega a ${nuevaFecha}`);
+        await actualizarServicio(servicioId, {
+          diagnostico: {
+            fechaEntrega: nuevaFecha
+          }
+        });
+      }
+
+      // 3. Guardar todas las notas nuevas al backend
+      if (notasNuevas.length > 0) {
+        console.log(`📝 Guardando ${notasNuevas.length} notas nuevas`);
+        for (const notaNueva of notasNuevas) {
+          try {
+            const tipoBackend = mapearTipoNotaABackend(notaNueva.tipo);
+            const contenido = notaNueva.texto || notaNueva.contenido || '';
+            // Priorizar archivoUrl, luego imagen, luego audio
+            const archivoUrl = notaNueva.archivoUrl || notaNueva.imagen || notaNueva.audio || null;
+            
+            console.log(`📤 Enviando nota al backend:`, {
+              tipo: tipoBackend,
+              contenido: contenido.substring(0, 50) + (contenido.length > 50 ? '...' : ''),
+              tieneArchivo: !!archivoUrl,
+              tamañoArchivo: archivoUrl ? Math.round(archivoUrl.length / 1024) + 'KB' : 'N/A',
+              tipoNota: notaNueva.tipo
+            });
+            
+            const datosNota = {
+              tipo: tipoBackend,
+              contenido: contenido
+            };
+            
+            // Solo agregar archivoUrl si existe
+            if (archivoUrl) {
+              datosNota.archivoUrl = archivoUrl;
+            }
+            
+            await agregarNota(servicioId, datosNota);
+            
+            console.log(`✅ Nota guardada correctamente`);
+          } catch (error) {
+            console.error(`❌ Error guardando nota:`, error);
+            console.error(`Detalles del error:`, {
+              message: error.message,
+              response: error.response?.data
+            });
+            toast.error(`Error guardando una nota: ${error.response?.data?.message || error.message}`);
+          }
+        }
+      }
+
+      // 4. Recargar servicio completo desde backend para obtener todos los cambios
+      const servicioActualizado = await obtenerServicio(servicioId);
+      if (servicioActualizado) {
+        setServicio(servicioActualizado);
+      }
+
+      // 5. Limpiar notas nuevas después de guardar
+      setNotasNuevas([]);
+
+      // 6. Notificar al componente padre
+      await onGuardar?.(servicioId, {
+        estado: estadoBackend,
+        fechaEntrega: nuevaFecha
+      });
+
+      toast.success('✅ Historial actualizado correctamente');
       onClose?.();
     } catch (e) {
-      console.error(e);
-      toast.error('Error al actualizar historial');
+      console.error('❌ Error al actualizar historial:', e);
+      toast.error(`Error al actualizar historial: ${e.message || 'Error desconocido'}`);
     } finally {
       setLoading(false);
     }
   };
+
+  // ======= CANCELAR =======
+  const handleCancelar = () => {
+    // Limpiar todas las notas nuevas (draft)
+    setNotasNuevas([]);
+    setNota('');
+    // Cerrar modal de cámara si está abierto
+    if (showModalCamara) {
+      cerrarModalCamara();
+    }
+    // Cerrar modal principal
+    onClose?.();
+  };
+
+  if (loadingServicio) {
+    return (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+        <div className="bg-gray-900 rounded-2xl p-8 border border-gray-700">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+            <p className="text-gray-300">Cargando servicio desde el servidor...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 p-4">
@@ -388,7 +823,7 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
                 <div>
                   <h1 className="text-xl font-bold">Historial #{servicio.id}</h1>
                   <div className="text-sm text-white/80">
-                    {servicio.cliente} • {servicio.dispositivo}
+                    {clienteNombre} • {dispositivoTexto}
                   </div>
                 </div>
               </div>
@@ -419,7 +854,9 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
                 </h3>
 
                 <div className="space-y-2">
-                  {Object.entries(estadosConEstilo).map(([key, { color, icon }]) => (
+                  {Object.entries(estadosConEstilo)
+                    .filter(([key]) => estadosDisponibles.includes(key))
+                    .map(([key, { color, icon }]) => (
                     <button
                       key={key}
                       onClick={() => setEstado(key)}
@@ -493,52 +930,6 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
                   </div>
                 </div>
 
-                {/*  VISTA PREVIA DE CÁMARA - SOLO CUANDO ESTÁ ACTIVA */}
-                {camaraActiva && (
-                  <div className="p-4 bg-gray-900 border-b border-gray-700">
-                    <div className="relative bg-black rounded-lg overflow-hidden">
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full h-64 object-cover"
-                      />
-                      
-                      {/* Controles de cámara superpuestos */}
-                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-4">
-                        {/* Cambiar cámara (solo en móvil) */}
-                        {isMobile && (
-                          <button
-                            onClick={cambiarCamara}
-                            className="p-3 bg-gray-800/80 hover:bg-gray-700/80 rounded-full text-white transition-colors"
-                            title="Cambiar cámara"
-                          >
-                            <Camera size={20} />
-                          </button>
-                        )}
-                        
-                        {/* Tomar foto */}
-                        <button
-                          onClick={tomarFoto}
-                          className="p-4 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition-colors shadow-lg"
-                          title="Tomar foto"
-                        >
-                          <CameraIcon size={24} />
-                        </button>
-                        
-                        {/* Cerrar cámara */}
-                        <button
-                          onClick={detenerCamara}
-                          className="p-3 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors"
-                          title="Cerrar cámara"
-                        >
-                          <X size={20} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Área de notas - MÁXIMO PROTAGONISMO */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
@@ -555,21 +946,54 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
                               <Clock size={12} />
                               <span>{formatearFechaVE(n.fecha)}</span>
                               <span>{formatearHora(n.fecha)}</span>
-                              <span className="text-blue-400">• {n.tecnico}</span>
+                              <span className="text-blue-400">• {typeof n.tecnico === 'object' ? n.tecnico?.nombre || 'Técnico' : n.tecnico || 'Técnico'}</span>
                             </div>
-                            <button
-                              onClick={() => handleEliminarNota(n.id)}
-                              className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition-colors"
-                              title="Eliminar"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            {/* Solo mostrar botón eliminar para notas nuevas */}
+                            {!n.esDelBackend && (
+                              <button
+                                onClick={() => handleEliminarNota(n.id)}
+                                className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                title="Eliminar"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
 
                           {/* Contenido optimizado */}
-                          {n.tipo === 'texto' && (
+                          {(n.tipo === 'texto' || n.tipo === 'cambio_estado') && (
                             <div className="text-gray-200 text-sm leading-relaxed">
-                              {n.texto || <i className="text-gray-500">Sin mensaje</i>}
+                              {n.texto || n.contenido || <i className="text-gray-500">Sin mensaje</i>}
+                              {n.estadoAnterior && n.estadoNuevo && (() => {
+                                const colorAnterior = obtenerColorEstado(n.estadoAnterior);
+                                const colorNuevo = obtenerColorEstado(n.estadoNuevo);
+                                const estadoAnteriorTexto = n.estadoAnterior.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                const estadoNuevoTexto = n.estadoNuevo.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                
+                                return (
+                                  <div className="mt-3 p-3 bg-gradient-to-r from-gray-900/60 via-gray-800/60 to-gray-900/60 border border-gray-600/30 rounded-lg backdrop-blur-sm">
+                                    <div className="flex items-center gap-2 text-xs">
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <span className={`px-3 py-1.5 ${colorAnterior.bg} ${colorAnterior.text} rounded-md font-medium border ${colorAnterior.border} flex items-center gap-1.5`}>
+                                          <div className={`w-2 h-2 rounded-full ${colorAnterior.icon}`}></div>
+                                          {estadoAnteriorTexto}
+                                        </span>
+                                        <span className="text-gray-400 font-bold">→</span>
+                                        <span className={`px-3 py-1.5 ${colorNuevo.bg} ${colorNuevo.text} rounded-md font-medium border ${colorNuevo.border} flex items-center gap-1.5`}>
+                                          <div className={`w-2 h-2 rounded-full ${colorNuevo.icon}`}></div>
+                                          {estadoNuevoTexto}
+                                        </span>
+                                      </div>
+                                      <div className="ml-auto">
+                                        <span className="text-blue-400 flex items-center gap-1">
+                                          <Zap size={10} />
+                                          Cambio de estado
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
 
@@ -591,10 +1015,25 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
 
                           {n.tipo === 'audio' && (
                             <div className="space-y-2">
-                              {n.texto && (
-                                <div className="text-gray-200 text-sm leading-relaxed">{n.texto}</div>
+                              {/* Editable si es nota nueva */}
+                              {!n.esDelBackend ? (
+                                <textarea
+                                  value={n.texto || ''}
+                                  onChange={(e) => handleEditarNotaNueva(n.id, e.target.value)}
+                                  placeholder="Escribe una descripción para esta nota de voz..."
+                                  className="w-full px-3 py-2 text-sm border border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-gray-800 text-gray-100 placeholder-gray-400"
+                                  rows={2}
+                                />
+                              ) : (
+                                n.texto && (
+                                  <div className="text-gray-200 text-sm leading-relaxed">{n.texto}</div>
+                                )
                               )}
-                              <audio controls src={n.audio} className="w-full h-8" />
+                              <audio 
+                                controls 
+                                src={n.audio || n.archivoUrl} 
+                                className="w-full h-8"
+                              />
                             </div>
                           )}
                         </div>
@@ -631,17 +1070,13 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
                           Nota
                         </button>
 
-                        {/*  BOTÓN CÁMARA MÓVIL PROTAGONISTA */}
+                        {/*  BOTÓN CÁMARA - Abre modal */}
                         <button
-                          onClick={camaraActiva ? detenerCamara : iniciarCamara}
-                          className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md font-medium transition-colors ${
-                            camaraActiva 
-                              ? 'bg-red-600 hover:bg-red-700 text-white' 
-                              : 'bg-blue-600 hover:bg-blue-700 text-white'
-                          }`}
+                          onClick={abrirModalCamara}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors"
                         >
-                          {camaraActiva ? <StopCircle size={14} /> : <CameraIcon size={14} />}
-                          {camaraActiva ? 'Cerrar' : 'Cámara'}
+                          <CameraIcon size={14} />
+                          Cámara
                         </button>
 
                         {/* Archivo */}
@@ -683,14 +1118,14 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
        {/* FOOTER COMPACTO */}
        <div className="flex-shrink-0 bg-gray-800 px-6 py-4 border-t border-gray-700">
          <div className="flex justify-center gap-3">
-           <button
-             onClick={onClose}
-             disabled={loading}
-             className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded-lg transition-colors font-medium disabled:opacity-50 border border-gray-600"
-           >
-             <XCircle className="h-4 w-4 inline mr-2" />
-             Cancelar
-           </button>
+          <button
+            onClick={handleCancelar}
+            disabled={loading}
+            className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded-lg transition-colors font-medium disabled:opacity-50 border border-gray-600"
+          >
+            <XCircle className="h-4 w-4 inline mr-2" />
+            Cancelar
+          </button>
            <button
              onClick={handleGuardar}
              disabled={loading}
@@ -711,18 +1146,98 @@ export default function ModalEditarServicio({ servicio, onClose, onGuardar }) {
          </div>
        </div>
 
-       {/* Canvas oculto para captura de fotos */}
-       <canvas ref={canvasRef} className="hidden" />
-       
-       {/* Input oculto para archivos */}
-       <input
-         ref={imageInputRef}
-         type="file"
-         accept="image/*"
-         className="hidden"
-         onChange={onImageSelected}
-       />
-     </div>
-   </div>
- );
+      {/* Canvas oculto para captura de fotos */}
+      <canvas ref={canvasRef} className="hidden" />
+      
+      {/* Input oculto para archivos */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onImageSelected}
+      />
+
+      {/* MODAL DE CÁMARA */}
+      {showModalCamara && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex justify-center items-center p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-4xl border border-gray-700 shadow-2xl overflow-hidden">
+            {/* Header del modal de cámara */}
+            <div className="bg-gray-800 px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
+                <CameraIcon className="h-5 w-5 text-blue-400" />
+                Capturar Foto
+              </h3>
+              <button
+                onClick={cerrarModalCamara}
+                className="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors"
+              >
+                <X className="h-4 w-4 text-gray-300" />
+              </button>
+            </div>
+
+            {/* Vista previa de la cámara */}
+            <div className="relative bg-black p-4">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-[60vh] object-contain rounded-lg"
+                onLoadedMetadata={() => {
+                  // Asegurar que el video esté listo
+                  if (videoRef.current) {
+                    videoRef.current.play().catch(err => {
+                      console.error('Error reproduciendo video:', err);
+                    });
+                  }
+                }}
+              />
+              
+              {/* Controles de cámara superpuestos */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-4">
+                {/* Cambiar cámara (solo en móvil) */}
+                {isMobile && (
+                  <button
+                    onClick={cambiarCamara}
+                    className="p-3 bg-gray-800/90 hover:bg-gray-700/90 rounded-full text-white transition-colors shadow-lg"
+                    title="Cambiar cámara"
+                  >
+                    <Camera size={20} />
+                  </button>
+                )}
+                
+                {/* Botón de capturar */}
+                <button
+                  onClick={capturarFoto}
+                  disabled={!streamActual}
+                  className="p-5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full text-white transition-colors shadow-lg transform hover:scale-110 disabled:hover:scale-100"
+                  title="Capturar foto"
+                >
+                  <CameraIcon size={28} />
+                </button>
+                
+                {/* Cerrar cámara */}
+                <button
+                  onClick={cerrarModalCamara}
+                  className="p-3 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors shadow-lg"
+                  title="Cerrar cámara"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Instrucciones */}
+            <div className="bg-gray-800 px-6 py-3 border-t border-gray-700">
+              <p className="text-sm text-gray-400 text-center">
+                Haz clic en el botón azul para capturar la foto. Luego podrás escribir una descripción antes de guardar.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+);
 }

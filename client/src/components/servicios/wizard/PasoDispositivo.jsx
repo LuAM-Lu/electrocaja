@@ -1,14 +1,15 @@
 // components/servicios/wizard/PasoDispositivo.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
-  Smartphone, Camera, X, Upload, User, 
-  AlertCircle, CheckCircle, CameraIcon, FolderOpen, ChevronDown
+  Smartphone, Camera, X, Upload, User,
+  AlertCircle, CheckCircle, CameraIcon, FolderOpen, ChevronDown, Calendar
 } from 'lucide-react';
 import toast from '../../../utils/toast.jsx';
+import { useServiciosStore } from '../../../store/serviciosStore';
 
 // Datos predefinidos para pills
 const MARCAS_POPULARES = [
-  'Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OPPO', 'Vivo', 
+  'Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OPPO', 'Vivo',
   'OnePlus', 'Google', 'Sony', 'LG', 'Motorola', 'Nokia'
 ];
 
@@ -24,13 +25,17 @@ const PROBLEMAS_COMUNES = [
   'Touchscreen no responde', 'Altavoz sin sonido', 'Micrófono defectuoso'
 ];
 
-const TECNICOS_DISPONIBLES = [
-  { id: 'henderson', nombre: 'Henderson Azuaje', especialidad: 'iOS/Android' },
-  { id: 'carlos', nombre: 'Carlos Rodriguez', especialidad: 'Hardware' },
-  { id: 'maria', nombre: 'María González', especialidad: 'Software' }
-];
-
 export default function PasoDispositivo({ datos, onActualizar, errores, loading }) {
+  // 🔧 Cargar técnicos desde el store
+  const cargarTecnicos = useServiciosStore(state => state.cargarTecnicos);
+  const tecnicos = useServiciosStore(state => state.tecnicos);
+
+  // 🔧 Filtrar técnicos activos usando useMemo para evitar recalcular en cada render
+  const tecnicosActivos = useMemo(() => {
+    return tecnicos.filter(tecnico =>
+      tecnico.tecnicoConfig && tecnico.tecnicoConfig.activo === true
+    );
+  }, [tecnicos]);
   const [mostrarOtroAccesorio, setMostrarOtroAccesorio] = useState(false);
   const [mostrarOtroProblema, setMostrarOtroProblema] = useState(false);
   const [otroAccesorio, setOtroAccesorio] = useState('');
@@ -40,6 +45,23 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
   const canvasRef = useRef(null);
   const [camaraActiva, setCamaraActiva] = useState(false);
   const [streamActual, setStreamActual] = useState(null);
+
+  // 🔧 Cargar técnicos al montar el componente
+  useEffect(() => {
+    cargarTecnicos();
+  }, []);
+
+  // Cleanup: Stop camera stream on component unmount
+  useEffect(() => {
+    return () => {
+      if (streamActual) {
+        streamActual.getTracks().forEach(track => {
+          track.stop();
+          console.log('Camera track stopped on cleanup');
+        });
+      }
+    };
+  }, [streamActual]);
 
   // Actualizar dispositivo
   const actualizarDispositivo = (campo, valor) => {
@@ -74,32 +96,43 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
 
   // Manejar problemas múltiples (acumulables)
   const toggleProblema = (problema) => {
-    const problemasActuales = Array.isArray(datos.dispositivo.problemas) 
-      ? datos.dispositivo.problemas 
-      : datos.dispositivo.problema 
-        ? [datos.dispositivo.problema] 
+    const problemasActuales = Array.isArray(datos.dispositivo.problemas)
+      ? datos.dispositivo.problemas
+      : datos.dispositivo.problema
+        ? [datos.dispositivo.problema]
         : [];
-    
+
     const nuevosProblemas = problemasActuales.includes(problema)
       ? problemasActuales.filter(p => p !== problema)
       : [...problemasActuales, problema];
-    
-    actualizarDispositivo('problemas', nuevosProblemas);
-    // Mantener compatibilidad con el campo problema para validaciones
-    actualizarDispositivo('problema', nuevosProblemas.join(', '));
+
+    // Actualizar ambos campos en una sola operación
+    const nuevosDispositivo = {
+      ...datos.dispositivo,
+      problemas: nuevosProblemas,
+      problema: nuevosProblemas.join(', ')
+    };
+    onActualizar('dispositivo', nuevosDispositivo);
   };
 
   const agregarOtroProblema = () => {
     if (otroProblema.trim()) {
-      const problemasActuales = Array.isArray(datos.dispositivo.problemas) 
-        ? datos.dispositivo.problemas 
-        : datos.dispositivo.problema 
-          ? [datos.dispositivo.problema] 
+      const problemasActuales = Array.isArray(datos.dispositivo.problemas)
+        ? datos.dispositivo.problemas
+        : datos.dispositivo.problema
+          ? [datos.dispositivo.problema]
           : [];
-      
+
       const nuevosProblemas = [...problemasActuales, otroProblema.trim()];
-      actualizarDispositivo('problemas', nuevosProblemas);
-      actualizarDispositivo('problema', nuevosProblemas.join(', '));
+
+      // Actualizar ambos campos en una sola operación
+      const nuevosDispositivo = {
+        ...datos.dispositivo,
+        problemas: nuevosProblemas,
+        problema: nuevosProblemas.join(', ')
+      };
+      onActualizar('dispositivo', nuevosDispositivo);
+
       setOtroProblema('');
       setMostrarOtroProblema(false);
       toast.success('Problema agregado');
@@ -107,13 +140,20 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
   };
 
   const eliminarProblema = (problemaAEliminar) => {
-    const problemasActuales = Array.isArray(datos.dispositivo.problemas) 
-      ? datos.dispositivo.problemas 
+    const problemasActuales = Array.isArray(datos.dispositivo.problemas)
+      ? datos.dispositivo.problemas
       : [];
-    
+
     const nuevosProblemas = problemasActuales.filter(p => p !== problemaAEliminar);
-    actualizarDispositivo('problemas', nuevosProblemas);
-    actualizarDispositivo('problema', nuevosProblemas.join(', '));
+
+    // Actualizar ambos campos en una sola operación
+    const nuevosDispositivo = {
+      ...datos.dispositivo,
+      problemas: nuevosProblemas,
+      problema: nuevosProblemas.join(', ')
+    };
+    onActualizar('dispositivo', nuevosDispositivo);
+
     toast.success('Problema eliminado');
   };
 
@@ -246,28 +286,28 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
       : [];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      
+    <div className="max-w-6xl mx-auto space-y-4">
+
       {/* FILA 1 Y 2: LAYOUT DE 2 COLUMNAS */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
         {/* COLUMNA IZQUIERDA */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           
         {/* IDENTIFICACIÓN DEL EQUIPO - COMPACTO */}
-          <div className="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
-              <Smartphone className="h-5 w-5 text-blue-400" />
+          <div className="bg-gray-800/70 rounded-xl p-4 border border-gray-700">
+            <h3 className="text-base font-semibold text-gray-100 mb-3 flex items-center gap-2">
+              <Smartphone className="h-4 w-4 text-blue-400" />
               Identificación del Equipo
             </h3>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {/* Marca */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-300 mb-1.5">
                   Marca *
                 </label>
-                <div className="flex flex-wrap gap-1.5 mb-2">
+                <div className="flex flex-wrap gap-1 mb-1.5">
                   {MARCAS_POPULARES.map(marca => (
                     <button
                       key={marca}
@@ -288,16 +328,16 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                   value={datos.dispositivo.marca}
                   onChange={(e) => actualizarDispositivo('marca', e.target.value)}
                   placeholder="O escribe otra marca..."
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 {errores.marca && <p className="text-red-400 text-xs mt-1"> {errores.marca}</p>}
               </div>
 
               {/* Modelo y Color en la misma fila */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 {/* Modelo */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-xs font-medium text-gray-300 mb-1.5">
                     Modelo específico *
                   </label>
                   <input
@@ -305,14 +345,14 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                     value={datos.dispositivo.modelo}
                     onChange={(e) => actualizarDispositivo('modelo', e.target.value)}
                     placeholder="Ej: iPhone 16 Pro Max..."
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errores.modelo && <p className="text-red-400 text-xs mt-1"> {errores.modelo}</p>}
                 </div>
 
                 {/* Color */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-xs font-medium text-gray-300 mb-1.5">
                     Color/Características
                   </label>
                   <input
@@ -320,14 +360,14 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                     value={datos.dispositivo.color}
                     onChange={(e) => actualizarDispositivo('color', e.target.value)}
                     placeholder="Ej: Negro, 256GB..."
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
 
               {/* IMEI/Serial */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-300 mb-1.5">
                   IMEI / Número de Serie *
                 </label>
                 <input
@@ -335,7 +375,7 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                   value={datos.dispositivo.imei}
                   onChange={(e) => actualizarDispositivo('imei', e.target.value)}
                   placeholder="Marca *#06# para ver IMEI..."
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 {errores.imei && <p className="text-red-400 text-xs mt-1"> {errores.imei}</p>}
               </div>
@@ -343,13 +383,13 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
           </div>
 
           {/* ACCESORIOS INCLUIDOS - COMPACTOS */}
-          <div className="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-100 mb-3 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-400" />
-              Accesorios Incluidos
+          <div className="bg-gray-800/70 rounded-xl p-4 border border-gray-700">
+            <h3 className="text-base font-semibold text-gray-100 mb-2.5 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+              Accesorios Incluidos (Opcional)
             </h3>
 
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            <div className="flex flex-wrap gap-1 mb-2">
               {ACCESORIOS_COMUNES.map(accesorio => (
                 <button
                   key={accesorio}
@@ -404,25 +444,47 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
               </div>
             )}
           </div>
+
+          {/* FECHA ESTIMADA DE ENTREGA */}
+          <div className="bg-gray-800/70 rounded-xl p-4 border border-gray-700">
+            <h3 className="text-base font-semibold text-gray-100 mb-2.5 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-blue-400" />
+              Fecha Estimada de Entrega
+            </h3>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                ¿Cuándo estará listo? *
+              </label>
+              <input
+                type="date"
+                value={datos.diagnostico.fechaEstimada || ''}
+                onChange={(e) => actualizarDiagnostico('fechaEstimada', e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              {errores.fechaEstimada && <p className="text-red-400 text-xs mt-1"> {errores.fechaEstimada}</p>}
+            </div>
+          </div>
         </div>
 
         {/* COLUMNA DERECHA */}
-        <div className="space-y-6">
-          
+        <div className="space-y-4">
+
           {/* PROBLEMA REPORTADO + TÉCNICO */}
-          <div className="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-400" />
+          <div className="bg-gray-800/70 rounded-xl p-4 border border-gray-700">
+            <h3 className="text-base font-semibold text-gray-100 mb-3 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-400" />
               Problema Reportado
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {/* Pills de problemas comunes - ACUMULABLES Y COMPACTOS */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs font-medium text-gray-300 mb-1.5">
                   Selecciona uno o más problemas *
                 </label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1">
                   {PROBLEMAS_COMUNES.map(problema => (
                     <button
                       key={problema}
@@ -500,9 +562,81 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
 
               {errores.problema && <p className="text-red-400 text-xs"> {errores.problema}</p>}
 
+              {/* Técnico asignado - PILLS */}
+              <div>
+                <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                  Técnico asignado *
+                </label>
+                {tecnicosActivos && tecnicosActivos.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {tecnicosActivos.map(tecnico => {
+                      // ✅ Extraer nombre del técnico actual si es un objeto
+                      const tecnicoActualNombre = (() => {
+                        const t = datos.diagnostico.tecnico;
+                        if (t && typeof t === 'object') {
+                          return t.nombre || t.email || '';
+                        }
+                        return t || '';
+                      })();
+                      
+                      const estaSeleccionado = tecnicoActualNombre === tecnico.nombre;
+                      
+                      return (
+                        <button
+                          key={tecnico.id}
+                          type="button"
+                          onClick={() => {
+                            // Toggle: si ya está seleccionado, deseleccionar
+                            if (estaSeleccionado) {
+                              // Actualizar ambos campos a la vez
+                              const nuevosDiagnostico = {
+                                ...datos.diagnostico,
+                                tecnico: '',
+                                tecnicoId: null
+                              };
+                              onActualizar('diagnostico', nuevosDiagnostico);
+                            } else {
+                              // Actualizar ambos campos a la vez
+                              const nuevosDiagnostico = {
+                                ...datos.diagnostico,
+                                tecnico: tecnico.nombre,
+                                tecnicoId: tecnico.id
+                              };
+                              onActualizar('diagnostico', nuevosDiagnostico);
+                            }
+                          }}
+                          className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
+                            estaSeleccionado
+                              ? 'bg-yellow-600 text-white shadow-md ring-1 ring-yellow-400'
+                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                          }`}
+                        >
+                          {estaSeleccionado && '✓ '}
+                          {tecnico.nombre}
+                          {tecnico.tecnicoConfig?.especialidad && (
+                            <span className="text-[10px] opacity-75 ml-1">
+                              ({tecnico.tecnicoConfig.especialidad})
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="bg-gray-700/50 border border-gray-600 rounded-lg p-3 text-center">
+                    <p className="text-gray-400 text-xs">
+                      No hay técnicos activos configurados.
+                      <br />
+                      <span className="text-gray-500">Configúralos en Configuración → Servicios Técnicos</span>
+                    </p>
+                  </div>
+                )}
+                {errores.tecnico && <p className="text-red-400 text-xs mt-1"> {errores.tecnico}</p>}
+              </div>
+
               {/* Observaciones adicionales - COMPACTO */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-gray-300 mb-1">
                   Observaciones adicionales
                 </label>
                 <textarea
@@ -510,43 +644,20 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
                   onChange={(e) => actualizarDiagnostico('observaciones', e.target.value)}
                   placeholder="Detalles adicionales del problema, síntomas..."
                   rows={2}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-red-500 resize-none text-sm"
+                  className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-red-500 resize-none text-sm"
                 />
-              </div>
-
-              {/* Técnico asignado - SELECT */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Técnico asignado *
-                </label>
-                <div className="relative">
-                  <select
-                    value={datos.diagnostico.tecnico}
-                    onChange={(e) => actualizarDiagnostico('tecnico', e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-100 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 appearance-none"
-                  >
-                    <option value="">Selecciona un técnico...</option>
-                    {TECNICOS_DISPONIBLES.map(tecnico => (
-                      <option key={tecnico.id} value={tecnico.nombre}>
-                        {tecnico.nombre} - {tecnico.especialidad}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                </div>
-                {errores.tecnico && <p className="text-red-400 text-xs mt-1"> {errores.tecnico}</p>}
               </div>
             </div>
           </div>
 
           {/* EVIDENCIA VISUAL - BOTONES COMPACTOS */}
-          <div className="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
-              <Camera className="h-5 w-5 text-purple-400" />
+          <div className="bg-gray-800/70 rounded-xl p-4 border border-gray-700">
+            <h3 className="text-base font-semibold text-gray-100 mb-2.5 flex items-center gap-2">
+              <Camera className="h-4 w-4 text-purple-400" />
               Evidencia Visual (Opcional)
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {/* Controles de cámara y archivo - COMPACTOS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
