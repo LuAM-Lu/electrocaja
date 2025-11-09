@@ -268,6 +268,8 @@ const validarExcesoVuelto = (valorActual) => {
              )}
            </label>
            <input
+             id={`pago-monto-${pago.id}`}
+             name={`pagoMonto${pago.id}`}
              type="text"
              value={pago.monto}
              onChange={(e) => handleMontoChange(e.target.value)}
@@ -298,6 +300,8 @@ const validarExcesoVuelto = (valorActual) => {
              <div>
                <label className="block text-xs font-medium text-gray-600 mb-1">Referencia</label>
                <input
+                 id={`pago-referencia-${pago.id}`}
+                 name={`pagoReferencia${pago.id}`}
                  type="text"
                  value={pago.referencia || ''}
                  onChange={(e) => onUpdate(pago.id, 'referencia', e.target.value)}
@@ -419,7 +423,8 @@ const PagosPanel = ({
  descuento = 0,
  onDescuentoChange = () => {},
  onDescuentoLimpiar = () => {},
- onValidationChange = () => {}
+ onValidationChange = () => {},
+ permitirPagoParcial = false // ✅ NUEVO: Permitir pagos parciales (para abonos)
 }) => {
  const [totalVentaClicked, setTotalVentaClicked] = React.useState(false);
  const [descuentoClicked, setDescuentoClicked] = React.useState(false);
@@ -490,20 +495,34 @@ const PagosPanel = ({
  const excesoPendiente = Math.round((exceso - totalVuelto) * 100) / 100; //  FIX PRECISIÓN
 
  // Estado de la transacción
- const transaccionCompleta = faltante <= 0.01;
+ // ✅ Para pagos parciales (abonos), solo validar que haya monto > 0
+ const transaccionCompleta = permitirPagoParcial 
+   ? (totalPagado > 0.01 && totalPagado <= totalConDescuento + 0.01)
+   : (faltante <= 0.01);
  const necesitaVuelto = excesoPendiente > 0.01;
 
  React.useEffect(() => {
   //  SOLO VALIDAR - NO AUTO-ELIMINAR
-  const excesoPendienteSignificativo = Math.abs(excesoPendiente) > 0.01 ? excesoPendiente : 0;
-  onValidationChange(transaccionCompleta, excesoPendienteSignificativo);
+  // ✅ Para pagos parciales, permitir hasta 1 centavo de diferencia
+  const excesoPendienteSignificativo = permitirPagoParcial
+    ? (Math.abs(excesoPendiente) > 0.01 ? excesoPendiente : 0)
+    : (Math.abs(excesoPendiente) > 0.01 ? excesoPendiente : 0);
+  
+  // ✅ Para abonos, validar que haya monto pagado
+  const esValido = permitirPagoParcial 
+    ? (totalPagado > 0.01 && excesoPendiente <= 0.01)
+    : (transaccionCompleta && excesoPendienteSignificativo === 0);
+  
+  onValidationChange(esValido, excesoPendienteSignificativo);
   
   console.log(' Validación de pagos:', {
     excesoPendiente,
     transaccionCompleta,
+    permitirPagoParcial,
+    esValido,
     vueltos: vueltos.length
   });
-}, [transaccionCompleta, excesoPendiente, onValidationChange]);
+}, [transaccionCompleta, excesoPendiente, onValidationChange, permitirPagoParcial, totalPagado]);
 
  // ===================================
  //  MANEJADORES DE EVENTOS

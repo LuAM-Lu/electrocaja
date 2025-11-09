@@ -1,5 +1,5 @@
 // components/inventario/ImageUploader.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, Camera, Image, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import toast from '../../utils/toast.jsx';
 import { API_CONFIG, getImageUrl } from '../../config/api';
@@ -15,10 +15,28 @@ const ImageUploader = ({
   className = ""
 }) => {
   const [dragActive, setDragActive] = useState(false);
-  const [preview, setPreview] = useState(value || '');
+  const [preview, setPreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [fileInfo, setFileInfo] = useState(null); // Guardar info del archivo original
   const fileInputRef = useRef(null);
+  
+
+  // Actualizar preview cuando cambie el value desde fuera (para mostrar/ocultar la sección)
+  useEffect(() => {
+    console.log('📸 ImageUploader - value cambió:', {
+      tipo: typeof value,
+      esBase64: typeof value === 'string' && value?.startsWith('data:'),
+      length: typeof value === 'string' ? value?.length : 'N/A'
+    });
+    
+    // Actualizar preview solo para controlar si se muestra o no la sección
+    if (value) {
+      setPreview(value); // Puede ser base64, string URL, o objeto
+    } else {
+      setPreview('');
+    }
+  }, [value]);
 
   // Manejar eventos de drag
   const handleDrag = (e) => {
@@ -142,15 +160,63 @@ const ImageUploader = ({
     });
   };
 
-//  VERSIÓN OPTIMIZADA CON CARPETA TEMPORAL
+//  NUEVA VERSIÓN CON BASE64 LOCAL + UPLOAD EN BACKGROUND
 const handleFile = async (file) => {
   if (!validateFile(file)) return;
 
   setLoading(true);
-  setUploadProgress(0);
+  setUploadProgress(10);
+  
+  // GUARDAR INFO DEL ARCHIVO ORIGINAL
+  const originalSizeKB = Math.round(file.size / 1024);
+  setFileInfo({
+    name: file.name,
+    size: originalSizeKB,
+    type: file.type
+  });
+  console.log('📁 Archivo original:', file.name, '-', originalSizeKB, 'KB');
 
   try {
-    //  GENERAR NOMBRE INTELIGENTE TEMPORAL
+    // PASO 1: Convertir imagen a Base64 para preview INMEDIATO
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      const base64Image = e.target.result;
+      console.log('📸 ========== IMAGEN CONVERTIDA ==========');
+      console.log('📸 Tipo:', typeof base64Image);
+      console.log('📸 Length:', base64Image?.length);
+      console.log('📸 Primeros 100 chars:', base64Image?.substring(0, 100));
+      console.log('📸 Es base64?:', base64Image?.startsWith('data:'));
+      console.log('📸 =======================================');
+      
+      // Validar que el base64 es válido
+      if (!base64Image || !base64Image.startsWith('data:')) {
+        console.error('❌ Base64 inválido!');
+        toast.error('Error: Imagen inválida');
+        return;
+      }
+      
+      // Mostrar preview inmediatamente
+      console.log('📸 Estableciendo preview...');
+      setPreview(base64Image);
+      
+      // IMPORTANTE: Pasar el base64 temporalmente al padre para que se vea en Vista Previa
+      console.log('📸 Llamando onChange con base64...');
+      onChange(base64Image);
+      
+      setUploadProgress(50);
+      console.log('📸 Preview establecido correctamente');
+    };
+    
+    reader.onerror = (error) => {
+      console.error('❌ Error leyendo archivo:', error);
+      throw new Error('Error al leer el archivo');
+    };
+    
+    // Leer el archivo como Data URL (base64)
+    reader.readAsDataURL(file);
+    
+    // PASO 2: Subir al servidor en background
     const generateTempFileName = () => {
       const productCode = productInfo?.codigo_interno || 
                          productInfo?.codigo_barras || 
@@ -165,25 +231,17 @@ const handleFile = async (file) => {
       return `${cleanCode}_${timestamp}.${extension}`;
     };
 
-    // Crear FormData para upload temporal
     const formData = new FormData();
     const tempFileName = generateTempFileName();
     
-    // Renombrar archivo con código del producto
     const renamedFile = new File([file], tempFileName, {
       type: file.type
     });
     
     formData.append('image', renamedFile);
-    formData.append('isTemporary', 'true'); //  FLAG para carpeta temporal
+    formData.append('isTemporary', 'true');
     formData.append('productCode', productInfo?.codigo_interno || productInfo?.codigo_barras || '');
-    
-    // Progreso simulado
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => Math.min(prev + 15, 90));
-    }, 200);
 
-    //  UPLOAD A CARPETA TEMPORAL
     const response = await fetch('/api/inventory/upload-image', {
       method: 'POST',
       body: formData,
@@ -191,8 +249,6 @@ const handleFile = async (file) => {
         'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
       }
     });
-
-    clearInterval(progressInterval);
     
     if (!response.ok) {
       throw new Error(`Error del servidor: ${response.status}`);
@@ -201,18 +257,17 @@ const handleFile = async (file) => {
     const result = await response.json();
     
     if (result.success) {
-      //  GUARDAR INFO TEMPORAL para mover después
+      console.log('✅ Upload exitoso al servidor:', result.data);
+      
       const tempImageData = {
         tempPath: result.data.tempPath,
         tempFilename: result.data.filename,
         finalName: tempFileName
       };
       
-      // Usar la URL temporal para preview
       const imageUrl = `/uploads/temp/${result.data.filename}`;
-      setPreview(imageUrl);
       
-      //  PASAR OBJETO CON INFO TEMPORAL
+      //  PASAR DATOS AL FORMULARIO (la URL del servidor para guardar después)
       onChange({
         url: imageUrl,
         tempData: tempImageData,
@@ -223,12 +278,8 @@ const handleFile = async (file) => {
       setTimeout(() => {
         setLoading(false);
         setUploadProgress(0);
-        
-        toast.success(
-          `Imagen temporal: ${result.data.filename}\n Se moverá al guardar el producto`,
-          { duration: 4000 }
-        );
-      }, 500);
+        toast.success(`Imagen cargada correctamente`, { duration: 2000 });
+      }, 300);
     } else {
       throw new Error(result.message || 'Error al subir imagen temporal');
     }
@@ -236,14 +287,15 @@ const handleFile = async (file) => {
   } catch (error) {
     setLoading(false);
     setUploadProgress(0);
-    toast.error(`Error al subir imagen: ${error.message}`);
-    console.error('Error uploading temp image:', error);
+    toast.error(`Error: ${error.message}`);
+    console.error('❌ Error en handleFile:', error);
   }
 };
 
   // Limpiar imagen
   const clearImage = () => {
     setPreview('');
+    setFileInfo(null); // Limpiar info del archivo
     onChange('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -251,19 +303,12 @@ const handleFile = async (file) => {
     toast.success('Imagen eliminada');
   };
 
-  // Obtener estadísticas de la imagen
-  const getImageStats = () => {
-    if (!preview) return null;
-    
-    const sizeKB = Math.round((preview.length * 0.75) / 1024); // Aproximación base64
-    return {
-      size: sizeKB,
-      format: 'JPEG optimizado',
-      dimensions: `${targetSize}×${targetSize}px`
-    };
-  };
-
-  const imageStats = getImageStats();
+  // Obtener estadísticas de la imagen - VERSIÓN SIMPLIFICADA
+  const imageStats = value && fileInfo ? {
+    size: fileInfo.size,
+    format: 'JPEG optimizado',
+    dimensions: `${targetSize}×${targetSize}px`
+  } : null;
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -278,12 +323,12 @@ const handleFile = async (file) => {
         disabled={loading}
       />
       
-      {/* Zona de drop principal */}
+      {/* Zona de subida compacta con info */}
       <div
-        className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300 bg-white ${
+        className={`relative border-2 border-dashed rounded-lg p-4 transition-all duration-300 bg-white/95 backdrop-blur-sm ${
             dragActive 
-            ? 'border-indigo-400 bg-indigo-50 scale-105 shadow-lg' 
-            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+            ? 'border-blue-400 bg-blue-50/95 backdrop-blur-sm shadow-md' 
+            : 'border-gray-300 hover:border-gray-400'
         } ${loading ? 'pointer-events-none opacity-75' : 'cursor-pointer'}`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -293,105 +338,83 @@ const handleFile = async (file) => {
         >
         
         {loading ? (
-          // Estado de carga
-          <div className="space-y-3">
-            <Loader className="h-12 w-12 text-indigo-600 mx-auto animate-spin" />
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-indigo-700">Procesando imagen...</p>
+          <div className="flex items-center gap-3">
+            <Loader className="h-6 w-6 text-blue-600 animate-spin flex-shrink-0" />
+            <div className="flex-1">
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 ></div>
               </div>
-              <p className="text-xs text-indigo-600">{uploadProgress}% completado</p>
             </div>
+            <span className="text-sm text-blue-600 font-medium">{uploadProgress}%</span>
           </div>
-        ) : preview ? (
-          // Vista con imagen
-          <div className="space-y-4">
-            <div className="relative inline-block">
-<img 
-  src={(() => {
-    // Si preview es un objeto con datos temporales, usar la URL temporal
-    if (typeof preview === 'object' && preview.isTemporary) {
-      return getImageUrl(preview.url);
-    }
-    // Si preview es una string (imagen existente), usar getImageUrl normal
-    if (typeof preview === 'string') {
-      return getImageUrl(preview);
-    }
-    // Si value existe (props desde el formulario), usarlo
-    if (value) {
-      return getImageUrl(value);
-    }
-    return '';
-  })()} 
-  alt="Preview" 
-  className="w-40 h-40 object-contain rounded-xl mx-auto border-2 border-gray-200 shadow-lg hover:shadow-xl transition-shadow duration-200 bg-white"
-/>
-              <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-200 rounded-xl flex items-center justify-center">
-                <div className="opacity-0 hover:opacity-100 transition-opacity duration-200">
-                  <Camera className="h-6 w-6 text-white" />
+        ) : (
+          <div className="space-y-3">
+            {/* Fila principal */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Upload className="h-6 w-6 text-blue-500 flex-shrink-0" />
+                <div>
+                  <span className="text-sm font-medium text-gray-700">
+                    {value ? '✓ Imagen cargada' : 'Seleccionar imagen'}
+                  </span>
+                  {!value && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      JPG, PNG, WEBP • Máx. {maxSize}MB
+                    </p>
+                  )}
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  {value ? 'Cambiar' : 'Subir'}
+                </button>
+                {value && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearImage();
+                    }}
+                    className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 transition-colors"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             </div>
             
-            {/* Estadísticas de la imagen */}
-            {imageStats && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="flex items-center justify-center space-x-4 text-xs text-green-700">
-                  <div className="flex items-center space-x-1">
-                    <CheckCircle className="h-3 w-3" />
-                    <span>{imageStats.format}</span>
-                  </div>
-                  <div>{imageStats.dimensions}</div>
-                  <div>{imageStats.size}KB</div>
+            {/* Fila de información de la imagen */}
+            {value && fileInfo && (
+              <div className="flex items-center gap-4 pt-2 border-t border-gray-200">
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <Image className="h-4 w-4 text-green-600" />
+                  <span className="font-medium">{fileInfo.name}</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <span>•</span>
+                  <span>{fileInfo.size} KB</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <span>•</span>
+                  <span>400×400px</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
+                    ✓ Optimizada
+                  </span>
                 </div>
               </div>
             )}
-            
-            {/* Botones de acción */}
-            <div className="flex space-x-3 justify-center">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fileInputRef.current?.click();
-                }}
-                className="flex items-center space-x-2 text-xs px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition-colors font-medium"
-              >
-                <Camera className="h-3 w-3" />
-                <span>Cambiar</span>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearImage();
-                }}
-                className="flex items-center space-x-2 text-xs px-4 py-2 bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors font-medium"
-              >
-                <X className="h-3 w-3" />
-                <span>Eliminar</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          // Vista sin imagen
-          <div className="py-8 px-4">
-            <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <div className="space-y-2">
-              <p className="text-lg font-medium text-gray-700">
-                <span className="text-indigo-600 hover:text-indigo-700 transition-colors">Click para subir</span> o arrastra una imagen
-              </p>
-              <p className="text-sm text-gray-500">
-                Formatos: {allowedFormats.map(f => f.split('/')[1].toUpperCase()).join(', ')} • Máx. {maxSize}MB
-              </p>
-              <p className="text-xs text-gray-400">
-                Se redimensionará automáticamente a {targetSize}×{targetSize}px
-              </p>
-            </div>
           </div>
         )}
       </div>

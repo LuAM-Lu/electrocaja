@@ -171,6 +171,7 @@ const SelectorTasaCambio = ({ tasaActual, onCambioTasa }) => {
              <div className="space-y-2">
                <label className="flex items-center space-x-2 cursor-pointer">
                  <input
+                   id="tipo-tasa-bcv"
                    type="radio"
                    name="tipoTasa"
                    value="bcv"
@@ -183,6 +184,7 @@ const SelectorTasaCambio = ({ tasaActual, onCambioTasa }) => {
 
                <label className="flex items-center space-x-2 cursor-pointer">
                  <input
+                   id="tipo-tasa-personalizado"
                    type="radio"
                    name="tipoTasa"
                    value="personalizado"
@@ -195,6 +197,7 @@ const SelectorTasaCambio = ({ tasaActual, onCambioTasa }) => {
 
                <label className="flex items-center space-x-2 cursor-pointer">
                  <input
+                   id="tipo-tasa-manual"
                    type="radio"
                    name="tipoTasa"
                    value="manual"
@@ -208,6 +211,8 @@ const SelectorTasaCambio = ({ tasaActual, onCambioTasa }) => {
                {tipoTasa === 'manual' && (
                  <div className="ml-6 mt-2">
                    <input
+                     id="tasa-manual-input"
+                     name="tasaManual"
                      type="text"
                      value={tasaManual}
                      onChange={(e) => handleTasaManual(e.target.value)}
@@ -282,6 +287,8 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
              {metodo?.moneda === 'usd' ? '$' : 'Bs'}
            </span>
            <input
+             id={`egreso-monto-${pago.id}`}
+             name={`egresoMonto${pago.id}`}
              type="text"
              value={pago.monto}
              onChange={(e) => handleMontoChange(e.target.value)}
@@ -322,6 +329,8 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
          <div>
            <label className="block text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Referencia</label>
            <input
+             id={`egreso-referencia-${pago.id}`}
+             name={`egresoReferencia${pago.id}`}
              type="text"
              value={pago.referencia}
              onChange={(e) => onUpdate(pago.id, 'referencia', e.target.value)}
@@ -647,6 +656,8 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
                          {monedaEgreso === 'usd' ? '$' : 'Bs'}
                        </span>
                        <input
+                         id="monto-egreso-input"
+                         name="montoEgreso"
                          type="text"
                          value={montoEgreso}
                          onChange={(e) => {
@@ -672,6 +683,8 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
                    Descripción del Egreso *
                  </label>
                  <input
+                   id="descripcion-egreso-input"
+                   name="descripcionEgreso"
                    type="text"
                    value={descripcion}
                    onChange={(e) => setDescripcion(e.target.value)}
@@ -694,6 +707,8 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
                  {mostrarObservaciones && (
                    <div className="mt-3">
                      <input
+                       id="observaciones-egreso-input"
+                       name="observacionesEgreso"
                        type="text"
                        value={observaciones}
                        onChange={(e) => setObservaciones(e.target.value)}

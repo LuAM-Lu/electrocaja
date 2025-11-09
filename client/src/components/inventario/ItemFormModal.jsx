@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   X, Save, AlertTriangle, CheckCircle, Loader, 
-  ArrowLeft, ArrowRight, Zap, RotateCcw
+  Zap, RotateCcw, Package, Wrench, 
+  Coffee, DollarSign, BarChart3, Camera, MapPin, Truck
 } from 'lucide-react';
 import { useInventarioStore } from '../../store/inventarioStore';
 import BarcodeScanner from './BarcodeScanner';
@@ -12,6 +13,11 @@ import TabNavigation from './TabNavigation';
 import toast from '../../utils/toast.jsx';
 import { API_CONFIG } from '../../config/api';
 import { api } from '../../config/api';
+import { createLogger } from '../../utils/logger';
+import { FORM_DEFAULTS, CATEGORIES_FLAT, VALIDATION_MESSAGES } from '../../constants/inventory';
+
+// Logger para este componente
+const logger = createLogger('ItemFormModal');
 
 
 
@@ -135,7 +141,7 @@ const cargarProveedoresDesdeBackend = async () => {
     PROVEEDORES_CACHE = response.data?.data?.proveedores || response.data?.proveedores || [];
     return PROVEEDORES_CACHE;
   } catch (error) {
-    console.error('Error cargando proveedores:', error);
+    logger.error('Error cargando proveedores:', error);
     toast.error('Error al cargar proveedores');
     return [];
   }
@@ -162,6 +168,7 @@ const ItemModal = ({
   const [activeTab, setActiveTab] = useState('basico');
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showProviderInfo, setShowProviderInfo] = useState(false);
   const isEditing = !!item;
   
   //  Estado para validación visual de código interno
@@ -179,13 +186,13 @@ const [formData, setFormData] = useState({
   // Precios
   precio_costo: '',
   precio_venta: '',
-  margen_porcentaje: '30',
-  descuento_maximo: '0',
+  margen_porcentaje: String(FORM_DEFAULTS.MARGIN_PERCENTAGE),
+  descuento_maximo: String(FORM_DEFAULTS.DISCOUNT_MAX),
   
   // Stock
   stock: '',
-  stock_minimo: '5',
-  stock_maximo: '100',
+  stock_minimo: String(FORM_DEFAULTS.MIN_STOCK),
+  stock_maximo: String(FORM_DEFAULTS.MAX_STOCK),
   ubicacion_fisica: '',
   
   // Multimedia
@@ -286,14 +293,14 @@ const getInitialFormData = (itemData = null) => {
 
   // Inicializar formulario cuando se abre el modal
   useEffect(() => {
-    console.log(' [ItemFormModal] useEffect isOpen cambió:', {
+    logger.debug('useEffect isOpen cambió:', {
       isOpen,
       item: item?.id || 'nuevo',
       timestamp: new Date().toISOString()
     });
 
     if (isOpen) {
-      console.log(' [ItemFormModal] Modal ABIERTO - Inicializando...');
+      logger.debug('Modal ABIERTO - Inicializando...');
       setIsInitializing(true); //  Marcar que estamos inicializando
       const initialData = getInitialFormData(item);
       setFormData(initialData);
@@ -302,23 +309,23 @@ const getInitialFormData = (itemData = null) => {
 
       //  Desactivar flag de inicialización después de un momento
       const timer = setTimeout(() => {
-        console.log(' [ItemFormModal] Inicialización completada - Listo para editar');
+        logger.debug('[ItemFormModal] Inicialización completada - Listo para editar');
         setIsInitializing(false);
       }, 500);
 
       //  PROTECCIÓN: Marcar modal como activo en el almacenamiento de sesión
       // Esto evita que otros eventos cierren este modal
       sessionStorage.setItem('itemFormModalActive', 'true');
-      console.log(' [ItemFormModal] Modal marcado como activo en sesión');
+      logger.debug('[ItemFormModal] Modal marcado como activo en sesión');
 
       return () => {
-        console.log(' [ItemFormModal] Cleanup del useEffect');
+        logger.debug('[ItemFormModal] Cleanup del useEffect');
         clearTimeout(timer);
         //  Limpiar marca de modal activo
         sessionStorage.removeItem('itemFormModalActive');
       };
     } else {
-      console.log(' [ItemFormModal] Modal CERRADO');
+      logger.debug('[ItemFormModal] Modal CERRADO');
       //  Resetear flag cuando se cierra
       setIsInitializing(true);
       //  Asegurar limpieza de marca de sesión
@@ -481,7 +488,7 @@ const handleBarcodeScan = useCallback((code) => {
 
  //  PERMITIR códigos duplicados - solo mostrar warning en consola
 if (!item && existingCodes.includes(formData.codigo_barras.toUpperCase())) {
-  console.warn(' Código de barras duplicado detectado:', formData.codigo_barras);
+  logger.warn('Código de barras duplicado detectado:', formData.codigo_barras);
   // Ya NO es error - permitir guardar items con códigos duplicados
 }
 //  VALIDAR que código interno SÍ sea único (CRÍTICO)
@@ -543,10 +550,10 @@ if (formData.codigo_interno && existingInternalCodes.includes(formData.codigo_in
     setSaving(true);
 
   //  DEBUG TEMPORAL
-  console.log(' ITEMFORMMODAL - Guardando producto...');
-  console.log(' API Estado:', window.inventarioAPI?.estado());
-  console.log(' FormData completo:', formData);
-  console.log(' Precios específicos:', {
+  logger.debug('ITEMFORMMODAL - Guardando producto...');
+  logger.debug('API Estado:', window.inventarioAPI?.estado());
+  logger.debug('FormData completo:', formData);
+  logger.debug('Precios específicos:', {
     precio_costo: formData.precio_costo,
     precio_venta: formData.precio_venta,
     tipo_precio_costo: typeof formData.precio_costo,
@@ -578,7 +585,7 @@ if (formData.codigo_interno && existingInternalCodes.includes(formData.codigo_in
         ...(item ? {} : { fecha_creacion: new Date().toISOString() })
       };
 
-      console.log(' ItemData final:', itemData);
+      logger.debug('ItemData final:', itemData);
 
       //  MANEJAR IMAGEN TEMPORAL - MOVER A DEFINITIVO
             let savedItem;
@@ -609,7 +616,7 @@ if (formData.codigo_interno && existingInternalCodes.includes(formData.codigo_in
       //  APLICAR ACTUALIZACIONES PENDIENTES DE INVENTARIO
       const actualizacionPendiente = sessionStorage.getItem('inventarioPendienteActualizar') === 'true';
       if (actualizacionPendiente) {
-        console.log(' Aplicando actualización de inventario pendiente...');
+        logger.debug('Aplicando actualización de inventario pendiente...');
         sessionStorage.removeItem('inventarioPendienteActualizar');
 
         // Recargar inventario después de cerrar el modal
@@ -623,7 +630,7 @@ if (formData.codigo_interno && existingInternalCodes.includes(formData.codigo_in
       onClose();
 
     } catch (error) {
-      console.error('Error al guardar item:', error);
+      logger.error('Error al guardar item:', error);
       toast.error(error.message || 'Error al guardar el item', {
         duration: 4000,
       });
@@ -655,7 +662,7 @@ const getImageUrl = (imagePath) => {
  const [showExitModal, setShowExitModal] = useState(false);
 
 const handleClose = () => {
-  console.log(' handleClose llamado:', {
+  logger.debug('handleClose llamado:', {
     hasUnsavedChanges,
     saving,
     isInitializing,
@@ -664,10 +671,10 @@ const handleClose = () => {
 
   //  NO mostrar confirmación si está inicializando o guardando
   if (hasUnsavedChanges && !saving && !isInitializing) {
-    console.log(' Mostrando modal de confirmación');
+    logger.debug('Mostrando modal de confirmación');
     setShowExitModal(true);
   } else {
-    console.log(' Cerrando modal directamente');
+    logger.debug('Cerrando modal directamente');
     //  Limpiar estados antes de cerrar
     setShowExitModal(false);
     setHasUnsavedChanges(false);
@@ -679,7 +686,7 @@ const handleClose = () => {
     //  APLICAR ACTUALIZACIONES PENDIENTES
     const actualizacionPendiente = sessionStorage.getItem('inventarioPendienteActualizar') === 'true';
     if (actualizacionPendiente) {
-      console.log(' Aplicando actualización de inventario pendiente (al cancelar)...');
+      logger.debug('Aplicando actualización de inventario pendiente (al cancelar)...');
       sessionStorage.removeItem('inventarioPendienteActualizar');
 
       setTimeout(async () => {
@@ -703,7 +710,7 @@ const handleConfirmExit = () => {
   //  APLICAR ACTUALIZACIONES PENDIENTES
   const actualizacionPendiente = sessionStorage.getItem('inventarioPendienteActualizar') === 'true';
   if (actualizacionPendiente) {
-    console.log(' Aplicando actualización de inventario pendiente (confirmación de salida)...');
+    logger.debug('Aplicando actualización de inventario pendiente (confirmación de salida)...');
     sessionStorage.removeItem('inventarioPendienteActualizar');
 
     setTimeout(async () => {
@@ -731,17 +738,7 @@ const handleCancelExit = () => {
     }
   };
 
-  // Navegación entre tabs
-  const navigateTab = (direction) => {
-    const tabs = ['basico', 'proveedor', 'precios', 'stock', 'multimedia', 'estadisticas'];
-    const currentIndex = tabs.indexOf(activeTab);
-    
-    if (direction === 'next' && currentIndex < tabs.length - 1) {
-      setActiveTab(tabs[currentIndex + 1]);
-    } else if (direction === 'prev' && currentIndex > 0) {
-      setActiveTab(tabs[currentIndex - 1]);
-    }
-  };
+  // Navegación entre tabs - manejada por TabNavigation component
 
   // Atajos de teclado
   useEffect(() => {
@@ -772,11 +769,11 @@ const handleCancelExit = () => {
   }, [isOpen, hasUnsavedChanges, saving]);
 
   if (!isOpen) {
-    console.log(' [ItemFormModal] No renderizando - isOpen es false');
+    logger.debug('[ItemFormModal] No renderizando - isOpen es false');
     return null;
   }
 
-  console.log(' [ItemFormModal] Renderizando modal:', {
+  logger.debug('[ItemFormModal] Renderizando modal:', {
     isOpen,
     isInitializing,
     hasUnsavedChanges,
@@ -787,44 +784,42 @@ const handleCancelExit = () => {
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
       onClick={(e) => {
-        console.log(' [ItemFormModal] Clic en backdrop:', {
+        logger.debug('[ItemFormModal] Clic en backdrop:', {
           isCurrentTarget: e.target === e.currentTarget,
           isInitializing,
           willClose: e.target === e.currentTarget && !isInitializing
         });
         //  Solo cerrar si se hace clic en el backdrop, no en el contenido del modal
         if (e.target === e.currentTarget && !isInitializing) {
-          console.log(' [ItemFormModal] Cerrando por clic en backdrop');
+          logger.debug('[ItemFormModal] Cerrando por clic en backdrop');
           handleClose();
         }
       }}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        className="bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl border border-white/30 max-w-4xl w-full max-h-[90vh] overflow-hidden mx-2 sm:mx-4"
         onClick={(e) => {
-          console.log(' [ItemFormModal] Clic dentro del modal - Propagación detenida');
+          logger.debug('[ItemFormModal] Clic dentro del modal - Propagación detenida');
           e.stopPropagation();
         }} //  Prevenir que los clics dentro del modal se propaguen
       >
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600/90 to-blue-700/90 backdrop-blur-sm relative overflow-hidden">
           <div className="absolute inset-0 bg-black/10"></div>
-          <div className="relative px-6 py-4 text-white">
+          <div className="relative px-4 sm:px-6 py-4 text-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-                  <span className="text-xl">
-                    {formData.tipo === 'producto' ? '' : 
-                     formData.tipo === 'servicio' ? '' : 
-                     formData.tipo === 'electrobar' ? '' : ''}
-                  </span>
+                  {formData.tipo === 'producto' ? <Package className="h-5 w-5" /> : 
+                   formData.tipo === 'servicio' ? <Wrench className="h-5 w-5" /> : 
+                   formData.tipo === 'electrobar' ? <Coffee className="h-5 w-5" /> : <Package className="h-5 w-5" />}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">
-                    {item ? ' Editar Item' : ' Nuevo Item'}
+                  <h2 className="text-lg sm:text-xl font-bold">
+                    {item ? 'Editar Item' : 'Nuevo Item'}
                   </h2>
-                  <div className="text-sm text-white/90">
+                  <div className="text-xs sm:text-sm text-white/90 truncate max-w-[200px] sm:max-w-none">
                     {formData.descripcion || 'Complete la información del item'}
                   </div>
                 </div>
@@ -856,7 +851,7 @@ const handleCancelExit = () => {
         </div>
 
         {/* Contenido con tabs */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-180px)] bg-white/90 backdrop-blur-sm">
           
           {/* Tab Navigation */}
           <TabNavigation 
@@ -871,8 +866,8 @@ const handleCancelExit = () => {
             
             {/* TAB 1: INFORMACIÓN BÁSICA */}
             {activeTab === 'basico' && (
-              <div className="space-y-5">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="space-y-4 sm:space-y-5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
                   
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -889,7 +884,7 @@ const handleCancelExit = () => {
                           className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          
+                          <Package className="h-4 w-4 text-gray-400" />
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                            Campo protegido - No se puede modificar al editar
@@ -906,7 +901,7 @@ const handleCancelExit = () => {
                         }}
                         onKeyDown={handleEnterKey}
                         placeholder="NOMBRE DESCRIPTIVO DEL PRODUCTO, SERVICIO O ITEM"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors uppercase"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors uppercase bg-white/95 backdrop-blur-sm"
                         required
                         autoFocus
                       />
@@ -966,10 +961,10 @@ const handleCancelExit = () => {
                                 formData.tipo === 'servicio' ? ' Servicio' : 
                                 ' Electrobar'}
                           readOnly
-                          className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
+                          className="w-full px-4 py-3 bg-gray-100/95 backdrop-blur-sm border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          
+                          <Package className="h-4 w-4 text-gray-400" />
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
                            Campo protegido - No se puede modificar al editar
@@ -980,11 +975,11 @@ const handleCancelExit = () => {
                       <select
                         value={formData.tipo}
                         onChange={(e) => updateFormData('tipo', e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                       >
-                        <option value="producto"> Producto</option>
-                        <option value="servicio"> Servicio</option>
-                        <option value="electrobar"> Electrobar</option>
+                        <option value="producto">📦 Producto</option>
+                        <option value="servicio">🔧 Servicio</option>
+                        <option value="electrobar">☕ Electrobar</option>
                       </select>
                     )}
                   </div>
@@ -996,7 +991,7 @@ const handleCancelExit = () => {
                     <select
                       value={formData.categoria}
                       onChange={(e) => updateFormData('categoria', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                     >
                       <option value="">Seleccionar categoría...</option>
                       {CATEGORIAS_DEFAULT.map(categoria => (
@@ -1005,7 +1000,7 @@ const handleCancelExit = () => {
                     </select>
                   </div>
 
-                  <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+                  <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
   
   {/* Código de Barras */}
   <div>
@@ -1020,18 +1015,18 @@ const handleCancelExit = () => {
           type="text"
           value={formData.codigo_barras}
           readOnly
-          className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
-        />
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-          
-        </div>
-        <div className="text-xs text-gray-500 mt-1">
-           Campo protegido - No se puede modificar al editar
-        </div>
-      </div>
-    ) : (
-      // Modo NORMAL cuando crea nuevo
-      <BarcodeScanner
+          className="w-full px-4 py-3 bg-gray-100/95 backdrop-blur-sm border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
+                        />
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                           Campo protegido - No se puede modificar al editar
+                        </div>
+                      </div>
+                    ) : (
+                      // Modo NORMAL cuando crea nuevo
+                      <BarcodeScanner
         value={formData.codigo_barras}
         onChange={(value) => updateFormData('codigo_barras', value)}
         onScan={handleBarcodeScan}
@@ -1054,10 +1049,10 @@ const handleCancelExit = () => {
     readOnly={isEditing}
     className={`w-full px-4 py-3 border rounded-lg transition-colors ${
       isEditing 
-        ? 'bg-gray-100 border-gray-300 text-gray-600 cursor-not-allowed' 
+        ? 'bg-gray-100/95 backdrop-blur-sm border-gray-300 text-gray-600 cursor-not-allowed' 
         : codigoInternoError
-          ? 'border-red-400 bg-red-50 focus:ring-2 focus:ring-red-500 focus:border-red-500'
-          : 'border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500'
+          ? 'border-red-400 bg-red-50/95 backdrop-blur-sm focus:ring-2 focus:ring-red-500 focus:border-red-500'
+          : 'border-gray-300 bg-white/95 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
     }`}
   />
   <div className="text-xs mt-1">
@@ -1096,7 +1091,7 @@ const handleCancelExit = () => {
                           value={formData.observaciones}
                           readOnly
                           rows={2}
-                          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed resize-none"
+                          className="w-full px-3 py-2 bg-gray-100/95 backdrop-blur-sm border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed resize-none"
                         />
                         <div className="absolute right-3 top-2">
                           
@@ -1112,7 +1107,7 @@ const handleCancelExit = () => {
                         onChange={(e) => updateFormData('observaciones', e.target.value)}
                         placeholder="Detalles adicionales, especificaciones, notas importantes..."
                         rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none bg-white/95 backdrop-blur-sm"
                       />
                     )}
                   </div>
@@ -1121,9 +1116,9 @@ const handleCancelExit = () => {
 
             {/* TAB 2: PRECIOS Y COSTOS */}
             {activeTab === 'precios' && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                        Precio de Costo (USD) *
@@ -1146,7 +1141,7 @@ const handleCancelExit = () => {
                         }
                       })}
                       placeholder="0.00"
-                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                       required
                     />
                     </div>
@@ -1184,7 +1179,7 @@ const handleCancelExit = () => {
                         }
                       }}
                       placeholder="30.0"
-                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                     />
                     </div>
                   </div>
@@ -1217,7 +1212,7 @@ const handleCancelExit = () => {
                         }
                       }}
                       placeholder="0.00"
-                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                       required
                     />
                     </div>
@@ -1235,11 +1230,11 @@ const handleCancelExit = () => {
 
             {/* TAB 3: INVENTARIO Y STOCK */}
             {activeTab === 'stock' && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 
                 {(formData.tipo === 'producto' || formData.tipo === 'electrobar') ? (
                   <>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                       
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1251,7 +1246,7 @@ const handleCancelExit = () => {
                           value={formData.stock}
                           onChange={(e) => updateFormData('stock', e.target.value)}
                           placeholder="0"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                           required
                         />
                       </div>
@@ -1266,7 +1261,7 @@ const handleCancelExit = () => {
                           value={formData.stock_minimo}
                           onChange={(e) => updateFormData('stock_minimo', e.target.value)}
                           placeholder="5"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                         />
                         <div className="text-xs text-gray-500 mt-1">
                            Alerta cuando el stock esté por debajo
@@ -1283,7 +1278,7 @@ const handleCancelExit = () => {
                           value={formData.stock_maximo}
                           onChange={(e) => updateFormData('stock_maximo', e.target.value)}
                           placeholder="100"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                        />
                        <div className="text-xs text-gray-500 mt-1">
                           Capacidad máxima recomendada
@@ -1298,7 +1293,7 @@ const handleCancelExit = () => {
                      <select
                        value={formData.ubicacion_fisica}
                        onChange={(e) => updateFormData('ubicacion_fisica', e.target.value)}
-                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm"
                      >
                        <option value="">Seleccionar ubicación...</option>
                        {UBICACIONES_DEFAULT.map(ubicacion => (
@@ -1311,7 +1306,7 @@ const handleCancelExit = () => {
                    </div>
                     {/* Alertas de Stock */}
                    {formData.stock && formData.stock_minimo && parseInt(formData.stock) <= parseInt(formData.stock_minimo) && (
-                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                     <div className="bg-orange-50/95 backdrop-blur-sm border border-orange-200/50 rounded-lg p-4">
                        <div className="flex items-center space-x-2">
                          <AlertTriangle className="h-5 w-5 text-orange-600" />
                          <span className="font-semibold text-orange-800"> Stock Bajo Detectado</span>
@@ -1324,7 +1319,7 @@ const handleCancelExit = () => {
                    )}
 
                    {formData.tipo === 'electrobar' && (
-                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                     <div className="bg-orange-50/95 backdrop-blur-sm border border-orange-200/50 rounded-lg p-4">
                        <div className="flex items-center space-x-2 mb-2">
                          <span className="text-lg"></span>
                          <span className="font-semibold text-orange-800">Tips para Electrobar</span>
@@ -1339,7 +1334,7 @@ const handleCancelExit = () => {
                    )}
                  </>
                ) : (
-                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                 <div className="bg-blue-50/95 backdrop-blur-sm border border-blue-200/50 rounded-lg p-6 text-center">
                    <div className="flex items-center justify-center space-x-2 mb-3">
                      <span className="text-2xl"></span>
                      <span className="font-semibold text-blue-800 text-lg">Los servicios no manejan stock físico</span>
@@ -1355,7 +1350,7 @@ const handleCancelExit = () => {
 
            {/* TAB 4: MULTIMEDIA */}
            {activeTab === 'multimedia' && (
-             <div className="space-y-6">
+             <div className="space-y-4 sm:space-y-6">
                
                <div>
                  <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -1377,21 +1372,31 @@ const handleCancelExit = () => {
 
                {/* Preview del item en el sistema */}
                {(formData.descripcion || formData.imagen_url) && (
-                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                 <div className="bg-gray-50/95 backdrop-blur-sm border border-gray-200/50 rounded-lg p-4">
                    <h4 className="font-semibold text-gray-900 mb-3"> Vista Previa en Sistema:</h4>
-                   <div className="flex items-center space-x-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                   <div className="flex items-center space-x-4 p-4 bg-white/95 backdrop-blur-sm rounded-lg border border-gray-200/50 shadow-sm">
                      {formData.imagen_url ? (
                        <img 
-                         src={formData.imagen_url} 
+                         src={typeof formData.imagen_url === 'object' && formData.imagen_url.url 
+                           ? getImageUrl(formData.imagen_url.url) 
+                           : typeof formData.imagen_url === 'string' 
+                           ? formData.imagen_url.startsWith('data:') 
+                             ? formData.imagen_url 
+                             : getImageUrl(formData.imagen_url)
+                           : ''} 
                          alt="Preview" 
-                         className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                         className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-xl border-2 border-blue-200 shadow-lg"
+                         onError={(e) => {
+                           logger.error('Error en vista previa:', formData.imagen_url);
+                           e.target.style.display = 'none';
+                         }}
                        />
                      ) : (
-                       <div className="w-20 h-20 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                         <span className="text-2xl">
-                           {formData.tipo === 'producto' ? '' : 
-                            formData.tipo === 'servicio' ? '' : 
-                            formData.tipo === 'electrobar' ? '' : ''}
+                       <div className="w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl border-2 border-gray-300 flex items-center justify-center">
+                         <span className="text-6xl opacity-50">
+                           {formData.tipo === 'producto' ? '📦' : 
+                            formData.tipo === 'servicio' ? '🔧' : 
+                            formData.tipo === 'electrobar' ? '☕' : '📦'}
                          </span>
                        </div>
                      )}
@@ -1429,10 +1434,10 @@ const handleCancelExit = () => {
 
            {/* TAB 2: PROVEEDORES Y DATOS */}
 {activeTab === 'proveedor' && (
-  <div className="space-y-6">
+  <div className="space-y-4 sm:space-y-6">
     
     {formData.tipo === 'servicio' ? (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+      <div className="bg-blue-50/95 backdrop-blur-sm border border-blue-200/50 rounded-lg p-6 text-center">
         <div className="flex items-center justify-center space-x-2 mb-3">
           <span className="text-2xl"></span>
           <span className="font-semibold text-blue-800 text-lg">Los servicios no requieren proveedor</span>
@@ -1441,159 +1446,122 @@ const handleCancelExit = () => {
           Los servicios técnicos son prestados directamente por el negocio, 
           por lo que no necesitan información de proveedores externos.
         </div>
-        <div className="mt-4 p-3 bg-green-100 border border-green-200 rounded-lg">
+        <div className="mt-4 p-3 bg-green-100/95 backdrop-blur-sm border border-green-200/50 rounded-lg">
           <div className="text-sm text-green-700 font-medium"> IVA automático:</div>
           <div className="text-xs text-green-600">Se aplicará 16% de IVA sobre el precio base en las ventas</div>
         </div>
       </div>
     ) : (
       <>
-       {/*  SECCIÓN IVA DEL PROVEEDOR - COMPACTA */}
-<div className="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4">
-  <div className="flex items-center space-x-2 mb-3">
-    <h4 className="text-sm font-bold text-yellow-900">Información de IVA del Proveedor</h4>
-  </div>
-  
-  <div className="space-y-3">
-    <div>
-      <label className="block text-xs font-medium text-yellow-800 mb-2">
-        ¿El proveedor te facturó con IVA incluido?
+       {/*  SECCIÓN IVA DEL PROVEEDOR - ULTRA COMPACTA */}
+<div className="bg-gradient-to-br from-yellow-50/95 to-amber-50/95 backdrop-blur-sm border border-yellow-200/50 rounded-lg p-3">
+  <div className="space-y-2">
+    <label className="block text-xs font-semibold text-yellow-900">
+      ¿El proveedor te facturó con IVA incluido?
+    </label>
+    
+    <div className="flex items-center gap-2">
+      {/* Opción SÍ */}
+      <label className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
+        formData.proveedor_factura_iva 
+          ? 'border-green-500 bg-green-50/95 shadow-sm' 
+          : 'border-gray-300 bg-white/80 hover:border-green-300'
+      }`}>
+        <input
+          type="radio"
+          name="proveedor_factura_iva"
+          checked={formData.proveedor_factura_iva === true}
+          onChange={() => setFormData({...formData, proveedor_factura_iva: true})}
+          className="sr-only"
+        />
+        <span className="text-sm font-semibold text-green-700">✓ SÍ, con IVA</span>
       </label>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <label className={`relative flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                  formData.proveedor_factura_iva 
-                    ? 'border-green-500 bg-green-50' 
-                    : 'border-gray-300 bg-white hover:border-green-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="proveedor_factura_iva"
-                    checked={formData.proveedor_factura_iva === true}
-                    onChange={() => setFormData({...formData, proveedor_factura_iva: true})}
-                    className="sr-only"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg"></span>
-                      <span className="font-semibold text-green-700">SÍ, con factura</span>
-                    </div>
-                    <div className="text-xs text-green-600 mt-1">
-                      El proveedor me cobró IVA (16% incluido en el precio)
-                    </div>
-                  </div>
-                </label>
-                
-                <label className={`relative flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                  !formData.proveedor_factura_iva 
-                    ? 'border-orange-500 bg-orange-50' 
-                    : 'border-gray-300 bg-white hover:border-orange-300'
-                }`}>
-                  <input
-                    type="radio"
-                    name="proveedor_factura_iva"
-                    checked={formData.proveedor_factura_iva === false}
-                    onChange={() => setFormData({...formData, proveedor_factura_iva: false})}
-                    className="sr-only"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg"></span>
-                      <span className="font-semibold text-orange-700">NO, sin factura</span>
-                    </div>
-                    <div className="text-xs text-orange-600 mt-1">
-                      Proveedor informal, no me cobró IVA
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-            
-            {/* Explicación del impacto */}
-            <div className={`p-4 rounded-lg ${
-              formData.proveedor_factura_iva 
-                ? 'bg-green-100 border border-green-200' 
-                : 'bg-orange-100 border border-orange-200'
-            }`}>
-              <div className="text-sm">
-                <div className={`font-medium mb-2 ${
-                  formData.proveedor_factura_iva ? 'text-green-800' : 'text-orange-800'
-                }`}>
-                   Impacto en el cálculo de precios:
-                </div>
-                <div className={`text-xs ${
-                  formData.proveedor_factura_iva ? 'text-green-700' : 'text-orange-700'
-                }`}>
-                  {formData.proveedor_factura_iva 
-                    ? 'El sistema descontará el IVA del costo para calcular tu margen sobre la base real.'
-                    : 'Tu costo registrado será la base para calcular márgenes, y se agregará IVA en la venta.'
-                  }
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      
+      {/* Opción NO */}
+      <label className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
+        !formData.proveedor_factura_iva 
+          ? 'border-orange-500 bg-orange-50/95 shadow-sm' 
+          : 'border-gray-300 bg-white/80 hover:border-orange-300'
+      }`}>
+        <input
+          type="radio"
+          name="proveedor_factura_iva"
+          checked={formData.proveedor_factura_iva === false}
+          onChange={() => setFormData({...formData, proveedor_factura_iva: false})}
+          className="sr-only"
+        />
+        <span className="text-sm font-semibold text-orange-700">✗ NO, sin IVA</span>
+      </label>
+    </div>
+    
+    {/* Explicación compacta */}
+    <div className="text-xs text-gray-600 bg-white/60 rounded px-2 py-1.5">
+      <span className="font-medium">
+        {formData.proveedor_factura_iva ? '✓ ' : '✗ '}
+      </span>
+      {formData.proveedor_factura_iva 
+        ? 'El sistema descontará el IVA del costo para calcular tu margen.'
+        : 'Tu costo será la base de cálculo, se agregará IVA en la venta.'
+      }
+    </div>
+  </div>
+</div>
         
-        {/* INFORMACIÓN DEL PROVEEDOR */}
-        <div className="grid grid-cols-1 gap-5">
-          
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-               Proveedor *
-            </label>
-            <select
-              value={formData.proveedor}
-              onChange={(e) => updateFormData('proveedor', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-              required={formData.tipo !== 'servicio'}
-            >
-              <option value="">Seleccionar proveedor...</option>
-              {PROVEEDORES_CACHE.map(proveedor => (
-                <option key={proveedor.id} value={proveedor.nombre}>
-                  {proveedor.nombre}
-                </option>
-              ))}
-            </select>
-            <div className="text-xs text-gray-500 mt-1">
-               Puede agregar más proveedores desde Configuración
-            </div>
-          </div>
+        {/* INFORMACIÓN DEL PROVEEDOR - COMPACTO */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+             Proveedor *
+          </label>
+          <select
+            value={formData.proveedor}
+            onChange={(e) => updateFormData('proveedor', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white/95 backdrop-blur-sm text-sm"
+            required={formData.tipo !== 'servicio'}
+          >
+            <option value="">Seleccionar proveedor...</option>
+            {PROVEEDORES_CACHE.map(proveedor => (
+              <option key={proveedor.id} value={proveedor.nombre}>
+                {proveedor.nombre}
+              </option>
+            ))}
+          </select>
         </div>
 
        {/* Información del proveedor seleccionado */}
 {formData.proveedor && (() => {
   const proveedorSeleccionado = PROVEEDORES_CACHE.find(p => p.nombre === formData.proveedor);
   return proveedorSeleccionado ? (
-    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-      <h4 className="font-semibold text-green-800 mb-3 flex items-center">
-        <span className="mr-2"></span>
-        Información del Proveedor
-      </h4>
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        <div className="flex flex-col">
-          <span className="text-green-600 font-medium">Nombre:</span>
-          <div className="text-green-800 font-semibold break-words">{proveedorSeleccionado.nombre}</div>
+    <div className="bg-green-50/95 backdrop-blur-sm border border-green-200/50 rounded-lg p-2.5">
+      <div className="space-y-1.5">
+        {/* Fila 1: Nombre y Estado */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-green-600 font-medium">Proveedor:</span>
+            <span className="text-green-800 font-semibold">{proveedorSeleccionado.nombre}</span>
+          </div>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            proveedorSeleccionado.activo 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-gray-100 text-gray-600'
+          }`}>
+            {proveedorSeleccionado.activo ? '✓ Activo' : '✗ Inactivo'}
+          </span>
         </div>
-        {proveedorSeleccionado.contacto && (
-          <div className="flex flex-col">
-            <span className="text-green-600 font-medium">Contacto:</span>
-            <div className="text-green-800 break-words"> {proveedorSeleccionado.contacto}</div>
-          </div>
-        )}
-        {proveedorSeleccionado.telefono && (
-          <div className="flex flex-col">
-            <span className="text-green-600 font-medium">Teléfono:</span>
-            <div className="text-green-800 break-words"> {proveedorSeleccionado.telefono}</div>
-          </div>
-        )}
-        {proveedorSeleccionado.email && (
-          <div className="flex flex-col">
-            <span className="text-green-600 font-medium">Email:</span>
-            <div className="text-green-800 break-words"> {proveedorSeleccionado.email}</div>
-          </div>
-        )}
-        <div className="flex flex-col">
-          <span className="text-green-600 font-medium">Estado:</span>
-          <div className="text-green-800">{proveedorSeleccionado.activo ? ' Activo' : ' Inactivo'}</div>
+        
+        {/* Fila 2: Contactos */}
+        <div className="flex items-center flex-wrap gap-3 text-xs text-green-700">
+          {proveedorSeleccionado.contacto && (
+            <span>👤 {proveedorSeleccionado.contacto}</span>
+          )}
+          {proveedorSeleccionado.telefono && (
+            <span>📞 {proveedorSeleccionado.telefono}</span>
+          )}
+          {proveedorSeleccionado.email && (
+            <span className="truncate">📧 {proveedorSeleccionado.email}</span>
+          )}
+          {!proveedorSeleccionado.contacto && !proveedorSeleccionado.telefono && !proveedorSeleccionado.email && (
+            <span className="text-gray-500 italic">Sin información de contacto</span>
+          )}
         </div>
       </div>
     </div>
@@ -1604,217 +1572,42 @@ const handleCancelExit = () => {
           </div>
         )}
 
-           {/* TAB 6: ESTADÍSTICAS */}
-           {activeTab === 'estadisticas' && (
-             <div className="space-y-6">
-               
-               {item ? (
-                 <div className="space-y-5">
-                   
-                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                     
-                     {/* Información de Creación */}
-                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                       <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
-                         <span className="mr-2"></span>
-                         Información de Registro
-                       </h4>
-                       <div className="space-y-3 text-sm">
-                         <div className="flex justify-between items-center">
-                           <span className="text-blue-600">Creado:</span>
-                           <span className="font-medium text-gray-900">
-                             {item.fecha_creacion ? new Date(item.fecha_creacion).toLocaleDateString('es-VE') : 'No disponible'}
-                           </span>
-                         </div>
-                         <div className="flex justify-between items-center">
-                           <span className="text-blue-600">Última actualización:</span>
-                           <span className="font-medium text-gray-900">
-                             {item.ultima_actualizacion ? new Date(item.ultima_actualizacion).toLocaleDateString('es-VE') : 'No disponible'}
-                           </span>
-                         </div>
-                         <div className="flex justify-between items-center">
-                           <span className="text-blue-600">ID del sistema:</span>
-                           <span className="font-mono font-bold text-indigo-700">#{item.id}</span>
-                         </div>
-                         <div className="flex justify-between items-center">
-                           <span className="text-blue-600">Código de barras:</span>
-                           <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
-                             {formData.codigo_barras || 'Sin código'}
-                           </span>
-                         </div>
-                       </div>
-                     </div>
-
-                     {/* Estadísticas de Ventas */}
-                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                       <h4 className="font-semibold text-green-800 mb-3 flex items-center">
-                         <span className="mr-2"></span>
-                         Estadísticas de Ventas
-                       </h4>
-                       <div className="space-y-3 text-sm">
-                         <div className="flex justify-between items-center">
-                           <span className="text-green-600">Ventas totales:</span>
-                           <span className="font-bold text-green-900">0 unidades</span>
-                         </div>
-                         <div className="flex justify-between items-center">
-                           <span className="text-green-600">Ingresos generados:</span>
-                           <span className="font-bold text-green-900">$0.00</span>
-                         </div>
-                         <div className="flex justify-between items-center">
-                           <span className="text-green-600">Última venta:</span>
-                           <span className="font-medium text-gray-900">Nunca</span>
-                         </div>
-                         <div className="flex justify-between items-center">
-                           <span className="text-green-600">Promedio mensual:</span>
-                           <span className="font-medium text-gray-900">--</span>
-                         </div>
-                       </div>
-                       <div className="mt-3 text-xs text-green-600 bg-green-100 rounded p-2">
-                          Las estadísticas se actualizarán automáticamente con las futuras ventas
-                       </div>
-                     </div>
-                   </div>
-
-                   {/* Análisis de Precios */}
-                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                     <h4 className="font-semibold text-purple-800 mb-3 flex items-center">
-                       <span className="mr-2"></span>
-                       Análisis de Precios
-                     </h4>
-                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                       <div className="text-center">
-                         <div className="text-2xl font-bold text-purple-700">
-                           ${parseFloat(formData.precio_costo || 0).toFixed(2)}
-                         </div>
-                         <div className="text-purple-600">Precio de Costo</div>
-                       </div>
-                       <div className="text-center">
-                         <div className="text-2xl font-bold text-purple-700">
-                           {parseFloat(formData.margen_porcentaje || 0).toFixed(1)}%
-                         </div>
-                         <div className="text-purple-600">Margen</div>
-                       </div>
-                       <div className="text-center">
-                         <div className="text-2xl font-bold text-purple-700">
-                           ${((parseFloat(formData.precio_venta || 0) - parseFloat(formData.precio_costo || 0))).toFixed(2)}
-                         </div>
-                         <div className="text-purple-600">Ganancia</div>
-                       </div>
-                       <div className="text-center">
-                         <div className="text-2xl font-bold text-purple-700">
-                           ${parseFloat(formData.precio_venta || 0).toFixed(2)}
-                         </div>
-                         <div className="text-purple-600">Precio de Venta</div>
-                       </div>
-                     </div>
-                   </div>
-
-                   {/* Alertas y Recomendaciones */}
-                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                     <h4 className="font-semibold text-orange-800 mb-3 flex items-center">
-                       <span className="mr-2"></span>
-                       Recomendaciones
-                     </h4>
-                     <div className="space-y-2 text-sm text-orange-700">
-                       {formData.stock && formData.stock_minimo && parseInt(formData.stock) <= parseInt(formData.stock_minimo) && formData.tipo !== 'servicio' && (
-                          <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                            <span></span>
-                            <span>Stock bajo: Considere reabastecer pronto</span>
-                          </div>
-                        )}
-                       {!formData.imagen_url && (
-                         <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                           <span></span>
-                           <span>Agregar imagen mejorará la experiencia de venta</span>
-                         </div>
-                       )}
-                       {parseFloat(formData.margen_porcentaje || 0) < 20 && (
-                         <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                           <span></span>
-                           <span>Margen bajo: Considere revisar estrategia de precios</span>
-                         </div>
-                       )}
-                       {formData.tipo !== 'servicio' && !formData.proveedor && (
-                         <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                           <span></span>
-                           <span>Asignar proveedor facilitará el control de inventario</span>
-                         </div>
-                       )}
-                       {!formData.categoria && (
-                         <div className="flex items-start space-x-2 p-2 bg-orange-100 rounded">
-                           <span></span>
-                           <span>Agregar categoría ayudará con la organización</span>
-                         </div>
-                       )}
-                     </div>
-                   </div>
-                 </div>
-               ) : (
-                 // Vista para nuevo item
-                 <div className="text-center py-12">
-                   <div className="bg-gray-100 rounded-full p-8 w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-                     <span className="text-3xl"></span>
-                   </div>
-                   <h3 className="text-xl font-semibold text-gray-600 mb-3">
-                     Estadísticas no disponibles
-                   </h3>
-                   <p className="text-gray-500 mb-4 max-w-md mx-auto">
-                     Las estadísticas detalladas se mostrarán una vez que el item sea guardado 
-                     y comience a generar historial de ventas en el sistema.
-                   </p>
-                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-sm mx-auto">
-                     <div className="text-sm text-blue-700">
-                        <strong>Próximamente verás:</strong>
-                       <ul className="text-left mt-2 space-y-1 text-xs">
-                         <li>• Historial de ventas</li>
-                         <li>• Tendencias de precios</li>
-                         <li>• Rotación de inventario</li>
-                         <li>• Análisis de rentabilidad</li>
-                       </ul>
-                     </div>
-                   </div>
-                 </div>
-               )}
-             </div>
-           )}
 
          </form>
        </div>
 
-       {/* Footer con navegación mejorada */}
-<div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-  <div className="flex items-center justify-between">
+       {/* Footer simplificado */}
+<div className="bg-gray-50/95 backdrop-blur-sm px-4 sm:px-6 py-3 border-t border-white/30">
+  <div className="flex items-center justify-between gap-3">
     
-    {/* Botón Anterior - Izquierda */}
-    <button
-      type="button"
-      onClick={() => navigateTab('prev')}
-      disabled={activeTab === 'basico'}
-      className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      <ArrowLeft className="h-4 w-4" />
-      <span>Anterior</span>
-    </button>
+    {/* Info de atajos */}
+    <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
+      <kbd className="px-2 py-1 bg-white/80 border border-gray-300 rounded text-gray-600 font-mono">Ctrl+S</kbd>
+      <span>Guardar</span>
+      <span className="mx-1">•</span>
+      <kbd className="px-2 py-1 bg-white/80 border border-gray-300 rounded text-gray-600 font-mono">Esc</kbd>
+      <span>Cerrar</span>
+    </div>
 
-    {/* Botones centrales */}
-    <div className="flex items-center space-x-4">
+    {/* Botones principales */}
+    <div className="flex items-center gap-3 ml-auto">
       {/* Cancelar */}
-<button
-  type="button"
-  onClick={handleClose}
-  disabled={saving}
-  className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-red-700 border border-red-300 rounded-lg hover:bg-red-50 hover:border-red-400 transition-colors disabled:opacity-50"
->
-  <X className="h-4 w-4" />
-  <span>Cancelar</span>
-</button>
+      <button
+        type="button"
+        onClick={handleClose}
+        disabled={saving}
+        className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100/80 hover:backdrop-blur-sm transition-colors disabled:opacity-50 bg-white/95 backdrop-blur-sm"
+      >
+        <X className="h-4 w-4" />
+        <span>Cancelar</span>
+      </button>
 
       {/* Guardar */}
       <button
         type="submit"
         onClick={handleSubmit}
         disabled={saving}
-        className="flex items-center space-x-2 px-6 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 shadow-sm hover:shadow-md"
+        className="flex items-center justify-center gap-2 px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 shadow-lg hover:shadow-xl backdrop-blur-sm"
       >
         {saving ? (
           <>
@@ -1829,62 +1622,42 @@ const handleCancelExit = () => {
         )}
       </button>
     </div>
-
-    {/* Botón Siguiente - Derecha */}
-    <button
-      type="button"
-      onClick={() => navigateTab('next')}
-      disabled={activeTab === 'estadisticas'}
-      className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      <span>Siguiente</span>
-      <ArrowRight className="h-4 w-4" />
-    </button>
   </div>
 </div>
   </div>
 
-   {/* Modal de Confirmación Elegante */}
+   {/* Modal de Confirmación Compacto */}
    {showExitModal && (
-     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70]">
-       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
+     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4" onClick={handleCancelExit}>
+       <div className="bg-white/95 backdrop-blur-lg rounded-xl shadow-2xl border border-white/30 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
          
-         {/* Header */}
-         <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 rounded-t-xl">
-           <div className="flex items-center space-x-3 text-white">
+         {/* Header compacto */}
+         <div className="bg-gradient-to-r from-orange-500/90 to-red-500/90 backdrop-blur-sm px-4 py-3 rounded-t-xl">
+           <div className="flex items-center gap-3 text-white">
              <div className="bg-white/20 p-2 rounded-lg">
-               <span className="text-xl"></span>
+               <AlertTriangle className="h-5 w-5" />
              </div>
              <div>
-               <h3 className="text-lg font-bold">Cambios Sin Guardar</h3>
-               <p className="text-sm text-orange-100">¿Estás seguro de salir?</p>
+               <h3 className="text-base font-bold">¿Salir sin guardar?</h3>
+               <p className="text-xs text-orange-100">Los cambios se perderán</p>
              </div>
            </div>
          </div>
 
-         {/* Contenido */}
-         <div className="p-6">
-           <div className="text-center mb-6">
-             <div className="text-gray-700 mb-4">
-               Tienes cambios sin guardar que se perderán si sales ahora.
-             </div>
-           </div>
-
-           {/* Botones */}
-           <div className="flex space-x-3">
-             <button
-               onClick={handleCancelExit}
-               className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-             >
-               Continuar Editando
-             </button>
-             <button
-               onClick={handleConfirmExit}
-               className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
-             >
-               Salir Sin Guardar
-             </button>
-           </div>
+         {/* Botones compactos */}
+         <div className="p-4 flex gap-3">
+           <button
+             onClick={handleCancelExit}
+             className="flex-1 px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50/80 hover:backdrop-blur-sm transition-colors font-medium bg-white/95 backdrop-blur-sm"
+           >
+             Continuar Editando
+           </button>
+           <button
+             onClick={handleConfirmExit}
+             className="flex-1 px-4 py-2 text-sm bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg transition-all font-medium shadow-lg hover:shadow-xl backdrop-blur-sm"
+           >
+             Salir
+           </button>
          </div>
        </div>
      </div>
@@ -1894,4 +1667,5 @@ const handleCancelExit = () => {
  );
  
 };
+
 export default ItemModal;

@@ -619,8 +619,8 @@ const ItemsTable = ({
           item.codigo === producto.codigo_barras
             ? {
                 ...item,
-                cantidad: item.cantidad + 1,
-                subtotal: (item.cantidad + 1) * item.precio_unitario
+                cantidad: Number(item.cantidad || 0) + 1,
+                subtotal: (Number(item.cantidad || 0) + 1) * Number(item.precio_unitario || item.precioUnitario || 0)
               }
             : item
         );
@@ -704,8 +704,8 @@ const ItemsTable = ({
     setEditingRowId(item.id);
     setEditingData({
       descripcion: item.descripcion,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio_unitario
+      cantidad: Number(item.cantidad || 0),
+      precio_unitario: Number(item.precio_unitario || item.precioUnitario || 0)
     });
   };
 
@@ -1053,11 +1053,11 @@ const ItemsTable = ({
                        <input
                          type="number"
                          min="0"
-                         value={item.cantidad}
+                         value={Number(item.cantidad || 0)}
                          onChange={async (e) => {
                            const nuevaCantidad = parseInt(e.target.value) || 0;
                       
-                           if (item.productoId && !item.esPersonalizado && nuevaCantidad > item.cantidad) {
+                           if (item.productoId && !item.esPersonalizado && nuevaCantidad > Number(item.cantidad || 0)) {
                              try {
                                const { inventario } = useInventarioStore.getState();
                                const productoInventario = inventario.find(p => p.id === item.productoId);
@@ -1082,7 +1082,7 @@ const ItemsTable = ({
                                        ? { 
                                            ...i, 
                                            cantidad: cantidadAjustada, 
-                                           subtotal: cantidadAjustada * i.precio_unitario 
+                                           subtotal: cantidadAjustada * Number(i.precio_unitario || i.precioUnitario || 0)
                                          }
                                        : i
                                    );
@@ -1100,7 +1100,7 @@ const ItemsTable = ({
                                ? { 
                                    ...i, 
                                    cantidad: nuevaCantidad, 
-                                   subtotal: nuevaCantidad * i.precio_unitario 
+                                   subtotal: nuevaCantidad * Number(i.precio_unitario || i.precioUnitario || 0)
                                  }
                                : i
                            );
@@ -1129,10 +1129,10 @@ const ItemsTable = ({
                      ) : (
                        <div>
                          <div className={`font-medium ${styles.text}`}>
-                           {formatearVenezolano(item.precio_unitario * tasaCambio)} Bs
+                           {formatearVenezolano(Number(item.precio_unitario || item.precioUnitario || 0) * tasaCambio)} Bs
                          </div>
                          <div className={`text-xs ${styles.textMuted}`}>
-                           ${item.precio_unitario.toFixed(2)}
+                           ${Number(item.precio_unitario || item.precioUnitario || 0).toFixed(2)}
                          </div>
                        </div>
                      )}
@@ -1141,10 +1141,10 @@ const ItemsTable = ({
                    {/* Subtotal */}
                    <td className="px-4 py-3 text-right">
                      <div className="font-semibold text-emerald-600">
-                       {formatearVenezolano(item.cantidad * item.precio_unitario * tasaCambio)} Bs
+                       {formatearVenezolano(Number(item.cantidad || 0) * Number(item.precio_unitario || item.precioUnitario || 0) * tasaCambio)} Bs
                      </div>
                      <div className={`text-xs ${styles.textMuted}`}>
-                       ${(item.cantidad * item.precio_unitario).toFixed(2)}
+                       ${(Number(item.cantidad || 0) * Number(item.precio_unitario || item.precioUnitario || 0)).toFixed(2)}
                      </div>
                    </td>
 

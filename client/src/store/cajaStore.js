@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 
 import { api, apiWithRetry, testConnection } from '../config/api.js';
-import { useSocketEvents } from '../hooks/useSocketEvents';
+// ✅ Import circular eliminado
 import toast from '../utils/toast.jsx';
 import { useAuthStore } from './authStore.js';
 
@@ -43,13 +43,47 @@ const useCajaStore = create((set, get) => ({
   tasaCambio: 37.50,
   loading: false,
   error: null,
+  
+  // ✅ SELECTORES ELIMINADOS - Causaban bucle infinito
 
-// NUEVO: Cargar caja actual desde backend (CORREGIDO COMPLETAMENTE)
-cargarCajaActual: async () => {
+  // ✅ SISTEMA DE PROTECCIÓN SIMPLIFICADO
+
+// NUEVO: Cargar caja actual desde backend (CORREGIDO COMPLETAMENTE) - CON SINGLETON Y CACHE
+cargarCajaActual: async (forceRefresh = false) => {
+  // 🚀 SINGLETON: Evitar múltiples llamadas simultáneas
+  if (window.cargarCajaActualEnProgreso) {
+    console.log('🔄 cargarCajaActual ya en progreso, esperando...');
+    return new Promise((resolve) => {
+      const checkProgress = () => {
+        if (!window.cargarCajaActualEnProgreso) {
+          resolve();
+        } else {
+          setTimeout(checkProgress, 100);
+        }
+      };
+      checkProgress();
+    });
+  }
+
+  // 🚀 CACHE: Evitar llamadas innecesarias si los datos son recientes
+  const ahora = Date.now();
+  const ultimaActualizacion = window.ultimaActualizacionCaja || 0;
+  const tiempoCache = 2000; // 2 segundos de cache
+
+  if (!forceRefresh && (ahora - ultimaActualizacion) < tiempoCache) {
+    console.log('🔄 Usando cache de caja (datos recientes)');
+    return;
+  }
+
+  window.cargarCajaActualEnProgreso = true;
   set({ loading: true, error: null });
   
   try {
+    console.log('🔄 Ejecutando cargarCajaActual (singleton + cache)...');
     const data = await apiRequest('/cajas/actual');
+    
+    // 🚀 ACTUALIZAR TIMESTAMP DE CACHE
+    window.ultimaActualizacionCaja = ahora;
     
     console.log(' === DIAGNÓSTICO CAJA ===');
     console.log(' Datos recibidos del backend:', data);
@@ -169,6 +203,10 @@ cargarCajaActual: async () => {
       transacciones: []
     });
     throw error;
+  } finally {
+    // 🚀 LIMPIAR FLAG SINGLETON
+    window.cargarCajaActualEnProgreso = false;
+    console.log('✅ cargarCajaActual completado, flag singleton limpiado');
   }
 },
 
@@ -1004,31 +1042,7 @@ updateCajaStatus: (cajaData) => {
         console.log(' Transacción agregada al estado local con usuario:', transaccion.usuario);
       },
 
-      //  FUNCIÓN PARA PROCESAR VENTA COMPLETADA VIA SOCKET.IO
-processVentaCompletada: (ventaData) => {
-  if (!ventaData || !ventaData.venta) return;
-
-  const estado = get();
-  if (!estado.cajaActual) return;
-
-  // ✅ VERIFICAR SI ES LA VENTA DEL MISMO USUARIO
-  const { usuario } = useAuthStore.getState();
-  const esDelMismoUsuario = ventaData.usuario === usuario?.nombre;
-
-  if (esDelMismoUsuario) return;
-
-  // ✅ Para OTROS usuarios: Recargar con debounce para evitar flicker
-  setTimeout(async () => {
-    try {
-      await get().cargarCajaActual();
-    } catch (error) {
-      console.error('Error recargando después de venta:', error);
-    }
-  }, 1500); // 1.5 segundos de delay para suavizar la experiencia
-
-  // NOTA: El toast ya se muestra desde useSocketEvents.handleVentaProcesada
-  // y desde IngresoModal, no necesitamos duplicarlo aquí
-},
+      // ✅ FUNCIÓN ELIMINADA - Ya se maneja en useSocketEvents.js para evitar duplicación
 
   //  FUNCIÓN PARA ELIMINAR TRANSACCIÓN VIA SOCKET.IO
   removeTransaction: (transaccionId) => {
@@ -1234,3 +1248,43 @@ const emitirEventoSocket = (evento, data) => {
 };
 
 export { useCajaStore };
+
+// ✅ SELECTORES SIMPLIFICADOS - Sin bucles infinitos
+export const useTransacciones = () => useCajaStore(state => state.transacciones);
+export const useCajaActual = () => useCajaStore(state => state.cajaActual);
+export const useLoading = () => useCajaStore(state => state.loading);
+export const useTasaCambio = () => useCajaStore(state => state.tasaCambio);
+
+// ✅ SELECTORES SIMPLES SIN OBJETOS COMPLEJOS
+export const useTransactionTable = () => {
+  const transacciones = useCajaStore(state => state.transacciones);
+  const cajaActual = useCajaStore(state => state.cajaActual);
+  const eliminarTransaccion = useCajaStore(state => state.eliminarTransaccion);
+  const cargarCajaActual = useCajaStore(state => state.cargarCajaActual);
+  
+  return { transacciones, cajaActual, eliminarTransaccion, cargarCajaActual };
+};
+
+export const useDashboard = () => {
+  const loading = useCajaStore(state => state.loading);
+  const cajaActual = useCajaStore(state => state.cajaActual);
+  
+  return { loading, cajaActual };
+};
+
+export const useRecentActivity = () => {
+  const transacciones = useCajaStore(state => state.transacciones);
+  const ultimoCierre = useCajaStore(state => state.ultimoCierre);
+  const cajaActual = useCajaStore(state => state.cajaActual);
+  
+  return { transacciones, ultimoCierre, cajaActual };
+};
+
+// ✅ FUNCIONES DE PROTECCIÓN SIMPLIFICADAS
+export const hasActiveModals = () => {
+  if (typeof window !== 'undefined') {
+    window.activeModals = window.activeModals || new Set();
+    return window.activeModals.size > 0;
+  }
+  return false;
+};

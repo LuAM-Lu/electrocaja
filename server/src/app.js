@@ -19,6 +19,7 @@ const clientesRoutes = require('./routes/clientes');
 const proveedoresRoutes = require('./routes/proveedores');
 const auditoriaRoutes = require('./routes/auditoria');
 const cronRoutes = require('./routes/cronRoutes');
+const serviciosRoutes = require('./routes/servicios');
 
 const app = express();
 
@@ -30,22 +31,22 @@ const httpsOptions = {
 
 const server = https.createServer(httpsOptions, app);
 
-// 🔧 CONFIGURAR SOCKET.IO CON CORS DESDE .ENV
-const socketCorsOrigins = process.env.SOCKET_CORS_ORIGINS 
-  ? process.env.SOCKET_CORS_ORIGINS.split(',')
-  : [
-      'https://localhost:5174', 
-      'https://localhost:5173',
-      'http://localhost:5173',
-      `https://${process.env.LOCAL_IP || '192.168.1.11'}:5174`
-    ];
-
+// 🔧 CONFIGURAR SOCKET.IO CON CORS Y OPTIMIZACIONES DE LATENCIA
 const io = new Server(server, {
   cors: {
-    origin: socketCorsOrigins,
+    origin: true, // 🔧 Permitir TODOS los orígenes en desarrollo
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
-  }
+  },
+  // ⚡ OPTIMIZACIONES PARA BAJA LATENCIA
+  transports: ['websocket'], // ⚡ Solo WebSocket (más rápido)
+  allowUpgrades: false, // ⚡ No permitir upgrades
+  pingInterval: 10000, // ⚡ Ping cada 10s
+  pingTimeout: 5000, // ⚡ Timeout reducido
+  maxHttpBufferSize: 1e6, // ⚡ 1MB buffer (reducido de default 1e8)
+  perMessageDeflate: false, // ⚡ Sin compresión = más velocidad
+  httpCompression: false // ⚡ Sin compresión HTTP
+  // Nota: wsEngine removido - usar el default que viene con socket.io
 });
 
 // 🆕 ESTADO GLOBAL MEJORADO PARA SESIONES ÚNICAS + BLOQUEOS
@@ -344,6 +345,7 @@ app.use('/api/email', require('./routes/email')); // 🆕 RUTAS DE EMAIL
 app.use('/api/reportes', require('./routes/reportes')); // 🎯 RUTAS DE REPORTES
 app.use('/api/auditoria', require('./routes/auditoria')); // 🆕 RUTAS DE AUDITORIA INVENTARIO
 app.use('/api/presupuestos', require('./routes/presupuestos')); // 🆕 RUTAS DE PRESUPUESTOS
+app.use('/api/servicios', serviciosRoutes); // 🔧 RUTAS DE SERVICIOS TÉCNICOS
 app.use('/api/cron', cronRoutes); // 🕐 RUTAS DE CRON JOBS (ADMIN)
 
 
@@ -351,15 +353,8 @@ app.use('/api/cron', cronRoutes); // 🕐 RUTAS DE CRON JOBS (ADMIN)
 io.on('connection', (socket) => {
   console.log('👤 Nueva conexión Socket.IO:', socket.id);
 
-  // 🆕 Al conectarse, verificar si hay bloqueo activo
-  if (global.estadoApp.usuarios_bloqueados) {
-    console.log(`🔒 Enviando estado de bloqueo al nuevo usuario: ${socket.id}`);
-    socket.emit('bloquear_usuarios', {
-      motivo: global.estadoApp.motivo_bloqueo,
-      usuario_cerrando: global.estadoApp.usuario_cerrando,
-      timestamp: global.estadoApp.timestamp_bloqueo
-    });
-  }
+  // 🔧 FIX F5 BLOQUEOS: NO enviar bloqueo aquí (demasiado temprano)
+  // Se enviará después de user-connected cuando los listeners estén listos
 
   // 🆕 Evento: Usuario se conecta (desde login)
   socket.on('user-connected', (data) => {
@@ -376,10 +371,10 @@ io.on('connection', (socket) => {
       console.log(`   - Nueva sesión: ${socket.id}`);
       
       // Forzar logout de la sesión anterior
-console.log(`🚫 Enviando force_logout a sesión: ${sesionExistente}`);
-io.to(sesionExistente).emit('force_logout', {
-  message: `Tu sesión ha sido cerrada porque iniciaste sesión desde otro dispositivo`
-});
+      console.log(`🚫 Enviando force_logout a sesión: ${sesionExistente}`);
+      io.to(sesionExistente).emit('force_logout', {
+        message: `Tu sesión ha sido cerrada porque iniciaste sesión desde otro dispositivo`
+      });
       // Limpiar datos de la sesión anterior
       global.estadoApp.usuarios_conectados.delete(sesionExistente);
       
@@ -424,11 +419,45 @@ io.to(sesionExistente).emit('force_logout', {
     console.log(`👥 Total sesiones activas: ${global.estadoApp.usuarios_conectados.size}`);
     console.log(`📋 Usuarios conectados:`, usuariosConectados.map(u => `${u.nombre} (${u.rol})`));
 
-     // 🔧 AGREGAR ESTA LÍNEA AQUÍ:
-  io.emit('usuarios_conectados_actualizado', {
-    total: global.estadoApp.usuarios_conectados.size,
-    usuarios: usuariosConectados.map(u => `${u.nombre} (${u.rol})`)
-  });
+    // ⚡ FIX F5 BLOQUEOS: Enviar estado de bloqueo INMEDIATAMENTE (sin delay)
+    // El cliente ahora usa setImmediate para configurar listeners instantáneamente
+    if (global.estadoApp.usuarios_bloqueados) {
+      console.log(`🔒⚡ [RECONEXIÓN F5 INSTANTÁNEA] Usuario ${user.nombre} reconectado - Enviando estado de bloqueo activo`);
+      console.log(`🔒 [BLOQUEO] Motivo: ${global.estadoApp.motivo_bloqueo}`);
+      console.log(`🔒 [BLOQUEO] Usuario cerrando: ${global.estadoApp.usuario_cerrando}`);
+
+      // ⚡ USAR volatile() para máxima velocidad en reconexión
+      socket.volatile.emit('bloquear_usuarios', {
+        motivo: global.estadoApp.motivo_bloqueo,
+        usuario_cerrando: global.estadoApp.usuario_cerrando,
+        timestamp: global.estadoApp.timestamp_bloqueo,
+        is_reconnect: true,  // 🔧 Flag para identificar que es una reconexión
+        priority: 'critical' // ⚡ Prioridad crítica
+      });
+
+      console.log(`✅⚡ Estado de bloqueo reenviado INSTANTÁNEAMENTE a ${user.nombre}`);
+    } else {
+      console.log(`ℹ️ No hay bloqueo activo para reenviar a ${user.nombre}`);
+    }
+
+    // ⚡ FIX F5 DIFERENCIAS: También enviar diferencias si existen (INSTANTÁNEO)
+    if (global.estadoApp.diferencias_pendientes) {
+      console.log(`🚨⚡ [RECONEXIÓN F5 INSTANTÁNEA] Enviando diferencias pendientes a ${user.nombre}`);
+      socket.volatile.emit('bloquear_usuarios_diferencia', {
+        mensaje: global.estadoApp.motivo_bloqueo,
+        diferencias: global.estadoApp.diferencias_pendientes,
+        usuario_cerrando: global.estadoApp.usuario_cerrando,
+        timestamp: global.estadoApp.timestamp_bloqueo,
+        is_reconnect: true,
+        priority: 'critical'
+      });
+    }
+
+    // Notificar cambio en usuarios conectados
+    io.emit('usuarios_conectados_actualizado', {
+      total: global.estadoApp.usuarios_conectados.size,
+      usuarios: usuariosConectados.map(u => `${u.nombre} (${u.rol})`)
+    });
 
   });
 
@@ -437,9 +466,15 @@ io.to(sesionExistente).emit('force_logout', {
     const { motivo, usuario_cerrando, timestamp } = data;
     
     console.log('🔒 ===== BLOQUEANDO USUARIOS =====');
+    console.log('🔒 Socket que envía:', socket.id);
     console.log('🔒 Motivo:', motivo);
     console.log('🔒 Usuario cerrando:', usuario_cerrando);
     console.log('🔒 Timestamp:', timestamp);
+    console.log('🔒 Total usuarios conectados:', global.estadoApp.usuarios_conectados.size);
+    
+    // Listar todos los usuarios conectados
+    const usuariosConectados = Array.from(global.estadoApp.usuarios_conectados.values());
+    console.log('🔒 Usuarios:', usuariosConectados.map(u => `${u.nombre} (${u.socket_id})`));
     
     // Actualizar estado global
     global.estadoApp.usuarios_bloqueados = true;
@@ -447,14 +482,15 @@ io.to(sesionExistente).emit('force_logout', {
     global.estadoApp.usuario_cerrando = usuario_cerrando;
     global.estadoApp.timestamp_bloqueo = timestamp;
     
-    // Emitir a TODOS los usuarios conectados
-    io.emit('bloquear_usuarios', {
-      motivo,
-      usuario_cerrando,
-      timestamp
-    });
-    
-    console.log(`🔒 Usuarios bloqueados: ${global.estadoApp.usuarios_conectados.size} usuarios afectados`);
+    // ⚡ EMITIR BROADCAST INSTANTÁNEO a TODOS los usuarios
+    console.log('🔒⚡ Emitiendo BLOQUEO INSTANTÁNEO a todos...');
+
+    const payloadBloqueo = { motivo, usuario_cerrando, timestamp, priority: 'high' };
+
+    // ⚡ USAR volatile() para envío ultra-rápido (sin buffer, sin ACK)
+    io.volatile.emit('bloquear_usuarios', payloadBloqueo);
+
+    console.log(`🔒⚡ BLOQUEO INSTANTÁNEO emitido a ${global.estadoApp.usuarios_conectados.size} usuarios`);
     console.log('🔒 ================================');
   });
 
@@ -475,13 +511,11 @@ io.to(sesionExistente).emit('force_logout', {
     global.estadoApp.timestamp_bloqueo = timestamp;
     global.estadoApp.diferencias_pendientes = diferencias;
     
-    // Emitir a TODOS los usuarios conectados
-    io.emit('bloquear_usuarios_diferencia', {
-      mensaje,
-      diferencias,
-      usuario_cerrando,
-      timestamp
-    });
+    // ⚡ EMITIR BROADCAST INSTANTÁNEO por diferencias
+    const payloadDiferencia = { mensaje, diferencias, usuario_cerrando, timestamp, priority: 'critical' };
+
+    // ⚡ USAR volatile() para máxima velocidad
+    io.volatile.emit('bloquear_usuarios_diferencia', payloadDiferencia);
     
     console.log(`🚨 Usuarios bloqueados por diferencias: ${global.estadoApp.usuarios_conectados.size} usuarios afectados`);
     console.log('🚨 ===================================');

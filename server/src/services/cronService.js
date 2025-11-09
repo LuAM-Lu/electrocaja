@@ -2,6 +2,7 @@
 // 🕐 SERVICIO DE TAREAS PROGRAMADAS (CRON JOBS)
 const cron = require('node-cron');
 const stockService = require('./stockService');
+const autoCierreService = require('./autoCierreService');
 
 class CronService {
   constructor() {
@@ -20,14 +21,158 @@ class CronService {
 
     console.log('🕐 [CronService] Inicializando tareas programadas...');
 
-    // Job 1: Limpieza de reservas expiradas cada 1 hora
+    // Job 1: Auto-cierre de cajas a las 2:00 AM
+    this.scheduleAutoCierre();
+
+    // Job 2: Verificación de cajas antiguas abiertas (al iniciar y cada 6 horas)
+    this.scheduleCajasAntiguasCheck();
+
+    // Job 3: Limpieza de reservas expiradas cada 1 hora
     this.scheduleReservasExpiradasCleanup();
 
-    // Job 2: Heartbeat de verificación cada 30 minutos
+    // Job 4: Heartbeat de verificación cada 30 minutos
     this.scheduleHealthCheck();
 
     this.isInitialized = true;
     console.log(`✅ [CronService] ${this.jobs.size} tareas programadas activas`);
+  }
+
+  /**
+   * 🕐 JOB: Auto-cierre automático de cajas a las 2:00 AM
+   * Marca cajas abiertas como PENDIENTE_CIERRE_FISICO
+   */
+  scheduleAutoCierre() {
+    const jobName = 'auto-cierre-cajas';
+
+    // Cron: '0 2 * * *' = todos los días a las 2:00 AM
+    const job = cron.schedule('0 2 * * *', async () => {
+      try {
+        console.log('🕐 [CronService] Ejecutando auto-cierre programado (2:00 AM)...');
+
+        const resultado = await autoCierreService.ejecutarAutoCierre();
+
+        if (resultado.success) {
+          console.log(`✅ [CronService] Auto-cierre completado: ${resultado.message}`);
+
+          if (resultado.resultados && resultado.resultados.length > 0) {
+            console.log(`📋 [CronService] Cajas afectadas:`);
+            resultado.resultados.forEach(r => {
+              console.log(`   - Caja ${r.cajaId}: ${r.status} (${r.usuarioResponsable || 'Sin responsable'})`);
+            });
+          }
+        } else {
+          console.error('❌ [CronService] Error en auto-cierre:', resultado.error);
+        }
+      } catch (error) {
+        console.error('❌ [CronService] Error ejecutando auto-cierre:', error);
+      }
+    }, {
+      scheduled: true,
+      timezone: "America/Caracas"
+    });
+
+    this.jobs.set(jobName, job);
+    console.log(`✅ [CronService] Job "${jobName}" programado (2:00 AM diario)`);
+  }
+
+  /**
+   * 🔍 JOB: Verificar cajas antiguas abiertas
+   * Detecta cajas del día anterior que quedaron abiertas y las marca como pendientes
+   * Se ejecuta al iniciar y cada 6 horas
+   */
+  scheduleCajasAntiguasCheck() {
+    const jobName = 'cajas-antiguas-check';
+
+    // Ejecutar inmediatamente al iniciar
+    this._checkCajasAntiguas();
+
+    // Cron: '0 */6 * * *' = cada 6 horas
+    const job = cron.schedule('0 */6 * * *', async () => {
+      await this._checkCajasAntiguas();
+    }, {
+      scheduled: true,
+      timezone: "America/Caracas"
+    });
+
+    this.jobs.set(jobName, job);
+    console.log(`✅ [CronService] Job "${jobName}" programado (cada 6 horas + al iniciar)`);
+  }
+
+  /**
+   * 🔍 HELPER: Verificar y cerrar cajas antiguas
+   */
+  async _checkCajasAntiguas() {
+    try {
+      console.log('🔍 [CronService] Verificando cajas antiguas abiertas...');
+
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+
+      // Buscar cajas abiertas con fecha diferente a hoy
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      const cajasAntiguas = await prisma.caja.findMany({
+        where: {
+          estado: 'ABIERTA',
+          fecha: {
+            lt: hoy // Menor que hoy
+          }
+        },
+        include: {
+          usuarioApertura: {
+            select: { id: true, nombre: true }
+          }
+        }
+      });
+
+      if (cajasAntiguas.length > 0) {
+        console.warn(`⚠️ [CronService] ALERTA: ${cajasAntiguas.length} caja(s) antigua(s) encontrada(s)!`);
+
+        for (const caja of cajasAntiguas) {
+          const diasAntigua = Math.floor((hoy - new Date(caja.fecha)) / (1000 * 60 * 60 * 24));
+
+          console.warn(`   - Caja ${caja.id}: Abierta desde ${new Date(caja.fecha).toLocaleDateString('es-VE')} (${diasAntigua} día(s) atrás)`);
+          console.warn(`     Responsable: ${caja.usuarioApertura?.nombre || 'Desconocido'}`);
+
+          // Marcar como pendiente automáticamente
+          await prisma.caja.update({
+            where: { id: caja.id },
+            data: {
+              estado: 'PENDIENTE_CIERRE_FISICO',
+              fechaAutoCierre: new Date(),
+              requiereConteoFisico: true,
+              usuarioResponsableId: caja.usuarioAperturaId,
+              motivoAutoCierre: `AUTO_CIERRE_CAJA_ANTIGUA_${diasAntigua}_DIAS`
+            }
+          });
+
+          console.log(`   ✅ Caja ${caja.id} marcada como PENDIENTE_CIERRE_FISICO`);
+        }
+
+        // Notificar via Socket.IO si está disponible
+        if (global.io) {
+          global.io.emit('cajas_antiguas_detectadas', {
+            timestamp: new Date().toISOString(),
+            cajas: cajasAntiguas.map(c => ({
+              id: c.id,
+              fecha: c.fecha,
+              usuarioResponsable: c.usuarioApertura?.nombre,
+              diasAntigua: Math.floor((hoy - new Date(c.fecha)) / (1000 * 60 * 60 * 24))
+            })),
+            mensaje: 'Se detectaron cajas antiguas - Requieren cierre físico'
+          });
+          console.log('📡 Notificación de cajas antiguas enviada via Socket.IO');
+        }
+      } else {
+        console.log('✅ [CronService] No hay cajas antiguas abiertas');
+      }
+
+      await prisma.$disconnect();
+
+    } catch (error) {
+      console.error('❌ [CronService] Error verificando cajas antiguas:', error);
+    }
   }
 
   /**
@@ -200,6 +345,26 @@ class CronService {
     console.log(`🔧 [CronService] Ejecutando "${jobName}" manualmente...`);
 
     switch (jobName) {
+      case 'auto-cierre-cajas':
+        try {
+          const resultado = await autoCierreService.ejecutarAutoCierre();
+          console.log('✅ [CronService] Auto-cierre manual completado:', resultado);
+          return resultado;
+        } catch (error) {
+          console.error('❌ [CronService] Error en auto-cierre manual:', error);
+          throw error;
+        }
+
+      case 'cajas-antiguas-check':
+        try {
+          await this._checkCajasAntiguas();
+          console.log('✅ [CronService] Verificación de cajas antiguas completada');
+          return { success: true, message: 'Verificación completada' };
+        } catch (error) {
+          console.error('❌ [CronService] Error verificando cajas antiguas:', error);
+          throw error;
+        }
+
       case 'reservas-expiradas-cleanup':
         try {
           const resultado = await stockService.limpiarReservasExpiradas(2);

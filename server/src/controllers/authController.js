@@ -128,16 +128,20 @@ const login = async (req, res) => {
       if (!global.estadoApp) {
     global.estadoApp = { 
       usuarios_conectados: new Map(),    // Socket.IO sessions
-      sesiones_api: new Map()           // API REST sessions
+      sesiones_api: new Map(),           // API REST sessions
+      sesiones_por_usuario: new Map()    // 🔧 FIX: Agregar mapeo de usuario a socket
     };
   }
 
-  // Asegurar que ambos Maps existen
+  // Asegurar que todos los Maps existen
   if (!global.estadoApp.usuarios_conectados) {
     global.estadoApp.usuarios_conectados = new Map();
   }
   if (!global.estadoApp.sesiones_api) {
     global.estadoApp.sesiones_api = new Map();
+  }
+  if (!global.estadoApp.sesiones_por_usuario) {
+    global.estadoApp.sesiones_por_usuario = new Map();
   }
 
   console.log('📊 Estado actual de sesiones:');
@@ -221,10 +225,11 @@ const login = async (req, res) => {
       {
         userId: user.id,
         email: user.email,
-        rol: user.rol
+        rol: user.rol,
+        nombre: user.nombre
       },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
     );
 
     console.log('✅ 14. JWT generado correctamente');
@@ -453,8 +458,55 @@ const me = async (req, res) => {
       return sendError(res, 'Usuario no encontrado', 404);
     }
 
+    // ✅ FIX F5: Verificar si hay caja pendiente de cierre físico
+    const cajaPendiente = await prisma.caja.findFirst({
+      where: {
+        estado: 'PENDIENTE_CIERRE_FISICO',
+        usuarioAperturaId: user.id  // 🔧 FIX: Usar nombre correcto del campo
+      },
+      select: {
+        id: true,
+        fecha: true,  // 🔧 FIX: Usar nombre correcto del campo
+        montoInicialBs: true,
+        montoInicialUsd: true,
+        montoInicialPagoMovil: true,
+        totalIngresosBs: true,
+        totalEgresosBs: true,
+        totalIngresosUsd: true,
+        totalEgresosUsd: true,
+        totalPagoMovil: true,
+        usuarioApertura: {
+          select: {
+            nombre: true
+          }
+        }
+      }
+    });
+
+    // Construir respuesta
+    const userData = { ...user };
+
+    // ✅ FIX F5: Si hay caja pendiente, agregarla a la respuesta
+    if (cajaPendiente) {
+      console.log('⚠️ ME - Caja pendiente detectada para usuario:', user.nombre);
+      userData.cajaPendienteCierre = {
+        id: cajaPendiente.id,
+        fecha: cajaPendiente.fecha,  // 🔧 FIX: Usar nombre correcto del campo
+        usuarioResponsable: cajaPendiente.usuarioApertura.nombre,
+        usuarioResponsableId: user.id,
+        montoInicialBs: cajaPendiente.montoInicialBs,
+        montoInicialUsd: cajaPendiente.montoInicialUsd,
+        montoInicialPagoMovil: cajaPendiente.montoInicialPagoMovil,
+        totalIngresosBs: cajaPendiente.totalIngresosBs,
+        totalEgresosBs: cajaPendiente.totalEgresosBs,
+        totalIngresosUsd: cajaPendiente.totalIngresosUsd,
+        totalEgresosUsd: cajaPendiente.totalEgresosUsd,
+        totalPagoMovil: cajaPendiente.totalPagoMovil
+      };
+    }
+
     console.log('✅ ME - Usuario encontrado:', user.email);
-    sendSuccess(res, user);
+    sendSuccess(res, userData);
   } catch (error) {
     console.error('💥 Error en ME:', error);
     sendError(res, 'Error interno del servidor');
@@ -561,10 +613,172 @@ const clearAllSessions = async (req, res) => {
 
 
 
+// 🎯 LOGIN POR TOKEN QR (ESCANEADO POR LECTOR DE CÓDIGO DE BARRAS)
+const loginByToken = async (req, res) => {
+  try {
+    console.log('📱 ===== LOGIN POR TOKEN QR =====');
+    console.log('📥 Request body:', req.body);
+    console.log('📍 IP Cliente:', req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']);
+
+    const { quickAccessToken } = req.body;
+
+    // Validar que se envió el token
+    if (!quickAccessToken) {
+      console.log('❌ Token no proporcionado');
+      return sendError(res, 'Token de acceso rápido requerido', 400);
+    }
+
+    console.log('🔍 Buscando usuario con token:', quickAccessToken);
+
+    // Buscar usuario por quickAccessToken
+    const user = await prisma.user.findUnique({
+      where: {
+        quickAccessToken: quickAccessToken.toUpperCase().trim()
+      },
+      select: {
+        id: true,
+        nombre: true,
+        email: true,
+        password: true,
+        rol: true,
+        sucursal: true,
+        turno: true,
+        activo: true
+      }
+    });
+
+    if (!user) {
+      console.log('❌ Token inválido o usuario no encontrado');
+      return sendError(res, 'Token de acceso rápido inválido', 401);
+    }
+
+    console.log('✅ Usuario encontrado:', user.nombre, '- Rol:', user.rol);
+
+    // Verificar si usuario está activo
+    if (user.activo === false) {
+      console.log('❌ Usuario inactivo:', user.nombre);
+      return sendError(res, 'Usuario inactivo', 401);
+    }
+
+    // 🆕 VERIFICAR CAJA PENDIENTE DE CIERRE (igual que en login normal)
+    const cajaPendiente = await prisma.caja.findFirst({
+      where: { estado: 'PENDIENTE_CIERRE_FISICO' },
+      include: {
+        usuarioApertura: {
+          select: { id: true, nombre: true }
+        }
+      }
+    });
+
+    if (cajaPendiente) {
+      const esResponsable = user.id === cajaPendiente.usuarioAperturaId;
+      const esAdmin = user.rol.toLowerCase() === 'admin';
+
+      if (!esResponsable && !esAdmin) {
+        return sendError(res,
+          `Sistema bloqueado - Caja del ${cajaPendiente.fecha.toLocaleDateString('es-VE')} pendiente de cierre físico. Contacte a ${cajaPendiente.usuarioApertura.nombre} o administrador.`,
+          423
+        );
+      }
+
+      user.cajaPendienteCierre = {
+        id: cajaPendiente.id,
+        fecha: cajaPendiente.fecha,
+        usuarioResponsable: cajaPendiente.usuarioApertura.nombre,
+        esResponsable: esResponsable
+      };
+    }
+
+    // 👈 VERIFICAR Y CERRAR SESIONES ACTIVAS (igual que login normal)
+    const usuarioSocketConectado = Array.from(global.estadoApp.usuarios_conectados.values())
+      .find(u => u.email === user.email);
+
+    if (usuarioSocketConectado) {
+      console.log('⚠️ Usuario ya conectado via Socket.IO - CERRANDO SESIÓN ANTERIOR');
+
+      if (req.io) {
+        req.io.to(usuarioSocketConectado.socket_id).emit('force_logout', {
+          message: 'Tu sesión ha sido cerrada porque iniciaste sesión desde otro dispositivo',
+          reason: 'duplicate_session',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      global.estadoApp.usuarios_conectados.delete(usuarioSocketConectado.socket_id);
+      global.estadoApp.sesiones_por_usuario.delete(user.id);
+    }
+
+    const usuarioApiConectado = global.estadoApp.sesiones_api.get(user.email);
+
+    if (usuarioApiConectado) {
+      console.log('⚠️ Usuario ya conectado via API REST - CERRANDO SESIÓN ANTERIOR');
+      global.estadoApp.sesiones_api.delete(user.email);
+    }
+
+    // Generar JWT
+    console.log('🔍 Generando JWT...');
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        rol: user.rol,
+        nombre: user.nombre
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
+    );
+
+    console.log('✅ JWT generado correctamente');
+
+    // Registrar sesión API
+    const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || 'Desconocida';
+
+    console.log('📝 Registrando sesión API...');
+    global.estadoApp.sesiones_api.set(user.email, {
+      usuario: user.nombre,
+      email: user.email,
+      rol: user.rol,
+      sucursal: user.sucursal,
+      ip: clientIP,
+      timestamp: new Date().toISOString(),
+      token_preview: token?.substring(0, 20) + '...',
+      user_agent: req.headers['user-agent'] || 'Desconocido',
+      login_method: 'quick_access_token'
+    });
+
+    // Remover password de la respuesta
+    const { password: _, ...userWithoutPassword } = user;
+
+    console.log('✅ Enviando respuesta exitosa - LOGIN POR TOKEN AUTORIZADO');
+    sendSuccess(res, {
+      user: userWithoutPassword,
+      token,
+      session_info: {
+        ip: clientIP,
+        timestamp: new Date().toISOString(),
+        expires_in: process.env.JWT_EXPIRES_IN,
+        login_method: 'quick_access_token'
+      }
+    }, 'Login exitoso por token QR');
+
+    console.log('🎉 ===== LOGIN POR TOKEN COMPLETADO =====');
+
+  } catch (error) {
+    console.log('💥 ===== ERROR EN LOGIN POR TOKEN =====');
+    console.error('💥 Error message:', error.message);
+    console.error('💥 Error name:', error.name);
+    console.error('💥 Full error:', error);
+    console.log('💥 ===========================');
+
+    sendError(res, 'Error interno del servidor');
+  }
+};
+
 module.exports = {
   login,
   logout,
   me,
   forceLogout,
   clearAllSessions,
+  loginByToken, // 🎯 NUEVO ENDPOINT
 };

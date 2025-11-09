@@ -7,20 +7,20 @@ import toast from 'react-hot-toast';
 
 export const useSocketEvents = () => {
   // 🔧 USAR TU AUTHSTORE
-  const { 
-    socket, 
-    usuario, 
+  const {
+    socket,
+    usuario,
     isSocketConnected,
     logout, // 🆕 AGREGAR LOGOUT
-    agregarUsuarioConectado, 
+    agregarUsuarioConectado,
     eliminarUsuarioConectado,
-    actualizarActividad 
+    actualizarActividad
   } = useAuthStore();
-  
+
   const { updateCajaStatus, addTransaction, removeTransaction } = useCajaStore();
 
-  
-  // Estados para bloqueos
+
+  // Estados locales para bloqueos (VERSIÓN SIMPLE QUE FUNCIONABA)
   const [usuariosBloqueados, setUsuariosBloqueados] = useState(false);
   const [motivoBloqueo, setMotivoBloqueo] = useState('');
   const [usuarioCerrando, setUsuarioCerrando] = useState('');
@@ -33,15 +33,22 @@ export const useSocketEvents = () => {
 
     console.log('✅ Configurando listeners para socket:', socket.id, 'conectado:', socket.connected);
 
-    // 🔧 HANDLERS ESPECÍFICOS PARA BLOQUEOS
+    // 🔧 HANDLERS ESPECÍFICOS PARA BLOQUEOS (VERSIÓN SIMPLE QUE FUNCIONABA)
     const handleBloqueaUsuarios = (data) => {
       console.log('🔒 EVENTO: bloquear_usuarios', data);
+
+      // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
+      const { usuario: usuarioActual } = useAuthStore.getState();
+      console.log('🔒 Usuario actual en handler:', usuarioActual?.nombre);
+      console.log('🔒 Usuario cerrando:', data.usuario_cerrando);
+
       setUsuariosBloqueados(true);
       setMotivoBloqueo(data.motivo);
       setUsuarioCerrando(data.usuario_cerrando);
-      
+
       // Solo mostrar toast si no es el usuario que está cerrando
-      if (usuario?.nombre !== data.usuario_cerrando) {
+      if (usuarioActual?.nombre !== data.usuario_cerrando) {
+        console.log('🔒 Mostrando toast porque', usuarioActual?.nombre, '!==', data.usuario_cerrando);
         toast.error(`🔒 ${data.motivo}`, {
           duration: 5000,
           style: {
@@ -51,16 +58,22 @@ export const useSocketEvents = () => {
             fontSize: '14px'
           }
         });
+      } else {
+        console.log('🔒 NO mostrar toast porque ES el usuario que está cerrando');
       }
     };
 
     const handleBloqueaDiferencia = (data) => {
       console.log('🚨 EVENTO: bloquear_usuarios_diferencia', data);
+
+      // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
+      const { usuario: usuarioActual } = useAuthStore.getState();
+
       setUsuariosBloqueados(true);
       setMotivoBloqueo(data.mensaje);
       setUsuarioCerrando(data.usuario_cerrando);
-      
-      if (usuario?.nombre !== data.usuario_cerrando) {
+
+      if (usuarioActual?.nombre !== data.usuario_cerrando) {
         toast.error(`🚨 ${data.mensaje}`, {
           duration: 8000,
           style: {
@@ -79,7 +92,7 @@ export const useSocketEvents = () => {
       setUsuariosBloqueados(false);
       setMotivoBloqueo('');
       setUsuarioCerrando('');
-      
+
       toast.success(`🔓 ${data.motivo}`, {
         duration: 3000,
         style: {
@@ -128,9 +141,13 @@ export const useSocketEvents = () => {
 
     const handleCajaAbierta = (data) => {
       console.log('📦 Caja abierta:', data);
+
+      // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
+      const { usuario: usuarioActual } = useAuthStore.getState();
+
       // Evitar duplicado si el usuario actual abrió la caja
-      if (usuario?.nombre === data.usuario) return;
-      toast.success(`📦 Caja abierta por ${data.usuario}`, { 
+      if (usuarioActual?.nombre === data.usuario) return;
+      toast.success(`📦 Caja abierta por ${data.usuario}`, {
         duration: 4000,
         id: 'caja-abierta',
         style: {
@@ -138,7 +155,7 @@ export const useSocketEvents = () => {
           color: '#14532D'
         }
       });
-      
+
       // 🔧 ACTUALIZAR ESTADO DE CAJA EN LUGAR DE RECARGAR
       if (updateCajaStatus && data.caja) {
         console.log('🔧 Actualizando estado de caja abierta:', data.caja);
@@ -148,9 +165,13 @@ export const useSocketEvents = () => {
     
     const handleCajaCerrada = (data) => {
       console.log('🔒 Caja cerrada:', data);
+
+      // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
+      const { usuario: usuarioActual } = useAuthStore.getState();
+
       // Evitar duplicado si el usuario actual cerró la caja
-      if (usuario?.nombre === data.usuario) return;
-      toast.success(`🔒 Caja cerrada por ${data.usuario}`, { 
+      if (usuarioActual?.nombre === data.usuario) return;
+      toast.success(`🔒 Caja cerrada por ${data.usuario}`, {
         duration: 4000,
         id: 'caja-cerrada',
         style: {
@@ -158,7 +179,7 @@ export const useSocketEvents = () => {
           color: '#1E40AF'
         }
       });
-      
+
       // 🔧 ACTUALIZAR ESTADO DE CAJA EN LUGAR DE RECARGAR
       if (updateCajaStatus && data.caja) {
         console.log('🔧 Actualizando estado de caja cerrada:', data.caja);
@@ -169,7 +190,11 @@ export const useSocketEvents = () => {
     // 🔧 HANDLERS PARA USUARIOS CONECTADOS
     const handleUserConnected = (data) => {
       console.log('👤 Usuario conectado:', data);
-      if (data.user && data.user.id !== usuario?.id) {
+
+      // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
+      const { usuario: usuarioActual } = useAuthStore.getState();
+
+      if (data.user && data.user.id !== usuarioActual?.id) {
         agregarUsuarioConectado(data.user);
         toast(`👋 ${data.user.nombre} se ha conectado`, {
           duration: 2000,
@@ -180,7 +205,11 @@ export const useSocketEvents = () => {
 
     const handleUserDisconnected = (data) => {
       console.log('👤 Usuario desconectado:', data);
-      if (data.userId !== usuario?.id) {
+
+      // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
+      const { usuario: usuarioActual } = useAuthStore.getState();
+
+      if (data.userId !== usuarioActual?.id) {
         eliminarUsuarioConectado(data.userId);
         toast(`👋 ${data.userName || 'Usuario'} se ha desconectado`, {
           duration: 2000,
@@ -421,10 +450,12 @@ console.log('✅ Listener venta_procesada REGISTRADO');
     // 🔧 CLEANUP
     return () => {
       console.log('🧹 Limpiando listeners de socket');
+
+      // LIMPIAR SOCKET LISTENERS (NO window events - authStore los maneja)
       socket.off('bloquear_usuarios', handleBloqueaUsuarios);
       socket.off('bloquear_usuarios_diferencia', handleBloqueaDiferencia);
       socket.off('desbloquear_usuarios', handleDesbloquea);
-      socket.off('force_logout', handleForceLogout); // 🆕 NUEVO CLEANUP
+      socket.off('force_logout', handleForceLogout);
       socket.off('caja_abierta', handleCajaAbierta);
       socket.off('caja_cerrada', handleCajaCerrada);
       socket.off('user-connected', handleUserConnected);
@@ -446,35 +477,31 @@ console.log('✅ Listener venta_procesada REGISTRADO');
     };
   }, [socket?.id]);
 
-// ✅ HANDLER PARA VENTA PROCESADA CORREGIDO - SIEMPRE RECARGA
+// ✅ HANDLER PARA VENTA PROCESADA - OPTIMIZADO SIN REFRESH
 const handleVentaProcesada = (data) => {
-  console.log('🚀🚀🚀 VENTA PROCESADA RECIBIDA - INICIO DEBUG 🚀🚀🚀');
+  console.log('🚀 VENTA PROCESADA RECIBIDA');
   console.log('📊 Data recibida:', data);
-  
+
+  // ⚠️ VALIDACIÓN CRÍTICA: Verificar que data.venta existe
+  if (!data || !data.venta) {
+    console.error('❌ ERROR: data.venta es undefined o null');
+    console.error('   Data completo:', data);
+    return; // ⚠️ SALIR TEMPRANO para evitar errores
+  }
+
   const { usuario } = useAuthStore.getState();
   const esDelMismoUsuario = data.usuario === usuario?.nombre;
-  
-  console.log('🔍 Debug checks:');
-  console.log('  - Usuario del evento:', data.usuario);
+
+  console.log('🔍 Debug:');
+  console.log('  - Usuario evento:', data.usuario);
   console.log('  - Usuario actual:', usuario?.nombre);
-  console.log('  - Es del mismo usuario?:', esDelMismoUsuario);
-  
-  // ✅ SIEMPRE RECARGAR TRANSACCIONES (para todos los usuarios)
-  // ✅ SIEMPRE RECARGAR TRANSACCIONES (para todos los usuarios)
+  console.log('  - Es mismo usuario?:', esDelMismoUsuario);
+  console.log('  - Tiene venta.id?:', !!data.venta.id);
+  console.log('  - Tiene venta.pagos?:', !!data.venta.pagos);
+
 const cajaState = useCajaStore.getState();
-console.log('📦 CajaStore funciones disponibles:', Object.keys(cajaState));
 
-// Buscar la función correcta de obtener transacciones
-const funcionesTransacciones = Object.keys(cajaState).filter(key => 
-  key.toLowerCase().includes('transaccion') || 
-  key.toLowerCase().includes('obtener') ||
-  key.toLowerCase().includes('load') ||
-  key.toLowerCase().includes('fetch')
-);
-
-console.log('🔍 Funciones relacionadas con transacciones:', funcionesTransacciones);
-
-// ✅ USAR LAS FUNCIONES CORRECTAS DISPONIBLES
+// ✅ INTENTAR ACTUALIZAR TRANSACCIONES SIN RECARGAR TODO
 let funcionEjecutada = false;
 
 // Opción 1: Usar processVentaCompletada que está específicamente para ventas
@@ -484,14 +511,15 @@ if (cajaState.processVentaCompletada && data.venta) {
   funcionEjecutada = true;
 }
 
-// Opción 2: Usar addTransaction para agregar la transacción manualmente
+// Opción 2: Usar addTransaction + actualizar totales de caja (SIN recargar todo)
 else if (cajaState.addTransaction && data.venta) {
-  console.log('🔄 EJECUTANDO addTransaction...');
-  // Convertir datos de venta a formato de transacción
+  console.log('🔄 EJECUTANDO addTransaction + actualización de totales...');
+
+  // 1. Agregar la transacción a la lista
   const transaccionParaAgregar = {
     transaccion: {
       id: data.venta.id,
-      tipo: 'INGRESO',
+      tipo: 'ingreso', // ✅ Usar minúsculas para consistencia con cajaStore
       categoria: `Venta - ${data.venta.items?.length || 0} productos`,
       totalBs: data.venta.totalBs,
       totalUsd: data.venta.totalUsd,
@@ -499,40 +527,63 @@ else if (cajaState.addTransaction && data.venta) {
       usuario: data.usuario,
       clienteNombre: data.venta.clienteNombre,
       codigoVenta: data.venta.codigoVenta,
-      metodoPagoPrincipal: data.venta.metodoPagoPrincipal || 'efectivo_bs'
+      metodoPagoPrincipal: data.venta.metodoPagoPrincipal || 'efectivo_bs',
+      // ✅ INCLUIR CAMPOS NECESARIOS PARA EVITAR UNDEFINED
+      pagos: data.venta.pagos || [],  // ⚠️ Array de pagos
+      items: data.venta.items || [],  // ⚠️ Array de items
+      observaciones: data.venta.observaciones || ''
     }
   };
   cajaState.addTransaction(transaccionParaAgregar);
+
+  // 2. Actualizar totales de la caja (sin recargar todo) - SOLO SI el servidor los envía
+  const cajaActual = cajaState.cajaActual;
+  if (cajaActual && data.venta.totalesActualizados) {
+    useCajaStore.setState({
+      cajaActual: {
+        ...cajaActual,
+        total_ingresos_bs: data.venta.totalesActualizados.totalIngresosBs || cajaActual.total_ingresos_bs,
+        total_ingresos_usd: data.venta.totalesActualizados.totalIngresosUsd || cajaActual.total_ingresos_usd,
+        total_pago_movil: data.venta.totalesActualizados.totalPagoMovil || cajaActual.total_pago_movil
+      }
+    });
+    console.log('✅ Totales de caja actualizados sin recargar');
+  }
+
   funcionEjecutada = true;
 }
 
-// Opción 3: Re-inicializar todo como fallback
-else if (cajaState.initialize) {
-  console.log('🔄 EJECUTANDO initialize como fallback...');
-  cajaState.initialize();
+// ❌ OPCIÓN 3 ELIMINADA: NO usar initialize() porque causa refresh en TODOS los usuarios
+// El initialize() recarga toda la app (tasa cambio, transacciones, estados, etc.)
+// Esto causa que otros usuarios vean un "refresh" o "F5 forzado" en su pantalla
+
+// Opción 3: Recargar solo transacciones de forma ligera (SIN initialize)
+else if (cajaState.cargarCajaActual) {
+  console.log('🔄 EJECUTANDO cargarCajaActual (ligero, solo transacciones)...');
+  // cargarCajaActual solo recarga transacciones, no toda la app
+  cajaState.cargarCajaActual();
   funcionEjecutada = true;
 }
 
 else {
-  console.error('❌ NO SE PUDO ejecutar ninguna función de actualización');
+  console.warn('⚠️ No se encontró función para actualizar transacciones - La UI se actualizará en el próximo refresh manual');
+  // NO hacer nada en lugar de recargar toda la app
+  // La próxima vez que el usuario interactúe, verá la nueva transacción
 }
 
 if (funcionEjecutada) {
-  console.log('✅ Función de transacciones ejecutada');
+  console.log('✅ Transacción actualizada sin recargar página');
+} else {
+  console.warn('⚠️ No se pudo actualizar transacción - requiere refresh manual');
 }
-  
-  // Solo mostrar toast a OTROS usuarios
-  if (!esDelMismoUsuario) {
-    toast.success(`🚀 ${data.usuario} procesó una venta`, {
-      duration: 4000,
-      icon: '✅'
-    });
-    console.log('✅ Toast mostrado para otro usuario');
-  } else {
-    console.log('🔄 Toast omitido (venta propia) pero datos recargados');
-  }
-  
-  console.log('🚀🚀🚀 VENTA PROCESADA - FIN DEBUG 🚀🚀🚀');
+
+// Solo mostrar toast a OTROS usuarios
+if (!esDelMismoUsuario) {
+  toast.success(`🚀 ${data.usuario} procesó una venta`, {
+    duration: 4000,
+    icon: '✅'
+  });
+}
 };
 
   // 🔒 HANDLER PARA STOCK RESERVADO

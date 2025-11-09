@@ -1,12 +1,15 @@
 // server/src/routes/auth.js (CORREGIDO)
 const express = require('express');
-const { login, logout, me, forceLogout, clearAllSessions } = require('../controllers/authController');
+const { login, logout, me, forceLogout, clearAllSessions, loginByToken } = require('../controllers/authController');
 const { verifyToken, checkPermissions } = require('../middleware/auth');
 
 const router = express.Router();
 
 // POST /api/auth/login - SIN MIDDLEWARE
 router.post('/login', login);
+
+// 🎯 POST /api/auth/login-token - Login por QR/Barcode (SIN MIDDLEWARE)
+router.post('/login-token', loginByToken);
 
 // POST /api/auth/logout 
 router.post('/logout', verifyToken, logout);
@@ -113,15 +116,35 @@ router.post('/validate-admin-token', async (req, res) => {
     }
 
     console.log('🔧 Validando admin token para autorización (sin login)');
+    console.log('🔧 Token recibido:', token);
 
-    // Usar la base de datos directamente
-    const db = require('../config/database');
+    // ✅ Usar Prisma para buscar usuario por quickAccessToken
+    const prisma = require('../config/database');
+    
+    // Normalizar token: convertir a mayúsculas y eliminar espacios
+    const tokenNormalizado = token.toUpperCase().trim().replace(/\s+/g, '');
+    
+    console.log('🔧 Token normalizado:', tokenNormalizado);
     
     // Buscar usuario por quick_access_token SIN hacer login
-    const user = await db.get(
-      'SELECT id, nombre, email, rol, sucursal, activo FROM users WHERE quick_access_token = ? AND activo = 1',
-      [token]
-    );
+    const user = await prisma.user.findFirst({
+      where: {
+        activo: true,
+        quickAccessToken: tokenNormalizado
+      },
+      select: {
+        id: true,
+        nombre: true,
+        email: true,
+        rol: true,
+        sucursal: true,
+        activo: true,
+        quickAccessToken: true
+      }
+    });
+    
+    console.log('🔧 Usuario encontrado:', user ? `${user.nombre} (${user.rol})` : 'No encontrado');
+    console.log('🔧 Token en BD:', user?.quickAccessToken);
     
     if (user && user.rol === 'admin') {
       console.log('✅ Admin token válido:', user.nombre);
@@ -142,7 +165,7 @@ router.post('/validate-admin-token', async (req, res) => {
       
       res.status(403).json({
         success: false,
-        message: 'Solo administradores pueden autorizar arqueos con diferencias'
+        message: 'Solo administradores pueden autorizar esta acción'
       });
     } else {
       console.log('❌ Token no válido para autorización');

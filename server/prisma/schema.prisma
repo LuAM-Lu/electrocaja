@@ -8,27 +8,33 @@ datasource db {
 }
 
 model User {
-  id                   Int                @id @default(autoincrement())
-  nombre               String
-  email                String             @unique
-  password             String
-  rol                  Role               @default(cajero)
-  sucursal             String
-  turno                Turno              @default(MATUTINO)
-  activo               Boolean            @default(true)
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @updatedAt @map("updated_at")
-  quickAccessToken     String?            @unique @map("quick_access_token")
-  importacionesMasivas BulkImport[]       @relation("ImportacionesMasivas")
-  cajasAbiertas        Caja[]             @relation("UsuarioApertura")
-  cajasCerradas        Caja[]             @relation("UsuarioCierre")
-  auditoriaCarrito     CarritoAuditoria[] @relation("AuditoriaCarrito")
-  ventasEnEspera       PendingSale[]      @relation("VentasEnEspera")
-  cambiosProductos     ProductChange[]    @relation("CambiosProductos")
-  productosCreados     Product[]          @relation("ProductosCreados")
-  movimientosStock     StockMovement[]    @relation("MovimientosStock")
-  transaccionesCreadas Transaccion[]      @relation("VentasCreadas")
-  documentosCreados    VentaDocumento[]   @relation("DocumentosCreados")
+  id                         Int                     @id @default(autoincrement())
+  nombre                     String
+  email                      String                  @unique
+  password                   String
+  rol                        Role                    @default(cajero)
+  sucursal                   String
+  turno                      Turno                   @default(MATUTINO)
+  activo                     Boolean                 @default(true)
+  createdAt                  DateTime                @default(now()) @map("created_at")
+  updatedAt                  DateTime                @updatedAt @map("updated_at")
+  quickAccessToken           String?                 @unique @map("quick_access_token")
+  importacionesMasivas       BulkImport[]            @relation("ImportacionesMasivas")
+  cajasAbiertas              Caja[]                  @relation("UsuarioApertura")
+  cajasCerradas              Caja[]                  @relation("UsuarioCierre")
+  auditoriaCarrito           CarritoAuditoria[]      @relation("AuditoriaCarrito")
+  ventasEnEspera             PendingSale[]           @relation("VentasEnEspera")
+  cambiosProductos           ProductChange[]         @relation("CambiosProductos")
+  productosCreados           Product[]               @relation("ProductosCreados")
+  movimientosStock           StockMovement[]         @relation("MovimientosStock")
+  transaccionesCreadas       Transaccion[]           @relation("VentasCreadas")
+  transaccionesEliminadas    Transaccion[]           @relation("TransaccionesEliminadas")
+  documentosCreados          VentaDocumento[]        @relation("DocumentosCreados")
+  serviciosCreados           ServicioTecnico[]       @relation("ServiciosCreados")
+  serviciosAsignados         ServicioTecnico[]       @relation("ServiciosTecnico")
+  serviciosEliminados        ServicioTecnico[]       @relation("ServiciosEliminados")
+  pagosServicioRegistrados   ServicioTecnicoPago[]   @relation("PagosServicioRegistrados")
+  tecnicoConfig              TecnicoConfig?          @relation("ConfigTecnico")
 
   @@map("users")
 }
@@ -65,10 +71,12 @@ model Caja {
   requiereConteoFisico  Boolean       @default(false)
   usuarioResponsableId  Int?
   arqueos               Arqueo[]
-  usuarioApertura       User          @relation("UsuarioApertura", fields: [usuarioAperturaId], references: [id])
-  usuarioCierre         User?         @relation("UsuarioCierre", fields: [usuarioCierreId], references: [id])
-  ventasEnEspera        PendingSale[] @relation("VentasEnEspera")
+  usuarioApertura       User              @relation("UsuarioApertura", fields: [usuarioAperturaId], references: [id])
+  usuarioCierre         User?             @relation("UsuarioCierre", fields: [usuarioCierreId], references: [id])
+  ventasEnEspera        PendingSale[]     @relation("VentasEnEspera")
   transacciones         Transaccion[]
+  serviciosIngreso      ServicioTecnico[] @relation("ServiciosIngreso")
+  serviciosEntrega      ServicioTecnico[] @relation("ServiciosEntrega")
 
   @@map("cajas")
 }
@@ -114,14 +122,24 @@ model Transaccion {
   requiereFactura     Boolean            @default(false) @map("requiere_factura")
   facturaGenerada     Boolean            @default(false) @map("factura_generada")
   reciboGenerado      Boolean            @default(false) @map("recibo_generado")
-  auditoriaCarrito    CarritoAuditoria[] @relation("AuditoriaVentas")
+
+  // Soft Delete
+  deletedAt           DateTime?          @map("deleted_at")
+  motivoEliminacion   String?            @map("motivo_eliminacion")
+  eliminadoPorId       Int?               @map("eliminado_por_id")
+
+  auditoriaCarrito    CarritoAuditoria[]    @relation("AuditoriaVentas")
   pagos               Pago[]
   movimientosStock    StockMovement[]
-  caja                Caja               @relation(fields: [cajaId], references: [id])
-  cliente             Cliente?           @relation("VentasCliente", fields: [clienteId], references: [id])
-  usuario             User               @relation("VentasCreadas", fields: [usuarioId], references: [id])
+  caja                Caja                  @relation(fields: [cajaId], references: [id])
+  cliente             Cliente?              @relation("VentasCliente", fields: [clienteId], references: [id])
+  usuario             User                  @relation("VentasCreadas", fields: [usuarioId], references: [id])
+  eliminadoPor        User?                 @relation("TransaccionesEliminadas", fields: [eliminadoPorId], references: [id])
   items               TransactionItem[]
-  documentos          VentaDocumento[]   @relation("DocumentosTransaccion")
+  documentos          VentaDocumento[]      @relation("DocumentosTransaccion")
+  servicioTecnicoId   Int?                  @map("servicio_tecnico_id")
+  pagosServicio       ServicioTecnicoPago[] @relation("PagosServicio")
+  servicioTecnico     ServicioTecnico?      @relation("TransaccionesServicio", fields: [servicioTecnicoId], references: [id])
 
   @@map("transacciones")
 }
@@ -178,6 +196,7 @@ model Product {
   proveedorRel         Proveedor?                   @relation("ProveedorProductos", fields: [proveedorId], references: [id])
   movimientosStock     StockMovement[]
   itemsTransaccion     TransactionItem[]
+  itemsServicioTecnico ServicioTecnicoItem[]        @relation("ItemsServicioTecnico")
 
   @@map("products")
 }
@@ -327,17 +346,18 @@ model BulkImportItem {
 }
 
 model Cliente {
-  id         Int           @id @default(autoincrement())
-  cedula_rif String        @unique
-  nombre     String
-  telefono   String?
-  email      String?
-  direccion  String?
-  tipo       String
-  activo     Boolean       @default(true)
-  createdAt  DateTime      @default(now()) @map("created_at")
-  updatedAt  DateTime      @updatedAt @map("updated_at")
-  ventas     Transaccion[] @relation("VentasCliente")
+  id        Int               @id @default(autoincrement())
+  cedula_rif String           @unique
+  nombre    String
+  telefono  String?
+  email     String?
+  direccion String?
+  tipo      String
+  activo    Boolean           @default(true)
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+  ventas    Transaccion[]     @relation("VentasCliente")
+  servicios ServicioTecnico[] @relation("ServiciosCliente")
 
   @@map("clientes")
 }
@@ -444,6 +464,158 @@ model AuditoriaInventarioDetalle {
   @@map("auditoria_inventario_detalles")
 }
 
+// ============================================
+// SERVICIOS TÉCNICOS
+// ============================================
+
+model ServicioTecnico {
+  id                    Int                      @id @default(autoincrement())
+  numeroServicio        String                   @unique @map("numero_servicio")
+  consecutivoDelDia     Int                      @map("consecutivo_del_dia")
+
+  // Cliente
+  clienteId             Int?                     @map("cliente_id")
+  clienteNombre         String                   @map("cliente_nombre")
+  clienteTelefono       String                   @map("cliente_telefono")
+  clienteEmail          String?                  @map("cliente_email")
+  clienteDireccion      String?                  @map("cliente_direccion")
+  clienteCedulaRif      String                   @map("cliente_cedula_rif")
+
+  // Dispositivo
+  dispositivoMarca      String                   @map("dispositivo_marca")
+  dispositivoModelo     String                   @map("dispositivo_modelo")
+  dispositivoColor      String?                  @map("dispositivo_color")
+  dispositivoImei       String                   @map("dispositivo_imei")
+  accesorios            Json?                    // Array de strings
+  problemas             Json                     // Array de strings (requerido)
+  evidencias            Json?                    // Array de {id, url, name, type, size}
+
+  // Diagnóstico
+  estado                EstadoServicio           @default(RECIBIDO)
+  tecnicoAsignado       String                   @map("tecnico_asignado")
+  tecnicoId             Int?                     @map("tecnico_id") // FK a User
+  observaciones         String?
+
+  // Fechas
+  fechaIngreso          DateTime                 @default(now()) @map("fecha_ingreso")
+  fechaEntregaEstimada  DateTime                 @map("fecha_entrega_estimada")
+  fechaEntregaReal      DateTime?                @map("fecha_entrega_real")
+
+  // Financiero
+  modalidadPago         ModalidadPagoServicio    @map("modalidad_pago")
+  totalEstimado         Decimal                  @map("total_estimado") @db.Decimal(12, 2)
+  totalReal             Decimal?                 @map("total_real") @db.Decimal(12, 2)
+  totalPagado           Decimal                  @default(0) @map("total_pagado") @db.Decimal(12, 2)
+  saldoPendiente        Decimal                  @default(0) @map("saldo_pendiente") @db.Decimal(12, 2)
+
+  // Auditoría
+  creadoPorId           Int                      @map("creado_por_id")
+  cajaIngresoId         Int?                     @map("caja_ingreso_id")
+  cajaEntregaId         Int?                     @map("caja_entrega_id")
+
+  // Notificaciones
+  whatsappEnviado       Boolean                  @default(false) @map("whatsapp_enviado")
+  whatsappFechaEnvio    DateTime?                @map("whatsapp_fecha_envio")
+
+  // Soft Delete
+  deletedAt             DateTime?                @map("deleted_at")
+  motivoEliminacion     String?                  @map("motivo_eliminacion")
+  eliminadoPorId        Int?                     @map("eliminado_por_id")
+
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+
+  // Relaciones
+  cliente               Cliente?                 @relation("ServiciosCliente", fields: [clienteId], references: [id])
+  tecnico               User?                    @relation("ServiciosTecnico", fields: [tecnicoId], references: [id])
+  creadoPor             User                     @relation("ServiciosCreados", fields: [creadoPorId], references: [id])
+  eliminadoPor          User?                    @relation("ServiciosEliminados", fields: [eliminadoPorId], references: [id])
+  cajaIngreso           Caja?                    @relation("ServiciosIngreso", fields: [cajaIngresoId], references: [id])
+  cajaEntrega           Caja?                    @relation("ServiciosEntrega", fields: [cajaEntregaId], references: [id])
+
+  items                 ServicioTecnicoItem[]
+  pagos                 ServicioTecnicoPago[]
+  notas                 ServicioTecnicoNota[]
+  transacciones         Transaccion[]           @relation("TransaccionesServicio")
+
+  @@index([estado])
+  @@index([tecnicoId])
+  @@index([clienteId])
+  @@index([fechaIngreso])
+  @@map("servicios_tecnicos")
+}
+
+model ServicioTecnicoItem {
+  id              Int              @id @default(autoincrement())
+  servicioId      Int              @map("servicio_id")
+  productoId      Int?             @map("producto_id")
+  descripcion     String
+  cantidad        Int
+  precioUnitario  Decimal          @map("precio_unitario") @db.Decimal(12, 2)
+  subtotal        Decimal          @db.Decimal(12, 2)
+  esPersonalizado Boolean          @default(false) @map("es_personalizado")
+
+  servicio        ServicioTecnico  @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+  producto        Product?         @relation("ItemsServicioTecnico", fields: [productoId], references: [id])
+
+  @@map("servicio_tecnico_items")
+}
+
+model ServicioTecnicoPago {
+  id             Int              @id @default(autoincrement())
+  servicioId     Int              @map("servicio_id")
+  transaccionId  Int?             @map("transaccion_id")
+
+  tipo           TipoPagoServicio
+  monto          Decimal          @db.Decimal(12, 2)
+  pagos          Json             // Array de {metodo, monto, moneda, banco, referencia}
+  vueltos        Json?            // Array de vueltos
+  tasaCambioUsada Decimal?       @map("tasa_cambio_usada") @db.Decimal(8, 4) // ✅ Tasa de cambio al momento del pago
+
+  fecha          DateTime         @default(now())
+  usuarioId      Int              @map("usuario_id")
+
+  servicio       ServicioTecnico  @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+  transaccion    Transaccion?     @relation("PagosServicio", fields: [transaccionId], references: [id])
+  usuario        User             @relation("PagosServicioRegistrados", fields: [usuarioId], references: [id])
+
+  @@map("servicio_tecnico_pagos")
+}
+
+model ServicioTecnicoNota {
+  id              Int              @id @default(autoincrement())
+  servicioId      Int              @map("servicio_id")
+
+  tipo            TipoNotaServicio
+  contenido       String?          @db.Text
+  archivoUrl      String?          @map("archivo_url")
+
+  tecnico         String
+  fecha           DateTime         @default(now())
+
+  estadoAnterior  String?          @map("estado_anterior")
+  estadoNuevo     String?          @map("estado_nuevo")
+
+  servicio        ServicioTecnico  @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+
+  @@map("servicio_tecnico_notas")
+}
+
+model TecnicoConfig {
+  id              Int              @id @default(autoincrement())
+  usuarioId       Int              @unique @map("usuario_id")
+  telefono        String?          // Para WhatsApp
+  especialidad    String?
+  activo          Boolean          @default(true)
+
+  usuario         User             @relation("ConfigTecnico", fields: [usuarioId], references: [id])
+
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@map("tecnicos_config")
+}
+
 enum Role {
   admin
   supervisor
@@ -533,6 +705,37 @@ enum TipoDocumento {
   NOTA_ENTREGA
   COMPROBANTE_PAGO
   COTIZACION
+}
+
+enum EstadoServicio {
+  RECIBIDO
+  EN_DIAGNOSTICO
+  ESPERANDO_APROBACION
+  EN_REPARACION
+  LISTO_RETIRO
+  ENTREGADO
+  CANCELADO
+}
+
+enum ModalidadPagoServicio {
+  TOTAL_ADELANTADO
+  ABONO
+  PAGO_POSTERIOR
+}
+
+enum TipoPagoServicio {
+  PAGO_INICIAL
+  PAGO_ABONO
+  PAGO_FINAL
+}
+
+enum TipoNotaServicio {
+  TEXTO
+  IMAGEN
+  AUDIO
+  CAMBIO_ESTADO
+  MODIFICACION_ITEMS
+  ELIMINACION
 }
 
 enum EstadoDocumento {

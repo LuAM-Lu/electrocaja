@@ -323,13 +323,13 @@ class PDFCierreService {
         <div class="page">
             <!-- HEADER COMPACTO -->
             <div class="header">
-                <h1>ELECTRO CAJA - REPORTE DE CIERRE</h1>
+                <h1>ELECTRO CAJA - REPORTE DE CIERRE${caja.esCajaPendiente ? ' PENDIENTE' : ''}</h1>
                 <div class="subtitle">
-                    ${new Date(fechaGeneracion).toLocaleDateString('es-VE', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
+                    ${new Date(fechaGeneracion).toLocaleDateString('es-VE', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
                     })} • ${usuario.nombre} (${usuario.rol.toUpperCase()}) • ${transacciones.length} transacciones
                 </div>
             </div>
@@ -1043,10 +1043,20 @@ class PDFCierreService {
      
      // BUG #2 CORREGIDO: Usar fecha de la caja, no fecha actual
      const fechaCaja = datosCompletos.caja.fecha || datosCompletos.caja.fechaApertura || new Date();
-     const fechaCajaObj = new Date(fechaCaja);
+     let fechaCajaObj = new Date(fechaCaja);
 
-     // Formatear fecha con hora de cierre: YYYY-MM-DD-HHmmss (BUG #6 MEJORADO)
-     const timestamp = fechaCajaObj.toISOString().replace(/[:.]/g, '-').replace('T', '-').split('.')[0];
+     // Validar que la fecha sea válida
+     if (isNaN(fechaCajaObj.getTime())) {
+       console.warn('⚠️ Fecha inválida recibida:', fechaCaja, '- Usando fecha actual');
+       fechaCajaObj = new Date();
+     }
+
+     // Formatear fecha con hora de cierre: YYYY-MM-DD-HHmmss
+     const isoString = fechaCajaObj.toISOString(); // 2025-10-22T02:04:06.926Z
+     const timestamp = isoString
+       .split('.')[0]           // 2025-10-22T02:04:06
+       .replace(/T/, '-')       // 2025-10-22-02:04:06
+       .replace(/:/g, '-');     // 2025-10-22-02-04-06
 
      const tienesDif = datosCompletos.diferencias && (
        datosCompletos.diferencias.bs !== 0 ||
@@ -1054,7 +1064,11 @@ class PDFCierreService {
        datosCompletos.diferencias.pagoMovil !== 0
      );
 
-     const nombreArchivo = `cierre-detallado-${timestamp}${tienesDif ? '-DIF' : ''}.pdf`;
+     const esPendiente = datosCompletos.caja?.esCajaPendiente || false;
+     const sufijoPendiente = esPendiente ? '-PENDIENTE' : '';
+     const sufijoDif = tienesDif ? '-DIF' : '';
+
+     const nombreArchivo = `cierre-detallado-${timestamp}${sufijoPendiente}${sufijoDif}.pdf`;
      
      const uploadsDir = path.join(__dirname, '../../uploads');
      if (!fs.existsSync(uploadsDir)) {

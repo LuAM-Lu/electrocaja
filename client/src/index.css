@@ -99,10 +99,17 @@ body {
   animation: laser-scan 2s ease-in-out infinite;
 }
 
-@keyframes gleam {
-  0% { transform: translateX(-100%) rotate(25deg); }
-  50% { transform: translateX(400%) rotate(25deg); }
-  100% { transform: translateX(-100%) rotate(25deg); }
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
 }
 
 .animate-gleam {

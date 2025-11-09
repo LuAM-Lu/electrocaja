@@ -45,13 +45,6 @@ const tabs = [
     icon: Upload, 
     required: false,
     shortLabel: 'Imagen'
-  },
-  { 
-    id: 'estadisticas', 
-    label: 'Estadísticas', 
-    icon: BarChart3, 
-    required: false,
-    shortLabel: 'Stats'
   }
 ];
 
@@ -82,9 +75,6 @@ const tabs = [
         if (formData.tipo === 'servicio') return 'not_applicable';
         return formData.proveedor ? 'complete' : 'optional';
         
-      case 'estadisticas':
-        return editingItem ? 'complete' : 'not_available';
-        
       default:
         return 'optional';
     }
@@ -94,33 +84,33 @@ const tabs = [
   const getTabStyle = (tab, isActive) => {
     const status = getTabStatus(tab);
     
-    const baseStyle = "flex items-center justify-center space-x-1 px-2 py-2 text-xs font-medium rounded-t-lg transition-all duration-200 relative group min-w-0";
+    const baseStyle = "flex items-center justify-center space-x-1 px-1 sm:px-2 py-2 text-xs font-medium rounded-t-lg transition-all duration-200 relative group min-w-0";
     
     if (isActive) {
       switch (status) {
         case 'complete':
-          return `${baseStyle} bg-green-50 text-green-700 border-b-2 border-green-500 shadow-sm`;
+          return `${baseStyle} bg-green-50/95 backdrop-blur-sm text-green-700 border-b-2 border-green-500 shadow-sm`;
         case 'warning':
-          return `${baseStyle} bg-orange-50 text-orange-700 border-b-2 border-orange-500 shadow-sm`;
+          return `${baseStyle} bg-orange-50/95 backdrop-blur-sm text-orange-700 border-b-2 border-orange-500 shadow-sm`;
         case 'incomplete':
-          return `${baseStyle} bg-red-50 text-red-700 border-b-2 border-red-500 shadow-sm`;
+          return `${baseStyle} bg-red-50/95 backdrop-blur-sm text-red-700 border-b-2 border-red-500 shadow-sm`;
         case 'not_applicable':
-          return `${baseStyle} bg-gray-50 text-gray-500 border-b-2 border-gray-400 shadow-sm`;
+          return `${baseStyle} bg-gray-50/95 backdrop-blur-sm text-gray-500 border-b-2 border-gray-400 shadow-sm`;
         default:
-          return `${baseStyle} bg-indigo-50 text-indigo-700 border-b-2 border-indigo-500 shadow-sm`;
+          return `${baseStyle} bg-blue-50/95 backdrop-blur-sm text-blue-700 border-b-2 border-blue-500 shadow-sm`;
       }
     } else {
       switch (status) {
         case 'complete':
-          return `${baseStyle} text-green-600 hover:text-green-700 hover:bg-green-50`;
+          return `${baseStyle} text-green-600 hover:text-green-700 hover:bg-green-50/95 hover:backdrop-blur-sm`;
         case 'warning':
-          return `${baseStyle} text-orange-600 hover:text-orange-700 hover:bg-orange-50`;
+          return `${baseStyle} text-orange-600 hover:text-orange-700 hover:bg-orange-50/95 hover:backdrop-blur-sm`;
         case 'incomplete':
-          return `${baseStyle} text-red-600 hover:text-red-700 hover:bg-red-50`;
+          return `${baseStyle} text-red-600 hover:text-red-700 hover:bg-red-50/95 hover:backdrop-blur-sm`;
         case 'not_applicable':
-          return `${baseStyle} text-gray-400 hover:text-gray-500 hover:bg-gray-50 cursor-not-allowed opacity-60`;
+          return `${baseStyle} text-gray-400 hover:text-gray-500 hover:bg-gray-50/95 hover:backdrop-blur-sm cursor-not-allowed opacity-60`;
         default:
-          return `${baseStyle} text-gray-500 hover:text-gray-700 hover:bg-gray-50`;
+          return `${baseStyle} text-gray-500 hover:text-gray-700 hover:bg-gray-50/95 hover:backdrop-blur-sm`;
       }
     }
   };
@@ -168,8 +158,6 @@ const tabs = [
       case 'proveedor':
         return formData?.tipo === 'servicio' ? 'Los servicios no requieren proveedor' :
                status === 'complete' ? 'Proveedor asignado' : 'Proveedor opcional';
-      case 'estadisticas':
-        return editingItem ? 'Ver estadísticas del item' : 'Disponible después de guardar';
       default:
         return `Sección ${tab.label}`;
     }
@@ -197,7 +185,7 @@ const tabs = [
   const progress = getOverallProgress();
 
   return (
-    <div className={`border-b border-gray-200 mb-6 ${className}`}>
+    <div className={`border-b border-white/30 mb-6 ${className}`}>
       
       {/* Barra de progreso */}
       <div className="mb-4 px-1">
@@ -209,7 +197,7 @@ const tabs = [
             {progress.completed}/{progress.total} ({progress.percentage}%)
           </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200/50 backdrop-blur-sm rounded-full h-2 border border-gray-300/30">
           <div 
             className={`h-2 rounded-full transition-all duration-500 ${
               progress.percentage === 100 ? 'bg-green-500' :
@@ -222,7 +210,7 @@ const tabs = [
       </div>
 
       {/* Navegación de tabs */}
-<nav className="grid grid-cols-6 gap-1">
+<nav className="grid grid-cols-5 gap-1">
   {tabs.map((tab) => {
     const Icon = tab.icon;
     const isActive = activeTab === tab.id;
@@ -240,8 +228,8 @@ const tabs = [
               <Icon className="h-3 w-3 flex-shrink-0" />
               
               {/* Texto adaptativo */}
-              <span className="hidden sm:inline">{tab.label}</span>
-              <span className="sm:hidden">{tab.shortLabel}</span>
+              <span className="hidden md:inline">{tab.label}</span>
+              <span className="md:hidden">{tab.shortLabel}</span>
               
               {/* Indicador de estado */}
               <div className="ml-1">

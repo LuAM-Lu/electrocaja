@@ -9,6 +9,7 @@ import {
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
 import { useInventarioStore } from '../store/inventarioStore';
+// ✅ Hook de protección eliminado para evitar bucle infinito
 import toast from 'react-hot-toast';
 import ClienteSelector from './presupuesto/ClienteSelector';
 import ItemsTable from './presupuesto/ItemsTable';
@@ -430,6 +431,8 @@ const DescuentoAdminModal = ({ isOpen, onClose, totalVenta, tasaCambio, onDescue
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Código QR de Administrador *</label>
                 <input
+                      id="admin-code-input"
+                      name="adminCode"
                       type="password"
                       value={adminCode}
                       onChange={(e) => setAdminCode(e.target.value)}
@@ -511,6 +514,8 @@ const DescuentoAdminModal = ({ isOpen, onClose, totalVenta, tasaCambio, onDescue
                   </label>
                   <div className="relative">
                     <input
+                      id="descuento-monto-input"
+                      name="descuentoMonto"
                       type="number"
                       step={tipoDescuento === 'porcentaje' ? '1' : '0.01'}
                       max={tipoDescuento === 'porcentaje' ? '70' : undefined}
@@ -816,6 +821,31 @@ const [showExitModal, setShowExitModal] = useState(false);
 // 💰 ESTADOS PARA DESCUENTO
   const [descuento, setDescuento] = useState(0);
   const [showDescuentoModal, setShowDescuentoModal] = useState(false);
+  
+  // 🛡️ PROTECCIÓN SIMPLIFICADA DE SUBMODALES
+  useEffect(() => {
+    if (isOpen) {
+      // Registrar modal como activo
+      if (typeof window !== 'undefined') {
+        window.activeModals = window.activeModals || new Set();
+        window.activeModals.add('ingreso-modal');
+      }
+    } else {
+      // Desregistrar modal
+      if (typeof window !== 'undefined') {
+        window.activeModals = window.activeModals || new Set();
+        window.activeModals.delete('ingreso-modal');
+      }
+    }
+    
+    return () => {
+      // Cleanup
+      if (typeof window !== 'undefined') {
+        window.activeModals = window.activeModals || new Set();
+        window.activeModals.delete('ingreso-modal');
+      }
+    };
+  }, [isOpen]);
 
   // 🎈 ESTADOS PARA BURBUJA DE CONFLICTOS DE STOCK
   const [showStockConflictsModal, setShowStockConflictsModal] = useState(false);
@@ -917,26 +947,7 @@ const [showExitModal, setShowExitModal] = useState(false);
       limpiarYCerrar();
     };
 
-// ✅ ESCUCHAR EVENTOS DE SINCRONIZACIÓN
-  const handleVentaProcesada = (data) => {
-    console.log('📡 Venta procesada por otro usuario:', data);
-    
-    // 🔧 NO RECARGAR SI ES NUESTRA PROPIA VENTA
-    const esNuestraVenta = data.venta?.codigoVenta === codigoVenta || 
-                          data.venta?.sesionId === sesionId;
-    
-    if (esNuestraVenta) {
-      console.log('📡 Es nuestra propia venta - NO recargar');
-      return;
-    }
-    
-    // Solo recargar si es venta de otro usuario y estamos en dashboard
-    if (window.location.pathname === '/') {
-      console.log('📡 Venta de otro usuario - Actualizando dashboard');
-      window.location.reload();
-    }
-  };
-
+// ✅ ESCUCHAR EVENTOS DE SINCRONIZACIÓN - SOLO EVENTOS ESPECÍFICOS DEL MODAL
   const handleInventarioActualizado = (data) => {
     console.log('📦 Inventario actualizado:', data);
     // Actualizar store de inventario sin recargar
@@ -945,7 +956,7 @@ const [showExitModal, setShowExitModal] = useState(false);
     });
   };
 
-  socket.on('venta_procesada', handleVentaProcesada);
+  // ✅ NO REGISTRAR venta_procesada - Ya lo maneja useSocketEvents.js
   socket.on('inventario_actualizado', handleInventarioActualizado);
 
     socket.on('cerrar_modal_venta_afk', handleModalAFK);
@@ -953,10 +964,9 @@ const [showExitModal, setShowExitModal] = useState(false);
     // Cleanup
     return () => {
       socket.off('cerrar_modal_venta_afk', handleModalAFK);
-        socket.off('venta_procesada', handleVentaProcesada);
-        socket.off('inventario_actualizado', handleInventarioActualizado);
+      socket.off('inventario_actualizado', handleInventarioActualizado);
     };
-  }, [isOpen, socket, showDescuentoModal]);
+  }, [isOpen, socket]); // ✅ REMOVIDO showDescuentoModal de las dependencias
 
   // 🔄 RE-VALIDACIÓN AL RECONECTAR (PARA MÓVILES)
   useEffect(() => {
@@ -1473,9 +1483,15 @@ const procesarVentaConfirmada = async () => {
       })),
       pagos: ventaData.pagos.filter(pago => pago.monto && parseFloat(pago.monto) > 0).map(pago => {
         const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
+        // 🔧 FIX: Convertir formato venezolano (coma) a formato numérico (punto)
+        const montoNormalizado = typeof pago.monto === 'string'
+          ? pago.monto.replace(',', '.')
+          : pago.monto;
+        const montoNumerico = Math.round(parseFloat(montoNormalizado) * 100) / 100;
+
         return {
           metodo: pago.metodo,
-          monto: Math.round(parseFloat(pago.monto) * 100) / 100,
+          monto: montoNumerico,
           moneda: metodoInfo?.moneda || 'bs',
           banco: pago.banco || null,
           referencia: pago.referencia || null
@@ -1544,243 +1560,242 @@ const procesarVentaConfirmada = async () => {
       throw new Error(response.data.message || 'Error procesando venta');
     }
 
-    // 🎯 EJECUTAR OPCIONES SELECCIONADAS DESPUÉS DEL PROCESAMIENTO
+    // EJECUTAR OPCIONES SELECCIONADAS DESPUÉS DEL PROCESAMIENTO
     const opcionesEjecutadas = [];
     let erroresOpciones = [];
 
-    // 📄 GENERAR PDF (si está seleccionado)
+    // GENERAR PDF (si está seleccionado)
     if (opcionesProcesamiento.imprimirRecibo) {
       try {
-        console.log('📄 Ejecutando: Generar PDF...');
+        console.log('Ejecutando: Generar PDF...');
         toast.loading('Generando PDF...', { id: 'pdf-process' });
-        
+
         await descargarPDF(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
-        
-        opcionesEjecutadas.push('📄 PDF descargado');
+
+        opcionesEjecutadas.push('PDF descargado');
         toast.success('PDF generado', { id: 'pdf-process' });
       } catch (error) {
-        console.error('❌ Error generando PDF:', error);
-        erroresOpciones.push('PDF falló');
+        console.error('Error generando PDF:', error);
+        erroresOpciones.push('PDF fallo');
         toast.error('Error generando PDF', { id: 'pdf-process' });
       }
     }
-      // 🖨️ IMPRIMIR FACTURA TÉRMICA (si está seleccionado)
+      // IMPRIMIR FACTURA TÉRMICA (si está seleccionado)
       if (opcionesProcesamiento.generarFactura) {
         try {
-          console.log('🖨️ ===== INICIANDO IMPRESIÓN TÉRMICA =====');
-          console.log('🖨️ Código venta:', ventaProcesada?.codigoVenta || codigoVenta);
-          
-          toast.loading('Preparando impresión...', { id: 'print-process' });
-          
-          // 🛡️ ESPERAR UN POCO PARA EVITAR CONFLICTOS CON OTRAS OPERACIONES
+          console.log('===== INICIANDO IMPRESION TERMICA =====');
+          console.log('Codigo venta:', ventaProcesada?.codigoVenta || codigoVenta);
+
+          toast.loading('Preparando impresion...', { id: 'print-process' });
+
+          // ESPERAR UN POCO PARA EVITAR CONFLICTOS CON OTRAS OPERACIONES
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          toast.loading('Abriendo ventana de impresión...', { id: 'print-process' });
-          
+
+          toast.loading('Abriendo ventana de impresion...', { id: 'print-process' });
+
          const resultadoImpresion = await imprimirFacturaTermica(
-          ventaDataConUsuario, 
-          ventaProcesada?.codigoVenta || codigoVenta, 
-          tasaCambio, 
+          ventaDataConUsuario,
+          ventaProcesada?.codigoVenta || codigoVenta,
+          tasaCambio,
           descuento
         );
-          
-          console.log('✅ Resultado impresión:', resultadoImpresion);
-          
-          opcionesEjecutadas.push('🖨️ Enviado a impresora térmica');
-          toast.success('Impresión completada', { id: 'print-process' });
-          
+
+          console.log('Resultado impresion:', resultadoImpresion);
+
+          opcionesEjecutadas.push('Enviado a impresora termica');
+          toast.success('Impresion completada', { id: 'print-process' });
+
         } catch (error) {
-          console.error('❌ ===== ERROR IMPRESIÓN =====');
-          console.error('❌ Error:', error.message);
-          console.error('❌ ========================');
-          
-          erroresOpciones.push('Impresión falló');
-          
+          console.error('===== ERROR IMPRESION =====');
+          console.error('Error:', error.message);
+          console.error('========================');
+
+          erroresOpciones.push('Impresion fallo');
+
           if (error.message.includes('bloqueada')) {
-            toast.error('Popup bloqueado. Habilita popups para esta página', {
+            toast.error('Popup bloqueado. Habilita popups para esta pagina', {
               id: 'print-process',
-              duration: 8000 
+              duration: 8000
             });
           } else {
-            toast.error(`Error de impresión: ${error.message}`, {
+            toast.error(`Error de impresion: ${error.message}`, {
               id: 'print-process',
-              duration: 6000 
+              duration: 6000
             });
           }
         }
       }
 
-    // 📱 ENVIAR WHATSAPP (si está seleccionado) - USANDO FUNCIÓN DE FINALIZARVENTA
+    // ENVIAR WHATSAPP (si está seleccionado)
     if (opcionesProcesamiento.enviarWhatsApp && ventaData.cliente?.telefono) {
       try {
-        console.log('📱 Ejecutando: Enviar WhatsApp desde IngresoModal...');
-        console.log('📱 Cliente:', ventaData.cliente.nombre, 'Tel:', ventaData.cliente.telefono);
-        console.log('📱 Código venta:', ventaProcesada?.codigoVenta || codigoVenta);
-        
+        console.log('Ejecutando: Enviar WhatsApp desde IngresoModal...');
+        console.log('Cliente:', ventaData.cliente.nombre, 'Tel:', ventaData.cliente.telefono);
+        console.log('Codigo venta:', ventaProcesada?.codigoVenta || codigoVenta);
+
         toast.loading('Enviando WhatsApp...', { id: 'whatsapp-process' });
-        
+
         const imagenBase64 = await generarImagenWhatsApp(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
-        
-        console.log('📱 Imagen generada, tamaño:', Math.round(imagenBase64.length / 1024), 'KB');
-        
+
+        console.log('Imagen generada, tamaño:', Math.round(imagenBase64.length / 1024), 'KB');
+
         const whatsappResponse = await api.post('/whatsapp/enviar-factura', {
           numero: ventaData.cliente.telefono,
           clienteNombre: ventaData.cliente.nombre,
           codigoVenta: ventaProcesada?.codigoVenta || codigoVenta,
           imagen: imagenBase64,
-          mensaje: `Hola ${ventaData.cliente.nombre || 'Cliente'}, aquí tienes tu comprobante de compra #${ventaProcesada?.codigoVenta || codigoVenta}. ¡Gracias por tu Compra! 🚀`
+          mensaje: `Hola ${ventaData.cliente.nombre || 'Cliente'}, aqui tienes tu comprobante de compra #${ventaProcesada?.codigoVenta || codigoVenta}. Gracias por tu compra.`
         });
-        
-        console.log('📱 Respuesta API WhatsApp:', whatsappResponse.data);
-        
+
+        console.log('Respuesta API WhatsApp:', whatsappResponse.data);
+
         if (whatsappResponse.data.success) {
-          console.log('✅ WhatsApp enviado exitosamente');
-          
+          console.log('WhatsApp enviado exitosamente');
+
           if (whatsappResponse.data.data?.tipo_fallback === 'simple_sin_imagen') {
-            opcionesEjecutadas.push('📱 WhatsApp enviado (sin imagen)');
-            toast.success('WhatsApp enviado (sin imagen)', { id: 'whatsapp-process' });
+            opcionesEjecutadas.push('WhatsApp enviado (sin imagen)');
+            toast.success('WhatsApp enviado sin imagen', { id: 'whatsapp-process' });
           } else if (whatsappResponse.data.data?.fallback) {
-            opcionesEjecutadas.push('📱 WhatsApp enviado (texto)');
-            toast.success('WhatsApp enviado (solo texto)', { id: 'whatsapp-process' });
+            opcionesEjecutadas.push('WhatsApp enviado (texto)');
+            toast.success('WhatsApp enviado solo texto', { id: 'whatsapp-process' });
           } else {
-            opcionesEjecutadas.push('📱 WhatsApp con imagen enviado');
-            toast.success('WhatsApp con imagen enviado', { id: 'whatsapp-process' });
+            opcionesEjecutadas.push('WhatsApp con imagen enviado');
+            toast.success('WhatsApp enviado correctamente', { id: 'whatsapp-process' });
           }
         } else {
-          console.error('❌ Respuesta fallida de API WhatsApp:', whatsappResponse.data);
+          console.error('Respuesta fallida de API WhatsApp:', whatsappResponse.data);
           throw new Error(whatsappResponse.data.message || 'Error enviando WhatsApp');
         }
       } catch (error) {
-        console.error('❌ ===== ERROR WHATSAPP DETALLADO =====');
-        console.error('❌ Error completo:', error);
-        console.error('❌ Error response:', error.response?.data);
-        console.error('❌ Status:', error.response?.status);
-        console.error('❌ ===================================');
-        
-        erroresOpciones.push('WhatsApp falló');
-        
+        console.error('===== ERROR WHATSAPP DETALLADO =====');
+        console.error('Error completo:', error);
+        console.error('Error response:', error.response?.data);
+        console.error('Status:', error.response?.status);
+        console.error('===================================');
+
+        erroresOpciones.push('WhatsApp fallo');
+
         const errorMsg = error.response?.data?.message || error.message || 'Error desconocido';
         toast.error(`Error WhatsApp: ${errorMsg}`, { id: 'whatsapp-process' });
       }
     } else {
-      console.log('⚠️ WhatsApp NO ejecutado:', {
+      console.log('WhatsApp NO ejecutado:', {
         opcionActivada: opcionesProcesamiento.enviarWhatsApp,
         clienteTelefono: ventaData.cliente?.telefono,
         cliente: ventaData.cliente
       });
     }
 
-    // 📧 ENVIAR EMAIL (si está seleccionado)
+    // ENVIAR EMAIL (si está seleccionado)
     if (opcionesProcesamiento.enviarEmail && ventaData.cliente?.email) {
       try {
-        console.log('📧 Ejecutando: Enviar Email...');
+        console.log('Ejecutando: Enviar Email...');
         toast.loading('Enviando email...', { id: 'email-process' });
-        
+
         const pdfBlob = await generarPDFFactura(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
-        
+
         // Convertir blob a base64
         const reader = new FileReader();
         const pdfBase64 = await new Promise((resolve) => {
           reader.onload = () => resolve(reader.result.split(',')[1]);
           reader.readAsDataURL(pdfBlob);
         });
-        
+
         const emailResponse = await api.post('/email/enviar-factura', {
           destinatario: ventaData.cliente.email,
           clienteNombre: ventaData.cliente.nombre,
           codigoVenta: ventaProcesada?.codigoVenta || codigoVenta,
           pdfBase64: pdfBase64,
-          asunto: `Comprobante #${ventaProcesada?.codigoVenta || codigoVenta} - Electro Shop Morandín`,
-          mensaje: `Estimado(a) ${ventaData.cliente.nombre || 'Cliente'},\n\nAdjunto encontrará su comprobante de compra #${ventaProcesada?.codigoVenta || codigoVenta}.\n\nGracias por su compra.\n\nSaludos cordiales,\nElectro Shop Morandín C.A.`
+          asunto: `Comprobante #${ventaProcesada?.codigoVenta || codigoVenta} - Electro Shop Morandin`,
+          mensaje: `Estimado(a) ${ventaData.cliente.nombre || 'Cliente'},\n\nAdjunto encontrara su comprobante de compra #${ventaProcesada?.codigoVenta || codigoVenta}.\n\nGracias por su compra.\n\nSaludos cordiales,\nElectro Shop Morandin C.A.`
         });
-        
+
         if (emailResponse.data.success) {
-          opcionesEjecutadas.push('📧 Email enviado');
+          opcionesEjecutadas.push('Email enviado');
           toast.success('Email enviado', { id: 'email-process' });
         } else {
           throw new Error('Error enviando email');
         }
       } catch (error) {
-        console.error('❌ Error enviando email:', error);
-        erroresOpciones.push('Email falló');
+        console.error('Error enviando email:', error);
+        erroresOpciones.push('Email fallo');
         toast.error('Error enviando email', { id: 'email-process' });
       }
     }
 
-    // 🎯 MOSTRAR RESULTADO FINAL
-    let mensajeFinal = '✅ Venta procesada exitosamente';
-    
+    // MOSTRAR RESULTADO FINAL
+    let mensajeFinal = 'Venta procesada exitosamente';
+
     if (opcionesEjecutadas.length > 0) {
-      mensajeFinal += `\n\n✅ Completado:\n${opcionesEjecutadas.join('\n')}`;
-    }
-    
-    if (erroresOpciones.length > 0) {
-      mensajeFinal += `\n\nCon errores:\n${erroresOpciones.join(', ')}`;
+      mensajeFinal += ` - ${opcionesEjecutadas.join(', ')}`;
     }
 
-    // ✅ VENTA PROCESADA - LIMPIAR PARA NUEVA VENTA PERO NO CERRAR
-    console.log('✅ ===== VENTA PROCESADA EXITOSAMENTE =====');
-    console.log('✅ Opciones ejecutadas:', opcionesEjecutadas);
-    console.log('✅ Errores (si los hay):', erroresOpciones);
-    
-    // 🎉 MOSTRAR RESULTADO FINAL SIN CERRAR MODAL
-    toast.success('¡Venta procesada exitosamente!\n\n' + mensajeFinal, {
-      duration: 50000, // 10 segundos para que vea el resultado
+    if (erroresOpciones.length > 0) {
+      mensajeFinal += ` | Errores: ${erroresOpciones.join(', ')}`;
+    }
+
+    // VENTA PROCESADA - LIMPIAR PARA NUEVA VENTA PERO NO CERRAR
+    console.log('===== VENTA PROCESADA EXITOSAMENTE =====');
+    console.log('Opciones ejecutadas:', opcionesEjecutadas);
+    console.log('Errores (si los hay):', erroresOpciones);
+
+    // ✅ MOSTRAR TOAST DE ÉXITO
+    toast.success(mensajeFinal, {
+      duration: 3000,
       style: {
         maxWidth: '450px',
         fontSize: '14px'
       },
       id: 'venta-exitosa-modal'
     });
-    
-    // 🔄 LIMPIAR PARA NUEVA VENTA (SIN CERRAR MODAL)
-    console.log('🔄 Limpiando formulario para nueva venta...');
-    
-    // Limpiar venta actual
-    setVentaData({
-      cliente: null, // 🔧 FORZAR SELECCIÓN DE NUEVO CLIENTE
-      items: [],
-      pagos: [{
-        id: 1,
-        metodo: 'efectivo_bs',
-        monto: '',
-        banco: '',
-        referencia: ''
-      }],
-      vueltos: [],
-      descuentoAutorizado: 0,
-      motivoDescuento: '',
-      observaciones: '',
-      subtotal: 0,
-      totalUsd: 0,
-      totalBs: 0
-    });
-    
-    // Resetear estados
-    setActiveTab('cliente'); // Volver a selección de cliente
-    setDescuento(0);
-    setHasUnsavedChanges(false);
-    setTotalAnterior(0);
-    setHayPagosConfigurados(false);
-    setPagosValidos(false);
-    setItemsDisponibles(false);
-    setExcesoPendiente(0);
-    
-    // Limpiar opciones de procesamiento
-    setOpcionesProcesamiento({
-      imprimirRecibo: false,
-      enviarWhatsApp: false,
-      enviarEmail: false,
-      generarFactura: true // Mantener factura por defecto
-    });
-    
-    console.log('✅ Modal listo para nueva venta');
-    
-    // 🚪 CERRAR MODAL AUTOMÁTICAMENTE DESPUÉS DE 5 SEGUNDOS
+
+    // 🚪 CERRAR MODAL AUTOMÁTICAMENTE DESPUÉS DE VENTA EXITOSA
+    // Esperar 500ms para que el usuario vea el toast, luego cerrar
     setTimeout(() => {
       console.log('🚪 Cerrando modal automáticamente después de venta exitosa');
+
+      // Limpiar estado antes de cerrar
+      setVentaData({
+        cliente: null,
+        items: [],
+        pagos: [{
+          id: 1,
+          metodo: 'efectivo_bs',
+          monto: '',
+          banco: '',
+          referencia: ''
+        }],
+        vueltos: [],
+        descuentoAutorizado: 0,
+        motivoDescuento: '',
+        observaciones: '',
+        subtotal: 0,
+        totalUsd: 0,
+        totalBs: 0
+      });
+
+      // Resetear estados
+      setActiveTab('cliente');
+      setDescuento(0);
+      setHasUnsavedChanges(false);
+      setTotalAnterior(0);
+      setHayPagosConfigurados(false);
+      setPagosValidos(false);
+      setItemsDisponibles(false);
+      setExcesoPendiente(0);
+
+      // Limpiar opciones de procesamiento
+      setOpcionesProcesamiento({
+        imprimirRecibo: false,
+        enviarWhatsApp: false,
+        enviarEmail: false,
+        generarFactura: true
+      });
+
+      // Cerrar modal
       onClose();
-    }, 1000);
+      console.log('✅ Modal cerrado y limpio para próxima venta');
+    }, 500);
 
 
     } catch (error) {

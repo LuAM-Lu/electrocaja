@@ -1,116 +1,260 @@
-// components/configuracion/UsuariosPanel.jsx
-import React, { useState, useEffect } from 'react';
-import { 
+// components/configuracion/UsuariosPanel.jsx - REFACTORIZADO CON MEJORES PRÁCTICAS
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import {
   Users, ChevronDown, ChevronUp, UserPlus, UserX, Shield, Crown, RefreshCw, UserCheck,
-  Monitor, Activity, Globe, Trash2, X, AlertCircle, Eye
+  Monitor, Activity, Globe, Trash2, X, AlertCircle, Eye, Edit, QrCode
 } from 'lucide-react';
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
-import CrearUsuarioModal from './modals/CrearUsuarioModal';
+import UsuarioFormModal from './modals/UsuarioFormModal';
 import BorrarUserModal from './modals/BorrarUserModal';
+import QRTokenModal from './modals/QRTokenModal';
 
+// ===================================
+// 🎯 CONSTANTES
+// ===================================
+const USUARIOS_POR_PAGINA = 5;
+const INTERVALO_POLLING = 10000; // 10 segundos (menos agresivo)
+const ADMIN_PHONE = '584120552931';
+
+// ===================================
+// 🎨 CONFIGURACIÓN DE ROLES
+// ===================================
+const ROLE_CONFIG = {
+  admin: {
+    icon: Crown,
+    color: 'bg-red-100 text-red-800 border-red-200',
+    badge: 'from-red-500 to-red-600'
+  },
+  supervisor: {
+    icon: Shield,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    badge: 'from-blue-500 to-blue-600'
+  },
+  cajero: {
+    icon: UserCheck,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    badge: 'from-green-500 to-green-600'
+  },
+  viewer: {
+    icon: Eye,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    badge: 'from-gray-400 to-gray-500'
+  }
+};
+
+// ===================================
+// 🛠️ UTILITY FUNCTIONS (Memoizadas fuera del componente)
+// ===================================
+const formatearFecha = (fecha) => {
+  if (!fecha) return 'N/A';
+  try {
+    return new Date(fecha).toLocaleDateString('es-VE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
+    });
+  } catch {
+    return 'Fecha inválida';
+  }
+};
+
+const calcularTiempo = (timestamp) => {
+  if (!timestamp) return '0m';
+  try {
+    const diferencia = Date.now() - new Date(timestamp).getTime();
+    const horas = Math.floor(diferencia / (1000 * 60 * 60));
+    const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
+    return horas > 0 ? `${horas}h ${minutos}m` : `${minutos}m`;
+  } catch {
+    return '0m';
+  }
+};
+
+const getRoleIcon = (rol) => {
+  const Icon = ROLE_CONFIG[rol]?.icon || UserCheck;
+  return <Icon className="h-3 w-3" />;
+};
+
+const getRoleColor = (rol) => {
+  return ROLE_CONFIG[rol]?.color || 'bg-gray-100 text-gray-800 border-gray-200';
+};
+
+// ===================================
+// 🔧 VALIDACIONES
+// ===================================
+const validarAccionUsuario = (user, currentUser, accion = 'modificar') => {
+  // No se puede modificar al admin principal
+  if (user.rol === 'admin' && user.id === 1) {
+    return {
+      valido: false,
+      mensaje: `No se puede ${accion} al administrador principal`
+    };
+  }
+
+  // No te puedes modificar a ti mismo (excepto en edición)
+  if (user.email === currentUser?.email && accion !== 'editar') {
+    return {
+      valido: false,
+      mensaje: `No puedes ${accion}te a ti mismo`
+    };
+  }
+
+  return { valido: true };
+};
+
+// ===================================
+// 📦 COMPONENTE PRINCIPAL
+// ===================================
 const UsuariosPanel = ({ usuario }) => {
-  const [sesionesAbiertas, setSesionesAbiertas] = useState(true);
-  const [usuariosAbiertas, setUsuariosAbiertas] = useState(true);
-  const [sesionesActivas, setSesionesActivas] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
-  const [usuarioABorrar, setUsuarioABorrar] = useState(null);
-  const [showModalBorrar, setShowModalBorrar] = useState(false);
-  const [showCrearUsuario, setShowCrearUsuario] = useState(false);
+  // 🎯 ESTADO CONSOLIDADO
+  const [state, setState] = useState({
+    // Secciones
+    sesionesAbiertas: false,
+    usuariosAbiertas: true,
 
-  
-  // Estados de paginación
-  const [paginaActual, setPaginaActual] = useState(1);
-  const usuariosPorPagina = 5;
+    // Datos
+    sesionesActivas: [],
+    usuarios: [],
 
-  useEffect(() => {
-    cargarSesionesActivas();
-    cargarUsuarios();
-    
-    const interval = setInterval(() => {
-      cargarSesionesActivas();
-    }, 5000);
+    // Loading
+    loading: false,
+    loadingUsuarios: false,
 
-    return () => clearInterval(interval);
+    // Modales
+    showModalBorrar: false,
+    showFormularioUsuario: false,
+    showQRModal: false,
+
+    // Selección
+    usuarioABorrar: null,
+    usuarioEditando: null,
+    usuarioQR: null,
+
+    // Paginación
+    paginaActual: 1,
+
+    // Error
+    error: null
+  });
+
+  // Referencias para cleanup
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+
+  // ===================================
+  // 🔄 FUNCIONES DE ACTUALIZACIÓN
+  // ===================================
+  const updateState = useCallback((updates) => {
+    setState(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const cargarSesionesActivas = async () => {
+  // ===================================
+  // 📡 API CALLS CON CANCELACIÓN
+  // ===================================
+  const cargarSesionesActivas = useCallback(async () => {
+    // Cancelar request anterior si existe
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+
     try {
-      setLoading(true);
-      const response = await api.get('/sessions/debug');
+      updateState({ loading: true, error: null });
+
+      const response = await api.get('/sessions/debug', {
+        signal: abortControllerRef.current.signal
+      });
+
       const { data } = response.data;
-      
-      const sesiones = data.sesiones_socket?.map(s => ({ 
-        ...s, 
-        tipo: 'Socket.IO', 
+
+      const sesiones = data.sesiones_socket?.map(s => ({
+        ...s,
+        tipo: 'Socket.IO',
         ip: s.ip_cliente,
         estado: 'Tiempo Real'
       })) || [];
-      
-      setSesionesActivas(sesiones);
-    } catch (error) {
-      console.error('Error cargando sesiones:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const cargarUsuarios = async () => {
+      updateState({ sesionesActivas: sesiones, loading: false });
+    } catch (error) {
+      if (error.name !== 'AbortError' && error.name !== 'CanceledError') {
+        console.error('Error cargando sesiones:', error);
+        updateState({
+          error: 'Error al cargar sesiones activas',
+          loading: false
+        });
+      }
+    }
+  }, [updateState]);
+
+  const cargarUsuarios = useCallback(async () => {
     try {
-      setLoadingUsuarios(true);
-      console.log(' Cargando usuarios del backend...');
-      
+      updateState({ loadingUsuarios: true, error: null });
+      console.log('🔄 Cargando usuarios del backend...');
+
       const response = await api.get('/users');
-      const { data } = response.data;
-      console.log(' Usuarios cargados del backend:', data);
-      setUsuarios(data);
-      setPaginaActual(1);
+
+      // Validar estructura de respuesta
+      if (!response?.data?.data) {
+        throw new Error('Respuesta inválida del servidor');
+      }
+
+      const usuarios = response.data.data;
+      console.log('✅ Usuarios cargados:', usuarios.length);
+
+      updateState({
+        usuarios,
+        loadingUsuarios: false,
+        paginaActual: 1,
+        error: null
+      });
     } catch (error) {
-      console.error(' Error cargando usuarios:', error);
-      setUsuarios([
-        { 
-          id: 1, 
-          nombre: 'Admin ElectroCaja', 
-          email: 'admin@electrocaja.com', 
-          rol: 'admin', 
-          activo: true, 
-          createdAt: new Date().toISOString(),
-          sucursal: 'Principal',
-          turno: 'MATUTINO'
-        }
-      ]);
-    } finally {
-      setLoadingUsuarios(false);
+      console.error('❌ Error cargando usuarios:', error);
+
+      updateState({
+        error: 'Error al cargar usuarios. Por favor, recarga la página.',
+        loadingUsuarios: false
+      });
+
+      toast.error('Error al cargar usuarios');
     }
-  };
+  }, [updateState]);
 
-  // Lógica de paginación
-  const indiceInicio = (paginaActual - 1) * usuariosPorPagina;
-  const indiceFin = indiceInicio + usuariosPorPagina;
-  const usuariosPaginados = usuarios.slice(indiceInicio, indiceFin);
-  const totalPaginas = Math.ceil(usuarios.length / usuariosPorPagina);
+  // ===================================
+  // ⚡ EFFECTS
+  // ===================================
+  useEffect(() => {
+    // Carga inicial
+    cargarSesionesActivas();
+    cargarUsuarios();
 
-  const cambiarPagina = (nuevaPagina) => {
-    if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
-      setPaginaActual(nuevaPagina);
-    }
-  };
+    // Polling de sesiones (10 segundos)
+    intervalRef.current = setInterval(cargarSesionesActivas, INTERVALO_POLLING);
 
-  const desactivarUsuario = async (user) => {
-    if (user.rol === 'admin' && user.id === 1) {
-      toast.error('No se puede desactivar al administrador principal');
-      return;
-    }
+    // Cleanup
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [cargarSesionesActivas, cargarUsuarios]);
 
-    if (user.email === usuario?.email) {
-      toast.error('No puedes desactivarte a ti mismo');
+  // ===================================
+  // 🎬 ACCIONES DE USUARIO
+  // ===================================
+  const desactivarUsuario = useCallback(async (user) => {
+    const validacion = validarAccionUsuario(user, usuario, user.activo ? 'desactivar' : 'activar');
+    if (!validacion.valido) {
+      toast.error(validacion.mensaje);
       return;
     }
 
     try {
-      const response = await api.put(`/users/${user.id}`, {
+      await api.put(`/users/${user.id}`, {
         activo: !user.activo
       });
 
@@ -118,88 +262,145 @@ const UsuariosPanel = ({ usuario }) => {
       cargarUsuarios();
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al cambiar estado del usuario');
+      toast.error(error.response?.data?.message || 'Error al cambiar estado del usuario');
     }
-  };
+  }, [usuario, cargarUsuarios]);
 
-  const borrarUsuario = (user) => {
-    if (user.rol === 'admin' && user.id === 1) {
-      toast.error('No se puede borrar al administrador principal');
+  const borrarUsuario = useCallback((user) => {
+    const validacion = validarAccionUsuario(user, usuario, 'borrar');
+    if (!validacion.valido) {
+      toast.error(validacion.mensaje);
       return;
     }
 
-    if (user.email === usuario?.email) {
-      toast.error('No puedes borrarte a ti mismo');
-      return;
-    }
+    updateState({
+      usuarioABorrar: user,
+      showModalBorrar: true
+    });
+  }, [usuario, updateState]);
 
-    setUsuarioABorrar(user);
-    setShowModalBorrar(true);
-  };
-
-  const confirmarBorrado = async () => {
-    if (!usuarioABorrar) return;
+  const confirmarBorrado = useCallback(async () => {
+    if (!state.usuarioABorrar) return;
 
     try {
-      const response = await api.delete(`/users/${usuarioABorrar.id}`);
-      toast.success(`Usuario ${usuarioABorrar.nombre} borrado exitosamente`);
+      await api.delete(`/users/${state.usuarioABorrar.id}`);
+      toast.success(`Usuario ${state.usuarioABorrar.nombre} borrado exitosamente`);
       cargarUsuarios();
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al borrar usuario');
+      toast.error(error.response?.data?.message || 'Error al borrar usuario');
     } finally {
-      setShowModalBorrar(false);
-      setUsuarioABorrar(null);
+      updateState({
+        showModalBorrar: false,
+        usuarioABorrar: null
+      });
     }
-  };
+  }, [state.usuarioABorrar, cargarUsuarios, updateState]);
 
-const resetearPassword = async (user) => {
-  try {
-    // 1. Resetear password en backend
-    const response = await api.post(`/users/${user.id}/reset-password`);
-    const { nuevaPassword, usuario_nombre } = response.data.data;
-    
-    // 2. Intentar enviar a WhatsApp del admin
+  const resetearPassword = useCallback(async (user) => {
     try {
-      await api.post('/whatsapp/enviar', {
-        numero: '+584120552931',
-        mensaje: ` *RESET PASSWORD - ELECTRO CAJA*
+      toast.loading('Generando nueva contraseña...', { id: 'reset-pwd' });
 
- *Usuario:* ${usuario_nombre}
- *Email:* ${user.email}
- *Nueva contraseña:* ${nuevaPassword}
- *Fecha:* ${new Date().toLocaleString('es-VE')}
+      // 1. Resetear password en backend
+      const response = await api.post(`/users/${user.id}/reset-password`);
+      const { nuevaPassword, usuario_nombre } = response.data.data;
 
- *IMPORTANTE:*
-- Entregar esta contraseña al usuario
-- Solicitar cambio inmediato en primer login
-- Esta contraseña es temporal
+      // 2. Enviar a WhatsApp del admin
+      try {
+        await api.post('/whatsapp/enviar', {
+          numero: ADMIN_PHONE,
+          mensaje: `🔐 *RESET PASSWORD - ELECTRO CAJA*
 
- Generado por: ${usuario?.nombre}`
-      });
-      
-      toast.success(`Nueva contraseña: ${nuevaPassword} (Enviada por WhatsApp)`, {
-        duration: 10000
-      });
-    } catch (whatsappError) {
-      console.warn('WhatsApp no disponible:', whatsappError);
-      toast.success(`Nueva contraseña generada: ${nuevaPassword}`, {
-        duration: 10000,
-        style: {
-          background: '#FEF3C7',
-          border: '1px solid #F59E0B',
-          color: '#92400E'
-        }
+👤 *Usuario:* ${usuario_nombre}
+📧 *Email:* ${user.email}
+🔑 *Nueva Contraseña:* \`${nuevaPassword}\`
+📅 *Fecha:* ${new Date().toLocaleString('es-VE')}
+
+⚠️ *IMPORTANTE:*
+✅ Esta es una contraseña PERMANENTE
+✅ Entregar al usuario de forma segura
+✅ Usuario debe cambiarla en Configuración > Perfil
+
+🎯 *Acción requerida:*
+Notificar al usuario: ${usuario_nombre}
+
+_Generado por: ${usuario?.nombre}_`
+        });
+
+        toast.success('Contraseña enviada por WhatsApp al administrador', {
+          id: 'reset-pwd',
+          duration: 8000
+        });
+      } catch (whatsappError) {
+        console.warn('WhatsApp no disponible:', whatsappError);
+
+        // Fallback: Mostrar en pantalla
+        const copiarPassword = () => {
+          navigator.clipboard.writeText(nuevaPassword);
+          toast.success('Contraseña copiada al portapapeles');
+        };
+
+        toast(
+          <div className="space-y-2">
+            <div className="font-bold text-amber-900">⚠️ No se pudo enviar por WhatsApp</div>
+            <div className="text-sm">Nueva contraseña para <strong>{usuario_nombre}</strong>:</div>
+            <div className="flex items-center gap-2">
+              <div
+                onClick={copiarPassword}
+                className="text-xl font-mono bg-white px-3 py-2 rounded border-2 border-amber-400 cursor-pointer hover:bg-amber-50 transition-colors flex-1 text-center select-all"
+                title="Click para copiar"
+                role="button"
+                tabIndex={0}
+                onKeyPress={(e) => e.key === 'Enter' && copiarPassword()}
+              >
+                {nuevaPassword}
+              </div>
+            </div>
+            <div className="text-xs text-amber-700">
+              ✏️ Click en la contraseña para copiar • Anota en papel si es necesario
+            </div>
+          </div>,
+          {
+            id: 'reset-pwd',
+            duration: 20000,
+            style: {
+              background: '#FEF3C7',
+              border: '2px solid #F59E0B',
+              color: '#92400E',
+              maxWidth: '500px'
+            }
+          }
+        );
+      }
+
+      await cargarUsuarios();
+    } catch (error) {
+      console.error('Error reseteando password:', error);
+      toast.error(error.response?.data?.message || 'Error al resetear contraseña del usuario', {
+        id: 'reset-pwd'
       });
     }
-    
-  } catch (error) {
-    console.error('Error reseteando password:', error);
-    toast.error('Error al resetear contraseña del usuario');
-  }
-};
+  }, [usuario, cargarUsuarios]);
 
-  const kickearUsuario = async (sesion) => {
+  const editarUsuario = useCallback((user) => {
+    updateState({
+      usuarioEditando: user,
+      showFormularioUsuario: true
+    });
+  }, [updateState]);
+
+  const verQRToken = useCallback((user) => {
+    if (!user.quickAccessToken) {
+      toast.error('Este usuario no tiene token de acceso rápido');
+      return;
+    }
+    updateState({
+      usuarioQR: user,
+      showQRModal: true
+    });
+  }, [updateState]);
+
+  const kickearUsuario = useCallback(async (sesion) => {
     if (sesion.email === usuario?.email) {
       toast.error('No puedes desconectar tu propia sesión');
       return;
@@ -211,7 +412,7 @@ const resetearPassword = async (user) => {
     }
 
     try {
-      const response = await api.post('/auth/force-logout', {
+      await api.post('/auth/force-logout', {
         target_email: sesion.email,
         reason: 'Desconectado por administrador desde panel de control'
       });
@@ -219,63 +420,91 @@ const resetearPassword = async (user) => {
       toast.success(`${sesion.nombre || sesion.usuario} desconectado exitosamente`, {
         id: `user-disconnect-${sesion.id}`
       });
+
+      // Recargar sesiones después de kickear
+      cargarSesionesActivas();
     } catch (error) {
-      toast.error('Error al desconectar usuario');
+      toast.error(error.response?.data?.message || 'Error al desconectar usuario');
     }
-  };
+  }, [usuario, cargarSesionesActivas]);
 
-  const calcularTiempo = (timestamp) => {
-    const diferencia = Date.now() - new Date(timestamp).getTime();
-    const horas = Math.floor(diferencia / (1000 * 60 * 60));
-    const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
-    return horas > 0 ? `${horas}h ${minutos}m` : `${minutos}m`;
-  };
+  // ===================================
+  // 🔢 PAGINACIÓN
+  // ===================================
+  const cambiarPagina = useCallback((nuevaPagina) => {
+    const totalPaginas = Math.ceil(state.usuarios.length / USUARIOS_POR_PAGINA);
+    if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+      updateState({ paginaActual: nuevaPagina });
+    }
+  }, [state.usuarios.length, updateState]);
 
-  const getRoleIcon = (rol) => {
-    const icons = {
-      admin: <Crown className="h-3 w-3" />,
-      supervisor: <Shield className="h-3 w-3" />,
-      cajero: <UserCheck className="h-3 w-3" />,
-      viewer: <Eye className="h-3 w-3" />
-    };
-    return icons[rol] || <UserCheck className="h-3 w-3" />;
-  };
+  // ===================================
+  // 🎨 COMPUTED VALUES (Memoizados)
+  // ===================================
+  const usuariosPaginados = useMemo(() => {
+    const indiceInicio = (state.paginaActual - 1) * USUARIOS_POR_PAGINA;
+    const indiceFin = indiceInicio + USUARIOS_POR_PAGINA;
+    return state.usuarios.slice(indiceInicio, indiceFin);
+  }, [state.usuarios, state.paginaActual]);
 
-  const getRoleColor = (rol) => {
-    const colors = {
-      admin: 'bg-red-100 text-red-800 border-red-200',
-      supervisor: 'bg-blue-100 text-blue-800 border-blue-200',
-      cajero: 'bg-green-100 text-green-800 border-green-200',
-      viewer: 'bg-gray-100 text-gray-800 border-gray-200'
-    };
-    return colors[rol] || 'bg-gray-100 text-gray-800 border-gray-200';
-  };
+  const totalPaginas = useMemo(() => {
+    return Math.ceil(state.usuarios.length / USUARIOS_POR_PAGINA);
+  }, [state.usuarios.length]);
 
-  const formatearFecha = (fecha) => {
-    return new Date(fecha).toLocaleDateString('es-VE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit'
-    });
-  };
+  const indiceInicio = useMemo(() => {
+    return (state.paginaActual - 1) * USUARIOS_POR_PAGINA;
+  }, [state.paginaActual]);
 
+  const indiceFin = useMemo(() => {
+    return Math.min(indiceInicio + USUARIOS_POR_PAGINA, state.usuarios.length);
+  }, [indiceInicio, state.usuarios.length]);
+
+  const estadisticas = useMemo(() => ({
+    sesiones: state.sesionesActivas.length,
+    activos: state.usuarios.filter(u => u.activo).length,
+    admins: state.usuarios.filter(u => u.rol === 'admin').length,
+    total: state.usuarios.length
+  }), [state.sesionesActivas, state.usuarios]);
+
+  // ===================================
+  // 🎨 RENDER
+  // ===================================
   return (
     <div className="space-y-6">
-      
+
+      {/* Error Global */}
+      {state.error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg" role="alert">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+            <p className="text-sm text-red-700">{state.error}</p>
+            <button
+              onClick={() => updateState({ error: null })}
+              className="ml-auto text-red-500 hover:text-red-700"
+              aria-label="Cerrar mensaje de error"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Resumen del Sistema */}
       <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
         <h3 className="font-bold text-slate-900 mb-3 flex items-center text-base">
           <Activity className="h-4 w-4 mr-2 text-blue-600" />
           Estado del Sistema
         </h3>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm">
             <div className="flex items-center space-x-2 mb-1">
               <Monitor className="h-3 w-3 text-blue-600" />
               <span className="font-medium text-blue-900 text-xs">Sesiones</span>
             </div>
-            <div className="text-xl font-bold text-blue-800">{sesionesActivas.length}</div>
+            <div className="text-xl font-bold text-blue-800" aria-live="polite">
+              {estadisticas.sesiones}
+            </div>
           </div>
 
           <div className="bg-white rounded-lg p-3 border border-green-200 shadow-sm">
@@ -283,7 +512,7 @@ const resetearPassword = async (user) => {
               <Users className="h-3 w-3 text-green-600" />
               <span className="font-medium text-green-900 text-xs">Activos</span>
             </div>
-            <div className="text-xl font-bold text-green-800">{usuarios.filter(u => u.activo).length}</div>
+            <div className="text-xl font-bold text-green-800">{estadisticas.activos}</div>
           </div>
 
           <div className="bg-white rounded-lg p-3 border border-purple-200 shadow-sm">
@@ -291,7 +520,7 @@ const resetearPassword = async (user) => {
               <Shield className="h-3 w-3 text-purple-600" />
               <span className="font-medium text-purple-900 text-xs">Admins</span>
             </div>
-            <div className="text-xl font-bold text-purple-800">{usuarios.filter(u => u.rol === 'admin').length}</div>
+            <div className="text-xl font-bold text-purple-800">{estadisticas.admins}</div>
           </div>
 
           <div className="bg-white rounded-lg p-3 border border-orange-200 shadow-sm">
@@ -299,7 +528,7 @@ const resetearPassword = async (user) => {
               <Globe className="h-3 w-3 text-orange-600" />
               <span className="font-medium text-orange-900 text-xs">Total</span>
             </div>
-            <div className="text-xl font-bold text-orange-800">{usuarios.length}</div>
+            <div className="text-xl font-bold text-orange-800">{estadisticas.total}</div>
           </div>
         </div>
       </div>
@@ -307,8 +536,10 @@ const resetearPassword = async (user) => {
       {/* Sesiones Activas */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <button
-          onClick={() => setSesionesAbiertas(!sesionesAbiertas)}
+          onClick={() => updateState({ sesionesAbiertas: !state.sesionesAbiertas })}
           className="w-full px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between hover:bg-blue-100 transition-colors"
+          aria-expanded={state.sesionesAbiertas}
+          aria-controls="sesiones-activas-content"
         >
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -317,13 +548,17 @@ const resetearPassword = async (user) => {
             <div className="text-left">
               <h3 className="font-bold text-blue-900 text-sm">Sesiones Activas</h3>
               <p className="text-xs text-blue-700">
-                {sesionesActivas.length} activa{sesionesActivas.length !== 1 ? 's' : ''}
+                {estadisticas.sesiones} activa{estadisticas.sesiones !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <div className={`w-2 h-2 rounded-full ${loading ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`} />
-            {sesionesAbiertas ? (
+            <div
+              className={`w-2 h-2 rounded-full ${state.loading ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}
+              role="status"
+              aria-label={state.loading ? 'Cargando' : 'Conectado'}
+            />
+            {state.sesionesAbiertas ? (
               <ChevronUp className="h-4 w-4 text-blue-600" />
             ) : (
               <ChevronDown className="h-4 w-4 text-blue-600" />
@@ -331,17 +566,21 @@ const resetearPassword = async (user) => {
           </div>
         </button>
 
-        {sesionesAbiertas && (
-          <div className="p-4">
-            {sesionesActivas.length === 0 ? (
+        {state.sesionesAbiertas && (
+          <div id="sesiones-activas-content" className="p-4">
+            {state.sesionesActivas.length === 0 ? (
               <div className="text-center py-6 text-gray-500">
                 <Monitor className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                 <p className="font-medium text-sm">No hay sesiones activas</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {sesionesActivas.map((sesion, index) => (
-                  <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+              <div className="space-y-2" role="list" aria-label="Lista de sesiones activas">
+                {state.sesionesActivas.map((sesion, index) => (
+                  <div
+                    key={sesion.socket_id || index}
+                    className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between"
+                    role="listitem"
+                  >
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                         <span className="text-white font-bold text-xs">
@@ -357,15 +596,18 @@ const resetearPassword = async (user) => {
                             {getRoleIcon(sesion.rol)}
                             <span>{sesion.rol?.toUpperCase()}</span>
                           </span>
-                          <span className="text-gray-500">{calcularTiempo(sesion.timestamp_conexion || sesion.timestamp)}</span>
+                          <span className="text-gray-500">
+                            {calcularTiempo(sesion.timestamp_conexion || sesion.timestamp)}
+                          </span>
                         </div>
                       </div>
                     </div>
-                    
+
                     {sesion.email !== usuario?.email && sesion.rol !== 'admin' ? (
                       <button
                         onClick={() => kickearUsuario(sesion)}
-                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium flex items-center space-x-1"
+                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium flex items-center space-x-1 transition-colors"
+                        aria-label={`Desconectar a ${sesion.usuario || sesion.nombre}`}
                       >
                         <UserX className="h-3 w-3" />
                         <span>Kick</span>
@@ -386,8 +628,10 @@ const resetearPassword = async (user) => {
       {/* Tabla de Usuarios con Paginación */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <button
-          onClick={() => setUsuariosAbiertas(!usuariosAbiertas)}
+          onClick={() => updateState({ usuariosAbiertas: !state.usuariosAbiertas })}
           className="w-full px-4 py-3 bg-green-50 border-b border-green-100 flex items-center justify-between hover:bg-green-100 transition-colors"
+          aria-expanded={state.usuariosAbiertas}
+          aria-controls="usuarios-content"
         >
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
@@ -396,7 +640,7 @@ const resetearPassword = async (user) => {
             <div className="text-left">
               <h3 className="font-bold text-green-900 text-sm">Gestión de Usuarios</h3>
               <p className="text-xs text-green-700">
-                {usuarios.length} usuario{usuarios.length !== 1 ? 's' : ''} • Página {paginaActual} de {totalPaginas}
+                {estadisticas.total} usuario{estadisticas.total !== 1 ? 's' : ''} • Página {state.paginaActual} de {totalPaginas}
               </p>
             </div>
           </div>
@@ -404,14 +648,18 @@ const resetearPassword = async (user) => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setShowCrearUsuario(true);
+                updateState({
+                  usuarioEditando: null,
+                  showFormularioUsuario: true
+                });
               }}
               className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors flex items-center space-x-1"
+              aria-label="Crear nuevo usuario"
             >
               <UserPlus className="h-3 w-3" />
               <span>Crear</span>
             </button>
-            {usuariosAbiertas ? (
+            {state.usuariosAbiertas ? (
               <ChevronUp className="h-4 w-4 text-green-600" />
             ) : (
               <ChevronDown className="h-4 w-4 text-green-600" />
@@ -419,14 +667,14 @@ const resetearPassword = async (user) => {
           </div>
         </button>
 
-        {usuariosAbiertas && (
-          <div>
-            {loadingUsuarios ? (
-              <div className="p-6 text-center">
+        {state.usuariosAbiertas && (
+          <div id="usuarios-content">
+            {state.loadingUsuarios ? (
+              <div className="p-6 text-center" role="status" aria-live="polite">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
                 <p className="text-gray-600 text-sm">Cargando usuarios...</p>
               </div>
-            ) : usuarios.length === 0 ? (
+            ) : state.usuarios.length === 0 ? (
               <div className="p-6 text-center text-gray-500">
                 <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                 <p className="font-medium text-sm">No hay usuarios registrados</p>
@@ -435,15 +683,27 @@ const resetearPassword = async (user) => {
               <>
                 {/* Tabla Compacta */}
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-center">
-                    <thead className="bg-gray-50 text-center">
+                  <table className="w-full text-xs" role="table" aria-label="Tabla de usuarios">
+                    <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-3 py-2  font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-                        <th className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-                        <th className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                        <th className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                        <th className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
+                          Usuario
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
+                          Rol
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
+                          Estado
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
+                          Fecha
+                        </th>
+                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
+                          Acciones
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -452,8 +712,8 @@ const resetearPassword = async (user) => {
                           <td className="px-3 py-2 whitespace-nowrap">
                             <div className="flex items-center space-x-2">
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs ${
-                                user.activo 
-                                  ? 'bg-gradient-to-br from-green-500 to-green-600' 
+                                user.activo
+                                  ? 'bg-gradient-to-br from-green-500 to-green-600'
                                   : 'bg-gradient-to-br from-gray-400 to-gray-500'
                               }`}>
                                 {user.nombre.charAt(0).toUpperCase()}
@@ -462,7 +722,7 @@ const resetearPassword = async (user) => {
                                 <div className="font-medium text-gray-900 text-xs flex items-center space-x-1">
                                   <span>{user.nombre}</span>
                                   {user.rol === 'admin' && user.id === 1 && (
-                                    <Crown className="h-3 w-3 text-yellow-500" />
+                                    <Crown className="h-3 w-3 text-yellow-500" aria-label="Administrador principal" />
                                   )}
                                 </div>
                                 <div className="text-xs text-gray-500">{user.sucursal}</div>
@@ -481,8 +741,8 @@ const resetearPassword = async (user) => {
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
                             <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
-                              user.activo 
-                                ? 'bg-green-100 text-green-800' 
+                              user.activo
+                                ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
                             }`}>
                               {user.activo ? 'Activo' : 'Inactivo'}
@@ -492,52 +752,76 @@ const resetearPassword = async (user) => {
                             {formatearFecha(user.createdAt)}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-center">
-  <div className="flex items-center justify-center space-x-1">
-    {user.rol === 'admin' && user.id === 1 ? (
-      <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-        Protegido
-      </span>
-    ) : user.email === usuario?.email ? (
-      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-        Tú
-      </span>
-    ) : (
-      <>
-        {/* Ver Password */}
-        {/* Resetear Password */}
-            <button
-            onClick={() => resetearPassword(user)}
-            className="w-7 h-7 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full transition-colors flex items-center justify-center"
-            title="Resetear contraseña"
-            >
-            <RefreshCw className="h-3 w-3" />
-            </button>
-        
-        {/* Activar/Desactivar */}
-        <button
-          onClick={() => desactivarUsuario(user)}
-          className={`w-7 h-7 rounded-full transition-colors flex items-center justify-center ${
-            user.activo 
-              ? 'bg-orange-100 hover:bg-orange-200 text-orange-600' 
-              : 'bg-green-100 hover:bg-green-200 text-green-600'
-          }`}
-          title={user.activo ? 'Desactivar usuario' : 'Activar usuario'}
-        >
-          {user.activo ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
-        </button>
-        
-        {/* Borrar */}
-        <button
-          onClick={() => borrarUsuario(user)}
-          className="w-7 h-7 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors flex items-center justify-center"
-          title="Borrar usuario"
-        >
-          <Trash2 className="h-3 w-3" />
-        </button>
-      </>
-    )}
-  </div>
-</td>
+                            <div className="flex items-center justify-center space-x-1">
+                              {user.rol === 'admin' && user.id === 1 ? (
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                                  Protegido
+                                </span>
+                              ) : user.email === usuario?.email ? (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                  Tú
+                                </span>
+                              ) : (
+                                <>
+                                  {/* Ver QR Token */}
+                                  {user.quickAccessToken && (
+                                    <button
+                                      onClick={() => verQRToken(user)}
+                                      className="w-7 h-7 bg-purple-100 hover:bg-purple-200 text-purple-600 rounded-full transition-colors flex items-center justify-center"
+                                      aria-label={`Ver código QR de ${user.nombre}`}
+                                      title="Ver código QR"
+                                    >
+                                      <QrCode className="h-3 w-3" />
+                                    </button>
+                                  )}
+
+                                  {/* Editar Usuario */}
+                                  <button
+                                    onClick={() => editarUsuario(user)}
+                                    className="w-7 h-7 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full transition-colors flex items-center justify-center"
+                                    aria-label={`Editar ${user.nombre}`}
+                                    title="Editar usuario"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </button>
+
+                                  {/* Resetear Password */}
+                                  <button
+                                    onClick={() => resetearPassword(user)}
+                                    className="w-7 h-7 bg-cyan-100 hover:bg-cyan-200 text-cyan-600 rounded-full transition-colors flex items-center justify-center"
+                                    aria-label={`Resetear contraseña de ${user.nombre}`}
+                                    title="Resetear contraseña"
+                                  >
+                                    <RefreshCw className="h-3 w-3" />
+                                  </button>
+
+                                  {/* Activar/Desactivar */}
+                                  <button
+                                    onClick={() => desactivarUsuario(user)}
+                                    className={`w-7 h-7 rounded-full transition-colors flex items-center justify-center ${
+                                      user.activo
+                                        ? 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                                        : 'bg-green-100 hover:bg-green-200 text-green-600'
+                                    }`}
+                                    aria-label={user.activo ? `Desactivar ${user.nombre}` : `Activar ${user.nombre}`}
+                                    title={user.activo ? 'Desactivar usuario' : 'Activar usuario'}
+                                  >
+                                    {user.activo ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+                                  </button>
+
+                                  {/* Borrar */}
+                                  <button
+                                    onClick={() => borrarUsuario(user)}
+                                    className="w-7 h-7 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors flex items-center justify-center"
+                                    aria-label={`Borrar ${user.nombre}`}
+                                    title="Borrar usuario"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -546,39 +830,47 @@ const resetearPassword = async (user) => {
 
                 {/* Paginación */}
                 {totalPaginas > 1 && (
-                  <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                  <div
+                    className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between"
+                    role="navigation"
+                    aria-label="Paginación de usuarios"
+                  >
                     <div className="text-xs text-gray-700">
-                      Mostrando {indiceInicio + 1} a {Math.min(indiceFin, usuarios.length)} de {usuarios.length} usuarios
+                      Mostrando {indiceInicio + 1} a {indiceFin} de {state.usuarios.length} usuarios
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => cambiarPagina(paginaActual - 1)}
-                        disabled={paginaActual === 1}
-                        className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => cambiarPagina(state.paginaActual - 1)}
+                        disabled={state.paginaActual === 1}
+                        className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Página anterior"
                       >
                         Anterior
                       </button>
-                      
+
                       <div className="flex space-x-1">
                         {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((pagina) => (
                           <button
                             key={pagina}
                             onClick={() => cambiarPagina(pagina)}
-                            className={`px-2 py-1 text-xs rounded ${
-                              pagina === paginaActual
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              pagina === state.paginaActual
                                 ? 'bg-green-600 text-white'
                                 : 'bg-white border border-gray-300 hover:bg-gray-50'
                             }`}
+                            aria-label={`Página ${pagina}`}
+                            aria-current={pagina === state.paginaActual ? 'page' : undefined}
                           >
                             {pagina}
                           </button>
                         ))}
                       </div>
-                      
+
                       <button
-                        onClick={() => cambiarPagina(paginaActual + 1)}
-                        disabled={paginaActual === totalPaginas}
-                        className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => cambiarPagina(state.paginaActual + 1)}
+                        disabled={state.paginaActual === totalPaginas}
+                        className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Página siguiente"
                       >
                         Siguiente
                       </button>
@@ -592,30 +884,56 @@ const resetearPassword = async (user) => {
       </div>
 
       {/* Modales */}
-      {showCrearUsuario && (
-        <CrearUsuarioModal 
-          isOpen={showCrearUsuario} 
-          onClose={() => setShowCrearUsuario(false)}
-          onUserCreated={(nuevoUsuario) => {
-            console.log('Usuario creado:', nuevoUsuario);
-            cargarUsuarios();
+
+      {/* Modal Formulario (Crear/Editar) */}
+      {state.showFormularioUsuario && (
+        <UsuarioFormModal
+          isOpen={state.showFormularioUsuario}
+          onClose={() => {
+            updateState({
+              showFormularioUsuario: false,
+              usuarioEditando: null
+            });
           }}
+          onSuccess={() => {
+            cargarUsuarios();
+            updateState({
+              showFormularioUsuario: false,
+              usuarioEditando: null
+            });
+          }}
+          usuarioEdit={state.usuarioEditando}
         />
       )}
 
-      {showModalBorrar && (
+      {/* Modal QR Token */}
+      {state.showQRModal && state.usuarioQR && (
+        <QRTokenModal
+          isOpen={state.showQRModal}
+          onClose={() => {
+            updateState({
+              showQRModal: false,
+              usuarioQR: null
+            });
+          }}
+          usuario={state.usuarioQR}
+        />
+      )}
+
+      {/* Modal Borrar */}
+      {state.showModalBorrar && (
         <BorrarUserModal
-          isOpen={showModalBorrar}
-          usuario={usuarioABorrar}
+          isOpen={state.showModalBorrar}
+          usuario={state.usuarioABorrar}
           onConfirm={confirmarBorrado}
           onCancel={() => {
-            setShowModalBorrar(false);
-            setUsuarioABorrar(null);
+            updateState({
+              showModalBorrar: false,
+              usuarioABorrar: null
+            });
           }}
         />
       )}
-
-    
     </div>
   );
 };

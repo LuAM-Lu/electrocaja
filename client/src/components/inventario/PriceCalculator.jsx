@@ -266,7 +266,7 @@ setTimeout(() => {
   const stats = getStats();
 
   return (
-    <div className={`bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200 shadow-sm ${className}`}>
+    <div className={`bg-gradient-to-br from-blue-50/80 to-blue-100/80 backdrop-blur-sm rounded-xl p-4 sm:p-5 border border-blue-200/50 shadow-sm ${className}`}>
       
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -287,7 +287,7 @@ setTimeout(() => {
             </button>
           )}
           
-          <div className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+          <div className="text-xs font-medium text-blue-700 bg-blue-100/80 backdrop-blur-sm px-2 py-1 rounded-full">
             {currency}
           </div>
         </div>
@@ -305,7 +305,7 @@ setTimeout(() => {
               key={margen.value}
               type="button"
               onClick={() => aplicarMargenRapido(margen.value)}
-              className={`text-xs px-2 py-1.5 rounded-lg transition-all duration-200 font-medium border ${margen.color} hover:scale-105 hover:shadow-sm`}
+              className={`text-xs px-2 py-1.5 rounded-lg transition-all duration-200 font-medium border backdrop-blur-sm ${margen.color} hover:scale-105 hover:shadow-sm`}
               title={`${margen.desc} - ${margen.label}`}
             >
               <div className="text-center">
@@ -352,11 +352,11 @@ setTimeout(() => {
 
       {/* Estado de validación */}
       <div className="mb-4">
-        <div className={`flex items-center space-x-2 p-2 rounded-lg text-xs ${
-          validationStatus.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' :
-          validationStatus.type === 'error' ? 'bg-red-50 border border-red-200 text-red-700' :
-          validationStatus.type === 'warning' ? 'bg-orange-50 border border-orange-200 text-orange-700' :
-          'bg-gray-50 border border-gray-200 text-gray-600'
+        <div className={`flex items-center space-x-2 p-2 rounded-lg text-xs backdrop-blur-sm ${
+          validationStatus.type === 'success' ? 'bg-green-50/80 border border-green-200/50 text-green-700' :
+          validationStatus.type === 'error' ? 'bg-red-50/80 border border-red-200/50 text-red-700' :
+          validationStatus.type === 'warning' ? 'bg-orange-50/80 border border-orange-200/50 text-orange-700' :
+          'bg-gray-50/80 border border-gray-200/50 text-gray-600'
         }`}>
           {validationStatus.type === 'success' && <CheckCircle className="h-3 w-3" />}
           {validationStatus.type === 'error' && <AlertTriangle className="h-3 w-3" />}
@@ -368,22 +368,22 @@ setTimeout(() => {
       {/* Resumen estadístico */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-white rounded-lg p-3 border border-blue-200 text-center">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-blue-200/50 text-center">
             <div className="text-xs text-blue-600 mb-1">Costo</div>
             <div className="font-bold text-blue-900">${formatNumber(cleanNumber(formData.precio_costo))}</div>
           </div>
           
-          <div className="bg-white rounded-lg p-3 border border-green-200 text-center">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-green-200/50 text-center">
             <div className="text-xs text-green-600 mb-1">Ganancia</div>
             <div className="font-bold text-green-900">${formatNumber(stats.ganancia)}</div>
           </div>
           
-          <div className="bg-white rounded-lg p-3 border border-purple-200 text-center">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-purple-200/50 text-center">
             <div className="text-xs text-purple-600 mb-1">Margen</div>
             <div className="font-bold text-purple-900">{formatNumber(stats.margenReal, 1)}%</div>
           </div>
           
-          <div className="bg-white rounded-lg p-3 border border-orange-200 text-center">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-orange-200/50 text-center">
             <div className="text-xs text-orange-600 mb-1">Venta</div>
             <div className="font-bold text-orange-900">${formatNumber(cleanNumber(formData.precio_venta))}</div>
           </div>
@@ -392,7 +392,7 @@ setTimeout(() => {
 
       {/* Última calculación */}
       {lastCalculation && (
-        <div className="bg-white rounded-lg p-3 border border-gray-200">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 border border-gray-200/50">
           <div className="flex items-center space-x-2 mb-2">
             <ArrowRightLeft className="h-3 w-3 text-gray-600" />
             <span className="text-xs font-medium text-gray-700">Último Cálculo:</span>

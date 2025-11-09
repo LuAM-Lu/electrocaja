@@ -55,6 +55,15 @@ function App() {
     usuarioCerrando, 
     socketConnected 
   } = useSocketEvents();
+  
+  // 🔍 DEBUG: Log de estados de bloqueo
+  useEffect(() => {
+    console.log('🔍 [App] Estados de bloqueo actualizados:', {
+      usuariosBloqueados,
+      motivoBloqueo,
+      usuarioCerrando
+    });
+  }, [usuariosBloqueados, motivoBloqueo, usuarioCerrando]);
 
 //  CONECTAR SOCKET AL CAJASTORE (EVITAR DUPLICADOS)
 useEffect(() => {

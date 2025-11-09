@@ -355,75 +355,11 @@ const cerrarCaja = async (req, res) => {
       }
     });
 
-    // 📄 GENERAR PDF AUTOMÁTICAMENTE
+    // 📄 PDF YA FUE GENERADO EN EL FRONTEND
+    // El frontend llama a /generar-pdf-temporal ANTES de cerrar la caja
+    // No generamos otro PDF aquí para evitar duplicados
+    console.log('ℹ️ PDF ya generado en frontend mediante /generar-pdf-temporal');
     let pdfInfo = null;
-    try {
-      console.log('📄 Generando PDF de cierre automáticamente...');
-      
-      // Obtener transacciones completas para el PDF
-      const transaccionesCompletas = await prisma.transaccion.findMany({
-        where: { cajaId: cajaCerrada.id },
-        include: {
-          pagos: true,
-          items: {
-            include: {
-              producto: {
-                select: {
-                  descripcion: true,
-                  tipo: true,
-                  categoria: true
-                }
-              }
-            }
-          },
-          usuario: {
-            select: {
-              nombre: true,
-              rol: true
-            }
-          }
-        },
-        orderBy: { fechaHora: 'asc' }
-      });
-
-      // Preparar datos completos para el PDF
-      const datosCompletos = {
-        caja: {
-          ...cajaCerrada,
-          fecha: cajaCerrada.fecha ? new Date(cajaCerrada.fecha).toLocaleDateString('es-VE') : new Date().toLocaleDateString('es-VE'),
-          horaApertura: cajaCerrada.horaApertura || '08:00',
-          horaCierre: cajaCerrada.horaCierre || new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-          montoFinalBs: decimalToNumber(cajaCerrada.montoFinalBs),
-          montoFinalUsd: decimalToNumber(cajaCerrada.montoFinalUsd),
-          montoFinalPagoMovil: decimalToNumber(cajaCerrada.montoFinalPagoMovil)
-        },
-        transacciones: transaccionesCompletas.map(t => ({
-          ...t,
-          totalBs: decimalToNumber(t.totalBs),
-          totalUsd: decimalToNumber(t.totalUsd),
-          tasaCambioUsada: decimalToNumber(t.tasaCambioUsada),
-          usuario: t.usuario?.nombre || 'Sistema',
-          fechaHora: t.fechaHora
-        })),
-        usuario: {
-          nombre: req.user?.nombre || 'Usuario',
-          rol: req.user?.rol || 'cajero',
-          sucursal: req.user?.sucursal || 'Principal'
-        },
-        diferencias: null, // Se calculará del frontend si hay diferencias
-        observaciones: observacionesCierre,
-        evidenciaFotografica: !!imagenCierre,
-        fechaGeneracion: new Date().toISOString()
-      };
-
-      // Generar PDF
-      pdfInfo = await PDFCierreService.generarPDFCierre(datosCompletos);
-      console.log('✅ PDF de cierre generado:', pdfInfo.nombreArchivo);
-      
-    } catch (pdfError) {
-      console.error('⚠️ Error generando PDF (no crítico):', pdfError);
-      // No fallar el cierre por error de PDF
-    }
 
     console.log('✅ Caja cerrada exitosamente:', cajaCerrada.id);
     console.log('🔧 Observaciones guardadas:', cajaCerrada.observacionesCierre);
@@ -577,20 +513,25 @@ const realizarArqueo = async (req, res) => {
       adminAutorizado
     });
 
-    // 🔒 BLOQUEAR TODOS LOS USUARIOS DURANTE EL ARQUEO
+    // 🔒 BLOQUEAR TODOS LOS USUARIOS DURANTE EL ARQUEO - OPTIMIZADO PARA SER INSTANTÁNEO
     if (req.io && !usuarioBloqueado) {
       global.estadoApp.usuarios_bloqueados = true;
       global.estadoApp.motivo_bloqueo = `Arqueo crítico en proceso por ${req.user.nombre || req.user.email}`;
       global.estadoApp.usuario_cerrando = req.user.nombre || req.user.email;
       global.estadoApp.timestamp_bloqueo = new Date().toISOString();
 
-      req.io.emit('bloquear_usuarios', {
+      // ⚡ EMITIR BROADCAST INMEDIATAMENTE (sin await, sin delays)
+      const payloadBloqueo = {
         motivo: global.estadoApp.motivo_bloqueo,
         usuario_cerrando: global.estadoApp.usuario_cerrando,
-        timestamp: global.estadoApp.timestamp_bloqueo
-      });
+        timestamp: global.estadoApp.timestamp_bloqueo,
+        priority: 'high' // ⚡ Flag para indicar prioridad alta
+      };
 
-      console.log('🔒 Usuarios bloqueados para arqueo crítico');
+      // ⚡ USAR volatile() PARA MÁXIMA VELOCIDAD (sacrifica garantía de entrega por velocidad)
+      req.io.volatile.emit('bloquear_usuarios', payloadBloqueo);
+
+      console.log('🔒⚡ BLOQUEO INSTANTÁNEO emitido a todos los usuarios');
     }
 
     // Verificar que hay una caja abierta
@@ -1422,6 +1363,9 @@ const obtenerTransacciones = async (req, res) => {
     // Construir filtros
     const whereClause = {};
 
+    // ✅ Filtrar transacciones eliminadas (soft-delete)
+    whereClause.deletedAt = null;
+
     // Filtro por caja específica o caja actual
     if (cajaId) {
       whereClause.cajaId = parseInt(cajaId);
@@ -1613,19 +1557,42 @@ const transaccionesConvertidas = transacciones.map(t => ({
 const eliminarTransaccion = async (req, res) => {
   try {
     const { id } = req.params;
-    const { motivo = '', autorizadoPor = null } = req.body;
+    const { motivoEliminacion, adminToken } = req.body;
+    const usuarioId = parseInt(req.user.userId || req.user.id);
 
     console.log('🗑️ Eliminando transacción:', {
       id,
-      motivo,
-      autorizadoPor,
+      motivoEliminacion,
       usuario: req.user?.email
     });
 
-    // Validar permisos (solo admin/supervisor)
-    const rolNormalizado = req.user.rol?.toLowerCase();
-    if (!['admin', 'supervisor'].includes(rolNormalizado)) {
-      return sendError(res, 'No tienes permisos para eliminar transacciones', 403);
+    // Solo admin puede eliminar
+    const usuario = await prisma.user.findUnique({
+      where: { id: usuarioId }
+    });
+
+    if (!usuario || usuario.rol !== 'admin') {
+      return sendError(res, 'No tienes permisos para eliminar transacciones. Solo administradores pueden realizar esta acción', 403);
+    }
+
+    // ✅ Validar token de admin si se proporciona
+    if (adminToken) {
+      const adminTokenUser = await prisma.user.findFirst({
+        where: {
+          quickAccessToken: adminToken.toUpperCase().trim(),
+          rol: 'admin',
+          activo: true
+        }
+      });
+
+      if (!adminTokenUser) {
+        return sendError(res, 'Token de administrador inválido', 401);
+      }
+    }
+
+    // Validar motivo de eliminación
+    if (!motivoEliminacion || motivoEliminacion.trim().length < 10) {
+      return sendError(res, 'Debe proporcionar un motivo de eliminación (mínimo 10 caracteres)', 400);
     }
 
     // Buscar la transacción
@@ -1642,12 +1609,17 @@ const eliminarTransaccion = async (req, res) => {
       return sendError(res, 'Transacción no encontrada', 404);
     }
 
+    // Verificar si ya está eliminado (soft-delete)
+    if (transaccion.deletedAt) {
+      return sendError(res, 'Esta transacción ya ha sido eliminada', 400);
+    }
+
     // Verificar que la caja esté abierta
     if (transaccion.caja.estado !== 'ABIERTA') {
       return sendError(res, 'No se pueden eliminar transacciones de cajas cerradas', 400);
     }
 
-    // 🔄 ELIMINAR EN TRANSACCIÓN DE BD Y REVERTIR TOTALES
+    // 🔄 SOFT-DELETE: Marcar como eliminado y revertir totales
     await prisma.$transaction(async (tx) => {
       // 1. Revertir totales de la caja
       const updateData = {};
@@ -1684,13 +1656,18 @@ const eliminarTransaccion = async (req, res) => {
         data: updateData
       });
 
-      // 2. Eliminar transacción (cascada eliminará pagos e items)
-      await tx.transaccion.delete({
-        where: { id: parseInt(id) }
+      // 2. ✅ Soft-delete: Marcar como eliminado en lugar de borrar físicamente
+      await tx.transaccion.update({
+        where: { id: parseInt(id) },
+        data: {
+          deletedAt: new Date(),
+          motivoEliminacion: motivoEliminacion.trim(),
+          eliminadoPorId: usuarioId
+        }
       });
     });
 
-    console.log('✅ Transacción eliminada exitosamente:', id);
+    console.log(`✅ Transacción ${id} eliminada (soft-delete) por ${usuario.nombre}`);
 
     // 📡 Notificar via Socket.IO
     if (req.io) {
@@ -1700,8 +1677,8 @@ const eliminarTransaccion = async (req, res) => {
         categoria: transaccion.categoria,
         total_bs: decimalToNumber(transaccion.totalBs),
         total_usd: decimalToNumber(transaccion.totalUsd),
-        usuario_elimino: req.user?.nombre || req.user?.email,
-        motivo: motivo,
+        usuario_elimino: usuario.nombre || usuario.email,
+        motivo: motivoEliminacion,
         timestamp: new Date().toISOString()
       });
       console.log('📡 Notificación Socket.IO enviada - transacción eliminada');
@@ -1715,10 +1692,10 @@ const eliminarTransaccion = async (req, res) => {
         total_bs: decimalToNumber(transaccion.totalBs),
         total_usd: decimalToNumber(transaccion.totalUsd)
       },
-      motivo: motivo,
-      eliminada_por: req.user?.nombre || req.user?.email,
+      motivo: motivoEliminacion,
+      eliminada_por: usuario.nombre || usuario.email,
       timestamp: new Date().toISOString()
-    }, 'Transacción eliminada correctamente');
+    }, 'Transacción eliminada exitosamente');
 
   } catch (error) {
     console.error('❌ Error eliminando transacción:', error);

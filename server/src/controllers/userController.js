@@ -213,7 +213,22 @@ const crearUsuario = async (req, res) => {
     console.log('🔐 Hasheando contraseña...');
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // 📝 CREAR USUARIO (CORREGIDO)
+    // 🎯 GENERAR QUICK ACCESS TOKEN ÚNICO
+    console.log('🎯 Generando Quick Access Token...');
+    let quickToken;
+    let isUniqueToken = false;
+
+    while (!isUniqueToken) {
+      quickToken = generateQuickAccessToken();
+      const existingToken = await prisma.user.findUnique({
+        where: { quickAccessToken: quickToken }
+      });
+      if (!existingToken) isUniqueToken = true;
+    }
+
+    console.log('✅ Token generado:', quickToken);
+
+    // 📝 CREAR USUARIO (CON QUICK ACCESS TOKEN)
     console.log('📝 Creando usuario en base de datos...');
     const nuevoUsuario = await prisma.user.create({
       data: {
@@ -223,8 +238,8 @@ const crearUsuario = async (req, res) => {
         rol: rol,
         sucursal: sucursal || 'Principal',
         turno: mapearTurno(turno), // 🔥 USAR FUNCIÓN DE MAPEO
-        activo: true
-        // 🔥 REMOVIDO: fechaCreacion y creadoPor (no existen en schema)
+        activo: true,
+        quickAccessToken: quickToken // 🎯 AUTO-GENERAR TOKEN
       },
       select: {
         id: true,
@@ -234,6 +249,7 @@ const crearUsuario = async (req, res) => {
         sucursal: true,
         turno: true,
         activo: true,
+        quickAccessToken: true, // 🎯 INCLUIR TOKEN EN RESPUESTA
         createdAt: true // 🔥 USAR createdAt en lugar de fechaCreacion
       }
     });
@@ -327,6 +343,7 @@ const listarUsuarios = async (req, res) => {
         sucursal: true,
         turno: true,
         activo: true,
+        quickAccessToken: true, // 🎯 INCLUIR TOKEN EN RESPUESTA
         createdAt: true, // 🔥 CORREGIDO: usar createdAt
         updatedAt: true  // 🔥 CORREGIDO: usar updatedAt
       },
@@ -355,9 +372,9 @@ const actualizarUsuario = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { nombre, email, rol, sucursal, turno, activo } = req.body;
+    const { nombre, email, rol, sucursal, turno, activo, regenerarToken } = req.body;
 
-    console.log(`✏️ Actualizando usuario ID: ${id} con datos:`, { nombre, email, rol, sucursal, turno, activo });
+    console.log(`✏️ Actualizando usuario ID: ${id} con datos:`, { nombre, email, rol, sucursal, turno, activo, regenerarToken });
 
     // Verificar que el usuario existe
     const usuarioExistente = await prisma.user.findUnique({
@@ -396,6 +413,24 @@ const actualizarUsuario = async (req, res) => {
     if (turno) datosActualizacion.turno = mapearTurno(turno); // 🔥 USAR FUNCIÓN DE MAPEO
     if (activo !== undefined) datosActualizacion.activo = activo;
 
+    // 🎯 REGENERAR TOKEN SI SE SOLICITA
+    if (regenerarToken === true) {
+      console.log('🎯 Regenerando Quick Access Token...');
+      let nuevoToken;
+      let isUniqueToken = false;
+
+      while (!isUniqueToken) {
+        nuevoToken = generateQuickAccessToken();
+        const existingToken = await prisma.user.findUnique({
+          where: { quickAccessToken: nuevoToken }
+        });
+        if (!existingToken) isUniqueToken = true;
+      }
+
+      datosActualizacion.quickAccessToken = nuevoToken;
+      console.log('✅ Nuevo token generado:', nuevoToken);
+    }
+
     console.log('✏️ Datos finales para actualizar:', datosActualizacion);
 
     // Actualizar usuario
@@ -410,6 +445,7 @@ const actualizarUsuario = async (req, res) => {
         sucursal: true,
         turno: true,
         activo: true,
+        quickAccessToken: true, // 🎯 INCLUIR TOKEN EN RESPUESTA
         createdAt: true, // 🔥 CORREGIDO
         updatedAt: true  // 🔥 CORREGIDO
       }
@@ -595,20 +631,19 @@ const borrarUsuario = async (req, res) => {
 // 🆕 FUNCIONES PARA QUICK ACCESS TOKEN
 // ===================================
 
-const generateQuickAccessToken = (user) => {
-  const rolePrefix = {
-    'admin': 'ADM',
-    'supervisor': 'SUP', 
-    'cajero': 'CAJ',
-    'viewer': 'VIE'
-  };
-  
-  const prefix = rolePrefix[user.rol] || 'USR';
-  const year = new Date().getFullYear();
-  const randomString = Math.random().toString(36).substring(2, 10).toUpperCase();
-  
-  // Sin guiones bajos - solo números y letras
-  return `QA${prefix}${year}${randomString}`;
+// 🎯 GENERADOR DE TOKEN MEJORADO (12 caracteres alfanuméricos - compatible con barcode scanner)
+const generateQuickAccessToken = () => {
+  // Caracteres sin I, O, 0, 1 para evitar confusiones en QR/barcode
+  const caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let token = '';
+
+  // Generar 12 caracteres aleatorios (seguro para escáner de código de barras)
+  for (let i = 0; i < 12; i++) {
+    const randomIndex = Math.floor(Math.random() * caracteres.length);
+    token += caracteres.charAt(randomIndex);
+  }
+
+  return token; // Ejemplo: "ABC123XYZ789"
 };
 
 // Generar tokens para todos los usuarios
@@ -632,10 +667,10 @@ const generateAllTokens = async (req, res) => {
       if (!user.quickAccessToken) {
         let token;
         let isUnique = false;
-        
+
         // Generar token único
         while (!isUnique) {
-          token = generateQuickAccessToken(user);
+          token = generateQuickAccessToken();
           const existing = await prisma.user.findUnique({
             where: { quickAccessToken: token }
           });
@@ -750,10 +785,10 @@ const regenerateToken = async (req, res) => {
 
     let token;
     let isUnique = false;
-    
+
     // Generar nuevo token único
     while (!isUnique) {
-      token = generateQuickAccessToken(user);
+      token = generateQuickAccessToken();
       const existing = await prisma.user.findUnique({
         where: { quickAccessToken: token }
       });

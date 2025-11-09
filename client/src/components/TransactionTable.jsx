@@ -1,7 +1,7 @@
 // components/TransactionTable.jsx (HEADER VERDE CORREGIDO)
 import React, { useState, useEffect } from 'react';
 import { Eye, Wrench, HandCoins, Trash2, Plus, Search, Filter, Calendar, Clock, TrendingUp, TrendingDown, CreditCard, DollarSign, Smartphone, ArrowUpDown, ChevronLeft, ChevronRight, FileText, Coffee, MonitorSmartphone, Package } from 'lucide-react';
-import { useCajaStore } from '../store/cajaStore';
+import { useTransactionTable } from '../store/cajaStore';
 //import TransactionDetailModal from './TransactionDetailModal';
 import DeleteTransactionModal from './DeleteTransactionModal';
 import toast from '../utils/toast.jsx';
@@ -12,19 +12,59 @@ import { useAuthStore } from '../store/authStore'; //  AGREGAR ESTA LÍNEA
 
 
 const TransactionTable = () => {
-  const { cajaActual, transacciones, eliminarTransaccion } = useCajaStore();
+  const { cajaActual, transacciones, eliminarTransaccion, cargarCajaActual } = useTransactionTable();
+  const { socket, usuario } = useAuthStore();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('todas');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
-  
+
   // Estados para modales
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+
+  // ✅ ESCUCHAR EVENTOS DE SOCKET PARA ACTUALIZACIÓN EN TIEMPO REAL
+  useEffect(() => {
+    if (!socket || typeof socket.on !== 'function') return;
+
+    console.log('TransactionTable: Configurando listeners de socket');
+
+    // ✅ MANEJAR EVENTOS DE TRANSACCIONES DE SERVICIOS TÉCNICOS
+    const handleNuevaTransaccion = async (data) => {
+      console.log('TransactionTable: Nueva transacción recibida', data);
+      
+      // Si es transacción de servicio técnico, recargar caja para actualizar lista
+      if (data.tipo === 'servicio_tecnico' || data.transaccion?.servicioTecnicoId) {
+        console.log('TransactionTable: Transacción de servicio técnico detectada, recargando caja...');
+        // Recargar caja para obtener transacciones actualizadas
+        setTimeout(() => {
+          cargarCajaActual();
+        }, 500);
+      }
+    };
+
+    // ✅ SOLO MANEJAR EVENTOS ESPECÍFICOS - SIN ACTUALIZAR CAJA (ya lo maneja useSocketEvents)
+    const handleTransactionDeleted = async (data) => {
+      console.log('TransactionTable: Transaccion eliminada', data);
+      // NO ACTUALIZAR - Ya lo maneja useSocketEvents.js para evitar llamadas duplicadas
+      console.log('TransactionTable: Esperando actualización automática del store');
+    };
+
+    // ✅ REGISTRAR LISTENERS PARA TRANSACCIONES DE SERVICIOS
+    socket.on('nueva_transaccion', handleNuevaTransaccion);
+    socket.on('transaction-deleted', handleTransactionDeleted);
+
+    // Cleanup
+    return () => {
+      socket.off('nueva_transaccion', handleNuevaTransaccion);
+      socket.off('transaction-deleted', handleTransactionDeleted);
+      console.log('TransactionTable: Listeners removidos');
+    };
+  }, [socket, cargarCajaActual]);
 
   const filteredTransactions = transacciones.filter(t => {
     const matchesSearch = t.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,11 +123,30 @@ const handleViewDetails = async (transaccion) => {
   };
 
   const handleDeleteConfirm = async (transactionId) => {
-    try {
-      await eliminarTransaccion(transactionId);
-    } catch (error) {
-      throw error;
+    // El modal ya hizo la eliminación y recargó la caja
+    // Este callback es solo para compatibilidad, no necesita hacer nada adicional
+    console.log('Transacción eliminada:', transactionId);
+  };
+
+  const formatCodigoVenta = (codigoVenta) => {
+    if (!codigoVenta) return 'Sin código';
+    
+    // Si es un código de servicio técnico con formato largo (ej: S20251109002-F-1762665708704)
+    // Mostrar solo la parte relevante (S20251109002-F o S20251109002-A)
+    if (codigoVenta.includes('-F-') || codigoVenta.includes('-A-')) {
+      // Extraer solo hasta el tipo de pago (F o A)
+      const match = codigoVenta.match(/^(S\d+-[FA])/);
+      if (match) {
+        return match[1];
+      }
     }
+    
+    // Para otros códigos, truncar si es muy largo
+    if (codigoVenta.length > 20) {
+      return codigoVenta.substring(0, 17) + '...';
+    }
+    
+    return codigoVenta;
   };
 
   const formatTime = (fechaHora) => {
@@ -283,6 +342,8 @@ const handleViewDetails = async (transaccion) => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" /> {/*  AGREGADO: z-10 pointer-events-none */}
                 <input
+                  id="search-transactions-input"
+                  name="searchTransactions"
                   type="text"
                   placeholder="Buscar por categoría o descripción..."
                   value={searchTerm}
@@ -294,6 +355,8 @@ const handleViewDetails = async (transaccion) => {
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" /> {/*  AGREGADO: z-10 pointer-events-none */}
                 <select
+                  id="filter-transactions-select"
+                  name="filterTransactions"
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
                   className="pl-10 pr-8 py-2 border border-white/30 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-white/60 backdrop-blur-sm min-w-[140px] text-gray-900 relative z-0"
@@ -423,7 +486,7 @@ const handleViewDetails = async (transaccion) => {
                                 const codigoVenta = transaccion.codigoVenta || 
                                   transaccion.categoria.match(/V\d+/)?.[0] || 
                                   'Sin código';
-                                return `- ${codigoVenta}`;
+                                return `- ${formatCodigoVenta(codigoVenta)}`;
                               })()}
                             </div>
                            
@@ -514,7 +577,7 @@ const handleViewDetails = async (transaccion) => {
                          ))}
                        </div>
                        
-                       {transaccion.pagos.length > 1 && (
+                       {transaccion.pagos && transaccion.pagos.length > 1 && (
                          <div className="text-xs text-gray-500 flex items-center justify-end mt-1">
                            <span className="bg-gray-100/70 backdrop-blur-sm text-gray-600 px-1.5 py-0.5 rounded text-xs border border-white/30">
                              {transaccion.pagos.length} método{transaccion.pagos.length > 1 ? 's' : ''}
@@ -579,13 +642,15 @@ const handleViewDetails = async (transaccion) => {
                          >
                            <Eye className="h-3.5 w-3.5" />
                          </button>
-                         <button
-                           onClick={() => handleDeleteClick(transaccion)}
-                           className="bg-red-50/80 backdrop-blur-sm hover:bg-red-100/80 text-red-600 p-1.5 rounded-md transition-colors border border-red-200/50 hover:border-red-300/50"
-                           title="Eliminar"
-                         >
-                           <Trash2 className="h-3.5 w-3.5" />
-                         </button>
+                         {usuario?.rol === 'admin' && (
+                           <button
+                             onClick={() => handleDeleteClick(transaccion)}
+                             className="bg-red-50/80 backdrop-blur-sm hover:bg-red-100/80 text-red-600 p-1.5 rounded-md transition-colors border border-red-200/50 hover:border-red-300/50"
+                             title="Eliminar"
+                           >
+                             <Trash2 className="h-3.5 w-3.5" />
+                           </button>
+                         )}
                        </div>
                      </td>
                    </tr>
@@ -681,7 +746,10 @@ const handleViewDetails = async (transaccion) => {
 
       <DeleteTransactionModal
         isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSelectedTransaction(null);
+        }}
         transaccion={selectedTransaction}
         onConfirm={handleDeleteConfirm}
       />

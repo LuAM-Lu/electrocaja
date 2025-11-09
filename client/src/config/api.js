@@ -69,6 +69,16 @@ api.interceptors.response.use(
     
     //  MANEJO ESPECÍFICO DE TOKEN EXPIRADO
     if (error.response?.status === 401) {
+      // ✅ Excluir endpoints que pueden devolver 401 legítimamente sin ser token expirado
+      const isAuthValidationEndpoint = error.config?.url?.includes('/auth/validate-admin-token') ||
+                                      error.config?.url?.includes('/auth/validate-quick-token');
+      
+      // Si es un endpoint de validación, no tratar como token expirado
+      if (isAuthValidationEndpoint) {
+        console.log(' 401 de endpoint de validación, no es token expirado');
+        return Promise.reject(error);
+      }
+      
       console.log(' Token expirado detectado en interceptor');
       
       // 1. Limpiar token inmediatamente

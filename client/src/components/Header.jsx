@@ -193,7 +193,7 @@ const Header = () => {
    } else {
      console.log(' NO ejecutando - Usuario:', !!usuario, 'loadTasaFromServer:', !!loadTasaFromServer);
    }
- }, [usuario?.id]);
+ }, [usuario?.id, loadTasaFromServer]); // ✅ AGREGADO loadTasaFromServer a las dependencias
 
  const handleRefresh = async () => {
    try {
@@ -346,6 +346,8 @@ const handleMarkAllRead = () => {
                  <div className="flex items-center justify-center space-x-1 sm:space-x-3">
                    <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-green-300" />
                    <input
+                     id="tasa-cambio-input"
+                     name="tasaCambio"
                      type="number"
                      value={tempTasa}
                      onChange={(e) => setTempTasa(e.target.value)}

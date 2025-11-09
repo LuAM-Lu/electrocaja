@@ -11,7 +11,7 @@ import ArqueoModal from './ArqueoModal';
 import { Wrench } from 'lucide-react';
 import FloatingActions from './FloatingActions';
 import CerrarCajaModal from './CerrarCajaModal';
-import { useCajaStore } from '../store/cajaStore';
+import { useDashboard } from '../store/cajaStore';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
 import { useDashboardStore } from '../store/dashboardStore';
@@ -34,7 +34,7 @@ const ModalBackdrop = ({ children }) => (
 const Dashboard = ({ emitirEvento }) => {
  const [showTestingPanel, setShowTestingPanel] = useState(false);
 
- const { loading, cajaActual } = useCajaStore();
+ const { loading, cajaActual } = useDashboard();
  const { obtenerInventario } = useInventarioStore();
  const { tienePermiso, usuario } = useAuthStore();
  const { 

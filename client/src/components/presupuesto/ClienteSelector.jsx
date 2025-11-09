@@ -400,6 +400,8 @@ const ModalRegistroCliente = ({
               {formData.tipo === 'persona' ? 'Cédula *' : 'RIF *'}
             </label>
             <input
+              id="cliente-cedula-input"
+              name="clienteCedula"
               type="text"
               value={formData.cedula}
               onChange={(e) => {
@@ -462,6 +464,8 @@ const ModalRegistroCliente = ({
               {formData.tipo === 'persona' ? 'Nombre Completo *' : 'Razón Social *'}
             </label>
             <input
+              id="cliente-nombre-input"
+              name="clienteNombre"
               ref={nombreInputRef}
               type="text"
               value={formData.nombre}
@@ -487,6 +491,8 @@ const ModalRegistroCliente = ({
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
+                id="cliente-telefono-input"
+                name="clienteTelefono"
                 type="tel"
                 value={formData.telefono}
                 onChange={(e) => {
@@ -524,6 +530,8 @@ const ModalRegistroCliente = ({
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
+                id="cliente-email-input"
+                name="clienteEmail"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
@@ -735,6 +743,8 @@ const ClienteSelector = ({
          <div className="relative">
            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
            <input
+             id="cliente-search-input"
+             name="clienteSearch"
              type="text"
              value={busqueda || displayValue}
              onChange={(e) => {

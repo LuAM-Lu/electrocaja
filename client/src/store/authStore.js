@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 import { io } from 'socket.io-client';
 import toast from '../utils/toast.jsx';
 import { api, API_CONFIG, testConnection } from '../config/api.js';
+import { bloqueoService } from '../services/bloqueoService.js';
 
 // Socket URL desde configuración centralizada
 const SOCKET_URL = API_CONFIG.BASE_URL.replace('/api', '');
@@ -39,13 +40,20 @@ const initializeSocket = (token) => {
 
   socket = io(SOCKET_URL, {
     auth: { token },
-    transports: ['websocket', 'polling'],
+    // ⚡ OPTIMIZACIÓN PARA BAJA LATENCIA
+    transports: ['websocket'], // ⚡ Solo WebSocket (más rápido que polling)
+    upgrade: false, // ⚡ No intentar upgrade desde polling
     forceNew: true,
     reconnection: true,
-    reconnectionAttempts: 10, //  Más intentos
+    reconnectionAttempts: 10,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
-    timeout: 20000
+    timeout: 10000, // ⚡ Reducido de 20s a 10s
+    // ⚡ NUEVAS OPCIONES PARA REDUCIR LATENCIA
+    rememberUpgrade: true,
+    perMessageDeflate: false, // ⚡ Deshabilitar compresión para mayor velocidad
+    pingInterval: 10000, // ⚡ Ping cada 10s (default 25s)
+    pingTimeout: 5000 // ⚡ Timeout de ping reducido
   });
 
   //  EVENTOS DE RECONEXIÓN
@@ -122,6 +130,13 @@ const useAuthStore = create(
       sessionTimeout: null,
       loading: false,
       error: null,
+
+      // 🔒 ESTADO DE BLOQUEO (PERSISTENTE)
+      usuariosBloqueados: false,
+      motivoBloqueo: '',
+      usuarioCerrando: '',
+      timestampBloqueo: null,
+      diferenciasPendientes: null,
       
       //  Login con sincronización de sesiones (MEJORADO PARA TOKENS)
         login: async (credentials) => {
@@ -373,16 +388,18 @@ const useAuthStore = create(
       setupSocketEvents: (socketInstance) => {
   if (!socketInstance) return;
 
+  // ✅ NO manejar bloqueos aquí - lo maneja useSocketEvents con estados locales
+
   //  ACTUALIZAR SOCKET EN EL STORE CUANDO SE RECONECTE
     socketInstance.on('connect', () => {
     console.log(' Socket conectado:', socketInstance.id);
-    
+
     //  ACTUALIZAR EL SOCKET EN EL STORE
     set({ socket: socketInstance });
     console.log(' Socket guardado en store'); //  NUEVO DEBUG
-    
+
     toast.success('Conectado en tiempo real');
-    
+
     // Solicitar lista de usuarios conectados
     socketInstance.emit('get-connected-users');
   });
@@ -438,110 +455,213 @@ const useAuthStore = create(
         });
       },
 
- checkAuth: async () => {
-  //  PREVENIR EJECUCIÓN MÚLTIPLE
-  const estado = get();
-  if (estado.loading) {
-    console.log(' checkAuth ya en progreso, saltando...');
-    return estado.isAuthenticated;
-  }
-
-  //  MARCAR FLAG GLOBAL PARA PREVENIR LOOPS
- if (window.checkAuthInProgress) {
-  console.log(' checkAuth local en progreso, saltando...');
-  return estado.isAuthenticated;
-}
-
-window.checkAuthInProgress = true;
-
-  const token = localStorage.getItem('auth-token');
-  if (!token) {
-    window.checkAuthInProgress = false; //  Limpiar flag
-    set({
-      isAuthenticated: false,
-      usuario: null,
-      token: null,
-      socket: null,
-      usuariosConectados: []
-    });
-    return false;
-  }
-
-  try {
-    set({ loading: true });
-    console.log(' Ejecutando checkAuth con token existente...');
-    
-    const userData = await apiRequest('/auth/me');
-    
-    const { usuario: usuarioLocal } = get();
-    const usuarioCompleto = {
-      ...userData,
-      sucursal: usuarioLocal?.sucursal || 'Principal',
-      turno: usuarioLocal?.turno || 'matutino',
-      sesion_activa: true,
-      timestamp_login: usuarioLocal?.timestamp_login || new Date().toISOString(),
-      ultima_actividad: new Date().toISOString()
-    };
-    
-    //  SIEMPRE RECONECTAR SOCKET DESPUÉS DE F5
-    console.log(' Reconectando socket después de recarga...');
-    let socketInstance = get().socket;
-    
-    // Si no hay socket o está desconectado, crear uno nuevo
-    if (!socketInstance || !socketInstance.connected) {
-      socketInstance = initializeSocket(token);
-      get().setupSocketEvents(socketInstance);
-      
-      //  REENVIAR DATOS DE USUARIO AL RECONECTAR
-      setTimeout(() => {
-        if (socketInstance.connected) {
-          console.log(' Reenviando user-connected después de recarga...');
-          socketInstance.emit('user-connected', {
-            user: usuarioCompleto,
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          socketInstance.on('connect', () => {
-            console.log(' Socket reconectado, enviando user-connected...');
-            socketInstance.emit('user-connected', {
-              user: usuarioCompleto,
-              timestamp: new Date().toISOString()
-            });
+      checkAuth: async () => {
+        const estado = get();
+        
+        // 🔧 FIX: Mejorar control de concurrencia
+        if (estado.loading) {
+          console.log('⏳ checkAuth ya en progreso (store loading), esperando...');
+          return new Promise((resolve) => {
+            const interval = setInterval(() => {
+              const newState = get();
+              if (!newState.loading) {
+                clearInterval(interval);
+                resolve(newState.isAuthenticated);
+              }
+            }, 100);
+            
+            // Timeout después de 5 segundos
+            setTimeout(() => {
+              clearInterval(interval);
+              resolve(get().isAuthenticated);
+            }, 5000);
           });
         }
-      }, 1000);
-    }
-    
-    set({
-      usuario: usuarioCompleto,
-      token,
-      socket: socketInstance,
-      isAuthenticated: true,
-      loading: false,
-      error: null
-    });
-    
-    console.log(' CheckAuth completado - Socket reconectado');
-    window.checkAuthInProgress = false; //  Limpiar flag al final
-    return true;
-    
-  } catch (error) {
-    console.error(' Error en checkAuth:', error);
-    window.checkAuthInProgress = false; //  Limpiar flag en error
-    localStorage.removeItem('auth-token');
-    disconnectSocket();
-    set({
-      usuario: null,
-      token: null,
-      socket: null,
-      isAuthenticated: false,
-      usuariosConectados: [],
-      loading: false,
-      error: null
-    });
-    return false;
-  }
-},
+
+        if (window.checkAuthInProgress) {
+          console.log('⏳ checkAuth local en progreso, saltando...');
+          return estado.isAuthenticated;
+        }
+
+        window.checkAuthInProgress = true;
+
+        const token = localStorage.getItem('auth-token');
+        if (!token) {
+          console.log('❌ No hay token, limpiando estado...');
+          window.checkAuthInProgress = false;
+          set({
+            isAuthenticated: false,
+            usuario: null,
+            token: null,
+            socket: null,
+            usuariosConectados: [],
+            cajaPendienteCierre: null,
+            sistemaBloquedadoPorCaja: false,
+            loading: false
+          });
+          return false;
+        }
+
+        try {
+          set({ loading: true });
+          console.log('✅ Ejecutando checkAuth con token existente...');
+
+          const response = await api.get('/auth/me');
+          const userData = response.data?.data || response.data;
+          
+          console.log('📥 Datos recibidos del servidor:', {
+            id: userData.id,
+            nombre: userData.nombre,
+            email: userData.email,
+            rol: userData.rol,
+            cajaPendiente: !!userData.cajaPendienteCierre
+          });
+
+          const { usuario: usuarioLocal } = get();
+          const usuarioCompleto = {
+            ...userData,
+            sucursal: usuarioLocal?.sucursal || userData.sucursal || 'Principal',
+            turno: usuarioLocal?.turno || userData.turno || 'matutino',
+            sesion_activa: true,
+            timestamp_login: usuarioLocal?.timestamp_login || new Date().toISOString(),
+            ultima_actividad: new Date().toISOString()
+          };
+
+          console.log('🔌 Reconectando socket después de recarga...');
+          let socketInstance = get().socket;
+
+          // 🔧 FIX: Siempre reinicializar socket si no está conectado
+          if (!socketInstance || !socketInstance.connected) {
+            console.log('🔌 Inicializando nuevo socket...');
+            socketInstance = initializeSocket(token);
+            get().setupSocketEvents(socketInstance);
+
+            // 🔧 FIX: Esperar más tiempo para la conexión inicial
+            setTimeout(() => {
+              if (socketInstance.connected) {
+                console.log('✅ Socket conectado, enviando user-connected...');
+                socketInstance.emit('user-connected', {
+                  user: usuarioCompleto,
+                  timestamp: new Date().toISOString()
+                });
+              } else {
+                console.log('⏳ Socket no conectado aún, configurando listener...');
+                socketInstance.once('connect', () => {
+                  console.log('✅ Socket reconectado, enviando user-connected...');
+                  socketInstance.emit('user-connected', {
+                    user: usuarioCompleto,
+                    timestamp: new Date().toISOString()
+                  });
+                });
+              }
+            }, 1500); // 🔧 Aumentar delay a 1.5 segundos
+          }
+
+          const nuevoEstado = {
+            usuario: usuarioCompleto,
+            token,
+            socket: socketInstance,
+            isAuthenticated: true,
+            loading: false,
+            error: null,
+            sessionTimeout: Date.now() + (8 * 60 * 60 * 1000)
+          };
+
+          if (userData.cajaPendienteCierre) {
+            console.log('⚠️ checkAuth - caja pendiente detectada:', userData.cajaPendienteCierre);
+            nuevoEstado.cajaPendienteCierre = userData.cajaPendienteCierre;
+            nuevoEstado.sistemaBloquedadoPorCaja = true;
+          } else {
+            console.log('✅ checkAuth - sin caja pendiente');
+            nuevoEstado.cajaPendienteCierre = null;
+            nuevoEstado.sistemaBloquedadoPorCaja = false;
+          }
+
+          set(nuevoEstado);
+
+          console.log('✅ CheckAuth completado exitosamente');
+          window.checkAuthInProgress = false;
+          return true;
+        } catch (error) {
+          console.error('💥 Error en checkAuth:', error);
+
+          const status = error?.response?.status;
+          
+          // 🔧 FIX: Manejo mejorado de errores
+          if (status === 401 || status === 403) {
+            console.warn('🔒 Token inválido o expirado durante checkAuth');
+            localStorage.removeItem('auth-token');
+            disconnectSocket();
+            set({
+              usuario: null,
+              token: null,
+              socket: null,
+              isAuthenticated: false,
+              usuariosConectados: [],
+              cajaPendienteCierre: null,
+              sistemaBloquedadoPorCaja: false,
+              loading: false,
+              error: 'Sesión expirada'
+            });
+            
+            // Solo mostrar toast si no estamos en la página de login
+            if (window.location.pathname !== '/login') {
+              toast.error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', {
+                id: 'session-expired-checkauth',
+                duration: 5000
+              });
+            }
+            
+            window.checkAuthInProgress = false;
+            return false;
+          }
+
+          // 🔧 FIX: Para errores de red, mantener sesión local pero marcar como offline
+          const mensaje =
+            error?.response?.data?.message ||
+            error?.message ||
+            'No se pudo validar la sesión con el servidor';
+
+          console.warn('⚠️ checkAuth - error no crítico, manteniendo sesión local:', mensaje);
+          
+          // Solo mantener sesión local si ya estábamos autenticados
+          const estadoActual = get();
+          if (estadoActual.isAuthenticated && estadoActual.usuario) {
+            console.log('ℹ️ Manteniendo sesión local existente');
+            toast.warning('No se pudo validar con el servidor. Modo offline activado.', {
+              id: 'checkauth-offline',
+              duration: 4000
+            });
+
+            set({
+              loading: false,
+              error: null
+            });
+
+            window.checkAuthInProgress = false;
+            return true; // Mantener autenticado en modo offline
+          } else {
+            // Si no había sesión local, cerrar sesión
+            console.log('❌ No hay sesión local válida, cerrando sesión');
+            localStorage.removeItem('auth-token');
+            disconnectSocket();
+            set({
+              usuario: null,
+              token: null,
+              socket: null,
+              isAuthenticated: false,
+              usuariosConectados: [],
+              cajaPendienteCierre: null,
+              sistemaBloquedadoPorCaja: false,
+              loading: false,
+              error: 'No se pudo conectar al servidor'
+            });
+            
+            window.checkAuthInProgress = false;
+            return false;
+          }
+        }
+      },
 
       // Resto de funciones
       verificarSesion: () => {
@@ -707,7 +827,9 @@ window.checkAuthInProgress = true;
               usuario: state.usuario,
               token: state.token,
               isAuthenticated: state.isAuthenticated,
-              sessionTimeout: state.sessionTimeout
+              sessionTimeout: state.sessionTimeout,
+              cajaPendienteCierre: state.cajaPendienteCierre,  // ✅ FIX F5: Persistir caja pendiente
+              sistemaBloquedadoPorCaja: state.sistemaBloquedadoPorCaja  // ✅ FIX F5: Persistir estado de bloqueo
             })
           }
         )

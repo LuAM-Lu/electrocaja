@@ -1,10 +1,10 @@
 // components/RecentActivity.jsx (CÓDIGO COMPLETO - INVENTARIO Y MONTOS EN MISMA FILA)
 import React from 'react';
 import { Clock, TrendingUp, TrendingDown, Activity, Lock, User, Package, DollarSign, Coins } from 'lucide-react';
-import { useCajaStore } from '../store/cajaStore';
+import { useRecentActivity } from '../store/cajaStore';
 
 const RecentActivity = () => {
- const { transacciones, ultimoCierre, cajaActual } = useCajaStore();
+ const { transacciones, ultimoCierre, cajaActual } = useRecentActivity();
 
  const ultimaActividad = !cajaActual && ultimoCierre 
    ? ultimoCierre 

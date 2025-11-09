@@ -1167,16 +1167,9 @@ const procesarVenta = async (req, res) => {
 
       console.log(`🗑️ Limpieza post-venta: ${reservasEliminadas.count} reservas temporales eliminadas`);
 
-      // 📡 EMITIR EVENTO PARA ACTUALIZAR INVENTARIO EN OTROS USUARIOS
-      if (req.io) {
-        req.io.emit('inventario_actualizado', {
-          operacion: 'VENTA_PROCESADA',
-          usuario: req.user?.nombre || req.user?.email,
-          productosAfectados: items.length,
-          timestamp: new Date().toISOString()
-        });
-        console.log('📡 Evento inventario_actualizado emitido después de venta');
-      }
+      // NO EMITIR inventario_actualizado aquí - ya se maneja en venta_procesada
+      // Emitir este evento causa doble refresh para todos los usuarios
+      console.log('ℹ️ Inventario se actualizará automáticamente via evento venta_procesada');
     } catch (errorLimpieza) {
       console.error('⚠️ Error limpiando reservas post-venta (no crítico):', errorLimpieza);
     }

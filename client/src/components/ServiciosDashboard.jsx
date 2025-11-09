@@ -1,21 +1,25 @@
 // components/ServiciosDashboard.jsx - COMPLETO CON FUNCIONALIDAD DE EDICIÓN
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wrench, Store } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useAuthStore } from '../store/authStore';
+import { useServiciosStore } from '../store/serviciosStore';
+import { useCajaStore } from '../store/cajaStore';
 import ResumenEstadosServicios from './servicios/ResumenEstadosServicios';
-import ServicioPage from './servicios/ServicioPage'; 
+import ServicioPage from './servicios/ServicioPage';
 import ServiciosFloatingActions from './servicios/ServiciosFloatingActions';
 import ModalVerServicio from './servicios/ModalVerServicio';
-import ModalEditarServicio from './servicios/ModalHistoriaServicio'; 
+import ModalEditarServicio from './servicios/ModalHistoriaServicio';
 import BorrarServicioModal from './servicios/BorrarServicioModal';
 //  IMPORTAR EL WIZARD COMPLETO
 import RegistroServicioWizard from './servicios/RegistroServicioWizard';
+import ConfiguracionServiciosModal from './servicios/ConfiguracionServiciosModal';
 import toast from '../utils/toast.jsx';
 
 const ServiciosDashboard = () => {
   const { switchToMain, getTransitionClass } = useDashboardStore();
   const { usuario } = useAuthStore();
+  const { servicios, loading, cambiarEstado, eliminarServicio, cargarServicios, obtenerServicio } = useServiciosStore();
   
   // Estados para modales de floating actions
   const [showNewServiceModal, setShowNewServiceModal] = useState(false);
@@ -42,7 +46,12 @@ const ServiciosDashboard = () => {
   const [modalHistorial, setModalHistorial] = useState(false);
   const [servicioHistorial, setServicioHistorial] = useState(null);
 
-  // Lista de servicios (simulada - integrar con store después)
+  // 🔧 Cargar servicios al montar el componente
+  useEffect(() => {
+    cargarServicios({ incluirRelaciones: true });
+  }, [cargarServicios]);
+
+  // Lista de servicios (simulada - DEPRECADO - ahora usa el store)
   const [serviciosLista, setServiciosLista] = useState([
     {
       id: 1,
@@ -223,15 +232,26 @@ const ServiciosDashboard = () => {
 
  //  MANEJAR CREACIÓN DE NUEVA ORDEN DE SERVICIO
  const handleNewService = () => {
+   // Validar que hay una caja abierta
+   const cajaActual = useCajaStore.getState().cajaActual;
+
+   if (!cajaActual) {
+     toast.error('Debes abrir una caja antes de crear una orden de servicio', {
+       duration: 4000,
+       position: 'top-center'
+     });
+     return;
+   }
+
    setShowNewServiceModal(true);
  };
 
  //  MANEJAR SERVICIO CREADO DESDE EL WIZARD
- const handleServicioCreado = (nuevoServicio) => {
+ const handleServicioCreado = async (nuevoServicio) => {
    console.log(' Nuevo servicio creado:', nuevoServicio);
    
-   // Agregar a la lista de servicios
-   setServiciosLista(prev => [nuevoServicio, ...prev]);
+   // Recargar servicios desde el store
+   await cargarServicios({ incluirRelaciones: true });
    
    // Cerrar modal
    setShowNewServiceModal(false);
@@ -242,21 +262,62 @@ const ServiciosDashboard = () => {
    }, 500);
  };
 
- //  MANEJAR BOTÓN EDITAR (WIZARD)
- const handleEditarServicioWizard = (servicio) => {
-   console.log(' Editando servicio con wizard:', servicio);
-   setServicioAEditar(servicio);
-   setModalEditarWizard(true);
+ // 🔧 MANEJAR VER SERVICIO - Obtener datos completos desde API
+ const handleVerServicio = async (servicio) => {
+   try {
+     // Mostrar indicador de carga
+     toast.info('Cargando detalles del servicio...', { duration: 2000 });
+     
+     // Obtener servicio completo desde la API
+     const servicioCompleto = await obtenerServicio(servicio.id);
+     if (servicioCompleto) {
+       setServicioSeleccionado(servicioCompleto);
+     } else {
+       // Si falla, usar el servicio mapeado como fallback
+       toast.warning('No se pudieron cargar todos los detalles', { duration: 3000 });
+       setServicioSeleccionado(servicio);
+     }
+   } catch (error) {
+     console.error('Error obteniendo servicio completo:', error);
+     toast.error('Error al cargar detalles del servicio', { duration: 3000 });
+     // Usar servicio mapeado como fallback
+     setServicioSeleccionado(servicio);
+   }
+ };
+
+ //  MANEJAR BOTÓN EDITAR (WIZARD) - Obtener datos completos desde API
+ const handleEditarServicioWizard = async (servicio) => {
+   try {
+     console.log(' Editando servicio con wizard:', servicio);
+     // Mostrar indicador de carga
+     toast.info('Cargando datos del servicio...', { duration: 2000 });
+     
+     // Obtener servicio completo desde la API
+     const servicioCompleto = await obtenerServicio(servicio.id);
+     if (servicioCompleto) {
+       setServicioAEditar(servicioCompleto);
+       setModalEditarWizard(true);
+     } else {
+       // Si falla, usar el servicio mapeado como fallback
+       toast.warning('No se pudieron cargar todos los datos', { duration: 3000 });
+       setServicioAEditar(servicio);
+       setModalEditarWizard(true);
+     }
+   } catch (error) {
+     console.error('Error obteniendo servicio completo:', error);
+     toast.error('Error al cargar datos del servicio', { duration: 3000 });
+     // Usar servicio mapeado como fallback
+     setServicioAEditar(servicio);
+     setModalEditarWizard(true);
+   }
  };
 
  //  MANEJAR ACTUALIZACIÓN DE SERVICIO DESDE WIZARD
- const handleServicioActualizado = (servicioActualizado) => {
+ const handleServicioActualizado = async (servicioActualizado) => {
    console.log(' Servicio actualizado:', servicioActualizado);
    
-   // Actualizar en la lista de servicios
-   setServiciosLista(prev => prev.map(s => 
-     s.id === servicioActualizado.id ? servicioActualizado : s
-   ));
+   // Recargar servicios desde el store
+   await cargarServicios({ incluirRelaciones: true });
    
    // Cerrar modal
    setModalEditarWizard(false);
@@ -268,11 +329,31 @@ const ServiciosDashboard = () => {
    }, 500);
  };
 
-//  FUNCIÓN PARA MANEJAR HISTORIAL
- const handleVerHistorial = (servicio) => {
-   console.log(' Ver historial completo del servicio:', servicio);
-   setServicioHistorial(servicio);
-   setModalHistorial(true);
+//  FUNCIÓN PARA MANEJAR HISTORIAL - Obtener datos completos desde API
+ const handleVerHistorial = async (servicio) => {
+   try {
+     console.log(' Ver historial completo del servicio:', servicio);
+     // Mostrar indicador de carga
+     toast.info('Cargando historial del servicio...', { duration: 2000 });
+     
+     // Obtener servicio completo desde la API
+     const servicioCompleto = await obtenerServicio(servicio.id);
+     if (servicioCompleto) {
+       setServicioHistorial(servicioCompleto);
+       setModalHistorial(true);
+     } else {
+       // Si falla, usar el servicio mapeado como fallback
+       toast.warning('No se pudieron cargar todos los datos del historial', { duration: 3000 });
+       setServicioHistorial(servicio);
+       setModalHistorial(true);
+     }
+   } catch (error) {
+     console.error('Error obteniendo servicio completo:', error);
+     toast.error('Error al cargar historial del servicio', { duration: 3000 });
+     // Usar servicio mapeado como fallback
+     setServicioHistorial(servicio);
+     setModalHistorial(true);
+   }
  };
 
  const handleSettings = () => {
@@ -288,8 +369,45 @@ const ServiciosDashboard = () => {
    setShowPruebaConexion(true);
  };
 
- // Datos para el resumen (calculados desde serviciosLista)
- const serviciosSimulados = serviciosLista;
+ // 🔧 Función para normalizar estados (igual que en ServicioPage)
+ const normalizarEstado = (estado) => {
+   if (!estado) return 'Recibido';
+   const estadoMap = {
+     'RECIBIDO': 'Recibido',
+     'EN_DIAGNOSTICO': 'En Diagnóstico',
+     'ESPERANDO_APROBACION': 'Esperando Aprobación',
+     'EN_REPARACION': 'En Reparación',
+     'LISTO_RETIRO': 'Listo para Retiro',
+     'ENTREGADO': 'Entregado',
+     'CANCELADO': 'Cancelado'
+   };
+   return estadoMap[estado] || estado;
+ };
+
+ // 🔧 Mapear servicios para el resumen (igual que en ServicioPage)
+ const mapearServicio = (servicio) => {
+   if (!servicio) return null;
+   return {
+     ...servicio,
+     estado: normalizarEstado(servicio.estado)
+   };
+ };
+
+ // Datos para el resumen (desde el store, mapeados)
+ const serviciosMapeados = servicios.map(mapearServicio).filter(Boolean);
+ 
+ // Calcular servicios vencidos
+ const calcularDiasTranscurridos = (fechaEntrega) => {
+   if (!fechaEntrega) return 0;
+   const hoy = new Date();
+   const entrega = new Date(fechaEntrega);
+   return Math.floor((hoy - entrega) / (1000 * 60 * 60 * 24));
+ };
+ 
+ const vencidos = serviciosMapeados.filter(s => {
+   const diasTranscurridos = calcularDiasTranscurridos(s.fechaEntregaEstimada || s.fechaEntrega);
+   return s.estado === 'Recibido' && diasTranscurridos > 5;
+ }).length;
 
  return (
    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900 relative overflow-hidden">
@@ -321,10 +439,10 @@ const ServiciosDashboard = () => {
                </h2>
              </div>
              <ResumenEstadosServicios
-               servicios={serviciosSimulados}
+               servicios={serviciosMapeados}
                filtroEstado={filtroEstado}
                setFiltroEstado={setFiltroEstado}
-               vencidos={3}
+               vencidos={vencidos}
              />
            </div>
          </div>
@@ -332,9 +450,8 @@ const ServiciosDashboard = () => {
          {/* SEGUNDA FILA: TABLA DE SERVICIOS */}
          <div className="bg-gray-800/40 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 p-6">
            <ServicioPage 
-             servicios={serviciosLista}
              filtroEstado={filtroEstado}
-             onVerServicio={setServicioSeleccionado}
+             onVerServicio={handleVerServicio}
              onEditarServicio={handleEditarServicioWizard} //  USAR WIZARD PARA EDITAR
              onBorrarServicio={(servicio) => {
                setServicioBorrar(servicio);
@@ -418,20 +535,12 @@ const ServiciosDashboard = () => {
        />
      )}
 
-     {/* MODALES DE CONFIGURACIÓN Y REPORTES (placeholders) */}
+     {/* MODALES DE CONFIGURACIÓN Y REPORTES */}
      {showConfigModal && (
-       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-center animate-fadeIn">
-         <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 border border-gray-700 shadow-2xl animate-scaleIn">
-           <h3 className="text-xl font-bold text-gray-100 mb-4">Configuración de Servicios</h3>
-           <p className="text-gray-400 mb-6">Panel de configuración en desarrollo...</p>
-           <button
-             onClick={() => setShowConfigModal(false)}
-             className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-colors"
-           >
-             Cerrar
-           </button>
-         </div>
-       </div>
+       <ConfiguracionServiciosModal
+         isOpen={showConfigModal}
+         onClose={() => setShowConfigModal(false)}
+       />
      )}
 
      {showReportsModal && (
@@ -455,13 +564,42 @@ const ServiciosDashboard = () => {
          <ModalVerServicio
            servicio={servicioSeleccionado}
            onClose={() => setServicioSeleccionado(null)}
-           actualizarEstado={(id, data) => {
-             //  ACTUALIZAR SERVICIO EN LA LISTA
-             setServiciosLista(prev => prev.map(s => 
-               s.id === id ? { ...s, ...data } : s
-             ));
-             setServicioSeleccionado(null);
-             console.log('Actualizando servicio:', id, data);
+           actualizarEstado={async (id, data) => {
+             try {
+               // 🔧 Convertir estado normalizado a formato de API si es necesario
+               let estadoAPI = data.estado;
+               if (data.estado && !data.estado.includes('_')) {
+                 const estadoMap = {
+                   'Recibido': 'RECIBIDO',
+                   'En Diagnóstico': 'EN_DIAGNOSTICO',
+                   'Esperando Aprobación': 'ESPERANDO_APROBACION',
+                   'En Reparación': 'EN_REPARACION',
+                   'Listo para Retiro': 'LISTO_RETIRO',
+                   'Entregado': 'ENTREGADO',
+                   'Cancelado': 'CANCELADO'
+                 };
+                 estadoAPI = estadoMap[data.estado] || data.estado;
+               }
+               
+               // 🔧 Llamar a la API para cambiar el estado del servicio
+               if (estadoAPI) {
+                 await cambiarEstado(id, estadoAPI, data.nota || null);
+                 toast.success('✅ Estado del servicio actualizado');
+                 
+                 // Obtener servicio actualizado
+                 const servicioActualizado = await obtenerServicio(id);
+                 if (servicioActualizado) {
+                   setServicioSeleccionado(servicioActualizado);
+                 } else {
+                   // Recargar la lista de servicios
+                   await cargarServicios({ incluirRelaciones: true });
+                   setServicioSeleccionado(null);
+                 }
+               }
+             } catch (error) {
+               console.error('Error actualizando servicio:', error);
+               toast.error(error.message || 'Error al actualizar el servicio');
+             }
            }}
          />
        </div>
@@ -475,11 +613,9 @@ const ServiciosDashboard = () => {
              setModalEditar(false);
              setServicioEditando(null);
            }}
-           onGuardar={(id, data) => {
-             //  ACTUALIZAR SERVICIO EN LA LISTA
-             setServiciosLista(prev => prev.map(s => 
-               s.id === id ? { ...s, ...data } : s
-             ));
+           onGuardar={async (id, data) => {
+             //  Recargar servicios desde el store
+             await cargarServicios({ incluirRelaciones: true });
              setModalEditar(false);
              setServicioEditando(null);
              console.log('Guardando servicio:', id, data);
@@ -496,12 +632,15 @@ const ServiciosDashboard = () => {
              setModalBorrar(false);
              setServicioBorrar(null);
            }}
-           onConfirmar={(id) => {
-             //  ELIMINAR SERVICIO DE LA LISTA
-             setServiciosLista(prev => prev.filter(s => s.id !== id));
-             setModalBorrar(false);
-             setServicioBorrar(null);
-             console.log('Eliminando servicio:', id);
+           onConfirmar={async (id, motivoEliminacion, adminToken) => {
+             try {
+               // El modal ya hizo la eliminación, solo recargar la lista
+               await cargarServicios({ incluirRelaciones: true });
+               setModalBorrar(false);
+               setServicioBorrar(null);
+             } catch (error) {
+               console.error('Error recargando servicios:', error);
+             }
            }}
          />
        </div>
@@ -515,16 +654,21 @@ const ServiciosDashboard = () => {
            setModalHistorial(false);
            setServicioHistorial(null);
          }}
-         onGuardar={(id, data) => {
-           //  ACTUALIZAR SERVICIO EN LA LISTA
-           setServiciosLista(prev => prev.map(s => 
-             s.id === id ? { ...s, ...data } : s
-           ));
-           setModalHistorial(false);
-           setServicioHistorial(null);
-           toast.success('Historial técnico actualizado');
-           console.log('Actualizando historial servicio:', id, data);
-         }}
+        onGuardar={async (id, data) => {
+          try {
+            // Recargar el servicio desde el store para obtener datos actualizados
+            await obtenerServicio(id);
+            // Recargar la lista de servicios
+            await cargarServicios({ incluirRelaciones: true });
+            setModalHistorial(false);
+            setServicioHistorial(null);
+            toast.success('Historial técnico actualizado');
+            console.log('✅ Historial actualizado:', id, data);
+          } catch (error) {
+            console.error('Error actualizando historial:', error);
+            toast.error('Error al actualizar historial');
+          }
+        }}
        />
      )}
 

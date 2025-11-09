@@ -1,8 +1,9 @@
-// components/ConteoDirectoModal.jsx - INTEGRADO CON useMontosEnCaja Y PDF
-import React, { useState, useEffect } from 'react';
+// components/ConteoDirectoModal.jsx - INTEGRADO CON useMontosEnCaja Y PDF + BLOQUEO DE USUARIOS
+import React, { useState, useEffect, useRef } from 'react';
 import { X, DollarSign, Coins, Smartphone, Calculator, Shield, AlertTriangle, Lock, Calendar, User, TrendingUp, TrendingDown, Minus, FileText, Send } from 'lucide-react';
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
+import { useSocketEvents } from '../hooks/useSocketEvents';
 import { useMontosEnCaja, formatearBolivares, formatearDolares } from '../hooks/useMontosEnCaja';
 import { api } from '../config/api';
 import toast from '../utils/toast.jsx';
@@ -19,13 +20,47 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
  const [observaciones, setObservaciones] = useState('');
  const [datosEsperados, setDatosEsperados] = useState(null);
  const [pdfGenerado, setPdfGenerado] = useState(false);
+ const [bloqueandoUsuarios, setBloqueandoUsuarios] = useState(false);
  const { usuario } = useAuthStore();
+ const { emitirEvento } = useSocketEvents();
+ 
+ // 🔒 Usar useRef para rastrear si ya se bloqueó en esta sesión del modal
+ const hasBloqueadoRef = useRef(false);
 
  //  USAR HOOK UNIFICADO CON DATOS DE CAJA PENDIENTE
  const montosCalculados = useMontosEnCaja(datosEsperados);
 
  // ===================================
- //  EFECTOS
+ //  BLOQUEO DE USUARIOS AL ABRIR MODAL
+ // ===================================
+ useEffect(() => {
+   // Solo bloquear si no se ha hecho en esta sesión
+   if (!hasBloqueadoRef.current) {
+     console.log('🔒 [ConteoDirectoModal] Abriendo modal - Bloqueando usuarios...');
+     hasBloqueadoRef.current = true;
+     setBloqueandoUsuarios(true);
+     
+     // ⏱️ Pequeño delay para asegurar que el socket esté listo
+     setTimeout(() => {
+       console.log('🔒 [ConteoDirectoModal] Emitiendo evento de bloqueo...');
+       emitirEvento('bloquear_usuarios', {
+         motivo: 'Resolviendo caja pendiente de cierre físico',
+         usuario_cerrando: usuario?.nombre,
+         timestamp: new Date().toISOString()
+       });
+     }, 100);
+     
+     toast.info('Usuarios bloqueados durante resolución de caja pendiente', { id: 'bloqueo-caja-pendiente' });
+   }
+   
+   return () => {
+     console.log('🔧 [ConteoDirectoModal] Cleanup - Reseteando ref');
+     // NO desbloquear aquí, se hace explícitamente en handleSubmit y handleClose
+   };
+ }, []); // Ejecutar solo una vez al montar
+
+ // ===================================
+ //  EFECTOS - CARGAR DATOS
  // ===================================
  useEffect(() => {
    cargarDatosCajaPendiente();
@@ -363,29 +398,22 @@ _Caja pendiente resuelta - Electro Caja_`;
        observacionesCompletas = `${observaciones}\n\nDIFERENCIAS DETECTADAS: ${diferenciasTexto.join(', ')} - Resuelto por: ${usuario?.nombre} - ${new Date().toLocaleString('es-VE')}`;
      }
      
-     console.log(' Resolviendo caja pendiente:', cajaPendiente.id);
-     
-     const response = await fetch(`https://localhost:3001/api/cajas/resolver-pendiente/${cajaPendiente.id}`, {
-       method: 'POST',
-       headers: {
-         'Content-Type': 'application/json',
-         'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
-       },
-       body: JSON.stringify({
-         montoFinalBs: parseFloat(montoFinalBs),
-         montoFinalUsd: parseFloat(montoFinalUsd),
-         montoFinalPagoMovil: parseFloat(montoFinalPagoMovil),
-         observacionesCierre: observacionesCompletas
-       })
+     console.log('🔄 Resolviendo caja pendiente:', cajaPendiente.id);
+
+     // CORREGIDO: Usar api centralizada en lugar de fetch hardcodeado
+     const response = await api.post(`/cajas/resolver-pendiente/${cajaPendiente.id}`, {
+       montoFinalBs: parseFloat(montoFinalBs),
+       montoFinalUsd: parseFloat(montoFinalUsd),
+       montoFinalPagoMovil: parseFloat(montoFinalPagoMovil),
+       observacionesCierre: observacionesCompletas
      });
 
-     if (!response.ok) {
-       const errorData = await response.json();
-       throw new Error(errorData.message || 'Error al resolver caja pendiente');
+     if (!response.data.success) {
+       throw new Error(response.data.message || 'Error al resolver caja pendiente');
      }
 
-     const result = await response.json();
-     console.log(' Caja resuelta:', result);
+     const result = response.data;
+     console.log('✅ Caja resuelta:', result);
 
      // Limpiar estado de bloqueo
      useAuthStore.setState({
@@ -393,48 +421,81 @@ _Caja pendiente resuelta - Electro Caja_`;
        sistemaBloquedadoPorCaja: false
      });
 
-     toast.success('Caja pendiente resuelta exitosamente');
+    // 🔓 Desbloquear usuarios tras resolución exitosa
+    emitirEvento('desbloquear_usuarios', {
+      motivo: 'Caja pendiente resuelta exitosamente',
+      timestamp: new Date().toISOString()
+    });
 
-     //  GENERAR PDF AUTOMÁTICAMENTE DESPUÉS DEL CIERRE
-     try {
-       console.log(' Generando PDF de caja pendiente resuelta...');
-       await generarPDFCierre();
-     } catch (pdfError) {
-       console.warn(' Error generando PDF (no crítico):', pdfError);
-       toast.warning('Caja cerrada correctamente, pero PDF falló');
-     }
+    toast.success('Caja pendiente resuelta exitosamente');
 
-     //  ACTUALIZAR STORES EN LUGAR DE RECARGAR
-     setTimeout(async () => {
-       console.log(' Actualizando stores después de resolver caja pendiente...');
+    //  GENERAR PDF AUTOMÁTICAMENTE DESPUÉS DEL CIERRE
+    try {
+      console.log(' Generando PDF de caja pendiente resuelta...');
+      await generarPDFCierre();
+    } catch (pdfError) {
+      console.warn(' Error generando PDF (no crítico):', pdfError);
+      toast.warning('Caja cerrada correctamente, pero PDF falló');
+    }
 
-       // Actualizar auth store (limpiar caja pendiente)
-       useAuthStore.getState().limpiarCajaPendiente();
+    //  ACTUALIZAR STORES EN LUGAR DE RECARGAR
+    setTimeout(async () => {
+      console.log(' Actualizando stores después de resolver caja pendiente...');
 
-       // Actualizar caja store
-       try {
-         await useCajaStore.getState().initialize();
-       } catch (err) {
-         console.error('Error actualizando caja store:', err);
-       }
+      // Actualizar auth store (limpiar caja pendiente)
+      useAuthStore.getState().limpiarCajaPendiente();
 
-       // Llamar callback y cerrar modal
-       if (onComplete) onComplete();
-       onClose();
-     }, 1500);
+      // Actualizar caja store
+      try {
+        await useCajaStore.getState().initialize();
+      } catch (err) {
+        console.error('Error actualizando caja store:', err);
+      }
 
-   } catch (error) {
-     console.error(' Error resolviendo caja:', error);
-     toast.error('Error al resolver caja pendiente: ' + error.message);
-   } finally {
-     setLoading(false);
-   }
+      // Llamar callback y cerrar modal
+      setBloqueandoUsuarios(false);
+      if (onComplete) onComplete();
+      onClose();
+    }, 1500);
+
+  } catch (error) {
+    console.error(' Error resolviendo caja:', error);
+    toast.error('Error al resolver caja pendiente: ' + error.message);
+    
+    // 🔓 Desbloquear usuarios en caso de error
+    emitirEvento('desbloquear_usuarios', {
+      motivo: 'Error resolviendo caja pendiente',
+      timestamp: new Date().toISOString()
+    });
+  } finally {
+    setLoading(false);
+  }
  };
 
- // ===================================
- //  RENDERIZADO
- // ===================================
- const diferencias = calcularDiferencias();
+// ===================================
+//  FUNCIÓN DE CIERRE (CON DESBLOQUEO)
+// ===================================
+const handleClose = () => {
+  if (loading) {
+    toast.error('No se puede cancelar durante el proceso de resolución');
+    return;
+  }
+  
+  // 🔓 Desbloquear usuarios al cancelar
+  emitirEvento('desbloquear_usuarios', {
+    motivo: 'Resolución de caja pendiente cancelada',
+    timestamp: new Date().toISOString()
+  });
+  
+  setBloqueandoUsuarios(false);
+  hasBloqueadoRef.current = false;
+  onClose();
+};
+
+// ===================================
+//  RENDERIZADO
+// ===================================
+const diferencias = calcularDiferencias();
 
  //  MOSTRAR LOADING MIENTRAS CARGAN DATOS
  if (!datosEsperados) {
@@ -479,10 +540,10 @@ _Caja pendiente resuelta - Electro Caja_`;
                  </div>
                </div>
              </div>
-             <button
-               onClick={onClose}
-               disabled={loading}
-               className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+            <button
+              onClick={handleClose}
+              disabled={loading}
+              className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
              >
                <X className="h-6 w-6" />
              </button>
@@ -781,12 +842,12 @@ _Caja pendiente resuelta - Electro Caja_`;
            )}
 
            {/* Botones */}
-           <div className="flex space-x-3">
-             <button
-               type="button"
-               onClick={onClose}
-               disabled={loading}
-               className="flex-1 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={loading}
+              className="flex-1 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
              >
                Cancelar
              </button>
