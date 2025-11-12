@@ -158,25 +158,19 @@ const Header = () => {
 
  // Cargar estado de tasa al inicializar
  useEffect(() => {
-   console.log(' Header useEffect inicialización - Usuario:', usuario?.nombre, 'loadTasaFromServer:', !!loadTasaFromServer);
-
    const inicializarTasa = async () => {
      if (window.tasaInitializing) {
-       console.log(' Tasa ya inicializándose, saltando...');
        return;
      }
 
      window.tasaInitializing = true;
 
      try {
-       console.log(' Header inicializando estado de tasa...');
        const tasa = await loadTasaFromServer();
-       console.log(' Tasa cargada en Header:', tasa);
 
        const estadoResponse = await api.get('/tasa-bcv/estado');
        const estadoServidor = estadoResponse.data.data;
 
-       console.log(' Modo del servidor:', estadoServidor.modo);
        setTasaMode(estadoServidor.modo);
        setLastUpdate(new Date(estadoServidor.timestamp));
 
@@ -188,10 +182,7 @@ const Header = () => {
    };
 
    if (usuario && loadTasaFromServer) {
-     console.log(' Ejecutando inicializarTasa...');
      inicializarTasa();
-   } else {
-     console.log(' NO ejecutando - Usuario:', !!usuario, 'loadTasaFromServer:', !!loadTasaFromServer);
    }
  }, [usuario?.id, loadTasaFromServer]); // ✅ AGREGADO loadTasaFromServer a las dependencias
 

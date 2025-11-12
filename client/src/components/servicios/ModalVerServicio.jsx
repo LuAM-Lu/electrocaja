@@ -5,7 +5,7 @@ import {
   X, Flag, Inbox, Stethoscope, Clock, Wrench, CheckCircle, PackageCheck,
   User, CalendarDays, DollarSign, StickyNote, ShoppingCart, AlertTriangle,
   Printer, Camera, Truck, Phone, Mail, MapPin, Zap, CreditCard, Mic,
-  Banknote, Smartphone, Building2, Coins
+  Banknote, Smartphone, Building2, Coins, Laptop, Monitor, Gamepad2, Tablet, Watch, Headphones, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import toast from '../../utils/toast.jsx';
@@ -68,6 +68,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const [showModalReimprimir, setShowModalReimprimir] = useState(false);
   const [showModalWhatsApp, setShowModalWhatsApp] = useState(false);
   const [showModalEntrega, setShowModalEntrega] = useState(false);
+  const [dispositivoExpandido, setDispositivoExpandido] = useState(false);
   const tooltipButtonRef = useRef(null);
   
   // ✅ Usar refs para mantener referencias estables y evitar loops infinitos
@@ -187,6 +188,73 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
     (servicioActual.dispositivoMarca && servicioActual.dispositivoModelo
       ? `${servicioActual.dispositivoMarca} ${servicioActual.dispositivoModelo}`.trim()
       : servicioActual.dispositivoMarca || servicioActual.dispositivoModelo || '—');
+  
+  // 🔧 Extraer información detallada del dispositivo
+  const dispositivoMarca = servicioActual.dispositivoMarca || servicioActual.dispositivo?.marca || '—';
+  const dispositivoModelo = servicioActual.dispositivoModelo || servicioActual.dispositivo?.modelo || '—';
+  const dispositivoColor = servicioActual.dispositivoColor || servicioActual.dispositivo?.color || null;
+  const dispositivoImei = servicioActual.dispositivoImei || servicioActual.dispositivo?.imei || servicioActual.imei || '—';
+  const dispositivoTipo = servicioActual.dispositivoTipo || servicioActual.dispositivo?.tipo || servicioActual.tipo || null;
+  
+  // 🔧 Extraer accesorios
+  const accesorios = (() => {
+    if (servicioActual.accesorios) {
+      if (Array.isArray(servicioActual.accesorios)) {
+        return servicioActual.accesorios;
+      }
+      if (typeof servicioActual.accesorios === 'string') {
+        try {
+          const parsed = JSON.parse(servicioActual.accesorios);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [servicioActual.accesorios];
+        }
+      }
+    }
+    if (servicioActual.dispositivo?.accesorios) {
+      return Array.isArray(servicioActual.dispositivo.accesorios) 
+        ? servicioActual.dispositivo.accesorios 
+        : [];
+    }
+    return [];
+  })();
+  
+  // 🔧 Mapeo de tipos de dispositivo a iconos
+  const obtenerIconoTipo = (tipo) => {
+    if (!tipo) return Smartphone;
+    const tipoLower = tipo.toLowerCase();
+    const iconosMap = {
+      'telefono': Smartphone,
+      'laptop': Laptop,
+      'pc': Monitor,
+      'consola': Gamepad2,
+      'tablet': Tablet,
+      'smartwatch': Watch,
+      'accesorio': Headphones,
+      'otro': Zap
+    };
+    return iconosMap[tipoLower] || Smartphone;
+  };
+  
+  // 🔧 Mapeo de tipos de dispositivo a etiquetas
+  const obtenerEtiquetaTipo = (tipo) => {
+    if (!tipo) return 'Dispositivo';
+    const tipoLower = tipo.toLowerCase();
+    const etiquetasMap = {
+      'telefono': 'Teléfono',
+      'laptop': 'Laptop',
+      'pc': 'PC/Escritorio',
+      'consola': 'Consola',
+      'tablet': 'Tablet',
+      'smartwatch': 'Smartwatch',
+      'accesorio': 'Accesorio',
+      'otro': 'Otro'
+    };
+    return etiquetasMap[tipoLower] || tipo;
+  };
+  
+  const IconoTipo = obtenerIconoTipo(dispositivoTipo);
+  const etiquetaTipo = obtenerEtiquetaTipo(dispositivoTipo);
   
   // 🔧 Extraer datos del cliente
   const clienteTelefono = servicioActual.clienteTelefono ||
@@ -687,44 +755,97 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
             {/* COLUMNA IZQUIERDA */}
             <div className="flex flex-col gap-4 min-h-0">
               
-              {/* INFORMACIÓN DE CLIENTE - 30% ALTO */}
-              <div className="bg-gray-800/70 rounded-xl p-4 border border-gray-700 flex-[0.3] flex flex-col min-h-0 shadow-lg">
-                <h3 className="text-sm font-semibold text-gray-100 mb-3 flex items-center gap-2 flex-shrink-0">
-                  <User className="h-4 w-4 text-blue-400" />
+              {/* INFORMACIÓN DE CLIENTE - COMPACTA */}
+              <div className="bg-gray-800/70 rounded-xl p-2.5 border border-gray-700 flex-[0.3] flex flex-col min-h-0 shadow-lg overflow-hidden">
+                <h3 className="text-[11px] font-semibold text-gray-100 mb-1.5 flex items-center gap-1 flex-shrink-0">
+                  <User className="h-3 w-3 text-blue-400" />
                   Información del Cliente
                 </h3>
-                <div className="flex-1 flex flex-col justify-between space-y-2 min-h-0">
-                  <div className="flex items-center justify-between flex-shrink-0">
-                    <span className="text-gray-400 text-xs">Cliente:</span>
-                    <ContactoTooltip />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs flex-1 min-h-0">
-                    <div className="flex flex-col">
-                      <span className="text-gray-400 text-[10px]">Dispositivo:</span>
-                      <div className="font-medium text-gray-100 text-xs mt-0.5 leading-tight break-words">{dispositivoTexto}</div>
+                <div className="flex-1 flex flex-col space-y-1.5 min-h-0 overflow-y-auto">
+                  <div className="flex items-center justify-between flex-shrink-0 pb-1">
+                    <span className="text-gray-400 text-[9px]">Cliente:</span>
+                    <div className="scale-90 origin-right">
+                      <ContactoTooltip />
                     </div>
+                  </div>
+                  
+                  {/* INFORMACIÓN DEL DISPOSITIVO - DESPLEGABLE */}
+                  <div className="bg-gray-900/50 rounded-lg border border-gray-700/50 flex-shrink-0">
+                    <button
+                      onClick={() => setDispositivoExpandido(!dispositivoExpandido)}
+                      className="w-full flex items-center justify-between p-1.5 hover:bg-gray-800/50 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        <IconoTipo className="h-2.5 w-2.5 text-blue-400" />
+                        <span className="text-gray-400 text-[8px] font-medium">{etiquetaTipo}</span>
+                        <span className="text-gray-500 text-[8px]">• {dispositivoMarca} {dispositivoModelo}</span>
+                      </div>
+                      {dispositivoExpandido ? (
+                        <ChevronUp className="h-3 w-3 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3 text-gray-400" />
+                      )}
+                    </button>
+                    {dispositivoExpandido && (
+                      <div className="px-1.5 pb-1.5 space-y-0.5 text-[9px] border-t border-gray-700/50 pt-1">
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="text-gray-500 text-[8px] whitespace-nowrap">Marca:</span>
+                          <span className="text-gray-200 font-medium text-right truncate flex-1 ml-0.5 text-[8px]">{dispositivoMarca}</span>
+                        </div>
+                        <div className="flex justify-between items-center gap-1">
+                          <span className="text-gray-500 text-[8px] whitespace-nowrap">Modelo:</span>
+                          <span className="text-gray-200 font-medium text-right truncate flex-1 ml-0.5 text-[8px]">{dispositivoModelo}</span>
+                        </div>
+                        {dispositivoColor && (
+                          <div className="flex justify-between items-center gap-1">
+                            <span className="text-gray-500 text-[8px] whitespace-nowrap">Color:</span>
+                            <span className="text-gray-200 font-medium text-right truncate flex-1 ml-0.5 text-[8px]">{dispositivoColor}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-start gap-1">
+                          <span className="text-gray-500 text-[8px] whitespace-nowrap">IMEI:</span>
+                          <span className="text-gray-200 font-mono text-[8px] text-right break-all flex-1 ml-0.5 leading-tight">{dispositivoImei}</span>
+                        </div>
+                        {accesorios.length > 0 && (
+                          <div className="pt-0.5 border-t border-gray-700/50 mt-0.5">
+                            <div className="text-gray-500 text-[8px] mb-0.5">Accesorios:</div>
+                            <div className="flex flex-wrap gap-0.5">
+                              {accesorios.slice(0, 2).map((accesorio, idx) => (
+                                <span key={idx} className="inline-flex items-center px-0.5 py-0.5 bg-green-500/20 text-green-300 rounded text-[7px] border border-green-500/30 truncate max-w-[45%]">
+                                  {accesorio}
+                                </span>
+                              ))}
+                              {accesorios.length > 2 && (
+                                <span className="inline-flex items-center px-0.5 py-0.5 bg-gray-600/50 text-gray-400 rounded text-[7px]">
+                                  +{accesorios.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-1 text-[9px] flex-shrink-0">
                     <div className="flex flex-col">
-                      <span className="text-gray-400 text-[10px]">Días:</span>
-                      <div className={`font-medium flex items-center gap-1 text-xs mt-0.5 ${estaVencido ? 'text-red-400' : 'text-gray-100'}`}>
+                      <span className="text-gray-400 text-[8px]">Días:</span>
+                      <div className={`font-medium flex items-center gap-0.5 text-[9px] mt-0.5 ${estaVencido ? 'text-red-400' : 'text-gray-100'}`}>
                         {estadoNormalizado === 'Entregado' ? '—' : `${diasTranscurridos}d`}
-                        {estaVencido && <Flag size={9} />}
+                        {estaVencido && <Flag size={7} />}
                       </div>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-gray-400 text-[10px]">F. Recepción:</span>
-                      <div className="font-medium text-gray-100 text-xs mt-0.5">{formatearFecha(servicioActual.fechaIngreso)}</div>
+                      <span className="text-gray-400 text-[8px]">F. Estimada:</span>
+                      <div className="font-medium text-gray-100 text-[9px] mt-0.5">{formatearFecha(fechaEntrega)}</div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-gray-400 text-[10px]">F. Estimada:</span>
-                      <div className="font-medium text-gray-100 text-xs mt-0.5">{formatearFecha(fechaEntrega)}</div>
+                    <div className="flex flex-col col-span-2">
+                      <span className="text-gray-400 text-[8px]">Estado:</span>
+                      <span className={`inline-flex items-center gap-0.5 px-1 py-0.5 text-[8px] rounded-md font-medium mt-0.5 ${estado.color} ${estado.textColor}`}>
+                        {React.cloneElement(estado.icon, { size: 9 })}
+                        <span className="truncate">{estadoNormalizado}</span>
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-gray-700 flex-shrink-0">
-                    <span className="text-gray-400 text-xs">Estado:</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] rounded-md font-medium ${estado.color} ${estado.textColor}`}>
-                      {estado.icon}
-                      {estadoNormalizado}
-                    </span>
                   </div>
                 </div>
               </div>

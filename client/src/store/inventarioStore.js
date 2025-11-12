@@ -52,7 +52,6 @@ const useInventarioStore = create()(
         set({ loading: true, error: null });
         
         try {
-          console.log(' Obteniendo inventario desde API');
           const response = await apiWithRetry(() => api.get('/inventory/products?limit=1000'));
           
           if (response.data.success) {
@@ -77,7 +76,7 @@ const useInventarioStore = create()(
                 imagen_url: item.imagenUrl || item.imagen_url || '',
                 proveedor: item.proveedor || '',
                 telefono_proveedor: item.telefonoProveedor || item.telefono_proveedor || '',
-                proveedor_factura_iva: item.proveedorFacturaIva !== undefined ? item.proveedorFacturaIva : true, //  NUEVO CAMPO
+                proveedor_factura_iva: item.proveedorFacturaIva !== undefined ? item.proveedorFacturaIva : true,
                 activo: item.activo !== undefined ? item.activo : true
               }));
                           
@@ -86,8 +85,6 @@ const useInventarioStore = create()(
               loading: false,
               conectado: true 
             });
-            
-            console.log(` ${productosAPI.length} productos cargados desde API`);
           }
         } catch (error) {
           console.error(' Error al obtener inventario:', error);

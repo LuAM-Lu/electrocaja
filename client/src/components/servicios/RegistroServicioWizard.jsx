@@ -160,6 +160,7 @@ export default function RegistroServicioWizard({
         
         // Paso 2: Dispositivo & Diagnóstico (pre-cargado)
         dispositivo: {
+          tipo: servicioAEditar.tipo || servicioAEditar.dispositivo?.tipo || 'telefono',
           marca: servicioAEditar.dispositivo?.split(' ')[0] || '',
           modelo: servicioAEditar.dispositivo?.split(' ').slice(1).join(' ') || '',
           color: servicioAEditar.color || '',
@@ -223,6 +224,7 @@ export default function RegistroServicioWizard({
     return {
       cliente: null,
       dispositivo: {
+        tipo: null, // Sin tipo preseleccionado
         marca: '',
         modelo: '',
         color: '',
@@ -605,14 +607,21 @@ export default function RegistroServicioWizard({
 
           // Dispositivo
           dispositivo: {
+            tipo: datosServicio.dispositivo.tipo || 'telefono',
             marca: datosServicio.dispositivo.marca,
             modelo: datosServicio.dispositivo.modelo,
             color: datosServicio.dispositivo.color || null,
             imei: datosServicio.dispositivo.imei,
             patron: datosServicio.dispositivo.patron || null,
             accesorios: datosServicio.dispositivo.accesorios || [],
-            problema: datosServicio.dispositivo.problema ||
-                     datosServicio.dispositivo.problemas?.join(', ') || '',
+            problemas: Array.isArray(datosServicio.dispositivo.problemas) 
+              ? datosServicio.dispositivo.problemas 
+              : (datosServicio.dispositivo.problema 
+                  ? [datosServicio.dispositivo.problema] 
+                  : []),
+            problema: Array.isArray(datosServicio.dispositivo.problemas)
+              ? datosServicio.dispositivo.problemas.join(', ')
+              : (datosServicio.dispositivo.problema || ''),
             evidencias: datosServicio.dispositivo.evidencias || []
           },
 
@@ -642,10 +651,61 @@ export default function RegistroServicioWizard({
           sesionId: sesionId
         };
 
+        // 🔍 DEBUG: Ver qué datos se están enviando
+        console.log('📤 Datos que se envían al backend:', JSON.stringify(datosCreacion, null, 2));
+        console.log('📤 Cliente:', datosCreacion.cliente);
+        console.log('📤 Dispositivo:', datosCreacion.dispositivo);
+        console.log('📤 Diagnóstico:', datosCreacion.diagnostico);
+        console.log('📤 Items:', datosCreacion.items);
+        console.log('📤 Modalidad Pago:', datosCreacion.modalidadPago);
+
         const nuevoServicio = await crearServicio(datosCreacion);
         
         // ✅ El backend ya liberó las reservas y descontó el stock automáticamente
         // No es necesario liberar reservas aquí
+        
+        // 🆕 Guardar sugerencias inteligentes (marca, modelo, problemas) después de crear el servicio
+        try {
+          const dispositivo = datosCreacion.dispositivo;
+          const tipoDispositivo = dispositivo.tipo;
+          
+          // Guardar marca si existe
+          if (dispositivo.marca && dispositivo.marca.trim()) {
+            await api.post('/servicios/sugerencias', {
+              tipo: 'marca',
+              tipoDispositivo: tipoDispositivo,
+              valor: dispositivo.marca.trim()
+            }).catch(err => console.warn('No se pudo guardar sugerencia de marca:', err));
+          }
+          
+          // Guardar modelo si existe
+          if (dispositivo.modelo && dispositivo.modelo.trim() && dispositivo.marca) {
+            await api.post('/servicios/sugerencias', {
+              tipo: 'modelo',
+              tipoDispositivo: tipoDispositivo,
+              valor: dispositivo.modelo.trim(),
+              marcaPadre: dispositivo.marca.trim()
+            }).catch(err => console.warn('No se pudo guardar sugerencia de modelo:', err));
+          }
+          
+          // Guardar problemas si existen
+          const problemas = Array.isArray(dispositivo.problemas) 
+            ? dispositivo.problemas 
+            : (dispositivo.problema ? [dispositivo.problema] : []);
+          
+          for (const problema of problemas) {
+            if (problema && problema.trim()) {
+              await api.post('/servicios/sugerencias', {
+                tipo: 'problema',
+                tipoDispositivo: tipoDispositivo,
+                valor: problema.trim()
+              }).catch(err => console.warn('No se pudo guardar sugerencia de problema:', err));
+            }
+          }
+        } catch (error) {
+          // No es crítico si falla guardar sugerencias
+          console.warn('Error guardando sugerencias después de crear servicio:', error);
+        }
         
         // 🆕 Guardar servicio creado para que PasoConfirmacion ejecute las acciones
         setServicioCreado(nuevoServicio);
@@ -814,17 +874,6 @@ export default function RegistroServicioWizard({
         <div className="flex-1 overflow-y-auto p-8 bg-gray-900">
           {pasoActual === 1 && (
             <div className="max-w-2xl mx-auto">
-              <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                <h2 className="text-xs font-medium text-gray-500">
-                   {modoEdicion ? 'Cliente del Servicio' : 'Seleccionar Cliente'}
-                </h2>
-                {modoEdicion && (
-                  <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-300 rounded text-[10px]">
-                    Solo lectura
-                  </span>
-                )}
-              </div>
-              
               <ClienteSelector
                 clienteSeleccionado={datosServicio.cliente}
                 onClienteSeleccionado={(cliente) => actualizarDatos('cliente', cliente)}
@@ -839,17 +888,6 @@ export default function RegistroServicioWizard({
 
           {pasoActual === 2 && (
             <div>
-              <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                <h2 className="text-xs font-medium text-gray-500">
-                   {modoEdicion ? 'Información del Dispositivo' : 'Dispositivo y Diagnóstico'}
-                </h2>
-                {modoEdicion && (
-                  <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-300 rounded text-[10px]">
-                    Solo lectura
-                  </span>
-                )}
-              </div>
-              
               <PasoDispositivo
                 datos={datosServicio}
                 onActualizar={actualizarDatos}
@@ -862,17 +900,6 @@ export default function RegistroServicioWizard({
 
           {pasoActual === 3 && (
             <div className="max-w-5xl mx-auto">
-              <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                <h2 className="text-xs font-medium text-gray-500">
-                   {modoEdicion ? 'Editar Productos y Servicios' : 'Productos y Servicios (Opcional)'}
-                </h2>
-                {modoEdicion && (
-                  <span className="px-1.5 py-0.5 bg-green-600/20 text-green-300 rounded text-[10px]">
-                    Editable
-                  </span>
-                )}
-              </div>
-              
               <ItemsTable
                 items={datosServicio.items}
                 onItemsChange={(items) => actualizarDatos('items', items)}
@@ -895,12 +922,6 @@ export default function RegistroServicioWizard({
 
           {pasoActual === 4 && (
             <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-center mb-1.5">
-                <h2 className="text-xs font-medium text-gray-500">
-                  Modalidad de Pago
-                </h2>
-              </div>
-
               <PasoModalidadPago
                 datos={datosServicio}
                 onActualizar={(datosPago) => {
@@ -917,12 +938,6 @@ export default function RegistroServicioWizard({
 
           {pasoActual === 5 && (
             <div>
-              <div className="flex items-center justify-center mb-1.5">
-                <h2 className="text-xs font-medium text-gray-500">
-                   {modoEdicion ? 'Confirmar Cambios' : 'Confirmar y Crear'}
-                </h2>
-              </div>
-
               <PasoConfirmacion
                 datos={datosServicio}
                 onActualizar={actualizarDatos}

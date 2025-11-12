@@ -58,14 +58,6 @@ function App() {
     socketConnected 
   } = useSocketEvents();
   
-  // 🔍 DEBUG: Log de estados de bloqueo
-  useEffect(() => {
-    console.log('🔍 [App] Estados de bloqueo actualizados:', {
-      usuariosBloqueados,
-      motivoBloqueo,
-      usuarioCerrando
-    });
-  }, [usuariosBloqueados, motivoBloqueo, usuarioCerrando]);
 
 //  CONECTAR SOCKET AL CAJASTORE (EVITAR DUPLICADOS)
 useEffect(() => {
@@ -74,10 +66,80 @@ useEffect(() => {
     
     import('./store/cajaStore').then(({ conectarSocketAlStore }) => {
       conectarSocketAlStore(emitirEvento);
-      console.log(' Socket conectado al cajaStore desde App.jsx');
     });
   }
 }, [emitirEvento]);
+
+//  LISTENER GLOBAL PARA EVENTOS DE INVENTARIO EN TIEMPO REAL
+useEffect(() => {
+  const { socket } = useAuthStore.getState();
+  
+  if (!socket || typeof socket.on !== 'function') {
+    console.log('⚠️ [App] Socket no disponible para listener de inventario');
+    return;
+  }
+  
+  const handleInventarioActualizado = async (data) => {
+    console.log('📦 [App] Evento inventario_actualizado recibido:', data.operacion, data.producto?.descripcion);
+    
+    const { usuario: usuarioActual } = useAuthStore.getState();
+    const { obtenerInventario, sincronizarStockDesdeWebSocket } = useInventarioStore.getState();
+    
+    // Actualizar el stock específico del producto si viene en el evento
+    if (data.producto?.id && sincronizarStockDesdeWebSocket) {
+      sincronizarStockDesdeWebSocket({
+        productoId: data.producto.id,
+        stockTotal: data.producto.stock,
+        stockReservado: 0, // No tenemos esta info en el evento
+        stockDisponible: data.producto.stock,
+        operacion: data.operacion
+      });
+    }
+    
+    // Recargar inventario completo para asegurar sincronización
+    // Solo si no hay modales críticos abiertos
+    const modalProtectionKeys = [
+      'itemFormModalActive',
+      'ingresoModalActive',
+      'productViewModalActive'
+    ];
+    
+    const anyModalActive = modalProtectionKeys.some(key =>
+      sessionStorage.getItem(key) === 'true'
+    );
+    
+    if (!anyModalActive) {
+      await obtenerInventario();
+    } else {
+      // Marcar que hay actualización pendiente
+      sessionStorage.setItem('inventarioPendienteActualizar', 'true');
+    }
+    
+    // Mostrar toast solo si es de otro usuario
+    if (data.usuario && data.usuario !== usuarioActual?.nombre) {
+      switch (data.operacion) {
+        case 'VENTA_PROCESADA':
+          toast.info(`📦 ${data.producto?.descripcion}: Stock actualizado (-${data.cantidad} unidades)`, { duration: 3000 });
+          break;
+        case 'STOCK_DEVUELTO':
+          toast.success(`↩️ ${data.producto?.descripcion}: Stock devuelto (+${data.cantidad} unidades)`, { duration: 3000 });
+          break;
+        default:
+          toast.info(`📦 ${data.producto?.descripcion}: Inventario actualizado`, { duration: 2000 });
+          break;
+      }
+    }
+  };
+  
+  // Registrar listener global
+  console.log('✅ [App] Registrando listener global de inventario_actualizado');
+  socket.on('inventario_actualizado', handleInventarioActualizado);
+  
+  return () => {
+    console.log('🧹 [App] Limpiando listener global de inventario_actualizado');
+    socket.off('inventario_actualizado', handleInventarioActualizado);
+  };
+}, [socketConnected]);
 
   // ===================================
   //  INFO DE SESIÓN
@@ -163,20 +225,16 @@ useEffect(() => {
   const checkAuth = async () => {
     if (!mounted) return;
    
-    console.log(' APP.JSX - Ejecutando checkAuth (una sola vez)...');
-   
     const tokenExists = localStorage.getItem('auth-token');
     if (tokenExists) {
-      console.log(' Token encontrado, ejecutando checkAuth del store...');
       try {
         const authResult = await useAuthStore.getState().checkAuth();
        
         if (!mounted) return;
        
         if (authResult) {
-        console.log(' CheckAuth exitoso - usuario reconectado');
         setShowLogin(false);
-        setIsLoading(false); //  AGREGAR ESTA LÍNEA
+        setIsLoading(false);
         initialize();
          
           //  PREVENIR DUPLICADOS
@@ -185,12 +243,11 @@ useEffect(() => {
             setTimeout(() => {
               initializeNotifications();
             }, 2000);
-          } // Dar más tiempo para que carguen los stores
+          }
         } else {
-          console.log(' CheckAuth falló - mostrar login');
           if (mounted) {
             setShowLogin(true);
-            setIsLoading(false); //  AGREGAR ESTA LÍNEA
+            setIsLoading(false);
           }
         }
       } catch (error) {
@@ -198,7 +255,6 @@ useEffect(() => {
         if (mounted) setShowLogin(true);
       }
     } else {
-      console.log(' No hay token - mostrar login');
       if (mounted) setShowLogin(true);
     }
    

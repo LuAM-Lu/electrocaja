@@ -29,7 +29,6 @@ class BloqueoService {
     // Cargar estado persistente del localStorage
     this.cargarEstadoPersistente();
 
-    console.log('🔒 BloqueoService inicializado');
   }
 
   /**

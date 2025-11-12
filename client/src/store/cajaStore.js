@@ -75,34 +75,19 @@ const useCajaStore = create((set, get) => ({
       set({ loading: true, error: null });
       
       try {
-        console.log('🔄 Ejecutando cargarCajaActual (singleton + cache)...');
         const data = await apiRequest('/cajas/actual');
         
         // 🚀 ACTUALIZAR TIMESTAMP DE CACHE
         window.ultimaActualizacionCaja = Date.now();
         
-        console.log(' === DIAGNÓSTICO CAJA ===');
-        console.log(' Datos recibidos del backend:', data);
-        
         if (data && data.caja) {
           const caja = data.caja;
-          console.log(' Estado caja backend:', caja.estado);
           
           if (caja.estado === 'PENDIENTE_CIERRE_FISICO') {
-            console.log(' CAJA PENDIENTE DETECTADA - VERIFICANDO PERMISOS');
-            
             // Verificar si el usuario actual puede resolver la caja
             const { usuario } = useAuthStore.getState();
             const esResponsable = usuario?.id === caja.usuarioAperturaId;
             const esAdmin = usuario?.rol?.toLowerCase() === 'admin';
-            
-            console.log(' Verificación permisos:', {
-              usuarioActual: usuario?.nombre,
-              rolActual: usuario?.rol,
-              responsableCaja: caja.usuarioApertura?.nombre,
-              esResponsable,
-              esAdmin
-            });
             
             //  PREPARAR DATOS COMPLETOS PARA EL MODAL
             const datosCajaPendiente = {
@@ -130,24 +115,14 @@ const useCajaStore = create((set, get) => ({
               esAdmin
             };
             
-            if (esResponsable || esAdmin) {
-              console.log(' Usuario autorizado - Datos completos preparados');
-              useAuthStore.setState({
-                sistemaBloquedadoPorCaja: true,
-                cajaPendienteCierre: datosCajaPendiente
-              });
-            } else {
-              console.log(' Usuario SIN permisos - Bloquear sistema');
-              useAuthStore.setState({
-                sistemaBloquedadoPorCaja: true,
-                cajaPendienteCierre: datosCajaPendiente
-              });
-            }
+            useAuthStore.setState({
+              sistemaBloquedadoPorCaja: true,
+              cajaPendienteCierre: datosCajaPendiente
+            });
           } else {
             // ✅ LIMPIAR CAJA PENDIENTE SI LA CAJA YA NO ESTÁ PENDIENTE
             const { cajaPendienteCierre } = useAuthStore.getState();
             if (cajaPendienteCierre) {
-              console.log(' Caja ya no está pendiente - Limpiando estado');
               useAuthStore.setState({
                 sistemaBloquedadoPorCaja: false,
                 cajaPendienteCierre: null
@@ -169,7 +144,6 @@ const useCajaStore = create((set, get) => ({
           error: null
         });
 
-        console.log(' === FIN DIAGNÓSTICO ===');
       } else {
         set({
           loading: false,
@@ -252,7 +226,6 @@ loadTasaFromServer: async () => {
     const response = await apiWithRetry(() => api.get('/tasa-bcv/estado'));
     const estadoServidor = response.data.data;
     
-    console.log(' Estado tasa en servidor (cajaStore):', estadoServidor);
     
     // 2. Usar estado del servidor (MANUAL o AUTO)
     set({ tasaCambio: estadoServidor.valor });
@@ -279,11 +252,6 @@ abrirCaja: async (montoInicialBs, montoInicialUsd, montoInicialPagoMovil) => {
       throw new Error('Los montos iniciales no pueden ser negativos');
     }
 
-    console.log(' Enviando al backend:', {
-      montoInicialBs: parseFloat(montoInicialBs) || 0,
-      montoInicialUsd: parseFloat(montoInicialUsd) || 0,
-      montoInicialPagoMovil: parseFloat(montoInicialPagoMovil) || 0
-    });
 
     // Llamada al backend - NOMBRES CORREGIDOS (camelCase)
     const data = await apiRequest('/cajas/abrir', {
@@ -295,7 +263,6 @@ abrirCaja: async (montoInicialBs, montoInicialUsd, montoInicialPagoMovil) => {
       }
     });
 
-    console.log(' Respuesta del backend:', data);
 
     // Actualizar estado local
     const nuevaCaja = {
@@ -1224,11 +1191,9 @@ let globalEmitirEvento = null;
 //  Función para conectar el socket
 export const conectarSocketAlStore = (emitirEvento) => {
   if (globalEmitirEvento === emitirEvento) {
-    console.log(' Socket ya conectado al cajaStore - omitiendo');
     return;
   }
   globalEmitirEvento = emitirEvento;
-  console.log(' Socket conectado al cajaStore');
 };
 
 //  Función auxiliar para emitir eventos

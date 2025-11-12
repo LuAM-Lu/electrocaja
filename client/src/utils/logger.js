@@ -14,9 +14,9 @@ const LogLevel = {
 };
 
 class Logger {
-  constructor(name = 'App', level = LogLevel.DEBUG) {
+  constructor(name = 'App', level = LogLevel.ERROR) {
     this.name = name;
-    this.level = isDevelopment ? level : LogLevel.ERROR;
+    this.level = LogLevel.ERROR; // Solo errores, sin debug
   }
 
   /**

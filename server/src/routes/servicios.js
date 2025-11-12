@@ -31,6 +31,16 @@ router.get('/tecnicos/config', serviciosController.getTecnicosConfig);
 // POST /api/servicios/tecnicos/config - Guardar configuración de técnicos
 router.post('/tecnicos/config', serviciosController.saveTecnicosConfig);
 
+// ===================================
+// RUTAS DE SUGERENCIAS INTELIGENTES (ANTES DE /:id)
+// ===================================
+
+// POST /api/servicios/sugerencias - Guardar nueva sugerencia (marca/modelo/problema)
+router.post('/sugerencias', serviciosController.guardarSugerencia);
+
+// GET /api/servicios/sugerencias - Obtener sugerencias
+router.get('/sugerencias', serviciosController.obtenerSugerencias);
+
 // GET /api/servicios/:id/ticket - Regenerar ticket de servicio
 router.get('/:id/ticket', serviciosController.regenerarTicketServicio);
 

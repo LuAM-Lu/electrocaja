@@ -555,6 +555,9 @@ model ServicioTecnico {
   @@index([clienteId])
   @@index([fechaIngreso])
   @@index([tokenUnico])
+  @@index([deletedAt]) // Optimizar filtro de soft-delete
+  @@index([estado, fechaIngreso]) // Índice compuesto para consultas comunes
+  @@index([estado, deletedAt]) // Optimizar filtros combinados
   @@map("servicios_tecnicos")
 }
 
@@ -617,6 +620,25 @@ model ServicioTecnicoNota {
   @@map("servicio_tecnico_notas")
 }
 
+// ============================================
+// SUGERENCIAS INTELIGENTES PARA SERVICIOS
+// ============================================
+model SugerenciaServicio {
+  id              Int      @id @default(autoincrement())
+  tipo            String   // 'marca', 'modelo', 'problema'
+  tipoDispositivo String?  @map("tipo_dispositivo") // 'telefono', 'laptop', etc. (null para problemas)
+  valor           String   // El valor de la marca, modelo o problema
+  marcaPadre      String?  @map("marca_padre") // Para modelos, la marca a la que pertenece
+  frecuencia      Int      @default(1) // Contador de uso
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([tipo, tipoDispositivo, valor, marcaPadre])
+  @@index([tipo, tipoDispositivo])
+  @@index([tipo, marcaPadre])
+  @@map("sugerencias_servicio")
+}
+
 model DiscountRequest {
   id                Int                @id @default(autoincrement())
   sesionId          String             @unique @map("sesion_id") // ID único de la sesión de venta
@@ -674,6 +696,7 @@ model TecnicoConfig {
   telefono        String?          // Para WhatsApp
   especialidad    String?
   activo          Boolean          @default(true)
+  favorito        Boolean          @default(false) // Técnico favorito/default para asignación automática
 
   usuario         User             @relation("ConfigTecnico", fields: [usuarioId], references: [id])
 

@@ -61,7 +61,11 @@ const getServicios = async (req, res) => {
       limit = 50
     } = req.query;
 
-    const offset = (page - 1) * limit;
+    // Límite máximo para evitar cargas excesivas
+    const MAX_LIMIT = 200;
+    const limitValue = Math.min(parseInt(limit) || 50, MAX_LIMIT);
+    const pageValue = Math.max(parseInt(page) || 1, 1);
+    const offset = (pageValue - 1) * limitValue;
 
     // Construir filtros dinámicos
     const where = {};
@@ -129,8 +133,8 @@ const getServicios = async (req, res) => {
           }
         },
         orderBy: { fechaIngreso: 'desc' },
-        skip: parseInt(offset),
-        take: parseInt(limit)
+        skip: offset,
+        take: limitValue
       }),
       prisma.servicioTecnico.count({ where })
     ]);
@@ -139,10 +143,11 @@ const getServicios = async (req, res) => {
       success: true,
       data: servicios,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageValue,
+        limit: limitValue,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitValue),
+        maxLimit: MAX_LIMIT
       }
     });
 
@@ -163,8 +168,24 @@ const getServicioById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Validar que el ID existe y es válido
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de servicio requerido'
+      });
+    }
+
+    const servicioId = parseInt(id);
+    if (isNaN(servicioId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de servicio inválido'
+      });
+    }
+
     const servicio = await prisma.servicioTecnico.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: servicioId },
       include: {
         items: {
           include: {
@@ -227,6 +248,9 @@ const getServicioById = async (req, res) => {
 // ===================================
 const createServicio = async (req, res) => {
   try {
+    // 🔍 DEBUG: Ver qué datos se reciben
+    console.log('📥 Datos recibidos en createServicio:', JSON.stringify(req.body, null, 2));
+    
     const {
       cliente,
       dispositivo,
@@ -275,11 +299,72 @@ const createServicio = async (req, res) => {
       });
     }
 
-    if (!items || items.length === 0) {
+    // Validaciones específicas de campos requeridos
+    if (!cliente.nombre || !cliente.nombre.trim()) {
+      console.error('❌ Cliente nombre faltante o vacío');
       return res.status(400).json({
         success: false,
-        message: 'Debe incluir al menos un item'
+        message: 'El nombre del cliente es requerido'
       });
+    }
+
+    if (!cliente.telefono || !cliente.telefono.trim()) {
+      console.error('❌ Cliente telefono faltante o vacío');
+      return res.status(400).json({
+        success: false,
+        message: 'El teléfono del cliente es requerido'
+      });
+    }
+
+    if (!cliente.cedula_rif || !cliente.cedula_rif.trim()) {
+      console.error('❌ Cliente cedula_rif faltante o vacío');
+      return res.status(400).json({
+        success: false,
+        message: 'La cédula/RIF del cliente es requerido'
+      });
+    }
+
+    if (!dispositivo.marca || !dispositivo.marca.trim()) {
+      console.error('❌ Dispositivo marca faltante o vacío');
+      return res.status(400).json({
+        success: false,
+        message: 'La marca del dispositivo es requerida'
+      });
+    }
+
+    if (!dispositivo.modelo || !dispositivo.modelo.trim()) {
+      console.error('❌ Dispositivo modelo faltante o vacío');
+      return res.status(400).json({
+        success: false,
+        message: 'El modelo del dispositivo es requerido'
+      });
+    }
+
+    if (!dispositivo.imei || !dispositivo.imei.trim()) {
+      console.error('❌ Dispositivo imei faltante o vacío');
+      return res.status(400).json({
+        success: false,
+        message: 'El IMEI/Serial del dispositivo es requerido'
+      });
+    }
+
+    // Permitir servicios sin items (solo diagnóstico)
+    // Si hay items, validar que sean válidos
+    if (items && items.length > 0) {
+      const itemsInvalidos = items.filter(item => 
+        !item.descripcion || 
+        !item.cantidad || 
+        item.cantidad <= 0 || 
+        !item.precio_unitario || 
+        item.precio_unitario < 0
+      );
+      
+      if (itemsInvalidos.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Algunos items tienen datos inválidos (descripción, cantidad o precio)'
+        });
+      }
     }
 
     // Obtener caja actual - buscar cualquier caja abierta, no solo la del usuario
@@ -346,13 +431,15 @@ const createServicio = async (req, res) => {
       numeroServicio = `S${fechaStr}${timestamp}`;
     }
 
-    // Calcular totales con precisión
-    const totalEstimado = parseFloat(
-      items.reduce((sum, item) =>
-        sum + (parseFloat(item.cantidad) * parseFloat(item.precio_unitario || item.precioUnitario)),
-        0
-      ).toFixed(2)
-    );
+    // Calcular totales con precisión (si hay items)
+    const totalEstimado = items && items.length > 0
+      ? parseFloat(
+          items.reduce((sum, item) =>
+            sum + (parseFloat(item.cantidad) * parseFloat(item.precio_unitario || item.precioUnitario)),
+            0
+          ).toFixed(2)
+        )
+      : 0;
 
     let totalPagado = 0;
     let saldoPendiente = totalEstimado;
@@ -423,11 +510,20 @@ const createServicio = async (req, res) => {
           dispositivoModelo: dispositivo.modelo,
           dispositivoColor: dispositivo.color || null,
           dispositivoImei: dispositivo.imei || 'N/A',
-          accesorios: dispositivo.accesorios || [],
-          problemas: Array.isArray(dispositivo.problemas)
-            ? dispositivo.problemas
-            : [dispositivo.problema || ''],
-          evidencias: dispositivo.evidencias || [],
+          accesorios: Array.isArray(dispositivo.accesorios) ? dispositivo.accesorios : [],
+          problemas: (() => {
+            // Normalizar problemas: debe ser un array no vacío
+            if (Array.isArray(dispositivo.problemas) && dispositivo.problemas.length > 0) {
+              return dispositivo.problemas.filter(p => p && p.trim());
+            }
+            if (dispositivo.problema && dispositivo.problema.trim()) {
+              // Si viene como string, dividirlo por comas y limpiar
+              return dispositivo.problema.split(',').map(p => p.trim()).filter(p => p);
+            }
+            // Si no hay problemas, usar array vacío (pero esto podría causar error en Prisma)
+            return ['Sin especificar'];
+          })(),
+          evidencias: Array.isArray(dispositivo.evidencias) ? dispositivo.evidencias : [],
           estado: 'RECIBIDO',
           tecnicoAsignado: diagnostico.tecnico,
           tecnicoId: diagnostico.tecnicoId || null,
@@ -954,6 +1050,13 @@ const updateServicio = async (req, res) => {
             });
 
             if (productoAntiguo) {
+              // ✅ Validar que no sea un servicio (los servicios no tienen stock físico)
+              if (productoAntiguo.tipo === 'SERVICIO') {
+                console.log(`⏭️ [UpdateServicio] Saltando devolución de stock para servicio: ${productoAntiguo.descripcion}`);
+                // Los servicios no tienen stock que devolver
+                continue;
+              }
+              
               const stockAnterior = productoAntiguo.stock;
               
               await tx.product.update({
@@ -1029,16 +1132,31 @@ const updateServicio = async (req, res) => {
             });
 
             if (producto) {
+              // ✅ Validar que no sea un servicio (los servicios no tienen stock físico)
+              if (producto.tipo === 'SERVICIO') {
+                console.log(`⏭️ [UpdateServicio] Saltando descuento de stock para servicio: ${producto.descripcion}`);
+                // Los servicios no se descuentan del inventario
+                continue;
+              }
+              
               // Validar que hay suficiente stock disponible
               if (producto.stock < cantidad) {
-                throw new Error(`Stock insuficiente para ${producto.nombre}. Disponible: ${producto.stock}, Requerido: ${cantidad}`);
+                throw new Error(`Stock insuficiente para ${producto.descripcion || producto.nombre}. Disponible: ${producto.stock}, Requerido: ${cantidad}`);
               }
 
+              const stockAnterior = producto.stock;
+              
               await tx.product.update({
                 where: { id: productoId },
                 data: {
                   stock: { decrement: cantidad }
                 }
+              });
+              
+              // Obtener el stock actualizado después del decrement
+              const productoActualizado = await tx.product.findUnique({
+                where: { id: productoId },
+                select: { stock: true }
               });
 
               // Crear movimiento de stock
@@ -1047,8 +1165,8 @@ const updateServicio = async (req, res) => {
                   productoId,
                   tipo: 'SALIDA',
                   cantidad,
-                  stockAnterior: producto.stock,
-                  stockNuevo: producto.stock - cantidad,
+                  stockAnterior: stockAnterior,
+                  stockNuevo: productoActualizado.stock,
                   precio: precioUnitario,
                   motivo: `Actualización de servicio técnico ${servicioActual.numeroServicio}`,
                   usuarioId
@@ -1059,7 +1177,7 @@ const updateServicio = async (req, res) => {
               productosAfectados.push({
                 id: producto.id,
                 descripcion: producto.descripcion,
-                stock: producto.stock - cantidad,
+                stock: productoActualizado.stock,
                 cantidad: cantidad
               });
             }
@@ -1149,8 +1267,9 @@ const updateServicio = async (req, res) => {
     // 📡 Emitir eventos de inventario actualizado DESPUÉS de la transacción
     // Emitir eventos para productos devueltos (stock incrementado)
     if (req.io && resultado.productosDevueltos && resultado.productosDevueltos.length > 0) {
+      console.log(`📡 [UpdateServicio] Emitiendo ${resultado.productosDevueltos.length} eventos de stock devuelto`);
       resultado.productosDevueltos.forEach(producto => {
-        req.io.emit('inventario_actualizado', {
+        const eventoData = {
           operacion: 'STOCK_DEVUELTO',
           producto: {
             id: producto.id,
@@ -1161,15 +1280,20 @@ const updateServicio = async (req, res) => {
           usuario: req.user?.nombre || req.user?.email,
           motivo: `Devolución por edición de servicio ${resultado.servicio.numeroServicio}`,
           timestamp: new Date().toISOString()
-        });
+        };
+        console.log(`📡 [UpdateServicio] Emitiendo evento STOCK_DEVUELTO para producto ${producto.id}:`, eventoData);
+        req.io.emit('inventario_actualizado', eventoData);
       });
-      console.log(`📡 Emitidos ${resultado.productosDevueltos.length} eventos de stock devuelto`);
+      console.log(`✅ [UpdateServicio] Emitidos ${resultado.productosDevueltos.length} eventos de stock devuelto`);
+    } else {
+      console.log(`⚠️ [UpdateServicio] No se emitieron eventos de stock devuelto. req.io: ${!!req.io}, productosDevueltos: ${resultado.productosDevueltos?.length || 0}`);
     }
     
     // Emitir eventos para productos afectados (stock descontado)
     if (req.io && resultado.productosAfectados && resultado.productosAfectados.length > 0) {
+      console.log(`📡 [UpdateServicio] Emitiendo ${resultado.productosAfectados.length} eventos de stock descontado`);
       resultado.productosAfectados.forEach(producto => {
-        req.io.emit('inventario_actualizado', {
+        const eventoData = {
           operacion: 'VENTA_PROCESADA',
           producto: {
             id: producto.id,
@@ -1180,9 +1304,13 @@ const updateServicio = async (req, res) => {
           usuario: req.user?.nombre || req.user?.email,
           motivo: `Actualización de servicio técnico ${resultado.servicio.numeroServicio}`,
           timestamp: new Date().toISOString()
-        });
+        };
+        console.log(`📡 [UpdateServicio] Emitiendo evento VENTA_PROCESADA para producto ${producto.id}:`, eventoData);
+        req.io.emit('inventario_actualizado', eventoData);
       });
-      console.log(`📡 Emitidos ${resultado.productosAfectados.length} eventos de inventario actualizado`);
+      console.log(`✅ [UpdateServicio] Emitidos ${resultado.productosAfectados.length} eventos de inventario actualizado`);
+    } else {
+      console.log(`⚠️ [UpdateServicio] No se emitieron eventos de stock descontado. req.io: ${!!req.io}, productosAfectados: ${resultado.productosAfectados?.length || 0}`);
     }
 
 
@@ -2441,8 +2569,18 @@ const saveTecnicosConfig = async (req, res) => {
 
     // Usar transacción para actualizar todas las configuraciones
     await prisma.$transaction(async (tx) => {
+      // Si se marca un técnico como favorito, desmarcar los demás
+      const tieneFavorito = tecnicos.some(t => t.favorito === true);
+      if (tieneFavorito) {
+        // Desmarcar todos los favoritos primero
+        await tx.tecnicoConfig.updateMany({
+          where: { favorito: true },
+          data: { favorito: false }
+        });
+      }
+
       for (const config of tecnicos) {
-        const { usuarioId, telefono, especialidad, activo } = config;
+        const { usuarioId, telefono, especialidad, activo, favorito } = config;
 
         // Verificar que el usuario existe
         const usuario = await tx.user.findUnique({
@@ -2460,12 +2598,14 @@ const saveTecnicosConfig = async (req, res) => {
             usuarioId,
             telefono: telefono || null,
             especialidad: especialidad || null,
-            activo: activo !== undefined ? activo : true
+            activo: activo !== undefined ? activo : true,
+            favorito: favorito === true
           },
           update: {
             telefono: telefono || null,
             especialidad: especialidad || null,
-            activo: activo !== undefined ? activo : true
+            activo: activo !== undefined ? activo : true,
+            favorito: favorito === true
           }
         });
       }
@@ -2818,6 +2958,137 @@ const finalizarEntrega = async (req, res) => {
   }
 };
 
+// ===================================
+// 💡 GUARDAR SUGERENCIA (MARCA/MODELO/PROBLEMA)
+// ===================================
+const guardarSugerencia = async (req, res) => {
+  try {
+    const { tipo, tipoDispositivo, valor, marcaPadre } = req.body;
+
+    if (!tipo || !valor) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo y valor son requeridos'
+      });
+    }
+
+    // Validar tipo
+    const tiposValidos = ['marca', 'modelo', 'problema'];
+    if (!tiposValidos.includes(tipo)) {
+      return res.status(400).json({
+        success: false,
+        message: `Tipo inválido. Debe ser uno de: ${tiposValidos.join(', ')}`
+      });
+    }
+
+    // Normalizar valor (trim y capitalize primera letra)
+    const valorNormalizado = valor.trim();
+    if (!valorNormalizado) {
+      return res.status(400).json({
+        success: false,
+        message: 'El valor no puede estar vacío'
+      });
+    }
+
+    // Buscar sugerencia existente usando findFirst ya que el índice único puede tener nulls
+    const sugerenciaExistente = await prisma.sugerenciaServicio.findFirst({
+      where: {
+        tipo,
+        tipoDispositivo: tipoDispositivo || null,
+        valor: valorNormalizado,
+        marcaPadre: marcaPadre || null
+      }
+    });
+
+    if (sugerenciaExistente) {
+      // Incrementar frecuencia
+      const actualizada = await prisma.sugerenciaServicio.update({
+        where: { id: sugerenciaExistente.id },
+        data: { frecuencia: { increment: 1 } }
+      });
+
+      return res.json({
+        success: true,
+        data: actualizada,
+        message: 'Sugerencia actualizada'
+      });
+    } else {
+      // Crear nueva sugerencia
+      const nueva = await prisma.sugerenciaServicio.create({
+        data: {
+          tipo,
+          tipoDispositivo: tipoDispositivo || null,
+          valor: valorNormalizado,
+          marcaPadre: marcaPadre || null,
+          frecuencia: 1
+        }
+      });
+
+      return res.json({
+        success: true,
+        data: nueva,
+        message: 'Sugerencia guardada'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error en guardarSugerencia:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error guardando sugerencia',
+      error: error.message
+    });
+  }
+};
+
+// ===================================
+// 🔍 OBTENER SUGERENCIAS
+// ===================================
+const obtenerSugerencias = async (req, res) => {
+  try {
+    const { tipo, tipoDispositivo, marcaPadre } = req.query;
+
+    if (!tipo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo es requerido'
+      });
+    }
+
+    const where = { tipo };
+
+    // Solo agregar tipoDispositivo si está presente en la query
+    if (tipoDispositivo !== undefined && tipoDispositivo !== null && tipoDispositivo !== 'null' && tipoDispositivo !== 'undefined') {
+      where.tipoDispositivo = tipoDispositivo;
+    }
+
+    // Solo agregar marcaPadre si está presente en la query
+    if (marcaPadre !== undefined && marcaPadre !== null && marcaPadre !== 'null' && marcaPadre !== 'undefined') {
+      where.marcaPadre = marcaPadre;
+    }
+
+    const sugerencias = await prisma.sugerenciaServicio.findMany({
+      where,
+      orderBy: [
+        { frecuencia: 'desc' },
+        { valor: 'asc' }
+      ],
+      take: 50 // Limitar a 50 resultados
+    });
+
+    res.json({
+      success: true,
+      data: sugerencias.map(s => s.valor) || []
+    });
+  } catch (error) {
+    console.error('❌ Error en obtenerSugerencias:', error);
+    // En caso de error (por ejemplo, tabla no existe), devolver array vacío
+    res.json({
+      success: true,
+      data: []
+    });
+  }
+};
+
 module.exports = {
   getServicios,
   getServicioById,
@@ -2834,5 +3105,7 @@ module.exports = {
   getTecnicosConfig,
   saveTecnicosConfig,
   deleteServicio,
-  finalizarEntrega
+  finalizarEntrega,
+  guardarSugerencia,
+  obtenerSugerencias
 };

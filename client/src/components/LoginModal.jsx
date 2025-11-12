@@ -18,6 +18,7 @@ const LoginModal = ({ isOpen, onClose }) => {
   const [hasError, setHasError] = useState(false);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [validationError, setValidationError] = useState({ field: null, message: '' });
 
   const scannerInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -114,6 +115,24 @@ const LoginModal = ({ isOpen, onClose }) => {
     e.preventDefault();
     clearError?.();
     setHasError(false);
+    setValidationError({ field: null, message: '' });
+
+    // Validación premium
+    if (!formData.email.trim()) {
+      setValidationError({ field: 'email', message: 'Completa este campo' });
+      const emailInput = document.getElementById('email');
+      emailInput?.focus();
+      setTimeout(() => setValidationError({ field: null, message: '' }), 4000);
+      return;
+    }
+
+    if (!formData.password.trim()) {
+      setValidationError({ field: 'password', message: 'Completa este campo' });
+      const passwordInput = document.getElementById('password');
+      passwordInput?.focus();
+      setTimeout(() => setValidationError({ field: null, message: '' }), 4000);
+      return;
+    }
 
     try {
       await login({
@@ -314,82 +333,21 @@ const LoginModal = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* Pixel Blast Animated Background */}
-      <div className="fixed inset-0 z-40 pointer-events-none" style={{ willChange: 'auto' }}>
-        <div className="absolute inset-0 pixel-background"></div>
-        <div className="absolute inset-0 pixel-container" style={{ willChange: 'auto' }}>
-          {/* Pixel explosions */}
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={`blast-${i}`} className={`pixel-blast blast-${i}`}></div>
-          ))}
-
-          {/* Pixel particles */}
-          {Array.from({ length: 35 }).map((_, i) => (
-            <div
-              key={`pixel-particle-${i}`}
-              className="pixel-particle"
-              style={{
-                '--delay': `${i * 0.15}s`,
-                '--duration': `${2.5 + Math.random() * 2}s`,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                '--end-x': `${(Math.random() - 0.5) * 250}px`,
-                '--end-y': `${(Math.random() - 0.5) * 250}px`
-              }}
-            ></div>
-          ))}
-
-          {/* Square particles */}
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={`square-particle-${i}`}
-              className="square-particle"
-              style={{
-                '--delay': `${i * 0.4}s`,
-                '--duration': `${4 + Math.random() * 2}s`,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                '--rotate': `${Math.random() * 360}deg`,
-                '--scale': `${0.5 + Math.random() * 1}`
-              }}
-            ></div>
-          ))}
-
-          {/* Micro particles */}
-          {Array.from({ length: 25 }).map((_, i) => (
-            <div
-              key={`micro-particle-${i}`}
-              className="micro-particle"
-              style={{
-                '--delay': `${i * 0.1}s`,
-                '--duration': `${6 + Math.random() * 3}s`,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                '--drift-x': `${(Math.random() - 0.5) * 100}px`,
-                '--drift-y': `${(Math.random() - 0.5) * 100}px`
-              }}
-            ></div>
-          ))}
-
-          {/* Blast waves */}
-          {[1, 2, 3].map((i) => (
-            <div key={`wave-${i}`} className={`blast-wave wave-${i}`}></div>
-          ))}
-
-          {/* Pixel fragments */}
-          {Array.from({ length: 15 }).map((_, i) => (
-            <div
-              key={`pixel-fragment-${i}`}
-              className="pixel-fragment"
-              style={{
-                '--delay': `${i * 0.3}s`,
-                left: `${20 + i * 5}%`,
-                top: `${30 + Math.random() * 40}%`,
-                '--rotate': `${Math.random() * 360}deg`
-              }}
-            ></div>
-          ))}
-        </div>
+      {/* Background con patrón de cuadrados concéntricos */}
+      <div className="fixed inset-0 z-40 min-h-screen w-full" style={{ backgroundColor: '#1e3a8a' }}>
+        {/* Concentric Squares - Dark Pattern */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: `
+              repeating-linear-gradient(0deg, transparent, transparent 5px, rgba(59, 130, 246, 0.2) 5px, rgba(59, 130, 246, 0.2) 6px, transparent 6px, transparent 15px),
+              repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(59, 130, 246, 0.2) 5px, rgba(59, 130, 246, 0.2) 6px, transparent 6px, transparent 15px),
+              repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(96, 165, 250, 0.15) 10px, rgba(96, 165, 250, 0.15) 11px, transparent 11px, transparent 30px),
+              repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(96, 165, 250, 0.15) 10px, rgba(96, 165, 250, 0.15) 11px, transparent 11px, transparent 30px)
+            `,
+            backgroundColor: '#1e3a8a'
+          }}
+        />
       </div>
 
       {/* Main Modal */}
@@ -431,19 +389,33 @@ const LoginModal = ({ isOpen, onClose }) => {
                 }
               </div>
 
-              {/* Tooltip */}
+              {/* Tooltip Premium */}
               <div className="
                 hidden md:block
-                absolute top-full right-0 mt-2
-                px-3 py-1.5 bg-gray-900/95 backdrop-blur-sm
-                text-white text-xs font-medium rounded-lg
+                absolute top-full right-0 mt-4 z-50
                 opacity-0 group-hover:opacity-100
                 transition-opacity duration-300
-                pointer-events-none whitespace-nowrap
-                shadow-xl
+                pointer-events-none
               ">
-                {showQuickAccess ? 'Volver al Login' : 'Acceso Rápido QR'}
-                <div className="absolute bottom-full right-4 border-4 border-transparent border-b-gray-900/95"></div>
+                {/* Flecha fuera del tooltip */}
+                <div className="absolute -top-2 right-6">
+                  <div className={`w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-transparent ${showQuickAccess 
+                    ? 'border-b-blue-600' 
+                    : 'border-b-purple-600'
+                  }`}></div>
+                </div>
+                {/* Tooltip */}
+                <div className={`bg-gradient-to-r ${showQuickAccess 
+                  ? 'from-blue-600 via-blue-700 to-cyan-600 border-blue-400/30' 
+                  : 'from-purple-600 via-purple-700 to-indigo-600 border-purple-400/30'
+                } text-white px-4 py-2.5 rounded-lg shadow-2xl border backdrop-blur-sm`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-lg"></div>
+                    <span className="text-xs font-bold tracking-wide whitespace-nowrap">
+                      {showQuickAccess ? 'Volver al Login' : 'Acceso Rápido QR'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </button>
           </div>
@@ -454,21 +426,6 @@ const LoginModal = ({ isOpen, onClose }) => {
               ? 'bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800'
               : 'bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-800'
           }`}>
-            <div className="absolute inset-0 header-energy-wave opacity-30"></div>
-
-            {/* Header particles */}
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={`header-particle-${i}`}
-                className="header-particle"
-                style={{
-                  '--delay': `${i * 0.3}s`,
-                  left: `${20 + i * 15}%`,
-                  top: `${30 + Math.random() * 40}%`
-                }}
-              ></div>
-            ))}
-
             <div className="px-6 py-8 text-white text-center relative z-10">
               <div className="flex justify-center mb-0">
                 {/* Logo - Sin badge */}
@@ -491,55 +448,91 @@ const LoginModal = ({ isOpen, onClose }) => {
                 : 'translate-x-0 opacity-100 scale-100'
             } ${hasError ? 'animate-shake' : ''}`}>
               <div className="px-6 py-6">
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Bienvenido</h2>
-                  <p className="text-gray-600 text-sm">Ingresa tus credenciales</p>
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-blue-600 via-blue-700 to-cyan-600 bg-clip-text text-transparent">
+                    Bienvenido
+                  </h2>
+                  <p className="text-gray-500 text-sm font-medium tracking-wide">Ingresa tus credenciales</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-5 flex flex-col items-center">
                   {/* Email Input */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2" htmlFor="email">
+                  <div className="w-full max-w-xs">
+                    <label className="block text-sm font-semibold text-gray-800 mb-2 text-center" htmlFor="email">
                       Correo Electrónico
                     </label>
                     <div className="relative group">
-                      <User className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 transition-colors duration-200 group-focus-within:text-blue-500" />
+                      <User className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 transition-colors duration-200 group-focus-within:text-blue-500 z-10" />
                       <input
                         id="email"
                         type="email"
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className={`w-full pl-12 pr-4 py-3 text-base border rounded-xl focus:ring-2 focus:ring-opacity-20 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white focus:bg-white shadow-md hover:shadow-lg font-medium text-gray-800 placeholder:text-gray-400 placeholder:font-normal ${
-                          hasError
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          if (validationError.field === 'email') {
+                            setValidationError({ field: null, message: '' });
+                          }
+                        }}
+                        className={`w-full pl-12 pr-4 py-3 text-base border rounded-xl focus:ring-2 focus:ring-opacity-20 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white focus:bg-white shadow-md hover:shadow-lg font-medium text-gray-800 placeholder:text-gray-400 placeholder:font-normal relative z-0 text-center ${
+                          validationError.field === 'email' || hasError
                             ? 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50/50'
                             : 'border-gray-300 focus:ring-blue-500 focus:border-blue-600 hover:border-blue-300'
                         }`}
                         placeholder="email@electrocaja.com"
-                        required
                       />
+                      {validationError.field === 'email' && (
+                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+                          <div className="bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white px-4 py-2.5 rounded-lg shadow-2xl border border-red-400/30 backdrop-blur-sm">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-lg"></div>
+                              <span className="text-sm font-bold tracking-wide">{validationError.message}</span>
+                            </div>
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 transform translate-y-full">
+                              <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-red-600"></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Password Input */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2" htmlFor="password">
+                  <div className="w-full max-w-xs">
+                    <label className="block text-sm font-semibold text-gray-800 mb-2 text-center" htmlFor="password">
                       Contraseña
                     </label>
                     <div className="relative group">
-                      <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 transition-colors duration-200 group-focus-within:text-blue-500" />
+                      <Lock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 transition-colors duration-200 group-focus-within:text-blue-500 z-10" />
                       <input
                         id="password"
                         type={showPassword ? "text" : "password"}
                         value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className={`w-full pl-12 pr-14 py-3 text-base border rounded-xl focus:ring-2 focus:ring-opacity-20 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white focus:bg-white shadow-md hover:shadow-lg font-medium text-gray-800 placeholder:text-gray-400 placeholder:font-normal ${
-                          hasError
+                        onChange={(e) => {
+                          setFormData({ ...formData, password: e.target.value });
+                          if (validationError.field === 'password') {
+                            setValidationError({ field: null, message: '' });
+                          }
+                        }}
+                        className={`w-full pl-12 pr-14 py-3 text-base border rounded-xl focus:ring-2 focus:ring-opacity-20 transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white focus:bg-white shadow-md hover:shadow-lg font-medium text-gray-800 placeholder:text-gray-400 placeholder:font-normal relative z-0 text-center ${
+                          validationError.field === 'password' || hasError
                             ? 'border-red-400 focus:ring-red-500 focus:border-red-500 bg-red-50/50'
                             : 'border-gray-300 focus:ring-blue-500 focus:border-blue-600 hover:border-blue-300'
                         }`}
                         placeholder="tu contraseña"
-                        required
                       />
+                      {validationError.field === 'password' && (
+                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+                          <div className="bg-gradient-to-r from-red-500 via-red-600 to-red-700 text-white px-4 py-2.5 rounded-lg shadow-2xl border border-red-400/30 backdrop-blur-sm">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-lg"></div>
+                              <span className="text-sm font-bold tracking-wide">{validationError.message}</span>
+                            </div>
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 transform translate-y-full">
+                              <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-red-600"></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
@@ -555,7 +548,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full electric-button py-3 px-4 rounded-xl font-bold text-base transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transform hover:scale-[1.01] active:scale-[0.98] shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-30"
+                    className="w-full max-w-xs electric-button py-3 px-4 rounded-xl font-bold text-base transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transform hover:scale-[1.01] active:scale-[0.98] shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-30"
                   >
                     {loading ? (
                       <>
@@ -574,7 +567,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                 <div className="mt-6 text-center">
                   <p className="text-xs text-gray-400 font-medium flex items-center justify-center gap-1">
                     <Copyright className="h-3 w-3" />
-                    2025 Electro Caja v1.0
+                    Sades V1.0
                   </p>
                 </div>
               </div>
@@ -588,9 +581,11 @@ const LoginModal = ({ isOpen, onClose }) => {
             } ${hasError ? 'animate-shake' : ''}`}>
               <div className="px-6 py-6 flex flex-col justify-center min-h-[320px] sm:min-h-[360px]">
 
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Acceso Rápido</h2>
-                  <p className="text-gray-600 text-sm leading-relaxed">
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 bg-clip-text text-transparent">
+                    Acceso Rápido
+                  </h2>
+                  <p className="text-gray-500 text-sm font-medium leading-relaxed tracking-wide">
                     Escanea tu código QR de empleado<br/>o ingrésalo manualmente
                   </p>
                 </div>
@@ -679,14 +674,29 @@ const LoginModal = ({ isOpen, onClose }) => {
                     />
 
                     {isMobile && !showCameraScanner && (
-                      <button
-                        type="button"
-                        onClick={startCameraScanner}
-                        className="absolute right-2 top-9 bg-purple-500 hover:bg-purple-600 text-white p-2 rounded-lg transition-colors shadow-md"
-                        title="Usar cámara para escanear"
-                      >
-                        <Camera className="h-4 w-4" />
-                      </button>
+                      <div className="absolute right-2 top-9 group group-camera">
+                        <button
+                          type="button"
+                          onClick={startCameraScanner}
+                          className="bg-purple-500 hover:bg-purple-600 text-white p-2 rounded-lg transition-colors shadow-md relative"
+                        >
+                          <Camera className="h-4 w-4" />
+                        </button>
+                        {/* Tooltip Premium */}
+                        <div className="absolute top-full right-0 mt-2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                          <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 text-white px-4 py-2.5 rounded-lg shadow-2xl border border-purple-400/30 backdrop-blur-sm">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-lg"></div>
+                              <span className="text-xs font-bold tracking-wide whitespace-nowrap">
+                                Usar cámara para escanear
+                              </span>
+                            </div>
+                            <div className="absolute bottom-0 right-6 transform translate-y-full">
+                              <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-purple-600"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     )}
 
                     <p className="text-xs text-gray-500 text-center mt-2 font-medium">
@@ -711,190 +721,6 @@ const LoginModal = ({ isOpen, onClose }) => {
 
       {/* Styles */}
       <style jsx="true">{`
-        /* Pixel Blast Background - Optimized */
-        .pixel-background {
-          background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 25%, #16213e 50%, #0f1419 75%, #0a0a0f 100%);
-          background-size: 400% 400%;
-          contain: layout style paint;
-        }
-
-        .pixel-container {
-          overflow: hidden;
-          contain: layout style paint;
-          isolation: isolate;
-        }
-
-        /* Pixel Blast Animations - GPU Accelerated */
-        .pixel-blast {
-          position: absolute;
-          width: 8px;
-          height: 8px;
-          border-radius: 1px;
-          animation: pixelBlastExplosion 4s ease-out infinite;
-          image-rendering: pixelated;
-          will-change: transform, opacity;
-          transform: translateZ(0);
-        }
-
-        .blast-1 { top: 15%; left: 20%; animation-delay: 0s; background: #74b9ff; box-shadow: 0 0 10px #74b9ff; }
-        .blast-2 { top: 40%; left: 70%; animation-delay: 1.5s; background: #ddd; box-shadow: 0 0 10px #ddd; }
-        .blast-3 { top: 70%; left: 30%; animation-delay: 3s; background: #0984e3; box-shadow: 0 0 10px #0984e3; }
-        .blast-4 { top: 25%; left: 80%; animation-delay: 2s; background: #b2bec3; box-shadow: 0 0 10px #b2bec3; }
-        .blast-5 { top: 60%; left: 10%; animation-delay: 0.5s; background: #ffffff; box-shadow: 0 0 10px #ffffff; }
-
-        @keyframes pixelBlastExplosion {
-          0% { transform: scale(0); opacity: 0; }
-          10% { transform: scale(1); opacity: 1; }
-          20% { transform: scale(3); opacity: 0.8; }
-          40% { transform: scale(6); opacity: 0.4; }
-          60% { transform: scale(1); opacity: 0.6; }
-          100% { transform: scale(0); opacity: 0; }
-        }
-
-        .pixel-particle {
-          position: absolute;
-          width: 4px;
-          height: 4px;
-          background: #ff6b6b;
-          border-radius: 1px;
-          animation: pixelParticleFloat var(--duration, 4s) ease-in-out infinite var(--delay, 0s);
-          image-rendering: pixelated;
-          opacity: 0;
-          will-change: transform, opacity;
-          transform: translateZ(0);
-        }
-
-        @keyframes pixelParticleFloat {
-          0% { opacity: 0; transform: translate(0, 0) scale(0); }
-          10% { opacity: 1; transform: translate(0, 0) scale(1); }
-          50% { opacity: 0.8; transform: translate(var(--end-x, 50px), var(--end-y, -50px)) scale(1.2); }
-          100% { opacity: 0; transform: translate(calc(var(--end-x, 50px) * 2), calc(var(--end-y, -50px) * 2)) scale(0); }
-        }
-
-        .pixel-particle:nth-child(2n) { background: #74b9ff; }
-        .pixel-particle:nth-child(3n) { background: #0984e3; }
-        .pixel-particle:nth-child(4n) { background: #ddd; }
-        .pixel-particle:nth-child(5n) { background: #b2bec3; }
-        .pixel-particle:nth-child(6n) { background: #ffffff; }
-
-        .square-particle {
-          position: absolute;
-          width: 8px;
-          height: 8px;
-          background: #74b9ff;
-          border-radius: 0;
-          animation: squareParticleDance var(--duration, 5s) ease-in-out infinite var(--delay, 0s);
-          image-rendering: pixelated;
-          opacity: 0;
-          transform: scale(var(--scale, 1)) translateZ(0);
-          will-change: transform, opacity;
-        }
-
-        @keyframes squareParticleDance {
-          0% { opacity: 0; transform: rotate(0deg) scale(var(--scale, 1)); }
-          15% { opacity: 0.8; transform: rotate(var(--rotate, 45deg)) scale(calc(var(--scale, 1) * 1.2)); }
-          50% { opacity: 1; transform: rotate(calc(var(--rotate, 45deg) * 2)) scale(var(--scale, 1)); }
-          85% { opacity: 0.6; transform: rotate(calc(var(--rotate, 45deg) * 3)) scale(calc(var(--scale, 1) * 0.8)); }
-          100% { opacity: 0; transform: rotate(calc(var(--rotate, 45deg) * 4)) scale(0); }
-        }
-
-        .square-particle:nth-child(2n) { background: #0984e3; }
-        .square-particle:nth-child(3n) { background: #ddd; }
-        .square-particle:nth-child(4n) { background: #b2bec3; }
-
-        .micro-particle {
-          position: absolute;
-          width: 2px;
-          height: 2px;
-          background: #74b9ff;
-          border-radius: 0;
-          animation: microParticleFloat var(--duration, 7s) linear infinite var(--delay, 0s);
-          image-rendering: pixelated;
-          opacity: 0;
-          will-change: transform, opacity;
-          transform: translateZ(0);
-        }
-
-        @keyframes microParticleFloat {
-          0% { opacity: 0; transform: translate(0, 0); }
-          10% { opacity: 0.6; }
-          50% { opacity: 1; transform: translate(var(--drift-x, 50px), var(--drift-y, -50px)); }
-          90% { opacity: 0.4; }
-          100% { opacity: 0; transform: translate(calc(var(--drift-x, 50px) * 2), calc(var(--drift-y, -50px) * 2)); }
-        }
-
-        .micro-particle:nth-child(2n) { background: #0984e3; }
-        .micro-particle:nth-child(3n) { background: #ddd; }
-
-        .blast-wave {
-          position: absolute;
-          width: 20px;
-          height: 20px;
-          border: 2px solid #ff6b6b;
-          border-radius: 50%;
-          animation: pixelWaveExpand 3s ease-out infinite;
-          opacity: 0;
-        }
-
-        .wave-1 { top: 20%; left: 40%; animation-delay: 0s; border-color: #74b9ff; }
-        .wave-2 { top: 60%; left: 60%; animation-delay: 1s; border-color: #ddd; }
-        .wave-3 { top: 40%; left: 20%; animation-delay: 2s; border-color: #0984e3; }
-
-        @keyframes pixelWaveExpand {
-          0% { transform: scale(0); opacity: 1; border-width: 4px; }
-          50% { transform: scale(5); opacity: 0.6; border-width: 2px; }
-          100% { transform: scale(10); opacity: 0; border-width: 1px; }
-        }
-
-        .pixel-fragment {
-          position: absolute;
-          width: 6px;
-          height: 6px;
-          background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-          border-radius: 1px;
-          animation: pixelFragmentSpin 5s linear infinite var(--delay, 0s);
-          image-rendering: pixelated;
-          opacity: 0;
-        }
-
-        @keyframes pixelFragmentSpin {
-          0% { opacity: 0; transform: rotate(0deg) scale(0); }
-          10% { opacity: 1; transform: rotate(var(--rotate, 45deg)) scale(1); }
-          50% { opacity: 0.7; transform: rotate(calc(var(--rotate, 45deg) + 180deg)) scale(1.5); }
-          80% { opacity: 0.3; transform: rotate(calc(var(--rotate, 45deg) + 270deg)) scale(0.8); }
-          100% { opacity: 0; transform: rotate(calc(var(--rotate, 45deg) + 360deg)) scale(0); }
-        }
-
-        .pixel-fragment:nth-child(2n) { background: linear-gradient(45deg, #74b9ff, #0984e3); }
-        .pixel-fragment:nth-child(3n) { background: linear-gradient(45deg, #ddd, #b2bec3); }
-
-        /* Header Effects */
-        .header-energy-wave {
-          background: linear-gradient(45deg, transparent, rgba(116, 185, 255, 0.1), rgba(221, 221, 221, 0.1), transparent);
-          animation: headerPixelWave 10s ease-in-out infinite;
-        }
-
-        @keyframes headerPixelWave {
-          0% { transform: translateX(-100%); opacity: 0; }
-          50% { transform: translateX(0%); opacity: 0.8; }
-          100% { transform: translateX(100%); opacity: 0; }
-        }
-
-        .header-particle {
-          position: absolute;
-          width: 3px;
-          height: 3px;
-          background: #74b9ff;
-          border-radius: 1px;
-          image-rendering: pixelated;
-          animation: headerPixelParticle 6s ease-in-out infinite var(--delay);
-        }
-
-        @keyframes headerPixelParticle {
-          0%, 70% { transform: translateY(0px) scale(0.8); opacity: 0.3; }
-          85% { transform: translateY(-20px) scale(1.2); opacity: 1; }
-          100% { transform: translateY(0px) scale(0.8); opacity: 0.3; }
-        }
 
         /* Button Styles */
         .electric-button {
@@ -963,19 +789,25 @@ const LoginModal = ({ isOpen, onClose }) => {
           animation: shake 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
         }
 
-        /* Responsive */
-        @media (max-width: 640px) {
-          .pixel-blast { width: 6px; height: 6px; }
-          .pixel-particle { width: 3px; height: 3px; }
-          .square-particle { width: 6px; height: 6px; }
-          .micro-particle { width: 1px; height: 1px; }
-          .blast-wave { width: 15px; height: 15px; }
+        /* Tooltip Animation */
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
         }
 
         /* Accessibility */
         @media (prefers-reduced-motion: reduce) {
-          .pixel-blast, .pixel-particle, .square-particle, .micro-particle, .blast-wave, .pixel-fragment,
-          .header-energy-wave, .header-particle, .electric-button, .scanner-effect, .laser-scan {
+          .electric-button, .scanner-effect, .laser-scan, .animate-fade-in {
             animation: none !important;
           }
         }

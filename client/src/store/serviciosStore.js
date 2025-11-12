@@ -18,6 +18,14 @@ const useServiciosStore = create()(
       loading: false,
       error: null,
       conectado: false,
+      
+      // 🆕 Sistema de caché
+      cacheServicios: {
+        data: [],
+        timestamp: null,
+        filtros: null
+      },
+      CACHE_DURATION: 5 * 60 * 1000, // 5 minutos en milisegundos
 
       // ===================================
       //  VERIFICAR CONEXIÓN
@@ -46,23 +54,51 @@ const useServiciosStore = create()(
       },
 
       // ===================================
-      //  CARGAR SERVICIOS
+      //  CARGAR SERVICIOS (CON CACHÉ)
       // ===================================
-      cargarServicios: async (filtros = {}) => {
+      cargarServicios: async (filtros = {}, forzarRecarga = false) => {
         const conectado = await get().verificarConexion();
         if (!conectado) return;
+
+        const state = get();
+        const { cacheServicios, CACHE_DURATION } = state;
+        
+        // Normalizar filtros para comparación (sin incluirRelaciones que es solo frontend)
+        const filtrosNormalizados = {
+          estado: filtros.estado || null,
+          tecnicoId: filtros.tecnicoId || null,
+          clienteId: filtros.clienteId || null,
+          fechaDesde: filtros.fechaDesde || null,
+          fechaHasta: filtros.fechaHasta || null
+        };
+        
+        // Verificar si hay caché válido y los filtros coinciden
+        const ahora = Date.now();
+        const cacheValido = cacheServicios.timestamp && 
+                           (ahora - cacheServicios.timestamp) < CACHE_DURATION &&
+                           JSON.stringify(cacheServicios.filtros) === JSON.stringify(filtrosNormalizados);
+        
+        if (cacheValido && !forzarRecarga) {
+          // Usar datos del caché
+          console.log('📦 Usando caché de servicios (válido por', Math.round((CACHE_DURATION - (ahora - cacheServicios.timestamp)) / 1000), 'segundos más)');
+          set({
+            servicios: cacheServicios.data,
+            loading: false,
+            conectado: true
+          });
+          return cacheServicios.data;
+        }
 
         set({ loading: true, error: null });
 
         try {
-
           // Construir query params
           const params = new URLSearchParams();
-          if (filtros.estado) params.append('estado', filtros.estado);
-          if (filtros.tecnicoId) params.append('tecnicoId', filtros.tecnicoId);
-          if (filtros.clienteId) params.append('clienteId', filtros.clienteId);
-          if (filtros.fechaDesde) params.append('fechaDesde', filtros.fechaDesde);
-          if (filtros.fechaHasta) params.append('fechaHasta', filtros.fechaHasta);
+          if (filtrosNormalizados.estado) params.append('estado', filtrosNormalizados.estado);
+          if (filtrosNormalizados.tecnicoId) params.append('tecnicoId', filtrosNormalizados.tecnicoId);
+          if (filtrosNormalizados.clienteId) params.append('clienteId', filtrosNormalizados.clienteId);
+          if (filtrosNormalizados.fechaDesde) params.append('fechaDesde', filtrosNormalizados.fechaDesde);
+          if (filtrosNormalizados.fechaHasta) params.append('fechaHasta', filtrosNormalizados.fechaHasta);
 
           const queryString = params.toString() ? `?${params.toString()}` : '';
           const response = await apiWithRetry(() => api.get(`/servicios${queryString}`));
@@ -70,15 +106,35 @@ const useServiciosStore = create()(
           if (response.data.success) {
             const servicios = response.data.data || [];
 
+            // Actualizar caché
             set({
               servicios,
               loading: false,
-              conectado: true
+              conectado: true,
+              cacheServicios: {
+                data: servicios,
+                timestamp: ahora,
+                filtros: filtrosNormalizados
+              }
             });
 
+            return servicios;
           }
         } catch (error) {
           console.error('❌ Error al obtener servicios:', error);
+          
+          // Si hay error pero tenemos caché, usar el caché como fallback
+          if (cacheServicios.data && cacheServicios.data.length > 0) {
+            console.warn('⚠️ Error al cargar servicios, usando caché como fallback');
+            set({
+              servicios: cacheServicios.data,
+              loading: false,
+              error: error.message,
+              conectado: false
+            });
+            return cacheServicios.data;
+          }
+          
           set({
             loading: false,
             error: error.message,
@@ -90,6 +146,20 @@ const useServiciosStore = create()(
             position: 'top-right'
           });
         }
+      },
+      
+      // ===================================
+      //  INVALIDAR CACHÉ DE SERVICIOS
+      // ===================================
+      invalidarCacheServicios: () => {
+        set({
+          cacheServicios: {
+            data: [],
+            timestamp: null,
+            filtros: null
+          }
+        });
+        console.log('🗑️ Caché de servicios invalidado');
       },
 
       // ===================================
@@ -148,6 +218,9 @@ const useServiciosStore = create()(
           if (response.data.success) {
             const nuevoServicio = response.data.data;
 
+            // Invalidar caché al crear un nuevo servicio
+            get().invalidarCacheServicios();
+
             set(state => ({
               servicios: [nuevoServicio, ...state.servicios],
               servicioActual: nuevoServicio,
@@ -164,9 +237,14 @@ const useServiciosStore = create()(
           }
         } catch (error) {
           console.error('❌ Error al crear servicio:', error);
+          // 🔍 DEBUG: Mostrar mensaje de error del backend si existe
+          if (error.response?.data?.message) {
+            console.error('❌ Mensaje del backend:', error.response.data.message);
+            console.error('❌ Datos del error:', error.response.data);
+          }
           set({
             loading: false,
-            error: error.message,
+            error: error.response?.data?.message || error.message,
             conectado: false
           });
 
@@ -195,6 +273,9 @@ const useServiciosStore = create()(
 
           if (response.data.success) {
             const servicioActualizado = response.data.data;
+
+            // Invalidar caché al actualizar un servicio
+            get().invalidarCacheServicios();
 
             set(state => ({
               servicios: state.servicios.map(s =>
@@ -250,6 +331,9 @@ const useServiciosStore = create()(
 
           if (response.data.success) {
             const servicioActualizado = response.data.data;
+
+            // Invalidar caché al cambiar estado
+            get().invalidarCacheServicios();
 
             set(state => ({
               servicios: state.servicios.map(s =>
@@ -325,6 +409,9 @@ const useServiciosStore = create()(
           if (response.data.success) {
             const servicioActualizado = response.data.data;
 
+            // Invalidar caché al registrar pago
+            get().invalidarCacheServicios();
+
             set(state => ({
               servicios: state.servicios.map(s =>
                 s.id === id ? servicioActualizado : s
@@ -375,6 +462,8 @@ const useServiciosStore = create()(
               position: 'top-right'
             });
 
+            // Invalidar caché al agregar nota (afecta la lista de servicios)
+            get().invalidarCacheServicios();
 
             // Recargar el servicio actual si es el mismo
             if (get().servicioActual?.id === id) {
@@ -445,6 +534,9 @@ const useServiciosStore = create()(
           }));
 
           if (response.data.success) {
+            // Invalidar caché al eliminar un servicio
+            get().invalidarCacheServicios();
+
             set(state => ({
               servicios: state.servicios.filter(s => s.id !== id),
               servicioActual: state.servicioActual?.id === id ? null : state.servicioActual,

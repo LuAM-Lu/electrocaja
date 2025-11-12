@@ -49,7 +49,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    console.log(` API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
   (error) => {
@@ -61,7 +60,6 @@ api.interceptors.request.use(
 //  INTERCEPTOR DE RESPUESTAS (MEJORADO PARA TOKEN EXPIRADO)
 api.interceptors.response.use(
   (response) => {
-    console.log(` API Response: ${response.config.method?.toUpperCase()} ${response.config.url} - ${response.status}`);
     return response;
   },
   (error) => {
@@ -121,7 +119,6 @@ api.interceptors.response.use(
 export const testConnection = async () => {
   try {
     const response = await api.get('/test-cors');
-    console.log(' Conexión API exitosa:', response.data);
     return { success: true, data: response.data };
   } catch (error) {
     console.error(' Error de conexión API:', error.message);

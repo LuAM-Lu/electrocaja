@@ -1,6 +1,6 @@
 // components/servicios/ConfiguracionServiciosModal.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Users, Phone, Settings, Save, AlertCircle, AlertTriangle } from 'lucide-react';
+import { X, Users, Phone, Settings, Save, AlertCircle, AlertTriangle, Star } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useServiciosStore } from '../../store/serviciosStore';
 import { api } from '../../config/api';
@@ -100,7 +100,8 @@ export default function ConfiguracionServiciosModal({ isOpen, onClose }) {
       const sanitizedConfig = tecnicosConfig.map(config => ({
         ...config,
         telefono: sanitizePhone(config.telefono || ''),
-        especialidad: sanitizeInput(config.especialidad || '', 100)
+        especialidad: sanitizeInput(config.especialidad || '', 100),
+        favorito: config.favorito === true
       }));
 
       // 🔧 Guardar en la API
@@ -176,8 +177,31 @@ export default function ConfiguracionServiciosModal({ isOpen, onClose }) {
           t.usuarioId === usuarioId ? { ...t, activo: !t.activo } : t
         );
       } else {
-        return [...prev, { usuarioId, activo: true, telefono: '', especialidad: '' }];
+        return [...prev, { usuarioId, activo: true, telefono: '', especialidad: '', favorito: false }];
       }
+    });
+  };
+
+  const handleFavoritoToggle = (usuarioId) => {
+    setTecnicosConfig(prev => {
+      const existing = prev.find(t => t.usuarioId === usuarioId);
+      const nuevoFavorito = !existing?.favorito;
+      
+      // Si no existe la configuración, crearla primero
+      if (!existing) {
+        return [...prev, { usuarioId, activo: true, telefono: '', especialidad: '', favorito: nuevoFavorito }];
+      }
+      
+      // Si se marca como favorito, desmarcar los demás
+      return prev.map(t => {
+        if (t.usuarioId === usuarioId) {
+          return { ...t, favorito: nuevoFavorito };
+        } else if (nuevoFavorito) {
+          // Desmarcar otros favoritos si se está marcando uno nuevo
+          return { ...t, favorito: false };
+        }
+        return t;
+      });
     });
   };
 
@@ -239,7 +263,8 @@ export default function ConfiguracionServiciosModal({ isOpen, onClose }) {
                   const config = tecnicosConfig.find(t => t.usuarioId === user.id) || {
                     telefono: '',
                     especialidad: '',
-                    activo: false
+                    activo: false,
+                    favorito: false
                   };
 
                   return (
@@ -281,13 +306,31 @@ export default function ConfiguracionServiciosModal({ isOpen, onClose }) {
 
                       {/* 🔧 Mostrar campos solo si el usuario está activo como técnico */}
                       {config.activo && (
-                        <div className="grid grid-cols-2 gap-3">
-                          {/* Teléfono WhatsApp */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                              <Phone className="h-4 w-4 inline mr-1" />
-                              Teléfono WhatsApp
-                            </label>
+                        <>
+                          {/* Botón Favorito */}
+                          <div className="mb-3 flex items-center justify-end">
+                            <button
+                              onClick={() => handleFavoritoToggle(user.id)}
+                              disabled={loading || saving}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                config.favorito
+                                  ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-700 hover:bg-yellow-900/50'
+                                  : 'bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600'
+                              }`}
+                              title={config.favorito ? 'Técnico favorito (aparecerá seleccionado por defecto)' : 'Marcar como técnico favorito'}
+                            >
+                              <Star className={`h-3.5 w-3.5 ${config.favorito ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`} />
+                              {config.favorito ? 'Técnico Favorito' : 'Marcar como Favorito'}
+                            </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Teléfono WhatsApp */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-300 mb-1">
+                                <Phone className="h-4 w-4 inline mr-1" />
+                                Teléfono WhatsApp
+                              </label>
                             <input
                               type="text"
                               placeholder="+58 412-1234567"
@@ -334,6 +377,7 @@ export default function ConfiguracionServiciosModal({ isOpen, onClose }) {
                           )}
                         </div>
                       </div>
+                      </>
                       )}
                     </div>
                   );

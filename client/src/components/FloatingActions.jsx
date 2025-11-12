@@ -416,15 +416,15 @@ const handleAction = (action) => {
           isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
         }`}>
 
-          {/* Configuración SOLO PARA ADMIN */}
-          {usuario?.rol === 'admin' && (
+          {/* Configuración PARA ADMIN Y SUPERVISOR (supervisor solo ve WhatsApp) */}
+          {(usuario?.rol === 'admin' || usuario?.rol === 'supervisor') && (
             <button
               onClick={() => handleAction('configuracion')}
               className="group relative bg-gray-500 hover:bg-gray-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
             >
               <Settings className="h-6 w-6" />
               <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
-                Configuración General
+                {usuario?.rol === 'supervisor' ? 'Configuración WhatsApp' : 'Configuración General'}
                 <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
               </div>
             </button>

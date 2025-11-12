@@ -593,13 +593,10 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                    </button>
 
               {/* Botones de acción - EN LA MISMA FILA */}
-               {console.log(' [InventoryManagerModal] Renderizando botones de acción. Usuario:', usuario)}
-                 {/* Solo Admin puede agregar items */}
-                 {console.log(' [InventoryManagerModal] Verificando rol para botón Agregar:', usuario?.rol)}
+               {/* Solo Admin puede agregar items */}
               {usuario?.rol === 'admin' && (
                    <button
                      onClick={(e) => {
-                       console.log(' [InventoryManagerModal] CLIC en botón Agregar Item detectado!');
                        e.stopPropagation();
                        handleNewItem();
                      }}
@@ -967,15 +964,11 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
      </div>
 
      {/* Modal del formulario -  NO INTERFERIR CON SU CIERRE */}
-     {console.log(' [InventoryManagerModal] Renderizando ItemFormModal:', { showItemForm, editingItem: editingItem?.id || 'nuevo' })}
      <ItemFormModal
        isOpen={showItemForm}
        onClose={() => {
-         console.log(' [InventoryManagerModal] onClose callback ejecutado - Stack trace:');
-         console.trace();
          //  Agregar pequeño delay para evitar conflictos
          setTimeout(() => {
-           console.log(' [InventoryManagerModal] Cerrando ItemFormModal (delayed)');
            setShowItemForm(false);
            setEditingItem(null);
          }, 100);

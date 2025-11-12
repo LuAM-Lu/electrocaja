@@ -13,12 +13,19 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  const tabs = [
-    { id: 'whatsapp', label: 'WhatsApp', icono: 'Smartphone' },
-    { id: 'cuentas', label: 'Cuentas', icono: 'Users' },
-    { id: 'administracion', label: 'Administración', icono: 'Building' },
-    { id: 'general', label: 'General', icono: 'Settings' }
-  ];
+  // Si es supervisor, solo mostrar la pestaña de WhatsApp
+  const esSupervisor = usuario?.rol === 'supervisor';
+
+  const tabs = esSupervisor
+    ? [
+        { id: 'whatsapp', label: 'WhatsApp', icono: 'Smartphone' }
+      ]
+    : [
+        { id: 'whatsapp', label: 'WhatsApp', icono: 'Smartphone' },
+        { id: 'cuentas', label: 'Cuentas', icono: 'Users' },
+        { id: 'administracion', label: 'Administración', icono: 'Building' },
+        { id: 'general', label: 'General', icono: 'Settings' }
+      ];
 
   return (
     <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -71,9 +78,9 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
         {/* Contenido */}
         <div className="p-6">
           {tabActiva === 'whatsapp' && <WhatsAppPanel />}
-          {tabActiva === 'cuentas' && <UsuariosPanel usuario={usuario} />}
-          {tabActiva === 'administracion' && <AdministracionPanel />}
-          {tabActiva === 'general' && <GeneralPanel />}
+          {!esSupervisor && tabActiva === 'cuentas' && <UsuariosPanel usuario={usuario} />}
+          {!esSupervisor && tabActiva === 'administracion' && <AdministracionPanel />}
+          {!esSupervisor && tabActiva === 'general' && <GeneralPanel />}
         </div>
       </div>
     </div>

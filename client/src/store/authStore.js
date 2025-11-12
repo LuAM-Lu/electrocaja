@@ -9,7 +9,6 @@ import { bloqueoService } from '../services/bloqueoService.js';
 // Socket URL desde configuración centralizada
 const SOCKET_URL = API_CONFIG.BASE_URL.replace('/api', '');
 
-console.log(' Socket URL determinada:', SOCKET_URL, 'para hostname:', window.location.hostname);
 
 const ROLES = {
   ADMIN: 'admin',
@@ -36,7 +35,6 @@ const initializeSocket = (token) => {
     socket.disconnect();
   }
 
-  console.log(' Inicializando socket con token...');
 
   socket = io(SOCKET_URL, {
     auth: { token },
@@ -58,19 +56,15 @@ const initializeSocket = (token) => {
 
   //  EVENTOS DE RECONEXIÓN
   socket.on('connect', () => {
-    console.log(' Socket conectado:', socket.id);
   });
 
   socket.on('disconnect', (reason) => {
-    console.log(' Socket desconectado:', reason);
   });
 
   socket.on('reconnect', (attemptNumber) => {
-    console.log(' Socket reconectado en intento:', attemptNumber);
   });
 
   socket.on('reconnect_attempt', (attemptNumber) => {
-    console.log(' Intentando reconectar...', attemptNumber);
   });
 
   socket.on('reconnect_error', (error) => {
@@ -204,25 +198,16 @@ const useAuthStore = create(
           });
 
           //  DEBUG: Verificar socket después de inicializar
-          console.log(' Socket inicializado:', {
-            socket: !!socketInstance,
-            socketId: socketInstance?.id,
-            connected: socketInstance?.connected
-          });
           // 7.  EMITIR EVENTO DE CONEXIÓN
           setTimeout(() => {
             if (socketInstance.connected) {
-              console.log(' Enviando user-connected al servidor...');
               socketInstance.emit('user-connected', {
                 user: usuarioCompleto,
                 timestamp: new Date().toISOString()
               });
             } else {
-              console.log(' Socket no conectado aún, esperando...');
-              
               // Escuchar cuando se conecte
               socketInstance.on('connect', () => {
-                console.log(' Socket conectado, enviando user-connected...');
                 socketInstance.emit('user-connected', {
                   user: usuarioCompleto,
                   timestamp: new Date().toISOString()
@@ -231,18 +216,7 @@ const useAuthStore = create(
             }
           }, 500);
 
-          console.log(' NUEVO LOGIN (BACKEND + SOCKET):', {
-            usuario: user.nombre,
-            rol: user.rol,
-            sucursal: usuarioCompleto.sucursal,
-            socketId: socketInstance.id,
-            timestamp: new Date().toLocaleString('es-VE')
-          });
-
           toast.success(`Bienvenido ${user.nombre}`, { id: 'login-success' });
-          
-          //  DEBUG: Verificar si algo va a causar recarga
-          console.log(' LOGIN COMPLETADO - NO debería haber recarga ahora');
           
           return usuarioCompleto;
 
@@ -288,13 +262,6 @@ const useAuthStore = create(
               error: null,
               socket: null
             };
-          });
-
-          console.log(' NUEVO LOGIN (LOCAL):', {
-            usuario: userData.nombre,
-            rol: userData.rol,
-            sucursal: userData.sucursal,
-            timestamp: new Date().toLocaleString('es-VE')
           });
 
           toast.success(`Bienvenido ${userData.nombre} (Modo Local)`, { id: 'login-success' });
@@ -392,11 +359,8 @@ const useAuthStore = create(
 
   //  ACTUALIZAR SOCKET EN EL STORE CUANDO SE RECONECTE
     socketInstance.on('connect', () => {
-    console.log(' Socket conectado:', socketInstance.id);
-
     //  ACTUALIZAR EL SOCKET EN EL STORE
     set({ socket: socketInstance });
-    console.log(' Socket guardado en store'); //  NUEVO DEBUG
 
     toast.success('Conectado en tiempo real');
 
@@ -417,7 +381,6 @@ const useAuthStore = create(
 
   //  NUEVO: Cuando se reconecte, reenviar info del usuario
   socketInstance.on('reconnect', () => {
-    console.log(' Socket reconectado, reenviando datos de usuario...');
     
     const { usuario } = get();
     if (usuario) {
@@ -504,18 +467,8 @@ const useAuthStore = create(
 
         try {
           set({ loading: true });
-          console.log('✅ Ejecutando checkAuth con token existente...');
-
           const response = await api.get('/auth/me');
           const userData = response.data?.data || response.data;
-          
-          console.log('📥 Datos recibidos del servidor:', {
-            id: userData.id,
-            nombre: userData.nombre,
-            email: userData.email,
-            rol: userData.rol,
-            cajaPendiente: !!userData.cajaPendienteCierre
-          });
 
           const { usuario: usuarioLocal } = get();
           const usuarioCompleto = {
@@ -527,34 +480,29 @@ const useAuthStore = create(
             ultima_actividad: new Date().toISOString()
           };
 
-          console.log('🔌 Reconectando socket después de recarga...');
           let socketInstance = get().socket;
 
           // 🔧 FIX: Siempre reinicializar socket si no está conectado
           if (!socketInstance || !socketInstance.connected) {
-            console.log('🔌 Inicializando nuevo socket...');
             socketInstance = initializeSocket(token);
             get().setupSocketEvents(socketInstance);
 
             // 🔧 FIX: Esperar más tiempo para la conexión inicial
             setTimeout(() => {
               if (socketInstance.connected) {
-                console.log('✅ Socket conectado, enviando user-connected...');
                 socketInstance.emit('user-connected', {
                   user: usuarioCompleto,
                   timestamp: new Date().toISOString()
                 });
               } else {
-                console.log('⏳ Socket no conectado aún, configurando listener...');
                 socketInstance.once('connect', () => {
-                  console.log('✅ Socket reconectado, enviando user-connected...');
                   socketInstance.emit('user-connected', {
                     user: usuarioCompleto,
                     timestamp: new Date().toISOString()
                   });
                 });
               }
-            }, 1500); // 🔧 Aumentar delay a 1.5 segundos
+            }, 1500);
           }
 
           const nuevoEstado = {
@@ -568,18 +516,14 @@ const useAuthStore = create(
           };
 
           if (userData.cajaPendienteCierre) {
-            console.log('⚠️ checkAuth - caja pendiente detectada:', userData.cajaPendienteCierre);
             nuevoEstado.cajaPendienteCierre = userData.cajaPendienteCierre;
             nuevoEstado.sistemaBloquedadoPorCaja = true;
           } else {
-            console.log('✅ checkAuth - sin caja pendiente');
             nuevoEstado.cajaPendienteCierre = null;
             nuevoEstado.sistemaBloquedadoPorCaja = false;
           }
 
           set(nuevoEstado);
-
-          console.log('✅ CheckAuth completado exitosamente');
           window.checkAuthInProgress = false;
           return true;
         } catch (error) {

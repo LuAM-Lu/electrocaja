@@ -258,8 +258,8 @@ const Footer = () => {
               </span>
             </div>
 
-            {/* WHATSAPP - Solo Admin - RESPONSIVE */}
-            {usuario?.rol === 'admin' && (
+            {/* WHATSAPP - Admin y Supervisor - RESPONSIVE */}
+            {(usuario?.rol === 'admin' || usuario?.rol === 'supervisor') && (
               <>
                 <div className={`h-2.5 sm:h-3 w-px ${currentTheme.separatorColor}`}></div>
                 <div className="flex items-center space-x-1 sm:space-x-1.5">

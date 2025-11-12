@@ -1766,7 +1766,8 @@ const resolverCajaPendiente = async (req, res) => {
       montoFinalUsd,
       montoFinalPagoMovil,
       observacionesCierre = '',
-      imagenCierre = null
+      imagenCierre = null,
+      rutaPDF = null
     } = req.body;
 
     const userId = req.user.userId;
@@ -1775,7 +1776,9 @@ const resolverCajaPendiente = async (req, res) => {
     console.log('✅ Resolviendo caja pendiente:', {
       cajaId: id,
       usuario: req.user.email,
-      montos: { montoFinalBs, montoFinalUsd, montoFinalPagoMovil }
+      montos: { montoFinalBs, montoFinalUsd, montoFinalPagoMovil },
+      tienePDF: !!rutaPDF,
+      rutaPDF: rutaPDF
     });
 
     // Buscar caja pendiente
@@ -1809,6 +1812,14 @@ const resolverCajaPendiente = async (req, res) => {
       minute: '2-digit'
     });
 
+    // Preparar observaciones con referencia al PDF si existe
+    let observacionesFinales = observacionesCierre;
+    if (rutaPDF) {
+      const nombreArchivo = rutaPDF.split(/[/\\]/).pop(); // Extraer nombre del archivo de la ruta
+      observacionesFinales = `${observacionesCierre}\n\n📄 PDF de cierre guardado en servidor: ${nombreArchivo}`;
+      console.log(`📄 PDF asociado a caja pendiente: ${nombreArchivo}`);
+    }
+
     // Completar el cierre
     const cajaResuelta = await prisma.caja.update({
       where: { id: parseInt(id) },
@@ -1819,7 +1830,7 @@ const resolverCajaPendiente = async (req, res) => {
         montoFinalBs: montoFinalBs ? toDecimal(montoFinalBs) : null,
         montoFinalUsd: montoFinalUsd ? toDecimal(montoFinalUsd) : null,
         montoFinalPagoMovil: montoFinalPagoMovil ? toDecimal(montoFinalPagoMovil) : null,
-        observacionesCierre: `${observacionesCierre}\n\nCIERRE FÍSICO COMPLETADO - Auto-cierre resuelto por: ${req.user.nombre || req.user.email} - ${new Date().toISOString()}`,
+        observacionesCierre: `${observacionesFinales}\n\nCIERRE FÍSICO COMPLETADO - Auto-cierre resuelto por: ${req.user.nombre || req.user.email} - ${new Date().toISOString()}`,
         imagenCierre: imagenCierre
       },
       include: {
