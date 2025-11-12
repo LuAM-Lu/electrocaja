@@ -7,6 +7,7 @@ import {
   Zap, ShoppingCart, Tag, DollarSign, Eye,
   Barcode, Info, Star
 } from 'lucide-react';
+import { MdRemoveShoppingCart } from "react-icons/md";
 import { useInventarioStore } from "../../store/inventarioStore";
 import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';
@@ -75,12 +76,18 @@ const validarStockAntesDe = async (producto, cantidadSolicitada, itemsCarrito = 
 
 //  FUNCIONES HELPER
 const formatearVenezolano = (valor) => {
-  if (!valor && valor !== 0) return '';
+  if (!valor && valor !== 0) return '0,00';
   const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
-  return numero.toLocaleString('es-ES', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+  
+  // Formato venezolano: puntos para miles, coma para decimales
+  const partes = numero.toFixed(2).split('.');
+  const entero = partes[0];
+  const decimal = partes[1] || '00';
+  
+  // Agregar separadores de miles (puntos)
+  const enteroFormateado = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  
+  return `${enteroFormateado},${decimal}`;
 };
 
 const limpiarNumero = (valor) => {
@@ -583,17 +590,6 @@ const ItemsTable = ({
       // Verificar si es servicio
       const esProductoServicio = esServicio(producto);
       
-      console.log(' DEBUG - Validando producto:', {
-        descripcion: producto.descripcion,
-        tipo: producto.tipo,
-        categoria: producto.categoria,
-        stock: producto.stock,
-        stockReservado: producto.stockReservado,
-        cantidadSolicitada,
-        validarStockAntes,
-        esServicio: esProductoServicio
-      });
-      
       //  VALIDACIÓN VISUAL FIFO - SOLO PARA PRODUCTOS FÍSICOS, NO SERVICIOS
       if (!esProductoServicio) {
         const stockTotal = producto.stock || 0;
@@ -690,10 +686,6 @@ const ItemsTable = ({
 
   //  Eliminar item
   const handleDeleteItem = async (itemId) => {
-    const itemAEliminar = items.find(item => item.id === itemId);
-    
-    console.log(' Eliminando item del carrito (sin liberar stock individual):', itemAEliminar?.descripcion);
-    
     const updatedItems = items.filter(item => item.id !== itemId);
     onItemsChange(updatedItems);
     toast.success('Item eliminado del carrito');
@@ -838,15 +830,19 @@ const ItemsTable = ({
                          <div className={`font-medium ${index === selectedProductIndex ? 'text-current' : styles.text} truncate`}>
                            {producto.descripcion}
                          </div>
-                         <div className={`text-sm ${index === selectedProductIndex ? 'text-current opacity-75' : styles.textMuted} flex items-center space-x-2`}>
+                         <div className={`text-sm ${index === selectedProductIndex ? 'text-current opacity-75' : styles.textMuted} flex items-center space-x-2 flex-wrap`}>
                            <span className="font-mono">{producto.codigo_barras || producto.codigo_interno}</span>
                            <span>•</span>
+                           {/* Mostrar precio en Bs. y USD */}
                            <span className="font-semibold text-emerald-600">
-                             ${parseFloat(producto.precio_venta || producto.precio || 0).toFixed(2)}
+                             {formatearVenezolano(parseFloat(producto.precio_venta || producto.precio || 0) * tasaCambio)} Bs
+                           </span>
+                           <span className="text-xs text-gray-500">
+                             (${parseFloat(producto.precio_venta || producto.precio || 0).toFixed(2)})
                            </span>
                            
-                           {/* Mostrar stock disponible en tiempo real */}
-                           {mostrarStockDisponible && !esServicio(producto) && (
+                           {/* Mostrar stock disponible siempre */}
+                           {!esServicio(producto) && (
                              <>
                                <span>•</span>
                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -854,7 +850,7 @@ const ItemsTable = ({
                                    ? 'bg-green-100 text-green-700' 
                                    : 'bg-red-100 text-red-700'
                                }`}>
-                                  {producto.stock - (producto.stockReservado || 0)} disp.
+                                 Stock: {producto.stock - (producto.stockReservado || 0)}
                                </span>
                              </>
                            )}
@@ -868,14 +864,6 @@ const ItemsTable = ({
                              </>
                            )}
                            
-                           {(producto.stock || 0) <= 0 && !esServicio(producto) && (
-                             <>
-                               <span>•</span>
-                               <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                                 Sin Stock
-                               </span>
-                             </>
-                           )}
                            {!producto.activo && (
                              <>
                                <span>•</span>
@@ -1006,12 +994,12 @@ const ItemsTable = ({
                          <div className={`font-medium ${styles.text} flex items-center space-x-2`}>
                            <span>{item.descripcion}</span>
                            {/* Badges de estado */}
-                           {item.esPersonalizado && (
-                             <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                               <Star className="h-3 w-3 inline mr-1" />
-                               Personalizado
-                             </span>
-                           )}
+                          {item.esPersonalizado && (
+                            <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                              <MdRemoveShoppingCart className="h-3 w-3 inline mr-1" />
+                              Fuera de sistema
+                            </span>
+                          )}
                            {item.sinStock && (
                              <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium animate-pulse">
                                Sin Stock
@@ -1030,10 +1018,13 @@ const ItemsTable = ({
                                {item.codigo}
                              </span>
                            )}
-                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(item.categoria)}`}>
-                             <Tag className="h-3 w-3 mr-1" />
-                             {item.categoria}
-                           </span>
+                           {/* Solo mostrar badge de categoría si NO es personalizado (ya tiene su propio badge) */}
+                           {!item.esPersonalizado && (
+                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getCategoryColor(item.categoria)}`}>
+                               <Tag className="h-3 w-3 mr-1" />
+                               {item.categoria}
+                             </span>
+                           )}
                          </div>
                        </div>
                      )}
@@ -1065,11 +1056,6 @@ const ItemsTable = ({
                                if (productoInventario && !esServicio(productoInventario)) {
                                  const stockInfo = await obtenerStockDisponibleAPI(item.productoId, sesionId);
                                  const stockTotal = stockInfo?.stock?.stockTotal || 0;
-
-                                 console.log(' DEBUG stockInfo completo:', stockInfo);
-                                 console.log(' DEBUG stockTotal (real):', stockTotal);
-                                 console.log(' DEBUG nuevaCantidad:', nuevaCantidad);
-                                 console.log(' DEBUG stockTotal < nuevaCantidad:', stockTotal < nuevaCantidad);
 
                                  if (stockTotal < nuevaCantidad) {
                                    toast.error(`Stock insuficiente para ${item.descripcion}. Intentaste: ${nuevaCantidad}, Disponible: ${stockTotal}`, {
@@ -1253,8 +1239,8 @@ const ItemsTable = ({
            )}
            {items.some(item => item.esPersonalizado) && (
              <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-medium flex items-center">
-               <Star className="h-3 w-3 mr-1" />
-               {items.filter(item => item.esPersonalizado).length} personalizados
+               <MdRemoveShoppingCart className="h-3 w-3 mr-1" />
+               {items.filter(item => item.esPersonalizado).length} fuera de sistema
              </span>
            )}
            {needsScroll && (

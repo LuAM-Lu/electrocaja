@@ -294,76 +294,121 @@ const FinalizarVentaPanel = ({
   return (
     <div className="space-y-6">
       
-      {/*  RESUMEN FINAL DE LA VENTA - COMPACTO VERTICAL */}
-      <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-4">
-        <h3 className="text-lg font-bold text-emerald-900 mb-3 flex items-center">
-          <ShoppingCart className="h-5 w-5 mr-2" />
-          Resumen Final de Venta
-        </h3>
+      {/*  RESUMEN FINAL DE LA VENTA - PREMIUM COMPACTO */}
+      <div className="relative bg-gradient-to-br from-emerald-50 via-blue-50 to-emerald-50 border-2 border-emerald-300/50 rounded-2xl p-4 shadow-lg backdrop-blur-sm overflow-hidden">
+        {/* Efecto de brillo sutil */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50"></div>
         
-        <div className="grid grid-cols-2 gap-3">
-          {/* COLUMNA 1: Cliente */}
-          <div className="bg-white rounded-lg p-3 border-2 border-emerald-200">
-            <div className="flex items-center space-x-2 mb-2">
-              <User className="h-4 w-4 text-blue-600" />
-              <span className="text-xs font-medium text-gray-700 uppercase">Cliente</span>
-            </div>
-            <div className="text-sm space-y-1">
-              <div className="font-semibold text-gray-900 truncate">
-                {ventaData.cliente?.nombre || 'Sin cliente seleccionado'}
+        <div className="relative">
+          {/* Header compacto */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-1.5 rounded-lg shadow-md">
+                <ShoppingCart className="h-4 w-4 text-white" />
               </div>
-              {ventaData.cliente?.cedula_rif && (
-                <div className="text-gray-600 text-xs">{ventaData.cliente.cedula_rif}</div>
+              <h3 className="text-base font-bold bg-gradient-to-r from-emerald-900 to-blue-900 bg-clip-text text-transparent">
+                Resumen Final
+              </h3>
+            </div>
+          </div>
+          
+          {/* Grid compacto horizontal */}
+          <div className="grid grid-cols-3 gap-2">
+            {/* Cliente compacto */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2.5 border border-emerald-200/50 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center space-x-1.5 mb-1.5">
+                <div className="bg-blue-100 p-1 rounded-lg">
+                  <User className="h-3 w-3 text-blue-600" />
+                </div>
+                <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Cliente</span>
+              </div>
+              <div className="space-y-0.5">
+                <div className="font-bold text-gray-900 text-xs truncate leading-tight">
+                  {ventaData.cliente?.nombre || 'Sin cliente'}
+                </div>
+                {ventaData.cliente?.cedula_rif && (
+                  <div className="text-[10px] text-gray-500 truncate">{ventaData.cliente.cedula_rif}</div>
               )}
+                <div className="flex items-center space-x-1 flex-wrap gap-y-0.5">
               {ventaData.cliente?.telefono && (
-                <div className="flex items-center space-x-1 text-gray-500 text-xs">
-                  <Phone className="h-3 w-3" />
-                  <span>{ventaData.cliente.telefono}</span>
+                    <div className="flex items-center space-x-0.5 text-[10px] text-gray-500">
+                      <Phone className="h-2.5 w-2.5" />
+                      <span className="truncate max-w-[60px]">{ventaData.cliente.telefono}</span>
                 </div>
               )}
               {ventaData.cliente?.email && (
-                <div className="flex items-center space-x-1 text-gray-500 text-xs">
-                  <Mail className="h-3 w-3" />
-                  <span className="truncate">{ventaData.cliente.email}</span>
+                    <div className="flex items-center space-x-0.5 text-[10px] text-gray-500">
+                      <Mail className="h-2.5 w-2.5" />
+                      <span className="truncate max-w-[60px]">{ventaData.cliente.email.split('@')[0]}</span>
                 </div>
               )}
             </div>
           </div>
-
-          {/* COLUMNA 2: Productos */}
-          <div className="bg-white rounded-lg p-3 border-2 border-emerald-200">
-            <div className="flex items-center space-x-2 mb-2">
-              <Package className="h-4 w-4 text-green-600" />
-              <span className="text-xs font-medium text-gray-700 uppercase">Productos</span>
             </div>
-            <div className="text-sm space-y-1">
-              <div className="font-semibold text-gray-900">
-                {ventaData.items.reduce((sum, item) => sum + (item.cantidad || 0), 0)} items
+
+            {/* Productos compacto */}
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2.5 border border-emerald-200/50 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center space-x-1.5 mb-1.5">
+                <div className="bg-green-100 p-1 rounded-lg">
+                  <Package className="h-3 w-3 text-green-600" />
+                </div>
+                <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Productos</span>
               </div>
-              <div className="text-gray-600 text-xs">
-                {ventaData.items.length} productos únicos
+              <div className="space-y-0.5">
+                <div className="font-bold text-gray-900 text-xs">
+                  {ventaData.items.reduce((sum, item) => sum + (item.cantidad || 0), 0)} items
+                </div>
+                <div className="text-[10px] text-gray-500">
+                  {ventaData.items.length} únicos
               </div>
               <button
                 onClick={() => setMostrarDetalles(!mostrarDetalles)}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                  className="text-[10px] text-blue-600 hover:text-blue-800 font-medium mt-0.5 flex items-center space-x-0.5"
               >
-                <span>{mostrarDetalles ? 'Ocultar' : 'Ver'} detalles</span>
+                  <span>{mostrarDetalles ? '▲' : '▼'}</span>
+                  <span>{mostrarDetalles ? 'Ocultar' : 'Detalles'}</span>
               </button>
             </div>
+            </div>
+
+            {/* Totales compacto */}
+            <div className="bg-gradient-to-br from-emerald-100 to-blue-100 rounded-xl p-2.5 border-2 border-emerald-300/50 shadow-sm">
+              <div className="flex items-center space-x-1.5 mb-1.5">
+                <div className="bg-emerald-500 p-1 rounded-lg">
+                  <DollarSign className="h-3 w-3 text-white" />
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-800 uppercase tracking-wide">Totales</span>
+              </div>
+              <div className="space-y-0.5">
+                <div className="font-bold text-emerald-900 text-xs">
+                  {formatearVenezolano(ventaData.totalBs)} Bs
+                </div>
+                <div className="text-[10px] text-emerald-700">
+                  {formatearVenezolano(ventaData.totalUsd)} USD
+                </div>
+                {descuento > 0 && (
+                  <div className="text-[10px] text-orange-600 font-medium">
+                    -{formatearVenezolano(descuento)} Bs desc.
+                  </div>
+                )}
+              </div>
           </div>
         </div>
 
-        {/* Detalles expandibles */}
+          {/* Detalles expandibles compactos */}
         {mostrarDetalles && (
-          <div className="bg-white rounded-lg p-3 border mt-3">
-            <h5 className="font-medium text-gray-900 mb-2 text-sm">Detalle de Productos:</h5>
-            <div className="space-y-1 max-h-24 overflow-y-auto">
+            <div className="mt-2 bg-white/90 backdrop-blur-sm rounded-xl p-2.5 border border-emerald-200/50 shadow-sm">
+              <h5 className="font-semibold text-gray-900 mb-1.5 text-xs flex items-center">
+                <Package className="h-3 w-3 mr-1 text-emerald-600" />
+                Detalle de Productos:
+              </h5>
+              <div className="space-y-1 max-h-20 overflow-y-auto">
               {ventaData.items.map((item, index) => (
-                <div key={index} className="flex justify-between items-center text-xs">
-                  <span className="text-gray-700">
+                  <div key={index} className="flex justify-between items-center text-[10px] py-0.5 border-b border-gray-100 last:border-0">
+                    <span className="text-gray-700 truncate flex-1 mr-2">
                     {item.cantidad}× {item.descripcion}
                   </span>
-                  <span className="font-medium text-gray-900">
+                    <span className="font-semibold text-gray-900 whitespace-nowrap">
                     {formatearVenezolano(item.subtotal * (ventaData.totalBs / ventaData.totalUsd))} Bs
                   </span>
                 </div>
@@ -371,100 +416,175 @@ const FinalizarVentaPanel = ({
             </div>
           </div>
         )}
+        </div>
       </div>
 
-      {/*  OPCIONES DE PROCESAMIENTO */}
-      <div className="space-y-4">
-        <h4 className="text-lg font-semibold text-gray-900 flex items-center">
-          <CheckCircle className="h-5 w-5 mr-2 text-emerald-600" />
+      {/*  OPCIONES DE PROCESAMIENTO - PREMIUM */}
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xl font-bold text-gray-900 flex items-center">
+            <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-2 rounded-lg mr-3 shadow-lg">
+              <CheckCircle className="h-5 w-5 text-white" />
+            </div>
+            <span className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
           Opciones de Procesamiento
+            </span>
         </h4>
+          <div className="flex items-center space-x-3">
+            {alMenosUnaOpcion && (
+              <div className="flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                <span className="text-xs font-semibold text-emerald-700">
+                  {Object.values(opcionesProcesamiento).filter(Boolean).length} activa{Object.values(opcionesProcesamiento).filter(Boolean).length > 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+            {!alMenosUnaOpcion && (
+              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 rounded-xl px-3 py-2 shadow-lg border-2 border-white/50 backdrop-blur-sm animate-pulse">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-4 w-4 text-white" />
+                  <div>
+                    <div className="text-xs font-bold text-white leading-tight">Selecciona al menos una opción</div>
+                    <div className="text-[10px] text-white/90 leading-tight">Elige una forma de procesar la venta</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-4">
           
-          {/*  TOGGLE: Generar PDF */}
+          {/*  PREMIUM TOGGLE: Generar PDF */}
           <div 
-            className={`border-2 rounded-xl p-3 cursor-pointer transition-all relative ${
+            className={`group relative rounded-2xl cursor-pointer transition-all duration-300 ${
               opcionesProcesamiento.imprimirRecibo 
-                ? 'border-orange-300 bg-orange-50 ring-2 ring-orange-200' 
-                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                ? 'bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 border-2 border-orange-400 shadow-xl shadow-orange-200/50 transform scale-[1.02]' 
+                : 'bg-white border-2 border-gray-200 hover:border-orange-300 hover:shadow-lg'
             }`}
             onClick={() => handleToggleOpcion('imprimirRecibo', !opcionesProcesamiento.imprimirRecibo)}
           >
-            {/* Burbuja de check cuando está activa */}
+            {/* Badge de check premium - FUERA del overflow */}
             {opcionesProcesamiento.imprimirRecibo && (
-              <div className="absolute -top-2 -right-2 bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                <CheckCircle className="h-4 w-4" />
+              <div className="absolute -top-2 -right-2 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ring-4 ring-white z-50 animate-bounce">
+                <CheckCircle className="h-5 w-5" />
               </div>
             )}
             
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className={`p-2 rounded-lg ${
-                opcionesProcesamiento.imprimirRecibo ? 'bg-orange-100' : 'bg-gray-100'
+            <div className="overflow-hidden rounded-2xl">
+              {/* Efecto de brillo cuando está activa */}
+              {opcionesProcesamiento.imprimirRecibo && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]"></div>
+              )}
+            
+            <div className="p-5 flex flex-col items-center text-center space-y-3">
+              {/* Icono premium con fondo degradado */}
+              <div className={`relative p-4 rounded-2xl transition-all duration-300 ${
+                opcionesProcesamiento.imprimirRecibo 
+                  ? 'bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg shadow-orange-500/30 scale-105' 
+                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-orange-50 group-hover:to-orange-100'
               }`}>
-                <FileDown className={`h-5 w-5 ${
-                  opcionesProcesamiento.imprimirRecibo ? 'text-orange-600' : 'text-gray-400'
+                <FileDown className={`h-7 w-7 transition-all duration-300 ${
+                  opcionesProcesamiento.imprimirRecibo ? 'text-white' : 'text-gray-500 group-hover:text-orange-600'
                 }`} />
+                {opcionesProcesamiento.imprimirRecibo && (
+                  <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
+                )}
               </div>
-              <h5 className={`text-sm font-medium ${
-                opcionesProcesamiento.imprimirRecibo ? 'text-orange-900' : 'text-gray-700'
+              
+              <div className="space-y-1">
+                <h5 className={`text-sm font-bold transition-colors ${
+                  opcionesProcesamiento.imprimirRecibo ? 'text-orange-900' : 'text-gray-800 group-hover:text-orange-700'
               }`}>
                 Generar PDF
               </h5>
-              <p className="text-xs text-gray-500">Recibo digital</p>
+                <p className={`text-xs transition-colors ${
+                  opcionesProcesamiento.imprimirRecibo ? 'text-orange-700' : 'text-gray-500'
+                }`}>
+                  Recibo digital
+                </p>
+              </div>
+              
               {opcionesProcesamiento.imprimirRecibo && (
-                <div className="text-xs text-orange-600 font-medium">
-                   Se descargará automáticamente
+                <div className="mt-1 px-2 py-1 bg-orange-100 rounded-full">
+                  <span className="text-xs text-orange-700 font-semibold">
+                    ✓ Descarga automática
+                  </span>
                 </div>
               )}
             </div>
+            </div>
           </div>
 
-          {/*  TOGGLE: Imprimir Factura */}
+          {/*  PREMIUM TOGGLE: Imprimir Factura */}
           <div 
-            className={`border-2 rounded-xl p-3 cursor-pointer transition-all relative ${
+            className={`group relative rounded-2xl cursor-pointer transition-all duration-300 ${
               opcionesProcesamiento.generarFactura 
-                ? 'border-blue-300 bg-blue-50 ring-2 ring-blue-200' 
-                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
+                ? 'bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 border-2 border-blue-400 shadow-xl shadow-blue-200/50 transform scale-[1.02]' 
+                : 'bg-white border-2 border-gray-200 hover:border-blue-300 hover:shadow-lg'
             }`}
             onClick={() => handleToggleOpcion('generarFactura', !opcionesProcesamiento.generarFactura)}
           >
+            {/* Badge de check premium - FUERA del overflow */}
             {opcionesProcesamiento.generarFactura && (
-              <div className="absolute -top-2 -right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                <CheckCircle className="h-4 w-4" />
+              <div className="absolute -top-2 -right-2 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ring-4 ring-white z-50 animate-bounce">
+                <CheckCircle className="h-5 w-5" />
               </div>
             )}
             
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className={`p-2 rounded-lg ${
-                opcionesProcesamiento.generarFactura ? 'bg-blue-100' : 'bg-gray-100'
+            <div className="overflow-hidden rounded-2xl">
+              {/* Efecto de brillo cuando está activa */}
+              {opcionesProcesamiento.generarFactura && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]"></div>
+              )}
+            
+            <div className="p-5 flex flex-col items-center text-center space-y-3">
+              {/* Icono premium con fondo degradado */}
+              <div className={`relative p-4 rounded-2xl transition-all duration-300 ${
+                opcionesProcesamiento.generarFactura 
+                  ? 'bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg shadow-blue-500/30 scale-105' 
+                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-blue-50 group-hover:to-blue-100'
               }`}>
-                <Printer className={`h-5 w-5 ${
-                  opcionesProcesamiento.generarFactura ? 'text-blue-600' : 'text-gray-400'
+                <Printer className={`h-7 w-7 transition-all duration-300 ${
+                  opcionesProcesamiento.generarFactura ? 'text-white' : 'text-gray-500 group-hover:text-blue-600'
                 }`} />
+                {opcionesProcesamiento.generarFactura && (
+                  <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
+                )}
               </div>
-              <h5 className={`text-sm font-medium ${
-                opcionesProcesamiento.generarFactura ? 'text-blue-900' : 'text-gray-700'
+              
+              <div className="space-y-1">
+                <h5 className={`text-sm font-bold transition-colors ${
+                  opcionesProcesamiento.generarFactura ? 'text-blue-900' : 'text-gray-800 group-hover:text-blue-700'
               }`}>
                 Imprimir Factura
               </h5>
-              <p className="text-xs text-gray-500">80mm directo</p>
+                <p className={`text-xs transition-colors ${
+                  opcionesProcesamiento.generarFactura ? 'text-blue-700' : 'text-gray-500'
+                }`}>
+                  80mm directo
+                </p>
+              </div>
+              
               {opcionesProcesamiento.generarFactura && (
-                <div className="text-xs text-blue-600 font-medium">
-                   Se enviará a impresora
+                <div className="mt-1 px-2 py-1 bg-blue-100 rounded-full">
+                  <span className="text-xs text-blue-700 font-semibold">
+                    ✓ Enviado a impresora
+                  </span>
                 </div>
               )}
             </div>
+            </div>
           </div>
 
-          {/*  TOGGLE: WhatsApp */}
+          {/*  PREMIUM TOGGLE: WhatsApp */}
           <div 
-            className={`border-2 rounded-xl p-3 transition-all relative ${
+            className={`group relative rounded-2xl transition-all duration-300 ${
               !clienteTieneWhatsApp 
-                ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
+                ? 'bg-gray-50 border-2 border-gray-200 cursor-not-allowed opacity-50'
                 : opcionesProcesamiento.enviarWhatsApp 
-                  ? 'border-green-300 bg-green-50 cursor-pointer ring-2 ring-green-200' 
-                  : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md cursor-pointer'
+                  ? 'bg-gradient-to-br from-green-50 via-green-100 to-green-50 border-2 border-green-400 shadow-xl shadow-green-200/50 transform scale-[1.02] cursor-pointer' 
+                  : 'bg-white border-2 border-gray-200 hover:border-green-300 hover:shadow-lg cursor-pointer'
             }`}
             onClick={() => {
               if (clienteTieneWhatsApp) {
@@ -472,47 +592,70 @@ const FinalizarVentaPanel = ({
               }
             }}
           >
+            {/* Badge de check premium - FUERA del overflow */}
             {opcionesProcesamiento.enviarWhatsApp && (
-              <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                <CheckCircle className="h-4 w-4" />
+              <div className="absolute -top-2 -right-2 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ring-4 ring-white z-50 animate-bounce">
+                <CheckCircle className="h-5 w-5" />
               </div>
             )}
             
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className={`p-2 rounded-lg ${
-                !clienteTieneWhatsApp ? 'bg-gray-100' :
-                opcionesProcesamiento.enviarWhatsApp ? 'bg-green-100' : 'bg-gray-100'
+            <div className="overflow-hidden rounded-2xl">
+              {/* Efecto de brillo cuando está activa */}
+              {opcionesProcesamiento.enviarWhatsApp && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]"></div>
+              )}
+            
+            <div className="p-5 flex flex-col items-center text-center space-y-3">
+              {/* Icono premium con fondo degradado */}
+              <div className={`relative p-4 rounded-2xl transition-all duration-300 ${
+                !clienteTieneWhatsApp ? 'bg-gradient-to-br from-gray-100 to-gray-200' :
+                opcionesProcesamiento.enviarWhatsApp 
+                  ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/30 scale-105' 
+                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-green-50 group-hover:to-green-100'
               }`}>
-                <MessageCircle className={`h-5 w-5 ${
+                <MessageCircle className={`h-7 w-7 transition-all duration-300 ${
                   !clienteTieneWhatsApp ? 'text-gray-300' :
-                  opcionesProcesamiento.enviarWhatsApp ? 'text-green-600' : 'text-gray-400'
+                  opcionesProcesamiento.enviarWhatsApp ? 'text-white' : 'text-gray-500 group-hover:text-green-600'
                 }`} />
+                {opcionesProcesamiento.enviarWhatsApp && (
+                  <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
+                )}
               </div>
-              <h5 className={`text-sm font-medium ${
+              
+              <div className="space-y-1">
+                <h5 className={`text-sm font-bold transition-colors ${
                 !clienteTieneWhatsApp ? 'text-gray-400' :
-                opcionesProcesamiento.enviarWhatsApp ? 'text-green-900' : 'text-gray-700'
+                  opcionesProcesamiento.enviarWhatsApp ? 'text-green-900' : 'text-gray-800 group-hover:text-green-700'
               }`}>
                 Enviar WhatsApp
               </h5>
-              <p className="text-xs text-gray-500">
+                <p className={`text-xs transition-colors ${
+                  !clienteTieneWhatsApp ? 'text-gray-400' :
+                  opcionesProcesamiento.enviarWhatsApp ? 'text-green-700' : 'text-gray-500'
+                }`}>
                 {!clienteTieneWhatsApp ? 'Sin teléfono' : 'Al cliente'}
               </p>
+              </div>
+              
               {opcionesProcesamiento.enviarWhatsApp && clienteTieneWhatsApp && (
-                <div className="text-xs text-green-600 font-medium">
-                   Se enviará a {ventaData.cliente?.telefono}
+                <div className="mt-1 px-2 py-1 bg-green-100 rounded-full">
+                  <span className="text-xs text-green-700 font-semibold truncate max-w-[120px]">
+                    ✓ {ventaData.cliente?.telefono}
+                  </span>
                 </div>
               )}
             </div>
+            </div>
           </div>
 
-          {/*  TOGGLE: Email */}
+          {/*  PREMIUM TOGGLE: Email */}
           <div 
-            className={`border-2 rounded-xl p-3 transition-all relative ${
+            className={`group relative rounded-2xl transition-all duration-300 ${
               !clienteTieneEmail 
-                ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
+                ? 'bg-gray-50 border-2 border-gray-200 cursor-not-allowed opacity-50'
                 : opcionesProcesamiento.enviarEmail 
-                  ? 'border-purple-300 bg-purple-50 cursor-pointer ring-2 ring-purple-200' 
-                  : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md cursor-pointer'
+                  ? 'bg-gradient-to-br from-purple-50 via-purple-100 to-purple-50 border-2 border-purple-400 shadow-xl shadow-purple-200/50 transform scale-[1.02] cursor-pointer' 
+                  : 'bg-white border-2 border-gray-200 hover:border-purple-300 hover:shadow-lg cursor-pointer'
             }`}
             onClick={() => {
               if (clienteTieneEmail) {
@@ -520,56 +663,65 @@ const FinalizarVentaPanel = ({
               }
             }}
           >
+            {/* Badge de check premium - FUERA del overflow */}
             {opcionesProcesamiento.enviarEmail && (
-              <div className="absolute -top-2 -right-2 bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
-                <CheckCircle className="h-4 w-4" />
+              <div className="absolute -top-2 -right-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ring-4 ring-white z-50 animate-bounce">
+                <CheckCircle className="h-5 w-5" />
               </div>
             )}
             
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className={`p-2 rounded-lg ${
-                !clienteTieneEmail ? 'bg-gray-100' :
-                opcionesProcesamiento.enviarEmail ? 'bg-purple-100' : 'bg-gray-100'
+            <div className="overflow-hidden rounded-2xl">
+              {/* Efecto de brillo cuando está activa */}
+              {opcionesProcesamiento.enviarEmail && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]"></div>
+              )}
+            
+            <div className="p-5 flex flex-col items-center text-center space-y-3">
+              {/* Icono premium con fondo degradado */}
+              <div className={`relative p-4 rounded-2xl transition-all duration-300 ${
+                !clienteTieneEmail ? 'bg-gradient-to-br from-gray-100 to-gray-200' :
+                opcionesProcesamiento.enviarEmail 
+                  ? 'bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/30 scale-105' 
+                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-purple-50 group-hover:to-purple-100'
               }`}>
-                <Mail className={`h-5 w-5 ${
+                <Mail className={`h-7 w-7 transition-all duration-300 ${
                   !clienteTieneEmail ? 'text-gray-300' :
-                  opcionesProcesamiento.enviarEmail ? 'text-purple-600' : 'text-gray-400'
+                  opcionesProcesamiento.enviarEmail ? 'text-white' : 'text-gray-500 group-hover:text-purple-600'
                 }`} />
+                {opcionesProcesamiento.enviarEmail && (
+                  <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
+                )}
               </div>
-              <h5 className={`text-sm font-medium ${
+              
+              <div className="space-y-1">
+                <h5 className={`text-sm font-bold transition-colors ${
                 !clienteTieneEmail ? 'text-gray-400' :
-                opcionesProcesamiento.enviarEmail ? 'text-purple-900' : 'text-gray-700'
+                  opcionesProcesamiento.enviarEmail ? 'text-purple-900' : 'text-gray-800 group-hover:text-purple-700'
               }`}>
                 Enviar Email
               </h5>
-              <p className="text-xs text-gray-500">
+                <p className={`text-xs transition-colors ${
+                  !clienteTieneEmail ? 'text-gray-400' :
+                  opcionesProcesamiento.enviarEmail ? 'text-purple-700' : 'text-gray-500'
+                }`}>
                 {!clienteTieneEmail ? 'Sin email' : 'Al cliente'}
               </p>
+              </div>
+              
               {opcionesProcesamiento.enviarEmail && clienteTieneEmail && (
-                <div className="text-xs text-purple-600 font-medium">
-                   Se enviará a {ventaData.cliente?.email}
+                <div className="mt-1 px-2 py-1 bg-purple-100 rounded-full">
+                  <span className="text-xs text-purple-700 font-semibold truncate max-w-[120px]">
+                    ✓ {ventaData.cliente?.email?.split('@')[0]}...
+                  </span>
                 </div>
               )}
+            </div>
             </div>
           </div>
 
         </div>
       </div>
 
-      {/*  VALIDACIONES Y ADVERTENCIAS */}
-      {!alMenosUnaOpcion && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-center space-x-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
-            <div>
-              <h5 className="font-medium text-amber-900">Selecciona al menos una opción</h5>
-              <p className="text-sm text-amber-700">
-                Debes elegir al menos una forma de procesar la venta (recibo, factura, etc.)
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

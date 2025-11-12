@@ -57,7 +57,6 @@ export default function PasoDispositivo({ datos, onActualizar, errores, loading 
       if (streamActual) {
         streamActual.getTracks().forEach(track => {
           track.stop();
-          console.log('Camera track stopped on cleanup');
         });
       }
     };

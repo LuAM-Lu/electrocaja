@@ -9,7 +9,7 @@ const Summary = () => {
 
   if (!cajaActual) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col w-full">
         <div className="bg-gradient-to-r from-slate-600 to-slate-700 px-4 py-3">
           <div className="flex items-center space-x-3">
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-1.5">
@@ -29,7 +29,7 @@ const Summary = () => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col">
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">

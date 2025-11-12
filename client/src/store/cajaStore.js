@@ -35,6 +35,9 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
+// ✅ VARIABLE DE MÓDULO PARA LOCK ATÓMICO (fuera del store)
+let cargarCajaActualLock = null;
+
 const useCajaStore = create((set, get) => ({
   // Estado inicial (mantiene la misma estructura)
   cajaActual: null,
@@ -48,166 +51,146 @@ const useCajaStore = create((set, get) => ({
 
   // ✅ SISTEMA DE PROTECCIÓN SIMPLIFICADO
 
-// NUEVO: Cargar caja actual desde backend (CORREGIDO COMPLETAMENTE) - CON SINGLETON Y CACHE
-cargarCajaActual: async (forceRefresh = false) => {
-  // 🚀 SINGLETON: Evitar múltiples llamadas simultáneas
-  if (window.cargarCajaActualEnProgreso) {
-    console.log('🔄 cargarCajaActual ya en progreso, esperando...');
-    return new Promise((resolve) => {
-      const checkProgress = () => {
-        if (!window.cargarCajaActualEnProgreso) {
-          resolve();
-        } else {
-          setTimeout(checkProgress, 100);
-        }
-      };
-      checkProgress();
-    });
-  }
-
-  // 🚀 CACHE: Evitar llamadas innecesarias si los datos son recientes
-  const ahora = Date.now();
-  const ultimaActualizacion = window.ultimaActualizacionCaja || 0;
-  const tiempoCache = 2000; // 2 segundos de cache
-
-  if (!forceRefresh && (ahora - ultimaActualizacion) < tiempoCache) {
-    console.log('🔄 Usando cache de caja (datos recientes)');
-    return;
-  }
-
-  window.cargarCajaActualEnProgreso = true;
-  set({ loading: true, error: null });
-  
-  try {
-    console.log('🔄 Ejecutando cargarCajaActual (singleton + cache)...');
-    const data = await apiRequest('/cajas/actual');
-    
-    // 🚀 ACTUALIZAR TIMESTAMP DE CACHE
-    window.ultimaActualizacionCaja = ahora;
-    
-    console.log(' === DIAGNÓSTICO CAJA ===');
-    console.log(' Datos recibidos del backend:', data);
-    
-    if (data && data.caja) {
-      const caja = data.caja;
-      console.log(' Estado caja backend:', caja.estado);
-      
-     if (caja.estado === 'PENDIENTE_CIERRE_FISICO') {
-        console.log(' CAJA PENDIENTE DETECTADA - VERIFICANDO PERMISOS');
-        
-        // Verificar si el usuario actual puede resolver la caja
-        const { usuario } = useAuthStore.getState();
-        const esResponsable = usuario?.id === caja.usuarioAperturaId;
-        const esAdmin = usuario?.rol?.toLowerCase() === 'admin';
-        
-        console.log(' Verificación permisos:', {
-          usuarioActual: usuario?.nombre,
-          rolActual: usuario?.rol,
-          responsableCaja: caja.usuarioApertura?.nombre,
-          esResponsable,
-          esAdmin
-        });
-        
-        //  PREPARAR DATOS COMPLETOS PARA EL MODAL
-        const datosCajaPendiente = {
-          id: caja.id,
-          fecha: new Date(caja.fecha).toLocaleDateString('es-VE'),
-          usuarioResponsable: caja.usuarioApertura?.nombre,
-          usuarioResponsableId: caja.usuarioAperturaId,
-          
-          //  DATOS ADICIONALES PARA CÁLCULOS
-          montoInicialBs: parseFloat(caja.montoInicialBs) || 0,
-          montoInicialUsd: parseFloat(caja.montoInicialUsd) || 0,
-          montoInicialPagoMovil: parseFloat(caja.montoInicialPagoMovil) || 0,
-          totalIngresosBs: parseFloat(caja.totalIngresosBs) || 0,
-          totalEgresosBs: parseFloat(caja.totalEgresosBs) || 0,
-          totalIngresosUsd: parseFloat(caja.totalIngresosUsd) || 0,
-          totalEgresosUsd: parseFloat(caja.totalEgresosUsd) || 0,
-          totalPagoMovil: parseFloat(caja.totalPagoMovil) || 0,
-          
-          //  TRANSACCIONES PARA CÁLCULO DETALLADO
-          transacciones: data.transacciones || [],
-          
-          //  PERMISOS CALCULADOS
-          puedeResolver: esResponsable || esAdmin,
-          esResponsable,
-          esAdmin
-        };
-        
-        if (esResponsable || esAdmin) {
-          console.log(' Usuario autorizado - Datos completos preparados');
-          useAuthStore.setState({
-            sistemaBloquedadoPorCaja: true,
-            cajaPendienteCierre: datosCajaPendiente
-          });
-        } else {
-          console.log(' Usuario SIN permisos - Bloquear sistema');
-          useAuthStore.setState({
-            sistemaBloquedadoPorCaja: true,
-            cajaPendienteCierre: datosCajaPendiente
-          });
-        }
-        
-        set({
-          cajaActual: null,
-          transacciones: [],
-          loading: false,
-          error: `Caja pendiente de cierre físico`
-        });
-        
-        console.log(' Sistema bloqueado por caja pendiente');
-        return;
-      }
-      
-      // Resto del código para caja ABIERTA...
-      set({
-        cajaActual: {
-          id: caja.id,
-          fecha_apertura: new Date(caja.fecha).toLocaleDateString('es-VE'),
-          hora_apertura: caja.horaApertura,
-          monto_inicial_bs: parseFloat(caja.montoInicialBs) || 0,
-          monto_inicial_usd: parseFloat(caja.montoInicialUsd) || 0,
-          monto_inicial_pago_movil: parseFloat(caja.montoInicialPagoMovil) || 0,
-          total_ingresos_bs: parseFloat(caja.totalIngresosBs) || 0,
-          total_egresos_bs: parseFloat(caja.totalEgresosBs) || 0,
-          total_ingresos_usd: parseFloat(caja.totalIngresosUsd) || 0,
-          total_egresos_usd: parseFloat(caja.totalEgresosUsd) || 0,
-          total_pago_movil: parseFloat(caja.totalPagoMovil) || 0,
-          usuario_apertura: caja.usuarioApertura?.nombre || 'Usuario',
-          timestamp_apertura: caja.createdAt,
-          estado: caja.estado
-        },
-        transacciones: (data.transacciones || []).map(transaccion => ({
-          ...transaccion,
-          tipo: transaccion.tipo ? transaccion.tipo.toLowerCase() : 'ingreso',
-          usuario: transaccion.usuario || 'Usuario desconocido' //  AGREGAR ESTA LÍNEA
-        })),
-        loading: false
-      });
-    } else {
-      set({
-        cajaActual: null,
-        transacciones: [],
-        loading: false
-      });
+  // NUEVO: Cargar caja actual desde backend (CORREGIDO COMPLETAMENTE) - CON SINGLETON Y CACHE MEJORADO
+  cargarCajaActual: async (forceRefresh = false) => {
+    // ✅ LOCK ATÓMICO: Si ya hay una llamada en progreso, retornar la misma promesa
+    if (cargarCajaActualLock) {
+      console.log('🔄 cargarCajaActual ya en progreso, esperando...');
+      return cargarCajaActualLock;
     }
-    
-    console.log(' === FIN DIAGNÓSTICO ===');
-    
-  } catch (error) {
-    console.error(' Error cargando caja:', error);
-    set({ 
-      loading: false, 
-      error: error.message,
-      cajaActual: null,
-      transacciones: []
-    });
-    throw error;
-  } finally {
-    // 🚀 LIMPIAR FLAG SINGLETON
-    window.cargarCajaActualEnProgreso = false;
-    console.log('✅ cargarCajaActual completado, flag singleton limpiado');
-  }
+
+    // 🚀 CACHE: Evitar llamadas innecesarias si los datos son recientes
+    const ahora = Date.now();
+    const ultimaActualizacion = window.ultimaActualizacionCaja || 0;
+    const tiempoCache = 500; // ✅ Reducido de 2000ms a 500ms para datos más frescos
+
+    if (!forceRefresh && (ahora - ultimaActualizacion) < tiempoCache) {
+      console.log('🔄 Usando cache de caja (datos recientes)');
+      return;
+    }
+
+    // ✅ CREAR PROMESA Y ASIGNARLA INMEDIATAMENTE AL LOCK
+    cargarCajaActualLock = (async () => {
+      window.cargarCajaActualEnProgreso = true;
+      set({ loading: true, error: null });
+      
+      try {
+        console.log('🔄 Ejecutando cargarCajaActual (singleton + cache)...');
+        const data = await apiRequest('/cajas/actual');
+        
+        // 🚀 ACTUALIZAR TIMESTAMP DE CACHE
+        window.ultimaActualizacionCaja = Date.now();
+        
+        console.log(' === DIAGNÓSTICO CAJA ===');
+        console.log(' Datos recibidos del backend:', data);
+        
+        if (data && data.caja) {
+          const caja = data.caja;
+          console.log(' Estado caja backend:', caja.estado);
+          
+          if (caja.estado === 'PENDIENTE_CIERRE_FISICO') {
+            console.log(' CAJA PENDIENTE DETECTADA - VERIFICANDO PERMISOS');
+            
+            // Verificar si el usuario actual puede resolver la caja
+            const { usuario } = useAuthStore.getState();
+            const esResponsable = usuario?.id === caja.usuarioAperturaId;
+            const esAdmin = usuario?.rol?.toLowerCase() === 'admin';
+            
+            console.log(' Verificación permisos:', {
+              usuarioActual: usuario?.nombre,
+              rolActual: usuario?.rol,
+              responsableCaja: caja.usuarioApertura?.nombre,
+              esResponsable,
+              esAdmin
+            });
+            
+            //  PREPARAR DATOS COMPLETOS PARA EL MODAL
+            const datosCajaPendiente = {
+              id: caja.id,
+              fecha: new Date(caja.fecha).toLocaleDateString('es-VE'),
+              usuarioResponsable: caja.usuarioApertura?.nombre,
+              usuarioResponsableId: caja.usuarioAperturaId,
+              
+              //  DATOS ADICIONALES PARA CÁLCULOS
+              montoInicialBs: parseFloat(caja.montoInicialBs) || 0,
+              montoInicialUsd: parseFloat(caja.montoInicialUsd) || 0,
+              montoInicialPagoMovil: parseFloat(caja.montoInicialPagoMovil) || 0,
+              totalIngresosBs: parseFloat(caja.totalIngresosBs) || 0,
+              totalEgresosBs: parseFloat(caja.totalEgresosBs) || 0,
+              totalIngresosUsd: parseFloat(caja.totalIngresosUsd) || 0,
+              totalEgresosUsd: parseFloat(caja.totalEgresosUsd) || 0,
+              totalPagoMovil: parseFloat(caja.totalPagoMovil) || 0,
+              
+              //  TRANSACCIONES PARA CÁLCULO DETALLADO
+              transacciones: data.transacciones || [],
+              
+              //  PERMISOS CALCULADOS
+              puedeResolver: esResponsable || esAdmin,
+              esResponsable,
+              esAdmin
+            };
+            
+            if (esResponsable || esAdmin) {
+              console.log(' Usuario autorizado - Datos completos preparados');
+              useAuthStore.setState({
+                sistemaBloquedadoPorCaja: true,
+                cajaPendienteCierre: datosCajaPendiente
+              });
+            } else {
+              console.log(' Usuario SIN permisos - Bloquear sistema');
+              useAuthStore.setState({
+                sistemaBloquedadoPorCaja: true,
+                cajaPendienteCierre: datosCajaPendiente
+              });
+            }
+          } else {
+            // ✅ LIMPIAR CAJA PENDIENTE SI LA CAJA YA NO ESTÁ PENDIENTE
+            const { cajaPendienteCierre } = useAuthStore.getState();
+            if (cajaPendienteCierre) {
+              console.log(' Caja ya no está pendiente - Limpiando estado');
+              useAuthStore.setState({
+                sistemaBloquedadoPorCaja: false,
+                cajaPendienteCierre: null
+              });
+            }
+          }
+
+        // Actualizar estado con datos recibidos
+        // ✅ NORMALIZAR TIPO DE TRANSACCIONES A MINÚSCULAS
+        const transaccionesNormalizadas = (data.transacciones || []).map(t => ({
+          ...t,
+          tipo: (t.tipo || '').toLowerCase() // Normalizar a minúsculas para que coincida con el frontend
+        }));
+
+        set({
+          cajaActual: caja,
+          transacciones: transaccionesNormalizadas,
+          loading: false,
+          error: null
+        });
+
+        console.log(' === FIN DIAGNÓSTICO ===');
+      } else {
+        set({
+          loading: false,
+          error: 'No se recibieron datos de caja'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error cargando caja actual:', error);
+      set({
+        loading: false,
+        error: error.message || 'Error cargando caja actual'
+      });
+      throw error;
+    } finally {
+      // ✅ LIMPIAR FLAGS DE PROGRESO
+      window.cargarCajaActualEnProgreso = false;
+      cargarCajaActualLock = null; // ✅ LIMPIAR LOCK
+    }
+  })();
+
+  return cargarCajaActualLock;
 },
 
  initialize: async () => {
@@ -1030,9 +1013,20 @@ updateCajaStatus: (cajaData) => {
 
         const transaccion = {
           ...transactionData.transaccion,
+          tipo: (transactionData.transaccion.tipo || '').toLowerCase(), // ✅ NORMALIZAR TIPO A MINÚSCULAS
           usuario: transactionData.transaccion.usuario || transactionData.usuario || 'Usuario desconocido',
           fecha_hora: transactionData.transaccion.fecha_hora || transactionData.transaccion.fechaHora || new Date().toISOString()
         };
+        
+        // ✅ DEDUPLICACIÓN: Verificar si la transacción ya existe
+        const transaccionExistente = estado.transacciones.find(
+          t => t.id === transaccion.id
+        );
+        
+        if (transaccionExistente) {
+          console.log(`⏭️ addTransaction: Transacción ${transaccion.id} ya existe, omitiendo`);
+          return;
+        }
         
         // Agregar la nueva transacción al principio de la lista
         set({

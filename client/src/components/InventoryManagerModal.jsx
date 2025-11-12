@@ -5,7 +5,7 @@ import {
  X, Package, Plus, Edit2, Trash2, Search, 
  Eye, DollarSign, AlertCircle, Hash, Image,
  Folder, Phone, CheckCircle, XCircle, BarChart3,
- AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings
+ AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown
 } from 'lucide-react';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
@@ -29,75 +29,88 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
  const { usuario, socket } = useAuthStore();
  const { tasaCambio } = useCajaStore();
 
- //  SUSCRIBIRSE A EVENTOS DE INVENTARIO EN TIEMPO REAL
- useEffect(() => {
-   if (!socket || !isOpen) return;
+  //  SUSCRIBIRSE A EVENTOS DE INVENTARIO EN TIEMPO REAL
+  useEffect(() => {
+    if (!socket || !isOpen) return;
 
-   const handleInventarioActualizado = async (data) => {
-     console.log(' Inventario actualizado (Socket.IO):', data.operacion);
+    const handleInventarioActualizado = async (data) => {
+      console.log('📦 Inventario actualizado (Socket.IO):', data.operacion);
 
-     //  PROTECCIÓN GLOBAL: NO actualizar si hay CUALQUIER modal crítico activo
-     // Esto evita que modales se cierren cuando otro usuario completa una venta
-     const modalProtectionKeys = [
-       'itemFormModalActive',      // Modal de edición de productos
-       'ingresoModalActive',        // Modal de venta/ingreso (con factura)
-       'productViewModalActive'     // Modal de vista de productos
-     ];
+      //  PROTECCIÓN GLOBAL: NO actualizar si hay CUALQUIER modal crítico activo
+      // Esto evita que modales se cierren cuando otro usuario completa una venta
+      const modalProtectionKeys = [
+        'itemFormModalActive',      // Modal de edición de productos
+        'ingresoModalActive',        // Modal de venta/ingreso (con factura)
+        'productViewModalActive'     // Modal de vista de productos
+      ];
 
-     const anyModalActive = modalProtectionKeys.some(key =>
-       sessionStorage.getItem(key) === 'true'
-     );
+      const anyModalActive = modalProtectionKeys.some(key =>
+        sessionStorage.getItem(key) === 'true'
+      );
 
-     if (anyModalActive) {
-       const activeModal = modalProtectionKeys.find(key =>
-         sessionStorage.getItem(key) === 'true'
-       );
-       console.log(` Modal activo (${activeModal}) - Posponiendo actualización de inventario`);
+      if (anyModalActive) {
+        const activeModal = modalProtectionKeys.find(key =>
+          sessionStorage.getItem(key) === 'true'
+        );
+        console.log(`⚠️ Modal activo (${activeModal}) - Posponiendo actualización de inventario`);
 
-       // Marcar que hay una actualización pendiente
-       sessionStorage.setItem('inventarioPendienteActualizar', 'true');
-       return;
-     }
-
-     // Actualizar inventario normalmente si no hay modales activos
-     await obtenerInventario();
-
-     // Toast solo si es de otro usuario
-     if (data.usuario !== usuario?.nombre) {
-        const message = `${data.usuario}: ${data.producto?.descripcion || 'procesó una venta'}`;
-        switch (data.operacion) {
-          case 'CREAR':
-            toast.success(message, { duration: 3000 });
-            break;
-          case 'EDITAR':
-            toast.info(message, { duration: 3000 });
-            break;
-          case 'ELIMINAR':
-            toast.warning(message, { duration: 3000 });
-            break;
-          case 'VENTA_PROCESADA':
-            toast.info(message, { duration: 3000 });
-            break;
-          default:
-            toast(message, { duration: 3000 });
-            break;
-        }
+        // Marcar que hay una actualización pendiente
+        sessionStorage.setItem('inventarioPendienteActualizar', 'true');
+        return;
       }
-   };
 
-   socket.on('inventario_actualizado', handleInventarioActualizado);
-   socket.on('venta_procesada', handleInventarioActualizado);
+      // Actualizar inventario normalmente si no hay modales activos
+      await obtenerInventario();
 
-   return () => {
-     socket.off('inventario_actualizado', handleInventarioActualizado);
-     socket.off('venta_procesada', handleInventarioActualizado);
-   };
- }, [socket, isOpen, obtenerInventario, usuario]);
+      // Toast solo si es de otro usuario
+      if (data.usuario !== usuario?.nombre) {
+         const message = `${data.usuario}: ${data.producto?.descripcion || 'procesó una venta'}`;
+         switch (data.operacion) {
+           case 'CREAR':
+             toast.success(message, { duration: 3000 });
+             break;
+           case 'EDITAR':
+             toast.info(message, { duration: 3000 });
+             break;
+           case 'ELIMINAR':
+             toast.warning(message, { duration: 3000 });
+             break;
+           case 'VENTA_PROCESADA':
+             toast.info(`📦 ${data.producto?.descripcion}: Stock actualizado (${data.cantidad} unidades)`, { duration: 3000 });
+             break;
+           case 'STOCK_DEVUELTO':
+             toast.success(`↩️ ${data.producto?.descripcion}: Stock devuelto (+${data.cantidad} unidades)`, { duration: 3000 });
+             break;
+           default:
+             toast(message, { duration: 3000 });
+             break;
+         }
+       }
+    };
+
+    // ✅ ESCUCHAR TODOS LOS EVENTOS QUE AFECTAN EL INVENTARIO
+    socket.on('inventario_actualizado', handleInventarioActualizado);
+    socket.on('venta_procesada', handleInventarioActualizado);
+    socket.on('nueva_transaccion', async (data) => {
+      // Si es una transacción de servicio técnico que puede afectar inventario
+      if (data.tipo === 'servicio_tecnico' && data.transaccion?.servicioTecnicoId) {
+        console.log('📦 Transacción de servicio técnico detectada, actualizando inventario...');
+        await obtenerInventario();
+      }
+    });
+
+    return () => {
+      socket.off('inventario_actualizado', handleInventarioActualizado);
+      socket.off('venta_procesada', handleInventarioActualizado);
+      socket.off('nueva_transaccion');
+    };
+  }, [socket, isOpen, obtenerInventario, usuario]);
 
  // Estados para la gestión de la lista
  const [searchTerm, setSearchTerm] = useState('');
  const [filterType, setFilterType] = useState('todos');
  const [hideInactive, setHideInactive] = useState(false);
+ const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
 
  // Estados para modales
  const [showItemForm, setShowItemForm] = useState(false);
@@ -331,6 +344,24 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
    }
  };
 
+ // Función para obtener label del tipo
+ const getLabelTipo = (tipo) => {
+   switch(tipo) {
+     case 'producto': return 'Productos';
+     case 'servicio': return 'Servicios';
+     case 'electrobar': return 'Electrobar';
+     default: return 'Todos';
+   }
+ };
+
+ // Opciones del filtro con iconos
+ const filterOptions = [
+   { value: 'todos', label: 'Todos', icon: Package, color: 'text-gray-600' },
+   { value: 'producto', label: 'Productos', icon: ShoppingCart, color: 'text-blue-600' },
+   { value: 'servicio', label: 'Servicios', icon: Wrench, color: 'text-green-600' },
+   { value: 'electrobar', label: 'Electrobar', icon: Coffee, color: 'text-orange-600' }
+ ];
+
  if (!isOpen) return null;
 
  return (
@@ -363,40 +394,39 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
          onClick={(e) => e.stopPropagation()} //  Prevenir propagación de clics
        >
 
-         {/* Header mejorado con estadísticas compactas - RESPONSIVE */}
+         {/* Header mejorado con estadísticas compactas - UNA SOLA FILA */}
          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 flex-shrink-0">
            <div className="px-3 sm:px-6 py-3 sm:py-4 text-white">
-             <div className="flex items-center justify-between mb-3 sm:mb-0">
-               <div className="flex items-center space-x-2 sm:space-x-4">
+             <div className="flex items-center justify-between gap-3 sm:gap-4">
+               {/* Lado izquierdo: Título */}
+               <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
                  <div className="bg-white/20 p-2 sm:p-3 rounded-lg sm:rounded-xl">
-                   <Package className="h-5 w-5 sm:h-7 sm:w-7" />
+                   <Package className="h-5 w-5 sm:h-6 sm:w-6" />
                  </div>
                  <div>
-                   <h2 className="text-lg sm:text-2xl font-bold">Gestión de Inventario</h2>
-                   <div className="text-xs sm:text-sm text-indigo-100 mt-0.5 sm:mt-1 hidden sm:block">
+                   <h2 className="text-base sm:text-xl font-bold">Gestión de Inventario</h2>
+                   <div className="text-xs text-indigo-100 mt-0.5 hidden sm:block">
                      Administra productos, servicios y electrobar
                    </div>
                  </div>
                </div>
-             </div>
 
-               {/*  ESTADÍSTICAS COMPACTAS EN EL HEADER - RESPONSIVE */}
-               <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-4 sm:justify-end mt-3 sm:mt-0">
-
-                 {/* Total Items - Compacto - RESPONSIVE */}
-                 <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/20">
-                   <div className="flex items-center space-x-2 sm:space-x-3">
-                     <Package className="h-4 w-4 sm:h-5 sm:w-5 text-white/80" />
+               {/* Lado derecho: Estadísticas y botón cerrar - UNA SOLA FILA */}
+               <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
+                 {/* Total Items - Compacto */}
+                 <div className="bg-white/10 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 border border-white/20 flex-shrink-0">
+                   <div className="flex items-center space-x-1.5 sm:space-x-2">
+                     <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/80" />
                      <div>
-                       <div className="text-lg sm:text-xl font-bold">{stats.total}</div>
-                       <div className="text-[10px] sm:text-xs text-white/70">Items</div>
+                       <div className="text-sm sm:text-base font-bold">{stats.total}</div>
+                       <div className="text-[9px] sm:text-[10px] text-white/70">Items</div>
                      </div>
                    </div>
                  </div>
 
-                 {/* Valor Total Rotativo - Compacto - RESPONSIVE */}
+                 {/* Valor Total Rotativo - Compacto */}
                  <div
-                   className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/20 cursor-pointer hover:bg-white/20 transition-all group"
+                   className="bg-white/10 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 border border-white/20 cursor-pointer hover:bg-white/20 transition-all group flex-shrink-0"
                    onClick={() => {
                      setIsRotating(true);
                      setTimeout(() => {
@@ -409,10 +439,10 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                      }, 150);
                    }}
                  >
-                   <div className="flex items-center space-x-2 sm:space-x-3">
-                     <DollarSign className={`h-4 w-4 sm:h-5 sm:w-5 text-white/80 transition-transform duration-300 ${isRotating ? 'rotate-180' : ''}`} />
+                   <div className="flex items-center space-x-1.5 sm:space-x-2">
+                     <DollarSign className={`h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/80 transition-transform duration-300 ${isRotating ? 'rotate-180' : ''}`} />
                      <div>
-                       <div className="text-lg sm:text-xl font-bold">
+                       <div className="text-sm sm:text-base font-bold">
                          ${(() => {
                            switch(valorTotalType) {
                              case 'productos': return stats.valorTotalProductos?.toFixed(0) || '0';
@@ -421,7 +451,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                            }
                          })()}
                        </div>
-                       <div className="text-[10px] sm:text-xs text-white/70 flex items-center space-x-1">
+                       <div className="text-[9px] sm:text-[10px] text-white/70 flex items-center space-x-1">
                          <span>
                            {(() => {
                              switch(valorTotalType) {
@@ -431,7 +461,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                              }
                            })()}
                          </span>
-                         <svg className="w-2 h-2 sm:w-3 sm:h-3 opacity-60 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <svg className="w-2 h-2 opacity-60 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                          </svg>
                        </div>
@@ -439,48 +469,47 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                    </div>
                  </div>
 
-                 {/* Stock Bajo - Compacto - RESPONSIVE */}
-                 <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/20">
-                   <div className="flex items-center space-x-2 sm:space-x-3">
-                     <AlertCircle className={`h-4 w-4 sm:h-5 sm:w-5 ${itemsStockBajo.length > 0 ? 'text-red-300' : 'text-green-300'}`} />
+                 {/* Stock Bajo - Compacto */}
+                 <div className="bg-white/10 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 border border-white/20 flex-shrink-0">
+                   <div className="flex items-center space-x-1.5 sm:space-x-2">
+                     <AlertCircle className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${itemsStockBajo.length > 0 ? 'text-red-300' : 'text-green-300'}`} />
                      <div>
-                       <div className="text-lg sm:text-xl font-bold">{itemsStockBajo.length}</div>
-                       <div className="text-[10px] sm:text-xs text-white/70">Stock</div>
+                       <div className="text-sm sm:text-base font-bold">{itemsStockBajo.length}</div>
+                       <div className="text-[9px] sm:text-[10px] text-white/70">Stock</div>
                      </div>
                    </div>
                  </div>
 
-                 {/* Inactivos - Compacto - RESPONSIVE */}
-                 <div className="bg-white/10 backdrop-blur-sm rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-3 border border-white/20">
-                   <div className="flex items-center space-x-2 sm:space-x-3">
-                     <X className="h-4 w-4 sm:h-5 sm:w-5 text-red-300" />
+                 {/* Inactivos - Compacto */}
+                 <div className="bg-white/10 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 border border-white/20 flex-shrink-0">
+                   <div className="flex items-center space-x-1.5 sm:space-x-2">
+                     <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-300" />
                      <div>
-                       <div className="text-lg sm:text-xl font-bold">
+                       <div className="text-sm sm:text-base font-bold">
                          {inventario.filter(item => item.activo === false).length}
                        </div>
-                       <div className="text-[10px] sm:text-xs text-white/70 hidden sm:block">Inactivos</div>
+                       <div className="text-[9px] sm:text-[10px] text-white/70 hidden sm:block">Inactivos</div>
                      </div>
                    </div>
                  </div>
 
-                 {/* Botón cerrar - RESPONSIVE */}
+                 {/* Botón cerrar */}
                  <button
                    onClick={handleClose}
-                   className="bg-white/20 hover:bg-white/30 p-2 sm:p-3 rounded-lg sm:rounded-xl transition-colors group col-span-2 sm:col-span-1 sm:ml-4"
+                   className="bg-white/20 hover:bg-white/30 p-1.5 sm:p-2 rounded-lg transition-colors group flex-shrink-0"
                  >
-                   <X className="h-5 w-5 sm:h-6 sm:w-6 group-hover:rotate-90 transition-transform mx-auto" />
+                   <X className="h-4 w-4 sm:h-5 sm:w-5 group-hover:rotate-90 transition-transform" />
                  </button>
                </div>
              </div>
            </div>
+         </div>
 
          {/* Contenido principal mejorado - Ocupar espacio restante - RESPONSIVE */}
          <div className="flex-1 flex flex-col overflow-hidden">
 
            {/* Controles superiores - RESPONSIVE */}
            <div className="flex-shrink-0 p-3 sm:p-6 bg-white border-b border-gray-200">
-             <div className="flex flex-col gap-3 sm:gap-4">
-
                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                  {/* Search mejorado - RESPONSIVE */}
                  <div className="relative flex-1">
@@ -494,17 +523,58 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                    />
                  </div>
 
-                 {/* Filtros mejorados - RESPONSIVE */}
-                 <select
-                   value={filterType}
-                   onChange={(e) => setFilterType(e.target.value)}
-                   className="px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm font-medium"
+              {/* Dropdown de filtros con iconos - RESPONSIVE */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                  className="px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm font-medium flex items-center space-x-2 min-w-[140px] sm:min-w-[160px] hover:bg-gray-50 transition-colors"
                  >
-                   <option value="todos">Todos</option>
-                   <option value="producto">Productos</option>
-                   <option value="servicio">Servicios</option>
-                   <option value="electrobar">Electrobar</option>
-                 </select>
+                  <span className={`flex items-center space-x-2 flex-1 ${filterOptions.find(opt => opt.value === filterType)?.color || 'text-gray-600'}`}>
+                    {(() => {
+                      const selectedOption = filterOptions.find(opt => opt.value === filterType);
+                      const IconComponent = selectedOption?.icon || Package;
+                      return <IconComponent className="h-4 w-4" />;
+                    })()}
+                    <span>{getLabelTipo(filterType)}</span>
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isFilterDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown menu */}
+                {isFilterDropdownOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-[5]" 
+                      onClick={() => setIsFilterDropdownOpen(false)}
+                    />
+                    <div className="absolute z-[15] mt-1 w-full bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-lg overflow-hidden">
+                      {filterOptions.map((option) => {
+                        const IconComponent = option.icon;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              setFilterType(option.value);
+                              setIsFilterDropdownOpen(false);
+                            }}
+                            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base flex items-center space-x-2 hover:bg-gray-50 transition-colors ${
+                              filterType === option.value ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700'
+                            }`}
+                          >
+                            <IconComponent className={`h-4 w-4 ${option.color}`} />
+                            <span className="flex-1 text-left">{option.label}</span>
+                            {filterType === option.value && (
+                              <CheckCircle className="h-4 w-4 text-indigo-600" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
 
                  <button
                      onClick={() => setHideInactive(!hideInactive)}
@@ -521,14 +591,12 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                        <CheckCircle className="h-5 w-5" />
                      )}
                    </button>
-               </div>
 
-               {/* Botones de acción mejorados - RESPONSIVE */}
+              {/* Botones de acción - EN LA MISMA FILA */}
                {console.log(' [InventoryManagerModal] Renderizando botones de acción. Usuario:', usuario)}
-               <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
                  {/* Solo Admin puede agregar items */}
                  {console.log(' [InventoryManagerModal] Verificando rol para botón Agregar:', usuario?.rol)}
-                 {usuario?.rol === 'admin' ? (
+              {usuario?.rol === 'admin' && (
                    <button
                      onClick={(e) => {
                        console.log(' [InventoryManagerModal] CLIC en botón Agregar Item detectado!');
@@ -540,8 +608,6 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                      <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                      <span>Agregar Item</span>
                    </button>
-                 ) : (
-                   console.log(' [InventoryManagerModal] Usuario no es admin, botón NO renderizado. Rol:', usuario?.rol)
                  )}
 
                  {/* Admin y Supervisor pueden cargar items */}
@@ -554,7 +620,6 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                      <span>Cargar Items</span>
                    </button>
                  )}
-               </div>
              </div>
            </div>
 

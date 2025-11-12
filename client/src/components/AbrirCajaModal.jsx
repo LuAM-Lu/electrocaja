@@ -1,5 +1,6 @@
 // components/AbrirCajaModal.jsx (COMPLETO CON ESTILO CERRAR CAJA)
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Unlock, User, Calendar, Clock, Smartphone, CheckCircle, AlertCircle, Camera, CameraOff, ChevronDown, ChevronUp, TrendingUp, Coins, DollarSign } from 'lucide-react';
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
@@ -208,7 +209,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
 
   //  MANEJAR ENVÍO DEL FORMULARIO MEJORADO
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     
     const montoBs = parseFloat(montoInicialBs) || 0;
     const montoUsd = parseFloat(montoInicialUsd) || 0;
@@ -315,27 +316,27 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-70">
-      <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full mx-4 overflow-hidden">
+  const modalContent = (
+    <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-[100] p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[95vh] flex flex-col my-auto overflow-hidden">
         
-        {/*  HEADER MEJORADO */}
-        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 relative overflow-hidden">
+        {/*  HEADER MEJORADO - TODO EN UNA FILA - FIXED */}
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 relative overflow-hidden flex-shrink-0 rounded-t-xl">
           {/* Efecto de brillo */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 animate-shimmer"></div>
           
           <div className="px-6 py-4 text-white relative">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-between gap-4">
+              {/* LADO IZQUIERDO: Título y cámara */}
+              <div className="flex items-center space-x-3 flex-shrink-0">
                 <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
                   <Unlock className="h-6 w-6" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">Abrir Caja del Día</h2>
-                  <div className="text-sm text-emerald-100 flex items-center justify-between">
+                  <div className="text-sm text-emerald-100 flex items-center space-x-2">
                     <span>Iniciar operaciones</span>
                     {/*  INDICADORES DE CONECTIVIDAD */}
-                    <div className="flex items-center space-x-1">
                       {cameraStatus === 'ready' && (
                         <div className="flex items-center space-x-1 bg-white/20 px-2 py-0.5 rounded-full">
                           <Camera className="h-3 w-3" />
@@ -348,39 +349,29 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
                           <span className="text-xs">Sin cámara</span>
                         </div>
                       )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={handleClose}
-                className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-              >
-                <X className="h-6 w-6" />
-              </button>
             </div>
           </div>
         </div>
 
-        {/*  INFORMACIÓN DEL USUARIO MEJORADA */}
-        <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-b border-emerald-200 px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
-              <User className="h-6 w-6 text-white" />
+              {/* CENTRO: Información del usuario */}
+              <div className="flex items-center space-x-3 flex-1 justify-center">
+                <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+                  <User className="h-5 w-5 text-white" />
             </div>
-            <div className="flex-1">
-              <div className="font-bold text-emerald-900 text-lg">
+                <div className="text-sm">
+                  <div className="font-semibold text-white">
                 {usuario?.nombre || 'Usuario'}
               </div>
-              <div className="text-sm text-emerald-700 font-medium">
+                  <div className="text-xs text-emerald-100">
                 {usuario?.rol?.toUpperCase()} • {usuario?.sucursal}
               </div>
-              <div className="flex items-center space-x-4 text-xs text-emerald-600 mt-1">
-                <div className="flex items-center space-x-1 bg-white/50 px-2 py-1 rounded-full">
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-emerald-100">
+                  <div className="flex items-center space-x-1 bg-white/20 px-2 py-1 rounded-full">
                   <Calendar className="h-3 w-3" />
                   <span>{new Date().toLocaleDateString('es-VE')}</span>
                 </div>
-                <div className="flex items-center space-x-1 bg-white/50 px-2 py-1 rounded-full">
+                  <div className="flex items-center space-x-1 bg-white/20 px-2 py-1 rounded-full">
                   <Clock className="h-3 w-3" />
                   <span>{new Date().toLocaleTimeString('es-VE', { 
                     hour: '2-digit', 
@@ -388,12 +379,21 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
                   })}</span>
                 </div>
               </div>
+              </div>
+
+              {/* LADO DERECHO: Botón cerrar */}
+              <button
+                onClick={handleClose}
+                className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 flex-shrink-0"
+              >
+                <X className="h-6 w-6" />
+              </button>
             </div>
           </div>
         </div>
 
-        {/*  FORMULARIO CON CARDS ELEGANTES (ESTILO CERRAR CAJA) */}
-        <form onSubmit={handleSubmit} className="p-6">
+        {/*  CUERPO DEL FORMULARIO CON SCROLL */}
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1">
           
           {/*  RESUMEN PREVIO */}
           <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-5 mb-6 border border-emerald-200">
@@ -536,21 +536,6 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          {/*  INFORMACIÓN WHATSAPP MEJORADA */}
-          <div className="bg-blue-50 border-l-4 border-blue-400 rounded-lg p-4 mb-6">
-            <div className="flex items-start space-x-3">
-              <Smartphone className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <div className="font-semibold text-blue-800 mb-1">Notificación Automática</div>
-                <div className="text-sm text-blue-700 space-y-1">
-                  <div>• Mensaje WhatsApp al supervisor: +584120552931</div>
-                  <div>• Evidencia fotográfica automática {cameraStatus === 'ready' ? '' : ''}</div>
-                  <div>• Registro en audit trail del sistema</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* INDICADOR DE PROGRESO MEJORADO */}
           {(loading || enviandoWhatsApp) && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
@@ -577,8 +562,10 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
               </div>
             </div>
           )}
+        </form>
 
-          {/*  BOTONES MEJORADOS */}
+        {/*  FOOTER CON BOTONES - FIXED */}
+        <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex-shrink-0 rounded-b-xl">
           <div className="flex space-x-3">
             <button
               type="button"
@@ -589,7 +576,8 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
               Cancelar
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={loading || enviandoWhatsApp}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-all disabled:opacity-50 font-medium shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
             >
@@ -611,7 +599,7 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
               )}
             </button>
           </div>
-        </form>
+        </div>
 
         {/*  ELEMENTOS OCULTOS PARA CÁMARA */}
         <video
@@ -639,6 +627,8 @@ const AbrirCajaModal = ({ isOpen, onClose }) => {
       `}</style>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default AbrirCajaModal;

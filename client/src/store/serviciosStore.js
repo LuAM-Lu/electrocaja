@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { api, apiWithRetry, testConnection } from '../config/api.js';
 import toast from '../utils/toast.jsx';
+import { imprimirTicketServicio } from '../utils/printUtils.js';
 
 // ===================================
 //  SERVICIOS TÉCNICOS STORE
@@ -54,7 +55,6 @@ const useServiciosStore = create()(
         set({ loading: true, error: null });
 
         try {
-          console.log('📋 Obteniendo servicios desde API');
 
           // Construir query params
           const params = new URLSearchParams();
@@ -76,7 +76,6 @@ const useServiciosStore = create()(
               conectado: true
             });
 
-            console.log(`✅ ${servicios.length} servicios cargados desde API`);
           }
         } catch (error) {
           console.error('❌ Error al obtener servicios:', error);
@@ -103,7 +102,6 @@ const useServiciosStore = create()(
         set({ loading: true, error: null });
 
         try {
-          console.log(`🔍 Obteniendo servicio ${id} desde API`);
           const response = await apiWithRetry(() => api.get(`/servicios/${id}`));
 
           if (response.data.success) {
@@ -115,7 +113,6 @@ const useServiciosStore = create()(
               conectado: true
             });
 
-            console.log(`✅ Servicio ${id} cargado`);
             return servicio;
           }
         } catch (error) {
@@ -146,8 +143,6 @@ const useServiciosStore = create()(
         set({ loading: true, error: null });
 
         try {
-          console.log('📝 Creando servicio en API');
-          console.log('📋 Datos enviados:', JSON.stringify(datos, null, 2));
           const response = await apiWithRetry(() => api.post('/servicios', datos));
 
           if (response.data.success) {
@@ -160,12 +155,11 @@ const useServiciosStore = create()(
               conectado: true
             }));
 
-            toast.success('Servicio creado exitosamente', {
-              duration: 3000,
-              position: 'top-right'
-            });
-
-            console.log(`✅ Servicio ${nuevoServicio.numeroServicio} creado`);
+            // ✅ ELIMINADO: toast.success - Ahora se maneja con modal premium de procesamiento
+            
+            // 🆕 NO IMPRIMIR AUTOMÁTICAMENTE - Se mostrará modal de acciones
+            // El modal de acciones permitirá al usuario elegir si imprimir o enviar WhatsApp
+            
             return nuevoServicio;
           }
         } catch (error) {
@@ -197,7 +191,6 @@ const useServiciosStore = create()(
         set({ loading: true, error: null });
 
         try {
-          console.log(`📝 Actualizando servicio ${id}`);
           const response = await apiWithRetry(() => api.put(`/servicios/${id}`, datos));
 
           if (response.data.success) {
@@ -219,7 +212,6 @@ const useServiciosStore = create()(
               position: 'top-right'
             });
 
-            console.log(`✅ Servicio ${id} actualizado`);
             return servicioActualizado;
           }
         } catch (error) {
@@ -249,7 +241,6 @@ const useServiciosStore = create()(
         }
 
         try {
-          console.log(`🔄 Cambiando estado del servicio ${id} a ${nuevoEstado}`);
           const response = await apiWithRetry(() =>
             api.patch(`/servicios/${id}/estado`, {
               estado: nuevoEstado,
@@ -270,13 +261,39 @@ const useServiciosStore = create()(
               conectado: true
             }));
 
-            toast.success(`Estado cambiado a ${nuevoEstado}`, {
-              duration: 3000,
-              position: 'top-right'
-            });
+            // 🆕 Mostrar toast según el resultado del WhatsApp
+            // Solo mostrar toast si el estado es LISTO_RETIRO (para evitar duplicados)
+            if (nuevoEstado === 'LISTO_RETIRO') {
+              if (response.data.whatsappEnviado) {
+                toast.success(`✅ Estado cambiado a ${nuevoEstado}. ${response.data.mensajeWhatsApp || 'WhatsApp enviado exitosamente al cliente'}`, {
+                  duration: 5000,
+                  position: 'top-right'
+                });
+              } else if (response.data.mensajeWhatsApp) {
+                toast.warning(`Estado cambiado a ${nuevoEstado}. ${response.data.mensajeWhatsApp}`, {
+                  duration: 5000,
+                  position: 'top-right'
+                });
+              } else {
+                toast.success(`Estado cambiado a ${nuevoEstado}`, {
+                  duration: 3000,
+                  position: 'top-right'
+                });
+              }
+            } else {
+              // Para otros estados, mostrar toast normal
+              toast.success(`Estado cambiado a ${nuevoEstado}`, {
+                duration: 3000,
+                position: 'top-right'
+              });
+            }
 
-            console.log(`✅ Estado del servicio ${id} actualizado`);
-            return servicioActualizado;
+            // 🆕 Retornar también la información del WhatsApp para que el componente pueda usarla
+            return {
+              ...servicioActualizado,
+              whatsappEnviado: response.data.whatsappEnviado,
+              mensajeWhatsApp: response.data.mensajeWhatsApp
+            };
           }
         } catch (error) {
           console.error('❌ Error al cambiar estado:', error);
@@ -301,7 +318,6 @@ const useServiciosStore = create()(
         }
 
         try {
-          console.log(`💰 Registrando pago para servicio ${id}`);
           const response = await apiWithRetry(() =>
             api.post(`/servicios/${id}/pagos`, datosPago)
           );
@@ -324,7 +340,6 @@ const useServiciosStore = create()(
               position: 'top-right'
             });
 
-            console.log(`✅ Pago registrado para servicio ${id}`);
             return servicioActualizado;
           }
         } catch (error) {
@@ -350,7 +365,6 @@ const useServiciosStore = create()(
         }
 
         try {
-          console.log(`📝 Agregando nota al servicio ${id}`);
           const response = await apiWithRetry(() =>
             api.post(`/servicios/${id}/notas`, nota)
           );
@@ -361,7 +375,6 @@ const useServiciosStore = create()(
               position: 'top-right'
             });
 
-            console.log(`✅ Nota agregada al servicio ${id}`);
 
             // Recargar el servicio actual si es el mismo
             if (get().servicioActual?.id === id) {
@@ -391,7 +404,6 @@ const useServiciosStore = create()(
         if (!conectado) return;
 
         try {
-          console.log('👨‍🔧 Cargando técnicos desde API');
           const response = await apiWithRetry(() => api.get('/servicios/tecnicos'));
 
           if (response.data.success) {
@@ -402,7 +414,6 @@ const useServiciosStore = create()(
               conectado: true
             });
 
-            console.log(`✅ ${tecnicos.length} técnicos cargados`);
             return tecnicos;
           }
         } catch (error) {
@@ -426,7 +437,6 @@ const useServiciosStore = create()(
         }
 
         try {
-          console.log(`🗑️ Eliminando servicio ${id}`);
           const response = await apiWithRetry(() => api.delete(`/servicios/${id}`, {
             data: {
               motivoEliminacion: motivoEliminacion?.trim() || '',
@@ -446,7 +456,6 @@ const useServiciosStore = create()(
               position: 'top-right'
             });
 
-            console.log(`✅ Servicio ${id} eliminado`);
           }
         } catch (error) {
           console.error('❌ Error al eliminar servicio:', error);

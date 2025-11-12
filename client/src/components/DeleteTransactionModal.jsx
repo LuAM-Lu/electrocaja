@@ -18,7 +18,10 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
   const [adminVerificado, setAdminVerificado] = useState(null);
   const { aumentarStock } = useInventarioStore();
 
-  // Solo admins pueden acceder
+  // Primero verificar si el modal está abierto
+  if (!isOpen || !transaccion) return null;
+
+  // Luego verificar permisos solo si el modal está abierto
   if (usuario?.rol !== 'admin') {
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -38,8 +41,6 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
       </div>
     );
   }
-
-  if (!isOpen || !transaccion) return null;
 
   // Función: Formatear bolívares redondeados
   const formatBolivares = (amount) => {

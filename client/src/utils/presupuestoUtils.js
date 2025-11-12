@@ -47,9 +47,11 @@ const cargarLogo = () => {
  });
 };
 
-// CALCULAR TOTALES DEL PRESUPUESTO
-const calcularTotales = (presupuestoData, tasaCambio) => {
- const subtotal = presupuestoData.items.reduce((sum, item) => {
+// CALCULAR TOTALES DEL PRESUPUESTO - IVA DESGLOSADO (INCLUIDO EN EL PRECIO)
+export const calcularTotales = (presupuestoData, tasaCambio) => {
+ // ✅ CALCULAR SUBTOTAL TOTAL (PRECIO CON IVA INCLUIDO)
+ // Si el precio es $10, ese $10 ya incluye el IVA
+ const subtotalConIva = presupuestoData.items.reduce((sum, item) => {
    return sum + (item.cantidad * item.precio_unitario);
  }, 0);
 
@@ -57,26 +59,37 @@ const calcularTotales = (presupuestoData, tasaCambio) => {
  const tipoDescuento = presupuestoData.tipoDescuento || 'porcentaje';
  const impuesto = presupuestoData.impuestos || 16;
 
+ // Descuento en USD (sobre el subtotal con IVA)
  let descuentoUsd;
  if (tipoDescuento === 'porcentaje') {
-   descuentoUsd = (subtotal * descuentoGlobal) / 100;
+   descuentoUsd = (subtotalConIva * descuentoGlobal) / 100;
  } else {
-   descuentoUsd = descuentoGlobal / tasaCambio;
+   descuentoUsd = descuentoGlobal / tasaCambio; // Convertir de Bs a USD
  }
  
- const baseImponible = subtotal - descuentoUsd;
- const ivaUsd = (baseImponible * impuesto) / 100;
- const totalUsd = baseImponible + ivaUsd;
+ // Subtotal después del descuento (aún con IVA incluido)
+ const subtotalDespuesDescuento = subtotalConIva - descuentoUsd;
+ 
+ // ✅ DESGLOSAR IVA DEL SUBTOTAL (el IVA está incluido en el precio)
+ // Si el subtotal es $10, el IVA incluido es: $10 * (16/116) = $1.38
+ // La base imponible es: $10 - $1.38 = $8.62
+ const ivaUsd = (subtotalDespuesDescuento * impuesto) / (100 + impuesto);
+ const baseImponible = subtotalDespuesDescuento - ivaUsd;
+ 
+ // Total en USD (igual al subtotal después del descuento, ya que el IVA está incluido)
+ const totalUsd = subtotalDespuesDescuento;
+ 
+ // Total en Bs
  const totalBs = totalUsd * tasaCambio;
 
  return {
-   subtotal,
+   subtotal: subtotalConIva, // Subtotal original con IVA incluido
    descuentoUsd,
    descuentoBs: descuentoUsd * tasaCambio,
-   baseImponible,
-   ivaUsd,
+   baseImponible, // Base imponible después de desglosar IVA
+   ivaUsd, // IVA desglosado (incluido en el precio)
    ivaBs: ivaUsd * tasaCambio,
-   totalUsd,
+   totalUsd, // Total = subtotal después del descuento (IVA ya incluido)
    totalBs,
    impuesto,
    tipoDescuento,
@@ -101,254 +114,355 @@ export const generarPDFPresupuesto = async (presupuestoData, tasaCambio) => {
      month: '2-digit',
      year: 'numeric'
    });
+   
+   const horaActual = new Date().toLocaleTimeString('es-ES', {
+     hour: '2-digit',
+     minute: '2-digit'
+   });
 
-   // HEADER COMPACTO Y ELEGANTE
-   // Gradiente de fondo
-   doc.setFillColor(15, 23, 42);
+   // HEADER PREMIUM CON PALETA AZUL - IGUAL A LA VISTA PREVIA
+   // Gradiente azul oscuro a azul medio
+   doc.setFillColor(30, 58, 138); // Azul oscuro (blue-800)
+   doc.rect(0, 0, pageWidth, 45, 'F');
+   
+   doc.setFillColor(37, 99, 235); // Azul medio (blue-600)
+   doc.rect(0, 0, pageWidth, 38, 'F');
+   
+   doc.setFillColor(59, 130, 246); // Azul (blue-500)
    doc.rect(0, 0, pageWidth, 35, 'F');
    
-   doc.setFillColor(30, 41, 59);
-   doc.rect(0, 0, pageWidth, 25, 'F');
+   // Línea azul claro elegante (arriba)
+   doc.setFillColor(147, 197, 253); // Azul claro (blue-300)
+   doc.rect(0, 0, pageWidth, 2, 'F');
    
-   // Línea dorada elegante
-   doc.setFillColor(234, 179, 8);
-   doc.rect(0, 32, pageWidth, 3, 'F');
-   
-   // Logo de alta calidad - más grande
+   // Logo de alta calidad - más grande (igual a vista previa)
    if (logoData) {
-     doc.addImage(logoData, 'PNG', 12, 5, 25, 25);
+     doc.addImage(logoData, 'PNG', 15, 8, 20, 20);
    }
    
-   // Información de empresa - compacta y elegante
+   // Información de empresa - igual a vista previa (con límites de ancho)
    doc.setTextColor(255, 255, 255);
    doc.setFont('helvetica', 'bold');
-   doc.setFontSize(16);
-   doc.text('ELECTRO SHOP MORANDIN C.A.', logoData ? 45 : 15, 15);
+   doc.setFontSize(18);
+   const empresaNombre = doc.splitTextToSize('ELECTRO SHOP MORANDIN C.A.', pageWidth - (logoData ? 60 : 30));
+   doc.text(empresaNombre, logoData ? 40 : 15, 18);
    
-   doc.setFontSize(8);
+   doc.setFontSize(9);
    doc.setFont('helvetica', 'normal');
-   doc.text('RIF: J-405903333 | Especialistas en Tecnologia', logoData ? 45 : 15, 22);
-   doc.text('Carrera 5ta, frente a la plaza Miranda | WhatsApp: +58 2572511282', logoData ? 45 : 15, 24);
+   doc.setTextColor(255, 255, 255);
+   doc.setGState(doc.GState({opacity: 0.9}));
+   const rifText = doc.splitTextToSize('RIF: J-405903333 | Especialistas en Tecnologia', pageWidth - (logoData ? 60 : 30));
+   doc.text(rifText, logoData ? 40 : 15, 25);
+   const direccionText = doc.splitTextToSize('Carrera 5ta, frente a la plaza Miranda | WhatsApp: +58 2572511282', pageWidth - (logoData ? 60 : 30));
+   doc.text(direccionText, logoData ? 40 : 15, 30);
    
-   // Información de contacto compacta
-   doc.setFontSize(7);
-   //doc.text('Carrera 5ta, frente a la plaza Miranda | WhatsApp: +58 2572511282', pageWidth - 5, 12, { align: 'right' });
-   doc.text('electroshopgre@gmail.com | @electroshopgre', pageWidth - 5, 18, { align: 'right' });
-
-   let yPos = 50;
-   
-   // TÍTULO COMPACTO DEL PRESUPUESTO
-   doc.setFillColor(248, 250, 252);
-   doc.rect(15, yPos - 3, pageWidth - 30, 18, 'F');
-   
-   // Línea lateral dorada
-   doc.setFillColor(234, 179, 8);
-   doc.rect(15, yPos - 3, 4, 18, 'F');
-   
-   doc.setTextColor(15, 23, 42);
-   doc.setFont('helvetica', 'bold');
-   doc.setFontSize(16);
-   doc.text(`PRESUPUESTO ${presupuestoData.numero}`, 25, yPos + 6);
-   
-   // Fechas compactas
    doc.setFontSize(8);
+   doc.setGState(doc.GState({opacity: 0.75}));
+   const emailText = doc.splitTextToSize('electroshopgre@gmail.com | @electroshopgre', pageWidth - (logoData ? 60 : 30));
+   doc.text(emailText, logoData ? 40 : 15, 35);
+
+   let yPos = 55;
+   
+   // TÍTULO PREMIUM DEL PRESUPUESTO - IGUAL A VISTA PREVIA
+   doc.setFillColor(239, 246, 255); // Azul muy claro (blue-50)
+   doc.rect(15, yPos, pageWidth - 30, 20, 'F');
+   
+   // Línea lateral azul (borde izquierdo)
+   doc.setFillColor(59, 130, 246); // Azul (blue-500)
+   doc.rect(15, yPos, 4, 20, 'F');
+   
+   doc.setTextColor(15, 23, 42); // Gris oscuro
+   doc.setFont('helvetica', 'bold');
+   doc.setFontSize(20);
+   const tituloPresupuesto = doc.splitTextToSize(`PRESUPUESTO ${presupuestoData.numero}`, pageWidth - 80);
+   doc.text(tituloPresupuesto, 25, yPos + 12);
+   
+   // Fecha, hora y tasa de cambio (alineado a la derecha)
+   doc.setFontSize(9);
    doc.setFont('helvetica', 'normal');
    doc.setTextColor(71, 85, 105);
-   doc.text(`Fecha: ${fechaActual} | Valido hasta: ${new Date(presupuestoData.fechaVencimiento).toLocaleDateString('es-ES')}`, pageWidth - 5, yPos + 6, { align: 'right' });
+   doc.text(`Fecha: ${fechaActual}`, pageWidth - 15, yPos + 6, { align: 'right', maxWidth: 80 });
+   doc.text(`Hora: ${horaActual}`, pageWidth - 15, yPos + 11, { align: 'right', maxWidth: 80 });
+   const tasaText = doc.splitTextToSize(`Tasa: ${formatearVenezolano(tasaCambio)} Bs/$`, 80);
+   doc.text(tasaText, pageWidth - 15, yPos + 16, { align: 'right' });
    
-   yPos += 25;
+   yPos += 28;
 
-   // INFORMACIÓN DEL CLIENTE CON DISEÑO ELEGANTE
+   // INFORMACIÓN DEL CLIENTE - IGUAL A VISTA PREVIA
    if (presupuestoData.cliente) {
-     doc.setFillColor(239, 246, 255);
-     doc.rect(15, yPos, pageWidth - 30, 25, 'F');
+     doc.setFillColor(239, 246, 255); // Azul muy claro (blue-50)
+     doc.rect(15, yPos, pageWidth - 30, 30, 'F');
      
-     doc.setFillColor(59, 130, 246);
-     doc.rect(15, yPos, 3, 25, 'F');
+     // Borde lateral azul
+     doc.setFillColor(59, 130, 246); // Azul (blue-500)
+     doc.rect(15, yPos, 4, 30, 'F');
      
-     doc.setTextColor(30, 64, 175);
+     doc.setTextColor(30, 64, 175); // Azul oscuro
      doc.setFont('helvetica', 'bold');
-     doc.setFontSize(11);
-     doc.text('CLIENTE', 25, yPos + 6);
+     doc.setFontSize(13);
+     doc.text('CLIENTE', 25, yPos + 10);
      
-     doc.setTextColor(51, 65, 85);
+     doc.setTextColor(51, 65, 85); // Gris oscuro
      doc.setFont('helvetica', 'normal');
-     doc.setFontSize(9);
+     doc.setFontSize(10);
      
+     let clienteY = yPos + 18;
      doc.setFont('helvetica', 'bold');
-     doc.text('Nombre:', 25, yPos + 14);
+     doc.text('Nombre:', 25, clienteY);
      doc.setFont('helvetica', 'normal');
-     doc.text(presupuestoData.cliente.nombre, 50, yPos + 14);
+     const nombreCliente = doc.splitTextToSize(presupuestoData.cliente.nombre || '', pageWidth - 70);
+     doc.text(nombreCliente, 50, clienteY);
+     clienteY += nombreCliente.length > 1 ? nombreCliente.length * 5 : 6;
      
      if (presupuestoData.cliente.cedula_rif) {
        doc.setFont('helvetica', 'bold');
-       doc.text('CI/RIF:', 25, yPos + 20);
+       doc.text('CI/RIF:', 25, clienteY);
        doc.setFont('helvetica', 'normal');
-       doc.text(presupuestoData.cliente.cedula_rif, 50, yPos + 20);
+       doc.text(presupuestoData.cliente.cedula_rif, 50, clienteY);
+       clienteY += 6;
      }
      
      if (presupuestoData.cliente.telefono) {
        doc.setFont('helvetica', 'bold');
-       doc.text('Telefono:', pageWidth/2 + 10, yPos + 14);
+       doc.text('Teléfono:', 25, clienteY);
        doc.setFont('helvetica', 'normal');
-       doc.text(presupuestoData.cliente.telefono, pageWidth/2 + 30, yPos + 14);
+       doc.text(presupuestoData.cliente.telefono, 50, clienteY);
+       clienteY += 6;
      }
      
      if (presupuestoData.cliente.email) {
        doc.setFont('helvetica', 'bold');
-       doc.text('Email:', pageWidth/2 + 10, yPos + 20);
+       doc.text('Email:', 25, clienteY);
        doc.setFont('helvetica', 'normal');
-       doc.text(presupuestoData.cliente.email, pageWidth/2 + 25, yPos + 20);
+       const emailCliente = doc.splitTextToSize(presupuestoData.cliente.email || '', pageWidth - 70);
+       doc.text(emailCliente, 50, clienteY);
+       clienteY += emailCliente.length > 1 ? emailCliente.length * 5 : 6;
      }
      
-     yPos += 35;
+     // Ajustar altura del bloque de cliente según contenido
+     const alturaCliente = Math.max(30, clienteY - yPos + 5);
+     doc.setFillColor(239, 246, 255);
+     doc.rect(15, yPos, pageWidth - 30, alturaCliente, 'F');
+     doc.setFillColor(59, 130, 246);
+     doc.rect(15, yPos, 4, alturaCliente, 'F');
+     
+     yPos += Math.max(38, alturaCliente + 5);
    }
 
-   // TABLA DE PRODUCTOS - PROTAGONISTA DEL DISEÑO
+   // TABLA DE PRODUCTOS - IGUAL A VISTA PREVIA (sin P.Unit Bs)
    let tableY = yPos;
 
-   // Header de tabla con gradiente elegante
-   doc.setFillColor(15, 23, 42);
+   // Header de tabla con gradiente azul premium
+   doc.setFillColor(37, 99, 235); // Azul medio (blue-600)
    doc.rect(15, tableY, pageWidth - 30, 12, 'F');
    
-   doc.setFillColor(30, 41, 59);
-   doc.rect(15, tableY, pageWidth - 30, 8, 'F');
+   doc.setFillColor(59, 130, 246); // Azul (blue-500)
+   doc.rect(15, tableY, pageWidth - 30, 10, 'F');
 
    doc.setTextColor(255, 255, 255);
    doc.setFont('helvetica', 'bold');
-   doc.setFontSize(8);
+   doc.setFontSize(10);
 
-   // Columnas optimizadas para protagonismo de productos
+   // Columnas optimizadas - IGUAL A VISTA PREVIA (sin P.Unit Bs) - AJUSTADAS PARA EVITAR DESBORDAMIENTO
    const cols = {
      num: 20,
-     cant: 32,
-     desc: 45,
-     pUnitUsd: 118,
-     pUnitBs: 138,
-     totalUsd: 163,
-     totalBs: 183
+     cant: 30,
+     desc: 50,
+     pUnitUsd: 115,
+     totalUsd: 145,
+     totalBs: 170
    };
 
    doc.text('#', cols.num, tableY + 7);
    doc.text('Cant.', cols.cant, tableY + 7);
    doc.text('PRODUCTO / SERVICIO', cols.desc, tableY + 7);
    doc.text('P.Unit $', cols.pUnitUsd, tableY + 7);
-   doc.text('P.Unit Bs', cols.pUnitBs, tableY + 7);
    doc.text('Total $', cols.totalUsd, tableY + 7);
    doc.text('Total Bs', cols.totalBs, tableY + 7);
 
    tableY += 12;
 
-   // Filas de productos con alternancia elegante
+   // Filas de productos con alternancia - IGUAL A VISTA PREVIA
    doc.setTextColor(51, 65, 85);
    doc.setFont('helvetica', 'normal');
-   doc.setFontSize(8);
+   doc.setFontSize(9);
 
    presupuestoData.items.forEach((item, index) => {
-     // Alternancia de colores elegante
+     // Verificar si necesitamos nueva página
+     if (tableY > pageHeight - 50) {
+       doc.addPage();
+       tableY = 20;
+       
+       // Redibujar header de tabla en nueva página
+       doc.setFillColor(37, 99, 235);
+       doc.rect(15, tableY, pageWidth - 30, 12, 'F');
+       doc.setFillColor(59, 130, 246);
+       doc.rect(15, tableY, pageWidth - 30, 10, 'F');
+       doc.setTextColor(255, 255, 255);
+       doc.setFont('helvetica', 'bold');
+       doc.setFontSize(10);
+       doc.text('#', cols.num, tableY + 7);
+       doc.text('Cant.', cols.cant, tableY + 7);
+       doc.text('PRODUCTO / SERVICIO', cols.desc, tableY + 7);
+       doc.text('P.Unit $', cols.pUnitUsd, tableY + 7);
+       doc.text('Total $', cols.totalUsd, tableY + 7);
+       doc.text('Total Bs', cols.totalBs, tableY + 7);
+       tableY += 12;
+     }
+     
+     // Alternancia de colores: blanco y azul claro
      if (index % 2 === 0) {
-       doc.setFillColor(250, 251, 252);
+       doc.setFillColor(255, 255, 255); // Blanco
        doc.rect(15, tableY, pageWidth - 30, 10, 'F');
      } else {
-       doc.setFillColor(248, 250, 252);
+       doc.setFillColor(239, 246, 255); // Azul muy claro (blue-50)
        doc.rect(15, tableY, pageWidth - 30, 10, 'F');
      }
      
      // Línea sutil entre filas
-     doc.setDrawColor(226, 232, 240);
+     doc.setDrawColor(229, 231, 235); // Gris claro
      doc.setLineWidth(0.2);
      doc.line(15, tableY + 10, pageWidth - 15, tableY + 10);
      
      doc.setTextColor(51, 65, 85);
-     doc.text((index + 1).toString(), cols.num, tableY + 6);
-     doc.text(item.cantidad.toString(), cols.cant + 5, tableY + 6, { align: 'center' });
-     
-     // Descripción destacada (protagonista)
      doc.setFont('helvetica', 'bold');
-     doc.setFontSize(8);
-     const descripcion = item.descripcion.length > 42 
-       ? item.descripcion.substring(0, 39) + '...'
-       : item.descripcion;
-     doc.text(descripcion, cols.desc, tableY + 6);
-     
-     // Precios con formato elegante
+     doc.text((index + 1).toString(), cols.num, tableY + 7);
      doc.setFont('helvetica', 'normal');
-     doc.setFontSize(7);
-     doc.text(`$${item.precio_unitario.toFixed(2)}`, cols.pUnitUsd + 12, tableY + 6, { align: 'right' });
-     doc.text(`${formatearVenezolano(item.precio_unitario * tasaCambio)}`, cols.pUnitBs + 15, tableY + 6, { align: 'right' });
-     doc.text(`$${(item.cantidad * item.precio_unitario).toFixed(2)}`, cols.totalUsd + 12, tableY + 6, { align: 'right' });
+     doc.text(item.cantidad.toString(), cols.cant + 3, tableY + 7, { align: 'center' });
      
-     // Total en destacado
+     // Descripción con límite de ancho para evitar desbordamiento
+     const maxDescWidth = cols.pUnitUsd - cols.desc - 5;
+     const descripcion = doc.splitTextToSize(item.descripcion || '', maxDescWidth);
+     doc.text(descripcion, cols.desc, tableY + 7);
+     
+     // Ajustar altura de fila si la descripción es multilínea
+     const filaHeight = Math.max(10, descripcion.length * 5 + 2);
+     if (filaHeight > 10) {
+       // Redibujar fondo con nueva altura
+       if (index % 2 === 0) {
+         doc.setFillColor(255, 255, 255);
+         doc.rect(15, tableY, pageWidth - 30, filaHeight, 'F');
+       } else {
+         doc.setFillColor(239, 246, 255);
+         doc.rect(15, tableY, pageWidth - 30, filaHeight, 'F');
+       }
+     }
+     
+     // Precios - solo P.Unit $, Total $ y Total Bs (con límites de ancho)
+     doc.text(`$${item.precio_unitario.toFixed(2)}`, cols.pUnitUsd + 5, tableY + 7, { align: 'right', maxWidth: 15 });
+     
      doc.setFont('helvetica', 'bold');
-     doc.setFontSize(8);
-     doc.text(`${formatearVenezolano(item.cantidad * item.precio_unitario * tasaCambio)}`, cols.totalBs + 15, tableY + 6, { align: 'right' });
+     doc.text(`$${(item.cantidad * item.precio_unitario).toFixed(2)}`, cols.totalUsd + 5, tableY + 7, { align: 'right', maxWidth: 15 });
+     const totalBsText = doc.splitTextToSize(`${formatearVenezolano(item.cantidad * item.precio_unitario * tasaCambio)} Bs`, 20);
+     doc.text(totalBsText, cols.totalBs + 5, tableY + 7, { align: 'right' });
      
-     tableY += 10;
+     tableY += filaHeight;
    });
 
    // Línea final de la tabla
-   doc.setDrawColor(15, 23, 42);
+   doc.setDrawColor(37, 99, 235); // Azul medio
    doc.setLineWidth(1);
    doc.line(15, tableY, pageWidth - 15, tableY);
 
-   yPos = tableY + 20;
-
-   // SECCIÓN DE TOTALES CON GRADIENTE ELEGANTE
-   const totalBoxHeight = 45;
+   // SECCIÓN DE TOTALES - IGUAL A VISTA PREVIA
+   yPos = tableY + 15;
+   const totalBoxHeight = 50;
    
-   // Fondo con gradiente simulado
-   doc.setFillColor(236, 253, 245);
-   doc.rect(pageWidth/2 + 5, yPos, pageWidth/2 - 20, totalBoxHeight, 'F');
+   // Fondo con gradiente azul simulado
+   doc.setFillColor(239, 246, 255); // Azul muy claro (blue-50)
+   doc.rect(15, yPos, pageWidth - 30, totalBoxHeight, 'F');
    
-   doc.setFillColor(220, 252, 231);
-   doc.rect(pageWidth/2 + 5, yPos, pageWidth/2 - 20, 8, 'F');
+   doc.setFillColor(219, 234, 254); // Azul claro (blue-100)
+   doc.rect(15, yPos, pageWidth - 30, 10, 'F');
    
-   // Borde elegante
-   doc.setDrawColor(16, 185, 129);
+   // Borde azul elegante
+   doc.setDrawColor(59, 130, 246); // Azul (blue-500)
    doc.setLineWidth(1.5);
-   doc.rect(pageWidth/2 + 5, yPos, pageWidth/2 - 20, totalBoxHeight);
+   doc.rect(15, yPos, pageWidth - 30, totalBoxHeight);
    
-   // Línea lateral dorada
-   doc.setFillColor(234, 179, 8);
-   doc.rect(pageWidth/2 + 5, yPos, 3, totalBoxHeight, 'F');
+   // Línea lateral azul premium
+   doc.setFillColor(37, 99, 235); // Azul medio (blue-600)
+   doc.rect(15, yPos, 4, totalBoxHeight, 'F');
    
-   doc.setTextColor(6, 78, 59);
+   doc.setTextColor(30, 64, 175); // Azul oscuro
    doc.setFont('helvetica', 'bold');
-   doc.setFontSize(10);
-   doc.text('RESUMEN FINANCIERO', pageWidth/2 + 12, yPos + 6);
+   doc.setFontSize(13);
+   doc.text('RESUMEN FINANCIERO', 25, yPos + 8);
    
    doc.setTextColor(51, 65, 85);
    doc.setFont('helvetica', 'normal');
-   doc.setFontSize(8);
+   doc.setFontSize(10);
    
-   let totalY = yPos + 14;
-   doc.text(`Subtotal: ${formatearVenezolano(totales.subtotal * tasaCambio)} Bs`, pageWidth/2 + 12, totalY);
+   // Verificar si los totales caben en la página actual
+   if (yPos + totalBoxHeight > pageHeight - 30) {
+     doc.addPage();
+     yPos = 20;
+     
+     // Redibujar fondo de totales en nueva página
+     doc.setFillColor(239, 246, 255);
+     doc.rect(15, yPos, pageWidth - 30, totalBoxHeight, 'F');
+     doc.setFillColor(219, 234, 254);
+     doc.rect(15, yPos, pageWidth - 30, 10, 'F');
+     doc.setDrawColor(59, 130, 246);
+     doc.setLineWidth(1.5);
+     doc.rect(15, yPos, pageWidth - 30, totalBoxHeight);
+     doc.setFillColor(37, 99, 235);
+     doc.rect(15, yPos, 4, totalBoxHeight, 'F');
+   }
+   
+   let totalY = yPos + 18;
+   doc.text(`Subtotal:`, 25, totalY);
+   doc.setFont('helvetica', 'bold');
+   const subtotalText = doc.splitTextToSize(`${formatearVenezolano(totales.subtotal * tasaCambio)} Bs`, 30);
+   doc.text(subtotalText, pageWidth - 20, totalY, { align: 'right' });
    
    if (totales.descuentoGlobal > 0) {
-     totalY += 5;
-     doc.setTextColor(185, 28, 28);
-     doc.text(`Descuento (${totales.tipoDescuento === 'porcentaje' ? totales.descuentoGlobal + '%' : 'fijo'}): -${formatearVenezolano(totales.descuentoBs)} Bs`, pageWidth/2 + 12, totalY);
+     totalY += 7;
+     doc.setFont('helvetica', 'normal');
+     doc.setTextColor(220, 38, 38); // Rojo
+     const descuentoLabel = doc.splitTextToSize(`Descuento (${totales.tipoDescuento === 'porcentaje' ? totales.descuentoGlobal + '%' : 'fijo'}):`, pageWidth - 100);
+     doc.text(descuentoLabel, 25, totalY);
+     doc.setFont('helvetica', 'bold');
+     const descuentoText = doc.splitTextToSize(`-${formatearVenezolano(totales.descuentoBs)} Bs`, 30);
+     doc.text(descuentoText, pageWidth - 20, totalY, { align: 'right' });
      doc.setTextColor(51, 65, 85);
    }
    
-   totalY += 5;
-   doc.text(`Base Imponible: ${formatearVenezolano(totales.baseImponible * tasaCambio)} Bs`, pageWidth/2 + 12, totalY);
-   
-   totalY += 5;
-   doc.text(`IVA (${totales.impuesto}%): ${formatearVenezolano(totales.ivaBs)} Bs`, pageWidth/2 + 12, totalY);
-   
-   // Total final destacado
-   totalY += 8;
+   totalY += 7;
+   doc.setFont('helvetica', 'normal');
+   doc.text(`Base Imponible:`, 25, totalY);
    doc.setFont('helvetica', 'bold');
-   doc.setFontSize(11);
-   doc.setTextColor(6, 78, 59);
-   doc.text(`TOTAL: ${formatearVenezolano(totales.totalBs)} Bs`, pageWidth/2 + 12, totalY);
+   const baseText = doc.splitTextToSize(`${formatearVenezolano(totales.baseImponible * tasaCambio)} Bs`, 30);
+   doc.text(baseText, pageWidth - 20, totalY, { align: 'right' });
    
-   doc.setFontSize(8);
+   totalY += 7;
+   doc.setFont('helvetica', 'normal');
+   doc.text(`IVA (${totales.impuesto}%):`, 25, totalY);
+   doc.setFont('helvetica', 'bold');
+   const ivaText = doc.splitTextToSize(`${formatearVenezolano(totales.ivaBs)} Bs`, 30);
+   doc.text(ivaText, pageWidth - 20, totalY, { align: 'right' });
+   
+   // Total final destacado en azul
+   totalY += 10;
+   doc.setDrawColor(59, 130, 246); // Azul
+   doc.setLineWidth(0.5);
+   doc.line(25, totalY - 2, pageWidth - 25, totalY - 2);
+   
+   doc.setFont('helvetica', 'bold');
+   doc.setFontSize(14);
+   doc.setTextColor(30, 64, 175); // Azul oscuro
+   doc.text(`TOTAL:`, 25, totalY + 5);
+   doc.setFontSize(15);
+   const totalText = doc.splitTextToSize(`${formatearVenezolano(totales.totalBs)} Bs`, 35);
+   doc.text(totalText, pageWidth - 20, totalY + 5, { align: 'right' });
+   
+   totalY += 8;
+   doc.setFontSize(9);
+   doc.setFont('helvetica', 'normal');
    doc.setTextColor(75, 85, 99);
-   doc.text(`En USD: $${totales.totalUsd.toFixed(2)}`, pageWidth/2 + 12, totalY + 5);
+   doc.text(`En USD: $${totales.totalUsd.toFixed(2)}`, pageWidth - 20, totalY, { align: 'right', maxWidth: 30 });
 
-   // OBSERVACIONES CON DISEÑO ELEGANTE
+   // OBSERVACIONES CON DISEÑO AZUL PREMIUM
    if (presupuestoData.observaciones && presupuestoData.observaciones.length > 0) {
      yPos += totalBoxHeight + 15;
      
@@ -358,23 +472,28 @@ export const generarPDFPresupuesto = async (presupuestoData, tasaCambio) => {
      }
      
      const obsHeight = 8 + (presupuestoData.observaciones.length * 5);
-     doc.setFillColor(254, 249, 195);
+     doc.setFillColor(239, 246, 255); // Azul muy claro
      doc.rect(15, yPos, pageWidth - 30, obsHeight, 'F');
      
-     doc.setFillColor(245, 158, 11);
+     doc.setFillColor(59, 130, 246); // Azul
      doc.rect(15, yPos, 3, obsHeight, 'F');
      
-     doc.setTextColor(120, 53, 15);
-     doc.setFont('helvetica', 'bold');
-     doc.setFontSize(10);
-     doc.text('OBSERVACIONES IMPORTANTES', 25, yPos + 6);
+     doc.setTextColor(30, 64, 175); // Azul oscuro
+     doc.setFont('helvetica', 'bold'); // Fuente moderna y redonda
+     doc.setFontSize(11); // Más grande
+     doc.text('OBSERVACIONES IMPORTANTES', 25, yPos + 7);
      
-     doc.setTextColor(92, 38, 6);
-     doc.setFont('helvetica', 'normal');
-     doc.setFontSize(8);
+     doc.setTextColor(51, 65, 85); // Gris oscuro
+     doc.setFont('helvetica', 'normal'); // Fuente moderna y redonda
+     doc.setFontSize(9); // Más grande
      
      presupuestoData.observaciones.forEach((obs, index) => {
-       doc.text(`• ${obs}`, 25, yPos + 12 + (index * 5));
+       const obsText = doc.splitTextToSize(`• ${obs}`, pageWidth - 50);
+       doc.text(obsText, 25, yPos + 13 + (index * 6));
+       // Ajustar altura si el texto es multilínea
+       if (obsText.length > 1) {
+         yPos += (obsText.length - 1) * 5;
+       }
      });
    }
 
@@ -382,18 +501,18 @@ export const generarPDFPresupuesto = async (presupuestoData, tasaCambio) => {
    const footerY = pageHeight - 20;
    
    // Línea decorativa elegante
-   doc.setDrawColor(203, 213, 225);
-   doc.setLineWidth(0.8);
+   doc.setDrawColor(191, 219, 254); // Azul claro
+   doc.setLineWidth(0.5);
    doc.line(15, footerY - 5, pageWidth - 15, footerY - 5);
    
    doc.setTextColor(100, 116, 139);
-   doc.setFont('helvetica', 'italic');
-   doc.setFontSize(8);
-   doc.text('Este presupuesto es valido hasta la fecha indicada. Terminos y condiciones aplican.', pageWidth/2, footerY, { align: 'center' });
+   doc.setFont('helvetica', 'italic'); // Fuente moderna y redonda
+   doc.setFontSize(9); // Más grande
+   doc.text('Este presupuesto es válido según términos y condiciones aplicables.', pageWidth/2, footerY, { align: 'center' });
    
-   doc.setFont('helvetica', 'normal');
-   doc.setFontSize(7);
-   doc.text(`Generado por ElectroCaja v1.0 • ${new Date().toLocaleString('es-ES')}`, pageWidth/2, footerY + 5, { align: 'center' });
+   doc.setFont('helvetica', 'normal'); // Fuente moderna y redonda
+   doc.setFontSize(8); // Más grande
+   doc.text(`Generado por ElectroCaja v1.0 • ${new Date().toLocaleString('es-ES')}`, pageWidth/2, footerY + 6, { align: 'center' });
 
    const pdfBlob = doc.output('blob');
    console.log('PDF moderno y profesional generado exitosamente');
@@ -706,7 +825,60 @@ export const enviarPresupuestoPorEmail = async (presupuestoData, tasaCambio, des
  }
 };
 
-// ENVIAR PRESUPUESTO POR WHATSAPP
+// ENVIAR PRESUPUESTO POR WHATSAPP SIMPLE (SOLO MENSAJE DE TEXTO)
+export const enviarPresupuestoPorWhatsAppSimple = async (presupuestoData, tasaCambio, numero) => {
+ try {
+   console.log('Enviando presupuesto por WhatsApp Simple (solo mensaje)...', numero);
+   
+   const totales = calcularTotales(presupuestoData, tasaCambio);
+   
+   // Preparar mensaje completo con información del presupuesto
+   const mensajeCompleto = 
+     `Hola ${presupuestoData.cliente?.nombre || 'Cliente'}! 👋\n\n` +
+     `📋 *PRESUPUESTO #${presupuestoData.numero}*\n\n` +
+     `📅 Fecha: ${new Date(presupuestoData.fecha).toLocaleDateString('es-ES')}\n` +
+     `💼 Cliente: ${presupuestoData.cliente?.nombre || 'N/A'}\n` +
+     `🆔 CI/RIF: ${presupuestoData.cliente?.cedula_rif || 'N/A'}\n\n` +
+     `📦 *PRODUCTOS/SERVICIOS:*\n` +
+     presupuestoData.items.map((item, index) => 
+       `${index + 1}. ${item.descripcion} - Cant: ${item.cantidad} - $${item.precio_unitario.toFixed(2)} c/u`
+     ).join('\n') +
+     `\n\n` +
+     `💰 *RESUMEN:*\n` +
+     `Subtotal: ${formatearVenezolano(totales.subtotal * tasaCambio)} Bs\n` +
+     (totales.descuentoUsd > 0 ? `Descuento: -${formatearVenezolano(totales.descuentoBs)} Bs\n` : '') +
+     `Base Imponible: ${formatearVenezolano(totales.baseImponible * tasaCambio)} Bs\n` +
+     `IVA (${totales.impuesto}%): ${formatearVenezolano(totales.ivaBs)} Bs\n` +
+     `*TOTAL: ${formatearVenezolano(totales.totalBs)} Bs*\n` +
+     `($${totales.totalUsd.toFixed(2)} USD)\n\n` +
+     `💱 Tasa de cambio BCV: ${formatearVenezolano(tasaCambio)} Bs/$\n\n` +
+     `✅ ¿Te interesa? Contáctanos para procesar tu pedido!\n\n` +
+     `📞 WhatsApp: +58 257 251 1282`;
+   
+   // Preparar datos para WhatsApp solo mensaje
+   const whatsappData = {
+     numero: numero,
+     mensaje: mensajeCompleto
+   };
+   
+   // Usar endpoint de WhatsApp para solo mensaje
+   const response = await api.post('/whatsapp/enviar', whatsappData);
+   
+   console.log('Presupuesto enviado por WhatsApp Simple exitosamente');
+   
+   return {
+     success: true,
+     message: 'Presupuesto enviado por WhatsApp Simple exitosamente',
+     data: response.data.data
+   };
+   
+ } catch (error) {
+   console.error('Error enviando presupuesto por WhatsApp Simple:', error);
+   throw error;
+ }
+};
+
+// ENVIAR PRESUPUESTO POR WHATSAPP (CON PDF ADJUNTO)
 export const enviarPresupuestoPorWhatsApp = async (presupuestoData, tasaCambio, numero, mensaje) => {
  try {
    console.log('Enviando presupuesto por WhatsApp...', numero);
@@ -805,6 +977,12 @@ export const validarExportConfig = (exportConfig, presupuestoData) => {
    }
  }
  
+ if (exportConfig.whatsappSimple) {
+   if (!presupuestoData.cliente?.telefono) {
+     errores.push('Cliente debe tener telefono para WhatsApp Simple');
+   }
+ }
+ 
  if (exportConfig.email) {
    if (!presupuestoData.cliente?.email) {
      errores.push('Cliente debe tener email para envio por correo');
@@ -852,7 +1030,7 @@ export const ejecutarExportPresupuesto = async (presupuestoData, tasaCambio, exp
      }
    }
    
-   // WhatsApp
+   // WhatsApp (con PDF adjunto)
    if (exportConfig.whatsapp) {
      try {
        await enviarPresupuestoPorWhatsApp(
@@ -864,6 +1042,21 @@ export const ejecutarExportPresupuesto = async (presupuestoData, tasaCambio, exp
      } catch (error) {
        console.error('Error en WhatsApp:', error);
        resultados.push('Error en WhatsApp: ' + error.message);
+     }
+   }
+   
+   // WhatsApp Simple (solo mensaje de texto)
+   if (exportConfig.whatsappSimple) {
+     try {
+       await enviarPresupuestoPorWhatsAppSimple(
+         presupuestoData, 
+         tasaCambio, 
+         presupuestoData.cliente.telefono
+       );
+       resultados.push('WhatsApp Simple enviado exitosamente');
+     } catch (error) {
+       console.error('Error en WhatsApp Simple:', error);
+       resultados.push('Error en WhatsApp Simple: ' + error.message);
      }
    }
    

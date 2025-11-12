@@ -1,6 +1,6 @@
 // components/ServiciosDashboard.jsx - COMPLETO CON FUNCIONALIDAD DE EDICIÓN
 import React, { useState, useEffect } from 'react';
-import { Wrench, Store } from 'lucide-react';
+import { Wrench, Store, BarChart3 } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useAuthStore } from '../store/authStore';
 import { useServiciosStore } from '../store/serviciosStore';
@@ -253,13 +253,11 @@ const ServiciosDashboard = () => {
    // Recargar servicios desde el store
    await cargarServicios({ incluirRelaciones: true });
    
-   // Cerrar modal
+   // Cerrar modal del wizard
    setShowNewServiceModal(false);
    
-   // Opcional: Mostrar el servicio recién creado
-   setTimeout(() => {
-     setServicioSeleccionado(nuevoServicio);
-   }, 500);
+   // NO mostrar el modal automáticamente - esperar a que terminen todas las acciones (impresión, WhatsApp, etc.)
+   // El usuario puede ver el servicio desde la lista si lo desea
  };
 
  // 🔧 MANEJAR VER SERVICIO - Obtener datos completos desde API
@@ -434,7 +432,8 @@ const ServiciosDashboard = () => {
          <div className="mb-8">
            <div className="bg-gray-800/40 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-6 shadow-2xl">
              <div className="mb-4">
-               <h2 className="text-xl font-semibold text-gray-100 mb-2">
+               <h2 className="text-xl font-semibold text-gray-100 mb-2 flex items-center gap-2">
+                 <BarChart3 className="h-6 w-6 text-white" />
                  Resumen de Estados
                </h2>
              </div>
@@ -500,14 +499,11 @@ const ServiciosDashboard = () => {
      </button>
 
      {/* FLOATING ACTIONS PARA SERVICIOS */}
-     <div className="fixed bottom-6 left-6 z-50">
        <ServiciosFloatingActions 
          onNewService={handleNewService}
          onSettings={handleSettings}
          onReports={handleReports}
-         onPruebaConexion={handlePruebaConexion}
        />
-     </div>
 
      {/*  MODALES CON Z-INDEX ALTO PARA ESTAR SOBRE HEADER/FOOTER STICKY */}
      

@@ -65,6 +65,13 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // ✅ SILENCIAR ERROR 404 PARA ENDPOINTS DONDE ES ESPERADO
+    const isDiscountRequestEndpoint = error.config?.url?.includes('/discount-requests/sesion/');
+    if (error.response?.status === 404 && isDiscountRequestEndpoint) {
+      // 404 esperado cuando no hay solicitud de descuento pendiente - no loguear como error
+      return Promise.reject(error);
+    }
+    
     console.error(` API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.response?.status || 'Network Error'}`);
     
     //  MANEJO ESPECÍFICO DE TOKEN EXPIRADO
@@ -73,9 +80,12 @@ api.interceptors.response.use(
       const isAuthValidationEndpoint = error.config?.url?.includes('/auth/validate-admin-token') ||
                                       error.config?.url?.includes('/auth/validate-quick-token');
       
-      // Si es un endpoint de validación, no tratar como token expirado
-      if (isAuthValidationEndpoint) {
-        console.log(' 401 de endpoint de validación, no es token expirado');
+      // ✅ Excluir endpoint de WhatsApp estado (puede fallar por otras razones)
+      const isWhatsAppEstadoEndpoint = error.config?.url?.includes('/whatsapp/estado');
+      
+      // Si es un endpoint de validación o WhatsApp estado, no tratar como token expirado
+      if (isAuthValidationEndpoint || isWhatsAppEstadoEndpoint) {
+        console.log(' 401 de endpoint excluido, no es token expirado');
         return Promise.reject(error);
       }
       

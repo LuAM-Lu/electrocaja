@@ -5,6 +5,7 @@ const getServerURL = () => {
   // Usar variable de entorno si está disponible
   const envApiUrl = import.meta.env.VITE_API_URL;
   if (envApiUrl) {
+    console.log('🔌 [SOCKET] Usando VITE_API_URL:', envApiUrl);
     return envApiUrl;
   }
   
@@ -13,11 +14,15 @@ const getServerURL = () => {
   
   // Para localhost, usar localhost
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'https://localhost:3000';
+    const url = 'https://localhost:3000';
+    console.log('🔌 [SOCKET] Usando localhost:', url);
+    return url;
   }
   
   // Para red local, usar la misma IP del frontend con puerto 3000
-  return `https://${hostname}:3000`;
+  const url = `https://${hostname}:3000`;
+  console.log('🔌 [SOCKET] Usando IP de red local:', url);
+  return url;
 };
 
 const SERVER_URL = getServerURL();
@@ -29,17 +34,58 @@ export const initializeSocket = (token) => {
     socket.disconnect();
   }
 
+  console.log('🔌 [SOCKET] Inicializando socket con URL:', SERVER_URL);
+  console.log('🔌 [SOCKET] Token disponible:', !!token);
+
   socket = io(SERVER_URL, {
     auth: { token },
-    transports: ['polling', 'websocket'], //  Polling primero
+    // ✅ COINCIDIR CON CONFIGURACIÓN DEL SERVIDOR: Solo websocket
+    transports: ['websocket'], // Solo websocket (como el servidor)
+    upgrade: false, // No permitir upgrade (como allowUpgrades: false en servidor)
     forceNew: true,
-    upgrade: true,
-    rememberUpgrade: false, //  No recordar upgrade fallido
     timeout: 15000,
     reconnection: true,
-    reconnectionAttempts: 3,
+    reconnectionAttempts: 5,
     reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000
+    reconnectionDelayMax: 5000,
+    // ⚡ Optimizaciones para baja latencia (coincidir con servidor)
+    perMessageDeflate: false, // Sin compresión
+    pingInterval: 10000,
+    pingTimeout: 5000
+  });
+
+  // Agregar listeners para debugging
+  socket.on('connect', () => {
+    console.log('✅ [SOCKET] Conectado exitosamente:', socket.id);
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('❌ [SOCKET] Error de conexión:', error.message);
+    console.error('❌ [SOCKET] Detalles:', {
+      type: error.type,
+      description: error.description,
+      context: error.context
+    });
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log('🔌 [SOCKET] Desconectado:', reason);
+  });
+
+  socket.on('reconnect', (attemptNumber) => {
+    console.log('🔄 [SOCKET] Reconectado en intento:', attemptNumber);
+  });
+
+  socket.on('reconnect_attempt', (attemptNumber) => {
+    console.log('🔄 [SOCKET] Intentando reconectar...', attemptNumber);
+  });
+
+  socket.on('reconnect_error', (error) => {
+    console.error('❌ [SOCKET] Error de reconexión:', error);
+  });
+
+  socket.on('reconnect_failed', () => {
+    console.error('❌ [SOCKET] Falló la reconexión después de todos los intentos');
   });
 
   return socket;

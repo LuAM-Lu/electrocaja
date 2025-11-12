@@ -42,9 +42,7 @@ const detectarTipoCliente = (cedulaRif) => {
 const cargarClientesDesdeBackend = async () => {
   try {
     const response = await api.get('/clientes');
-    console.log(' DEBUG - Respuesta clientes:', response);
     CLIENTES_CACHE = response.data?.data?.data?.clientes || response.data?.data?.clientes || response.data?.clientes || [];
-    console.log(' DEBUG - CLIENTES_CACHE:', CLIENTES_CACHE.length);
     return CLIENTES_CACHE;
   } catch (error) {
     console.error('Error cargando clientes:', error);
@@ -676,9 +674,6 @@ const ClienteSelector = ({
  const styles = getThemeStyles();
 
  // Filtrar clientes con validación de cache
- console.log(' DEBUG - CLIENTES_CACHE al filtrar:', CLIENTES_CACHE?.length || 0);
- console.log(' DEBUG - búsqueda actual:', busqueda);
- 
  const clientesFiltrados = Array.isArray(CLIENTES_CACHE) ? CLIENTES_CACHE.filter(cliente => {
    if (!cliente) return false;
    const cedulaMatch = cliente.cedula_rif?.toLowerCase().includes(busqueda.toLowerCase()) || false;
@@ -686,12 +681,9 @@ const ClienteSelector = ({
    const emailMatch = cliente.email?.toLowerCase().includes(busqueda.toLowerCase()) || false;
    return cedulaMatch || nombreMatch || emailMatch;
  }) : [];
- 
- console.log(' DEBUG - clientesFiltrados:', clientesFiltrados?.length || 0);
 
  // Manejar selección
  const handleSeleccionar = (cliente) => {
-   console.log(' DEBUG - Cliente seleccionado:', cliente?.nombre);
    onClienteSeleccionado(cliente);
    setBusqueda('');
    setMostrarOpciones(false);
@@ -719,9 +711,7 @@ const ClienteSelector = ({
  useEffect(() => {
    const cargarClientesInicial = async () => {
      try {
-       console.log(' DEBUG - Cargando clientes inicial...');
        await cargarClientesDesdeBackend();
-       console.log(' DEBUG - Clientes cargados inicial:', CLIENTES_CACHE.length);
      } catch (error) {
        console.error('Error cargando clientes inicial:', error);
      }
@@ -752,14 +742,10 @@ const ClienteSelector = ({
                setMostrarOpciones(true);
              }}
              onFocus={async () => {
-               console.log(' DEBUG - Input focused, verificando clientes...');
-               
                // Si no hay clientes cargados o el cache está vacío, cargarlos
                if (CLIENTES_CACHE.length === 0) {
-                 console.log(' DEBUG - Cache vacío, cargando clientes...');
                  try {
                    await cargarClientesDesdeBackend();
-                   console.log(' DEBUG - Clientes cargados en focus:', CLIENTES_CACHE.length);
                  } catch (error) {
                    console.error('Error cargando clientes en focus:', error);
                  }
@@ -769,20 +755,15 @@ const ClienteSelector = ({
                setMostrarOpciones(true);
              }}
              onClick={async () => {
-               console.log(' DEBUG - Input clicked, verificando estado...');
-               
                // Si ya está abierto, no hacer nada
                if (mostrarOpciones) {
-                 console.log(' DEBUG - Dropdown ya abierto, no hacer nada');
                  return;
                }
                
                // Si no hay clientes, cargarlos primero
                if (CLIENTES_CACHE.length === 0) {
-                 console.log(' DEBUG - Cache vacío en click, cargando...');
                  try {
                    await cargarClientesDesdeBackend();
-                   console.log(' DEBUG - Clientes cargados en click:', CLIENTES_CACHE.length);
                  } catch (error) {
                    console.error('Error cargando clientes en click:', error);
                  }

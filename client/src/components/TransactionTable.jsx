@@ -1,6 +1,6 @@
 // components/TransactionTable.jsx (HEADER VERDE CORREGIDO)
 import React, { useState, useEffect } from 'react';
-import { Eye, Wrench, HandCoins, Trash2, Plus, Search, Filter, Calendar, Clock, TrendingUp, TrendingDown, CreditCard, DollarSign, Smartphone, ArrowUpDown, ChevronLeft, ChevronRight, FileText, Coffee, MonitorSmartphone, Package } from 'lucide-react';
+import { Eye, Wrench, HandCoins, Trash2, Plus, Search, Filter, Calendar, Clock, TrendingUp, TrendingDown, CreditCard, DollarSign, Smartphone, ArrowUpDown, ChevronLeft, ChevronRight, FileText, Coffee, MonitorSmartphone, Package, User } from 'lucide-react';
 import { useTransactionTable } from '../store/cajaStore';
 //import TransactionDetailModal from './TransactionDetailModal';
 import DeleteTransactionModal from './DeleteTransactionModal';
@@ -31,38 +31,84 @@ const TransactionTable = () => {
   useEffect(() => {
     if (!socket || typeof socket.on !== 'function') return;
 
-    console.log('TransactionTable: Configurando listeners de socket');
+    // ✅ DEDUPLICACIÓN: Set para evitar procesar la misma transacción múltiples veces
+    const transaccionesProcesadas = new Set();
+    const timeouts = []; // Array para rastrear timeouts y limpiarlos
 
-    // ✅ MANEJAR EVENTOS DE TRANSACCIONES DE SERVICIOS TÉCNICOS
-    const handleNuevaTransaccion = async (data) => {
-      console.log('TransactionTable: Nueva transacción recibida', data);
+    // ✅ HELPER: Función mejorada para detectar modal de procesamiento
+    const hayModalProcesando = () => {
+      // Verificar múltiples formas de detectar el modal
+      const porAtributo = document.querySelector('[data-procesando-modal="true"]');
+      const porClase = document.querySelector('.venta-procesando-modal');
+      // Verificar z-index alto como fallback
+      const modalesAltos = Array.from(document.querySelectorAll('[style*="z-index"]'))
+        .filter(el => {
+          const zIndex = parseInt(el.style.zIndex) || 0;
+          return zIndex >= 99999;
+        });
       
-      // Si es transacción de servicio técnico, recargar caja para actualizar lista
-      if (data.tipo === 'servicio_tecnico' || data.transaccion?.servicioTecnicoId) {
-        console.log('TransactionTable: Transacción de servicio técnico detectada, recargando caja...');
-        // Recargar caja para obtener transacciones actualizadas
+      return !!(porAtributo || porClase || modalesAltos.length > 0);
+    };
+
+    // ✅ HANDLER UNIFICADO: Manejar ambos eventos con deduplicación
+    const handleNuevaTransaccion = async (data) => {
+      const transactionId = data.transaccion?.id || data.id;
+      
+      // ✅ DEDUPLICACIÓN: Evitar procesar la misma transacción dos veces
+      if (transactionId && transaccionesProcesadas.has(transactionId)) {
+        console.log(`⏭️ TransactionTable: Transacción ${transactionId} ya procesada, omitiendo`);
+        return;
+      }
+      
+      if (transactionId) {
+        transaccionesProcesadas.add(transactionId);
+        
+        // Limpiar después de 5 minutos para evitar memory leak
         setTimeout(() => {
-          cargarCajaActual();
-        }, 500);
+          transaccionesProcesadas.delete(transactionId);
+        }, 5 * 60 * 1000);
+      }
+      
+      // ✅ PREVENIR QUE SE EJECUTE SI HAY UN MODAL DE PROCESAMIENTO ABIERTO
+      if (!hayModalProcesando()) {
+        // ✅ SIEMPRE recargar caja para actualizar la lista en tiempo real
+        const timeoutId = setTimeout(() => {
+          cargarCajaActual(true); // forceRefresh = true para evitar cache
+        }, 300);
+        timeouts.push(timeoutId); // Registrar timeout para cleanup
+      } else {
+        console.log('⏸️ TransactionTable: cargarCajaActual omitido - Modal de procesamiento activo');
       }
     };
 
-    // ✅ SOLO MANEJAR EVENTOS ESPECÍFICOS - SIN ACTUALIZAR CAJA (ya lo maneja useSocketEvents)
+    // ✅ MANEJAR TRANSACCIONES ELIMINADAS
     const handleTransactionDeleted = async (data) => {
-      console.log('TransactionTable: Transaccion eliminada', data);
-      // NO ACTUALIZAR - Ya lo maneja useSocketEvents.js para evitar llamadas duplicadas
-      console.log('TransactionTable: Esperando actualización automática del store');
+      // ✅ PREVENIR QUE SE EJECUTE SI HAY UN MODAL DE PROCESAMIENTO ABIERTO
+      if (!hayModalProcesando()) {
+        const timeoutId = setTimeout(() => {
+          cargarCajaActual(true);
+        }, 300);
+        timeouts.push(timeoutId); // Registrar timeout para cleanup
+      } else {
+        console.log('⏸️ TransactionTable: cargarCajaActual omitido - Modal de procesamiento activo');
+      }
     };
 
-    // ✅ REGISTRAR LISTENERS PARA TRANSACCIONES DE SERVICIOS
+    // ✅ REGISTRAR LISTENERS PARA TODOS LOS EVENTOS DE TRANSACCIONES
+    // Usar el mismo handler para ambos eventos duplicados
     socket.on('nueva_transaccion', handleNuevaTransaccion);
+    socket.on('transaction-added', handleNuevaTransaccion); // ✅ Mismo handler para evitar duplicación
     socket.on('transaction-deleted', handleTransactionDeleted);
 
-    // Cleanup
+    // ✅ CLEANUP: Limpiar listeners y timeouts al desmontar
     return () => {
       socket.off('nueva_transaccion', handleNuevaTransaccion);
+      socket.off('transaction-added', handleNuevaTransaccion);
       socket.off('transaction-deleted', handleTransactionDeleted);
-      console.log('TransactionTable: Listeners removidos');
+      
+      // ✅ LIMPIAR TODOS LOS TIMEOUTS PENDIENTES
+      timeouts.forEach(timeoutId => clearTimeout(timeoutId));
+      timeouts.length = 0; // Limpiar array
     };
   }, [socket, cargarCajaActual]);
 
@@ -125,7 +171,6 @@ const handleViewDetails = async (transaccion) => {
   const handleDeleteConfirm = async (transactionId) => {
     // El modal ya hizo la eliminación y recargó la caja
     // Este callback es solo para compatibilidad, no necesita hacer nada adicional
-    console.log('Transacción eliminada:', transactionId);
   };
 
   const formatCodigoVenta = (codigoVenta) => {
@@ -285,25 +330,22 @@ const handleViewDetails = async (transaccion) => {
         
         {/* Header con VERDE cuando caja está abierta - CORREGIDO */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 backdrop-blur-sm px-6 py-4 border-b border-white/30">
-
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 border border-white/30">
-                  <FileText className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Registro de Transacciones</h2>
-                  <p className="text-sm text-emerald-100">Historial completo del día</p>
-                </div>
+          <div className="flex items-center justify-between gap-4">
+            {/* LADO IZQUIERDO: Título y contador */}
+            <div className="flex items-center space-x-3 flex-shrink-0">
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 border border-white/30">
+                <FileText className="h-5 w-5 text-white" />
               </div>
-              <p className="text-sm text-emerald-200">
-                {sortedTransactions.length} transacciones registradas
-              </p>
+              <div>
+                <h2 className="text-xl font-bold text-white">Registro de Transacciones</h2>
+                <p className="text-sm text-emerald-100">
+                  {sortedTransactions.length} transacciones registradas
+                </p>
+              </div>
             </div>
-            
-            {/* Indicadores de productos vendidos por tipo */}
-            <div className="flex items-center space-x-2">
+
+            {/* CENTRO: Indicadores de productos vendidos por tipo */}
+            <div className="flex items-center space-x-2 flex-1 justify-center">
               <div className="flex items-center space-x-2 bg-white/10 rounded-full px-2 py-1">
                 <Wrench className="h-5 w-5 text-white" />
                 <span className="text-base font-medium text-white">
@@ -335,25 +377,24 @@ const handleViewDetails = async (transaccion) => {
                 </span>
               </div>
             </div>
-          </div>
 
-            {/* Controles de búsqueda y filtro */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" /> {/*  AGREGADO: z-10 pointer-events-none */}
+            {/* LADO DERECHO: Controles de búsqueda y filtro */}
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" />
                 <input
                   id="search-transactions-input"
                   name="searchTransactions"
                   type="text"
-                  placeholder="Buscar por categoría o descripción..."
+                  placeholder="Buscar..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-white/30 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white/60 backdrop-blur-sm placeholder-gray-500 text-gray-900 relative z-0" 
+                  className="w-48 pl-10 pr-4 py-2 border border-white/30 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white/60 backdrop-blur-sm placeholder-gray-500 text-gray-900 relative z-0" 
                 />
               </div>
               
               <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" /> {/*  AGREGADO: z-10 pointer-events-none */}
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" />
                 <select
                   id="filter-transactions-select"
                   name="filterTransactions"
@@ -367,6 +408,7 @@ const handleViewDetails = async (transaccion) => {
                 </select>
               </div>
             </div>
+          </div>
         </div>
 
         {/* Tabla con fondo glassmorphism - SIN CAMBIOS */}
@@ -400,7 +442,7 @@ const handleViewDetails = async (transaccion) => {
                    </button>
                  </th>
                  
-                 <th className="px-2 py-3 text-left text-xs font-semibold text-gray-600 tracking-wider w-16">
+                 <th className="px-2 py-3 text-left text-xs font-semibold text-gray-600 tracking-wider w-32">
                   Usuario
                  </th>
                  
@@ -414,7 +456,7 @@ const handleViewDetails = async (transaccion) => {
                    </button>
                  </th>
                  
-                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">
+                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
                    <button 
                      onClick={() => handleSort('total_bs')}
                      className="flex items-center justify-end space-x-1 hover:text-emerald-600 transition-colors w-full"
@@ -452,115 +494,138 @@ const handleViewDetails = async (transaccion) => {
                      </td>
                      
                      {/* Usuario */}
-                     <td className="px-2 py-4 whitespace-nowrap">
+                     <td className="px-2 py-4 whitespace-nowrap min-w-[120px]">
                        <div className="text-xs font-medium text-gray-900">
                          {transaccion.usuario || 'N/A'}
                        </div>
                      </td>
                      
-                     {/* Descripción con info de inventario */}
+                     {/* Descripción con info de inventario - 2 FILAS */}
                      <td className="px-6 py-4">
-                       <div className="space-y-1">
-                         <div className="flex items-center space-x-2">
-                           {transaccion.item_inventario && (
-                             <span className="text-sm" title={`Del inventario: ${transaccion.item_inventario.tipo}`}>
-                               {getInventarioIcon(transaccion.item_inventario.tipo)}
-                             </span>
+                       {/* FILA 1: Tipo, código, orden de servicio */}
+                       <div className="flex items-center space-x-2 flex-wrap mb-1.5">
+                         {transaccion.item_inventario && (
+                           <span className="text-sm" title={`Del inventario: ${transaccion.item_inventario.tipo}`}>
+                             {getInventarioIcon(transaccion.item_inventario.tipo)}
+                           </span>
+                         )}
+                         {/* Tipo de transacción */}
+                         <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border backdrop-blur-sm ${
+                           transaccion.tipo === 'ingreso'
+                             ? 'bg-emerald-50/80 text-emerald-700 border-emerald-200'
+                             : 'bg-red-50/80 text-red-700 border-red-200'
+                         }`}>
+                           {transaccion.tipo === 'ingreso' ? (
+                             <TrendingUp className="h-3 w-3 mr-1" />
+                           ) : (
+                             <TrendingDown className="h-3 w-3 mr-1" />
                            )}
-                           {/* Mostrar tipo de transacción como badge inline */}
-                           <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border backdrop-blur-sm ${
-                             transaccion.tipo === 'ingreso'
-                               ? 'bg-emerald-50/80 text-emerald-700 border-emerald-200'
-                               : 'bg-red-50/80 text-red-700 border-red-200'
-                           }`}>
-                             {transaccion.tipo === 'ingreso' ? (
-                               <TrendingUp className="h-3 w-3 mr-1" />
-                             ) : (
-                               <TrendingDown className="h-3 w-3 mr-1" />
-                             )}
-                             {transaccion.tipo === 'ingreso' ? 'ING' : 'EGR'}
-                           </div>
-                           <div className="text-base font-semibold text-gray-900 leading-tight">
-                              {(() => {
-                                // Extraer código de venta de la categoría o usar codigoVenta
-                                const codigoVenta = transaccion.codigoVenta || 
-                                  transaccion.categoria.match(/V\d+/)?.[0] || 
-                                  'Sin código';
-                                return `- ${formatCodigoVenta(codigoVenta)}`;
-                              })()}
-                            </div>
-                           
+                           {transaccion.tipo === 'ingreso' ? 'ING' : 'EGR'}
                          </div>
-                         
+                         {/* Código de venta */}
+                         <div className="text-base font-semibold text-gray-900">
+                           {(() => {
+                             const codigoVenta = transaccion.codigoVenta || 
+                               transaccion.categoria.match(/V\d+/)?.[0] || 
+                               'Sin código';
+                             return `- ${formatCodigoVenta(codigoVenta)}`;
+                           })()}
+                         </div>
+                         {/* Número real de orden de servicio si existe */}
+                         {transaccion.servicioTecnico?.numeroServicio && (
+                           <>
+                             <span className="text-gray-400">•</span>
+                             <Wrench className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                             <span className="text-xs font-semibold text-blue-700">Orden:</span>
+                             <span className="text-xs text-blue-600 font-mono">{transaccion.servicioTecnico.numeroServicio}</span>
+                           </>
+                         )}
+                       </div>
+                       
+                       {/* FILA 2: Items, cliente, observaciones */}
+                       <div className="flex items-start space-x-3 text-xs flex-wrap">
+                         {/* Items y conteo */}
                          {transaccion.items && transaccion.items.length > 0 && (
-                            <div className="flex items-center space-x-2 text-xs">
+                           <div className="flex items-center space-x-1.5 flex-wrap">
                              <span className="text-gray-600 font-medium">
-                                {(() => {
-                                  // Contar por tipos
-                                  const conteo = transaccion.items.reduce((acc, item) => {
-                                    const tipo = item.producto?.tipo?.toLowerCase() || 'producto';
-                                    acc[tipo] = (acc[tipo] || 0) + item.cantidad;
-                                    return acc;
-                                  }, {});
-
-                                  const partes = [];
-                                  if (conteo.producto) partes.push(`${conteo.producto} producto${conteo.producto > 1 ? 's' : ''}`);
-                                  if (conteo.servicio) partes.push(`${conteo.servicio} servicio${conteo.servicio > 1 ? 's' : ''}`);
-                                  if (conteo.electrobar) partes.push(`${conteo.electrobar} electrobar${conteo.electrobar > 1 ? 's' : ''}`);
-
-                                  return partes.join(', ');
-                                })()}
-                              </span>
-                            </div>
-                          )}
+                               {(() => {
+                                 const conteo = transaccion.items.reduce((acc, item) => {
+                                   const tipo = item.producto?.tipo?.toLowerCase() || 'producto';
+                                   acc[tipo] = (acc[tipo] || 0) + item.cantidad;
+                                   return acc;
+                                 }, {});
+                                 const partes = [];
+                                 if (conteo.producto) partes.push(`${conteo.producto} prod`);
+                                 if (conteo.servicio) partes.push(`${conteo.servicio} serv`);
+                                 if (conteo.electrobar) partes.push(`${conteo.electrobar} elec`);
+                                 return partes.join(', ');
+                               })()}
+                             </span>
+                             {/* Primeros 2 items con detalles */}
+                             {transaccion.items.slice(0, 2).map((item, idx) => (
+                               <span key={idx} className="text-gray-600">
+                                 <span className="text-gray-400">•</span>
+                                 <span className="font-medium ml-1">{item.descripcion || item.producto?.nombre || 'Item'}</span>
+                                 {item.cantidad > 1 && <span className="text-gray-500 ml-1">(x{item.cantidad})</span>}
+                               </span>
+                             ))}
+                             {transaccion.items.length > 2 && (
+                               <span className="text-gray-500 italic">+{transaccion.items.length - 2} más</span>
+                             )}
+                           </div>
+                         )}
                          
-                         {transaccion.observaciones && (
-                           // Mostrar observaciones para todos excepto ventas automáticas
-                           !transaccion.observaciones.startsWith('Venta procesada con código')
-                         ) && (
-                            <div className="text-xs text-gray-500 leading-tight max-w-md">
-                              {(() => {
-                                // Mejorar visualización de vueltos
-                                if (transaccion.observaciones.includes('Vuelto entregado')) {
-                                  const metodo = transaccion.observaciones.match(/Método: (\w+)/)?.[1];
-                                  const metodosMap = {
-                                    'efectivo_bs': 'Efectivo Bs',
-                                    'efectivo_usd': 'Efectivo USD',
-                                    'pago_movil': 'Pago Móvil',
-                                    'transferencia': 'Transferencia',
-                                    'zelle': 'Zelle',
-                                    'binance': 'Binance',
-                                    'tarjeta': 'Tarjeta'
-                                  };
-                                  const metodoPretty = metodosMap[metodo] || metodo;
-                                  return (
-                                    <div className="flex items-center space-x-1">
-                                      <HandCoins className="h-4 w-4 text-red-500" />
-                                      <span>Vuelto entregado en {metodoPretty}</span>
-                                    </div>
-                                  );
-                                }
-                                
-                                // Para egresos normales (no vueltos), mostrar observación con icono
-                                if (transaccion.tipo === 'egreso' && !transaccion.observaciones.includes('Vuelto entregado')) {
-                                  return (
-                                    <div className="flex items-center space-x-1">
-                                      <TrendingDown className="h-3 w-3 text-red-500" />
-                                      <span>{transaccion.observaciones}</span>
-                                    </div>
-                                  );
-                                }
-                                
-                                // Para ingresos y otros, mostrar observación normal
-                                return transaccion.observaciones;
-                              })()}
-                            </div>
-                          )}
+                         {/* Cliente */}
+                         {transaccion.servicioTecnico?.clienteNombre && (
+                           <>
+                             <span className="text-gray-400">•</span>
+                             <span className="text-gray-600">{transaccion.servicioTecnico.clienteNombre}</span>
+                             {transaccion.servicioTecnico.dispositivoMarca && transaccion.servicioTecnico.dispositivoModelo && (
+                               <span className="text-gray-500">({transaccion.servicioTecnico.dispositivoMarca} {transaccion.servicioTecnico.dispositivoModelo})</span>
+                             )}
+                           </>
+                         )}
+                         {transaccion.clienteNombre && !transaccion.servicioTecnico && (
+                           <>
+                             <span className="text-gray-400">•</span>
+                             <User className="h-3 w-3 text-gray-400 inline" />
+                             <span className="text-gray-600 ml-1">{transaccion.clienteNombre}</span>
+                           </>
+                         )}
+                         
+                         {/* Observaciones (solo si no es venta automática) */}
+                         {transaccion.observaciones && 
+                          !transaccion.observaciones.startsWith('Venta procesada con código') && (
+                           <>
+                             <span className="text-gray-400">•</span>
+                             <span className="text-gray-500">
+                               {(() => {
+                                 if (transaccion.observaciones.includes('Vuelto entregado')) {
+                                   const metodo = transaccion.observaciones.match(/Método: (\w+)/)?.[1];
+                                   const metodosMap = {
+                                     'efectivo_bs': 'Efectivo Bs',
+                                     'efectivo_usd': 'Efectivo USD',
+                                     'pago_movil': 'Pago Móvil',
+                                     'transferencia': 'Transferencia',
+                                     'zelle': 'Zelle',
+                                     'binance': 'Binance',
+                                     'tarjeta': 'Tarjeta'
+                                   };
+                                   const metodoPretty = metodosMap[metodo] || metodo;
+                                   return `Vuelto en ${metodoPretty}`;
+                                 }
+                                 return transaccion.observaciones.length > 50 
+                                   ? transaccion.observaciones.substring(0, 50) + '...'
+                                   : transaccion.observaciones;
+                               })()}
+                             </span>
+                           </>
+                         )}
                        </div>
                      </td>
                      
                      {/* Montos Originales */}
-                     <td className="px-4 py-4 whitespace-nowrap text-right">
+                     <td className="px-4 py-4 whitespace-nowrap text-right min-w-[140px]">
                        <div className="space-y-1">
                          {montosOriginales.map((montoInfo, idx) => (
                            <div key={idx} className={`text-sm font-bold ${
@@ -634,21 +699,21 @@ const handleViewDetails = async (transaccion) => {
                      
                      {/* Acciones */}
                      <td className="px-4 py-4 whitespace-nowrap text-center">
-                       <div className="flex items-center justify-center space-x-1">
+                       <div className="flex items-center justify-center space-x-2">
                          <button
                            onClick={() => handleViewDetails(transaccion)}
-                           className="bg-blue-50/80 backdrop-blur-sm hover:bg-blue-100/80 text-blue-600 p-1.5 rounded-md transition-colors border border-blue-200/50 hover:border-blue-300/50"
+                           className="bg-blue-50/80 backdrop-blur-sm hover:bg-blue-100/80 text-blue-600 p-2 rounded-md transition-colors border border-blue-200/50 hover:border-blue-300/50"
                            title="Ver detalles"
                          >
-                           <Eye className="h-3.5 w-3.5" />
+                           <Eye className="h-4 w-4" />
                          </button>
                          {usuario?.rol === 'admin' && (
                            <button
                              onClick={() => handleDeleteClick(transaccion)}
-                             className="bg-red-50/80 backdrop-blur-sm hover:bg-red-100/80 text-red-600 p-1.5 rounded-md transition-colors border border-red-200/50 hover:border-red-300/50"
+                             className="bg-red-50/80 backdrop-blur-sm hover:bg-red-100/80 text-red-600 p-2 rounded-md transition-colors border border-red-200/50 hover:border-red-300/50"
                              title="Eliminar"
                            >
-                             <Trash2 className="h-3.5 w-3.5" />
+                             <Trash2 className="h-4 w-4" />
                            </button>
                          )}
                        </div>

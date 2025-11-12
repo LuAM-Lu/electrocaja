@@ -17,7 +17,7 @@ export const useSocketEvents = () => {
     actualizarActividad
   } = useAuthStore();
 
-  const { updateCajaStatus, addTransaction, removeTransaction } = useCajaStore();
+  const { updateCajaStatus, addTransaction, removeTransaction, cargarCajaActual } = useCajaStore();
 
 
   // Estados locales para bloqueos (VERSIÓN SIMPLE QUE FUNCIONABA)
@@ -27,20 +27,13 @@ export const useSocketEvents = () => {
 
   useEffect(() => {
     if (!socket) {
-      console.log('⚠️ Socket no disponible en useSocketEvents');
       return;
     }
 
-    console.log('✅ Configurando listeners para socket:', socket.id, 'conectado:', socket.connected);
-
     // 🔧 HANDLERS ESPECÍFICOS PARA BLOQUEOS (VERSIÓN SIMPLE QUE FUNCIONABA)
     const handleBloqueaUsuarios = (data) => {
-      console.log('🔒 EVENTO: bloquear_usuarios', data);
-
       // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
       const { usuario: usuarioActual } = useAuthStore.getState();
-      console.log('🔒 Usuario actual en handler:', usuarioActual?.nombre);
-      console.log('🔒 Usuario cerrando:', data.usuario_cerrando);
 
       setUsuariosBloqueados(true);
       setMotivoBloqueo(data.motivo);
@@ -48,7 +41,6 @@ export const useSocketEvents = () => {
 
       // Solo mostrar toast si no es el usuario que está cerrando
       if (usuarioActual?.nombre !== data.usuario_cerrando) {
-        console.log('🔒 Mostrando toast porque', usuarioActual?.nombre, '!==', data.usuario_cerrando);
         toast.error(`🔒 ${data.motivo}`, {
           duration: 5000,
           style: {
@@ -58,14 +50,10 @@ export const useSocketEvents = () => {
             fontSize: '14px'
           }
         });
-      } else {
-        console.log('🔒 NO mostrar toast porque ES el usuario que está cerrando');
       }
     };
 
     const handleBloqueaDiferencia = (data) => {
-      console.log('🚨 EVENTO: bloquear_usuarios_diferencia', data);
-
       // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
       const { usuario: usuarioActual } = useAuthStore.getState();
 
@@ -88,7 +76,6 @@ export const useSocketEvents = () => {
     };
 
     const handleDesbloquea = (data) => {
-      console.log('🔓 EVENTO: desbloquear_usuarios', data);
       setUsuariosBloqueados(false);
       setMotivoBloqueo('');
       setUsuarioCerrando('');
@@ -105,8 +92,6 @@ export const useSocketEvents = () => {
 
     // 🆕 NUEVO HANDLER PARA FORCE LOGOUT
     const handleForceLogout = (data) => {
-      console.log('💀 FORCE LOGOUT recibido:', data);
-      
       // Mensaje prominente al usuario kickeado
       toast.error(`🚨 ${data.message}`, {
         duration: 8000,
@@ -134,14 +119,11 @@ export const useSocketEvents = () => {
       
       // Forzar logout después de mostrar el mensaje
       setTimeout(() => {
-        console.log('💀 Ejecutando logout forzado...');
         logout();
       }, 3000); // 3 segundos para leer el mensaje
     };
 
     const handleCajaAbierta = (data) => {
-      console.log('📦 Caja abierta:', data);
-
       // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
       const { usuario: usuarioActual } = useAuthStore.getState();
 
@@ -220,26 +202,20 @@ export const useSocketEvents = () => {
 
                 // En useSocketEvents.js, función handleUsuariosActualizados:
             const handleUsuariosActualizados = (data) => {
-              console.log('📊 Contador usuarios actualizado:', data);
-              
               if (data.usuarios && Array.isArray(data.usuarios)) {
                 const usuariosFormateados = data.usuarios.map((userStr, index) => {
-                  console.log('🔧 DEBUG - Procesando userStr:', userStr);
-                  
                   // 🔧 REGEX MEJORADO
                   const match = userStr.match(/^(.+?)\s+\((.+)\)$/);
                   if (match) {
-                    console.log('🔧 DEBUG - Match encontrado:', match);
                     return {
                       id: `user_${index}_${match[1].replace(/\s+/g, '_')}`,
-                      nombre: match[1].trim(), // 👈 AGREGAR .trim()
+                      nombre: match[1].trim(),
                       rol: match[2],
                       sucursal: 'Principal',
                       ultima_actividad: new Date().toISOString()
                     };
                   }
                   
-                  console.log('🔧 DEBUG - No match, usando fallback');
                   return {
                     id: `user_${index}_${userStr.replace(/\s+/g, '_')}`,
                     nombre: userStr || 'Usuario Desconocido',
@@ -249,54 +225,89 @@ export const useSocketEvents = () => {
                   };
                 });
                 
-                console.log('🔧 DEBUG - Usuarios formateados finales:', usuariosFormateados);
-                
                 // ACTUALIZAR EL STORE
                 useAuthStore.setState({ usuariosConectados: usuariosFormateados });
-                
-                console.log('✅ Store actualizado con', usuariosFormateados.length, 'usuarios conectados');
               }
             };
 
     const handleUsersUpdate = (data) => {
-      console.log('👥 Lista de usuarios actualizada:', data);
       // Aquí podrías actualizar la lista completa si es necesario
     };
 
     // 🔧 HANDLERS PARA TRANSACCIONES
     const handleCajaUpdated = (cajaData) => {
-      console.log('📊 Caja actualizada:', cajaData);
       if (updateCajaStatus) {
         updateCajaStatus(cajaData);
       }
       toast.success('Estado de caja actualizado');
     };
 
-    const handleTransactionAdded = (transaction) => {
-  console.log('💰 Nueva transacción recibida:', transaction);
-  if (addTransaction && transaction?.transaccion) {
-    // Verificar que no sea del mismo usuario para evitar duplicados
-    const { usuario } = useAuthStore.getState();
-    if (transaction.usuario !== usuario?.nombre) {
-      // 🔧 MAPEAR DATOS CORRECTAMENTE ANTES DE AGREGAR
-      const transaccionMapeada = {
-        transaccion: {
-          ...transaction.transaccion,
-          usuario: transaction.usuario || 'Usuario desconocido',
-          fecha_hora: transaction.transaccion.fechaHora || new Date().toISOString()
-        }
-      };
+    const handleTransactionAdded = async (transaction) => {
+      // ✅ SIEMPRE recargar caja para actualizar TransactionTable en tiempo real
+      if (cargarCajaActual) {
+        setTimeout(() => {
+          cargarCajaActual(true); // forceRefresh = true
+        }, 300);
+      }
       
-      addTransaction(transaccionMapeada);
-      toast.success(`💰 ${transaction.usuario} registró una transacción`);
-    } else {
-      console.log('🔄 Transacción propia ignorada para evitar duplicado');
-    }
-  }
-};
+      // También intentar agregar la transacción al store (fallback)
+      if (addTransaction && transaction?.transaccion) {
+        const { usuario } = useAuthStore.getState();
+        if (transaction.usuario !== usuario?.nombre) {
+          const transaccionMapeada = {
+            transaccion: {
+              ...transaction.transaccion,
+              tipo: transaction.transaccion.tipo?.toLowerCase() || 'ingreso',
+              usuario: transaction.usuario || 'Usuario desconocido',
+              fecha_hora: transaction.transaccion.fechaHora || transaction.transaccion.fecha_hora || new Date().toISOString()
+            }
+          };
+          
+          addTransaction(transaccionMapeada);
+          toast.success(`💰 ${transaction.usuario} registró una transacción`);
+        } else {
+          // Transacción propia ignorada para evitar duplicado
+        }
+      }
+    };
+
+    const handleNuevaTransaccion = async (data) => {
+      // ✅ SIEMPRE recargar caja para TODAS las transacciones (ingresos, egresos, servicios)
+      // Esto asegura que TransactionTable se actualice en tiempo real
+      if (cargarCajaActual) {
+        // Forzar refresh para evitar cache y asegurar datos actualizados
+        setTimeout(() => {
+          cargarCajaActual(true); // forceRefresh = true
+        }, 300);
+      }
+      
+      // También intentar agregar la transacción al store si está disponible (fallback)
+      if (addTransaction && data?.transaccion) {
+        const { usuario } = useAuthStore.getState();
+        // Agregar transacción de otros usuarios o si es servicio técnico (siempre actualizar)
+        const esTransaccionServicio = data.tipo === 'servicio_tecnico' || 
+                                      data.transaccion?.servicioTecnicoId ||
+                                      data.transaccion?.tipo === 'servicio_tecnico';
+        
+        if (data.usuario !== usuario?.nombre || esTransaccionServicio) {
+          const transaccionMapeada = {
+            transaccion: {
+              ...data.transaccion,
+              tipo: data.transaccion.tipo?.toLowerCase() || 'ingreso',
+              usuario: data.usuario || 'Usuario desconocido',
+              fecha_hora: data.transaccion.fechaHora || data.transaccion.fecha_hora || new Date().toISOString()
+            }
+          };
+          
+          addTransaction(transaccionMapeada);
+          if (!esTransaccionServicio && data.usuario !== usuario?.nombre) {
+            toast.success(`💰 ${data.usuario} registró una transacción`);
+          }
+        }
+      }
+    };
 
     const handleTransactionDeleted = (data) => {
-      console.log('🗑️ Transacción eliminada:', data);
       if (removeTransaction) {
         removeTransaction(data.transaccionId);
       }
@@ -310,7 +321,6 @@ export const useSocketEvents = () => {
 
   // 🆕 HANDLERS PARA CAJAS PENDIENTES
   const handleAutoCierreEjecutado = (data) => {
-    console.log('🕚 Auto-cierre ejecutado:', data);
     
     const { cajas_afectadas, timestamp } = data;
     
@@ -428,16 +438,12 @@ export const useSocketEvents = () => {
     
     socket.on('transaction-added', handleTransactionAdded);
     socket.on('transaction-deleted', handleTransactionDeleted);
+    // 🆕 ESCUCHAR evento nueva_transaccion del backend (para servicios técnicos)
+    socket.on('nueva_transaccion', handleNuevaTransaccion);
     
     socket.on('error', handleError);
 
-    // ✅ DEBUG: Verificar listeners registrados
-console.log('🔍 DEBUG: Registrando listeners...');
-console.log('🔍 Socket ID:', socket.id);
-console.log('🔍 Socket conectado:', socket.connected);
-
-socket.on('venta_procesada', handleVentaProcesada);
-console.log('✅ Listener venta_procesada REGISTRADO');
+    socket.on('venta_procesada', handleVentaProcesada);
     socket.on('usuarios_conectados_actualizado', handleUsuariosActualizados);
     // 🆕 EVENTOS DE STOCK EN TIEMPO REAL
     socket.on('stock_reservado', handleStockReservado);
@@ -449,8 +455,6 @@ console.log('✅ Listener venta_procesada REGISTRADO');
 
     // 🔧 CLEANUP
     return () => {
-      console.log('🧹 Limpiando listeners de socket');
-
       // LIMPIAR SOCKET LISTENERS (NO window events - authStore los maneja)
       socket.off('bloquear_usuarios', handleBloqueaUsuarios);
       socket.off('bloquear_usuarios_diferencia', handleBloqueaDiferencia);
@@ -464,9 +468,9 @@ console.log('✅ Listener venta_procesada REGISTRADO');
       socket.off('caja-updated', handleCajaUpdated);
       socket.off('transaction-added', handleTransactionAdded);
       socket.off('transaction-deleted', handleTransactionDeleted);
+      socket.off('nueva_transaccion', handleNuevaTransaccion);
       socket.off('error', handleError);
       socket.off('venta_procesada', handleVentaProcesada);
-      console.log('🧹 Listener venta_procesada REMOVIDO');
       socket.off('usuarios_conectados_actualizado', handleUsuariosActualizados);
       socket.off('stock_reservado', handleStockReservado);
       socket.off('stock_liberado', handleStockLiberado);
@@ -489,13 +493,45 @@ const handleVentaProcesada = (data) => {
     return; // ⚠️ SALIR TEMPRANO para evitar errores
   }
 
+  // ✅ HELPER: Función mejorada para detectar modal de procesamiento
+  const hayModalProcesando = () => {
+    // Verificar múltiples formas de detectar el modal
+    const porAtributo = document.querySelector('[data-procesando-modal="true"]');
+    const porClase = document.querySelector('.venta-procesando-modal');
+    // Verificar z-index alto como fallback
+    const modalesAltos = Array.from(document.querySelectorAll('[style*="z-index"]'))
+      .filter(el => {
+        const zIndex = parseInt(el.style.zIndex) || 0;
+        return zIndex >= 99999;
+      });
+    
+    return !!(porAtributo || porClase || modalesAltos.length > 0);
+  };
+
+  // ✅ HELPER: Comparación robusta de usuarios
+  const esDelMismoUsuario = (dataUsuario, usuarioActual) => {
+    if (!dataUsuario || !usuarioActual) return false;
+    
+    // Comparar por ID si está disponible
+    if (dataUsuario.id && usuarioActual.id) {
+      return dataUsuario.id === usuarioActual.id;
+    }
+    
+    // Normalizar nombres para comparación (sin espacios, minúsculas)
+    const normalizar = (str) => str?.toLowerCase().trim().replace(/\s+/g, '');
+    const nombreData = typeof dataUsuario === 'string' ? dataUsuario : dataUsuario.nombre;
+    const nombreActual = usuarioActual.nombre;
+    
+    return normalizar(nombreData) === normalizar(nombreActual);
+  };
+
   const { usuario } = useAuthStore.getState();
-  const esDelMismoUsuario = data.usuario === usuario?.nombre;
+  const esMismoUsuario = esDelMismoUsuario(data.usuario, usuario);
 
   console.log('🔍 Debug:');
   console.log('  - Usuario evento:', data.usuario);
   console.log('  - Usuario actual:', usuario?.nombre);
-  console.log('  - Es mismo usuario?:', esDelMismoUsuario);
+  console.log('  - Es mismo usuario?:', esMismoUsuario);
   console.log('  - Tiene venta.id?:', !!data.venta.id);
   console.log('  - Tiene venta.pagos?:', !!data.venta.pagos);
 
@@ -506,14 +542,12 @@ let funcionEjecutada = false;
 
 // Opción 1: Usar processVentaCompletada que está específicamente para ventas
 if (cajaState.processVentaCompletada && data.venta) {
-  console.log('🔄 EJECUTANDO processVentaCompletada...');
   cajaState.processVentaCompletada(data);
   funcionEjecutada = true;
 }
 
 // Opción 2: Usar addTransaction + actualizar totales de caja (SIN recargar todo)
 else if (cajaState.addTransaction && data.venta) {
-  console.log('🔄 EJECUTANDO addTransaction + actualización de totales...');
 
   // 1. Agregar la transacción a la lista
   const transaccionParaAgregar = {
@@ -547,22 +581,22 @@ else if (cajaState.addTransaction && data.venta) {
         total_pago_movil: data.venta.totalesActualizados.totalPagoMovil || cajaActual.total_pago_movil
       }
     });
-    console.log('✅ Totales de caja actualizados sin recargar');
   }
 
   funcionEjecutada = true;
 }
 
-// ❌ OPCIÓN 3 ELIMINADA: NO usar initialize() porque causa refresh en TODOS los usuarios
-// El initialize() recarga toda la app (tasa cambio, transacciones, estados, etc.)
-// Esto causa que otros usuarios vean un "refresh" o "F5 forzado" en su pantalla
-
 // Opción 3: Recargar solo transacciones de forma ligera (SIN initialize)
 else if (cajaState.cargarCajaActual) {
-  console.log('🔄 EJECUTANDO cargarCajaActual (ligero, solo transacciones)...');
-  // cargarCajaActual solo recarga transacciones, no toda la app
-  cajaState.cargarCajaActual();
-  funcionEjecutada = true;
+  // ✅ PREVENIR QUE SE EJECUTE SI HAY UN MODAL DE PROCESAMIENTO ABIERTO
+  if (!hayModalProcesando()) {
+    // cargarCajaActual solo recarga transacciones, no toda la app
+    cajaState.cargarCajaActual();
+    funcionEjecutada = true;
+  } else {
+    console.log('⏸️ cargarCajaActual omitido - Modal de procesamiento activo');
+    // No ejecutar para evitar conflictos con el modal de procesamiento
+  }
 }
 
 else {
@@ -578,7 +612,7 @@ if (funcionEjecutada) {
 }
 
 // Solo mostrar toast a OTROS usuarios
-if (!esDelMismoUsuario) {
+if (!esMismoUsuario) {
   toast.success(`🚀 ${data.usuario} procesó una venta`, {
     duration: 4000,
     icon: '✅'

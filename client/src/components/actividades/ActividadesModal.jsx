@@ -66,10 +66,15 @@ const getTabColors = (color, isActive) => {
       active: 'bg-orange-100 text-orange-700 border-orange-300',
       inactive: 'text-orange-600 hover:bg-orange-50 hover:text-orange-700',
       header: 'from-orange-500 to-orange-600'
+    },
+    cyan: {
+      active: 'bg-cyan-100 text-cyan-700 border-cyan-300',
+      inactive: 'text-cyan-600 hover:bg-cyan-50 hover:text-cyan-700',
+      header: 'from-cyan-500 to-cyan-600'
     }
   };
   
-  return colors[color] || colors.emerald;
+  return colors[color] || colors.cyan;
 };
 
 const ActividadesModal = ({ isOpen, onClose }) => {
@@ -130,7 +135,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
 
   //const counts = getTabCounts();
   const currentTab = TABS.find(tab => tab.id === activeTab);
-  const tabColors = getTabColors(currentTab?.color || 'emerald', true);
+  const tabColors = getTabColors('cyan', true); // Usar cyan como color principal del header
 
   //  MANEJAR CIERRE
   const handleClose = () => {
@@ -151,7 +156,7 @@ const ActividadesModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-cyan-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl h-[85vh] overflow-hidden flex flex-col">
         
         {/*  HEADER DINÁMICO */}

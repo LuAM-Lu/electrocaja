@@ -5,7 +5,10 @@ import {
   AlertCircle, Coins, Banknote, TrendingUp
 } from 'lucide-react';
 import PagosPanel from '../../venta/PagosPanel';
+import DescuentoModal from '../../DescuentoModal';
 import { useCajaStore } from '../../../store/cajaStore';
+import { useAuthStore } from '../../../store/authStore';
+import { api } from '../../../config/api';
 import {
   parseMoney,
   roundMoney,
@@ -18,6 +21,7 @@ import toast from 'react-hot-toast';
 
 export default function PasoModalidadPago({ datos, onActualizar, errores }) {
   const { tasaCambio } = useCajaStore();
+  const { socket } = useAuthStore();
 
   const [modalidadPago, setModalidadPago] = useState(
     datos.modalidadPago || 'PAGO_POSTERIOR'
@@ -30,6 +34,53 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
   const [pagos, setPagos] = useState(datos.pagoInicial?.pagos || []);
   const [vueltos, setVueltos] = useState(datos.pagoInicial?.vueltos || []);
   const [pagoValido, setPagoValido] = useState(false);
+  const [descuento, setDescuento] = useState(datos.pagoInicial?.descuento || 0);
+  const [showDescuentoModal, setShowDescuentoModal] = useState(false);
+  const [solicitudDescuentoId, setSolicitudDescuentoId] = useState(null);
+  
+  // Generar sesión ID para el modal de descuento
+  const [sesionId] = useState(() => {
+    return `sesion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  });
+
+  // Escuchar eventos de aprobación de descuentos desde el componente padre
+  useEffect(() => {
+    if (!socket || typeof socket.on !== 'function') return;
+
+    const handleAprobacionDescuento = (data) => {
+      // Verificar que la solicitud corresponde a esta sesión
+      if (data.solicitud?.sesionId === sesionId || data.solicitud?.id === solicitudDescuentoId) {
+        const montoDescuento = parseFloat(data.solicitud.montoDescuento);
+        setDescuento(roundMoney(montoDescuento));
+        setSolicitudDescuentoId(null);
+        toast.success(`Descuento aprobado por ${data.aprobadoPor?.nombre || 'Administrador'}`, {
+          icon: React.createElement(CheckCircle, { className: "h-5 w-5 text-green-500" })
+        });
+        // Cerrar modal si está abierto
+        if (showDescuentoModal) {
+          setShowDescuentoModal(false);
+        }
+      }
+    };
+
+    const handleRechazoDescuento = (data) => {
+      // Verificar que la solicitud corresponde a esta sesión
+      if (data.solicitud?.sesionId === sesionId || data.solicitud?.id === solicitudDescuentoId) {
+        setSolicitudDescuentoId(null);
+        toast.error(`Descuento rechazado: ${data.motivoRechazo || 'Sin motivo especificado'}`, {
+          icon: React.createElement(AlertCircle, { className: "h-5 w-5 text-red-500" })
+        });
+      }
+    };
+
+    socket.on('solicitud_descuento_aprobada', handleAprobacionDescuento);
+    socket.on('solicitud_descuento_rechazada', handleRechazoDescuento);
+
+    return () => {
+      socket.off('solicitud_descuento_aprobada', handleAprobacionDescuento);
+      socket.off('solicitud_descuento_rechazada', handleRechazoDescuento);
+    };
+  }, [socket, sesionId, solicitudDescuentoId, showDescuentoModal]);
 
   // Calculate total estimado with precision
   const totalEstimado = roundMoney(
@@ -45,6 +96,24 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
       toast.error('Tasa de cambio inválida. Debe ser mayor a 0.');
     }
   }, [tasaCambio]);
+
+  // Limpiar solicitud de descuento al desmontar
+  useEffect(() => {
+    return () => {
+      // Limpiar solicitud pendiente si existe
+      if (sesionId) {
+        api.delete(`/discount-requests/sesion/${sesionId}`).catch((error) => {
+          // Silenciar solo errores 404 (solicitud no existe) - esto es normal y esperado
+          if (error.response?.status !== 404) {
+            console.error('Error eliminando solicitud de descuento:', error);
+          }
+          // Los errores 404 son esperados cuando la solicitud ya fue procesada o no existe
+        }).catch(() => {
+          // Ignorar completamente cualquier error en la limpieza
+        });
+      }
+    };
+  }, [sesionId]);
 
   // Calculate totals with precision using utility function
   const calcularTotales = () => {
@@ -77,6 +146,7 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
         monto: montoFinal,
         pagos,
         vueltos,
+        descuento: roundMoney(descuento),
         totalBs: roundMoney(totalBs),
         totalUsd: roundMoney(totalUsd),
         totalUsdEquivalent: roundMoney(totalUsdEquivalent),
@@ -85,7 +155,7 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
     }
 
     onActualizar(datosActualizados);
-  }, [modalidadPago, montoAbono, pagos, vueltos, totalEstimado, tasaCambio]);
+  }, [modalidadPago, montoAbono, pagos, vueltos, descuento, totalEstimado, tasaCambio]);
 
   const handleModalidadChange = (nuevaModalidad) => {
     setModalidadPago(nuevaModalidad);
@@ -95,6 +165,7 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
       setPagos([]);
       setVueltos([]);
       setMontoAbono(0);
+      setDescuento(0);
     } else if (nuevaModalidad === 'TOTAL_ADELANTADO') {
       setMontoAbono(roundMoney(totalEstimado));
     }
@@ -362,10 +433,26 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
               vueltos={vueltos}
               onPagosChange={handlePagosChange}
               totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
-                ? roundMoney(totalEstimado * tasaCambio) // ✅ Convertir a Bs. porque PagosPanel espera valores en Bs.
-                : roundMoney(montoAbono * tasaCambio)} // ✅ Convertir a Bs. porque PagosPanel espera valores en Bs.
+                ? roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento) // ✅ Aplicar descuento
+                : roundMoney(montoAbono * tasaCambio) - roundMoney(descuento)} // ✅ Aplicar descuento
               tasaCambio={tasaCambio}
               title="Métodos de Pago"
+              descuento={descuento}
+              onDescuentoChange={() => setShowDescuentoModal(true)}
+              onDescuentoLimpiar={async () => {
+                // 🧹 Cancelar solicitud pendiente en la base de datos si existe
+                try {
+                  await api.delete(`/discount-requests/sesion/${sesionId}`);
+                } catch (error) {
+                  // Si no existe la solicitud (404) o ya fue procesada, no es crítico - silenciar el error
+                  if (error.response?.status !== 404) {
+                    console.error('Error eliminando solicitud de descuento:', error);
+                  }
+                }
+                setDescuento(0);
+                setSolicitudDescuentoId(null);
+                toast.success('Descuento eliminado');
+              }}
               onValidationChange={handleValidationChange}
             />
           )}
@@ -400,6 +487,41 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Modal de Descuento */}
+      {showDescuentoModal && (
+        <DescuentoModal
+          isOpen={showDescuentoModal}
+          onClose={() => setShowDescuentoModal(false)}
+          totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
+            ? roundMoney(totalEstimado * tasaCambio)
+            : roundMoney(montoAbono * tasaCambio)}
+          tasaCambio={tasaCambio}
+          ventaData={{
+            cliente: datos.cliente || null,
+            items: datos.items || [],
+            totalBs: modalidadPago === 'TOTAL_ADELANTADO' 
+              ? roundMoney(totalEstimado * tasaCambio)
+              : roundMoney(montoAbono * tasaCambio),
+            totalUsd: modalidadPago === 'TOTAL_ADELANTADO' 
+              ? totalEstimado
+              : montoAbono
+          }}
+          items={datos.items || []}
+          cliente={datos.cliente || {}}
+          sesionId={sesionId}
+          onDescuentoAprobado={(montoDescuento, motivoDescuento = '') => {
+            setDescuento(roundMoney(montoDescuento));
+            setSolicitudDescuentoId(null);
+            toast.success(`Descuento de ${montoDescuento.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs aplicado`);
+            setShowDescuentoModal(false);
+          }}
+          onSolicitudCreada={(solicitudId) => {
+            // Guardar el ID de la solicitud para escuchar eventos de aprobación
+            setSolicitudDescuentoId(solicitudId);
+          }}
+        />
       )}
     </div>
   );

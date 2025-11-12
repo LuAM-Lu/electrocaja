@@ -1,23 +1,142 @@
 // components/servicios/wizard/PasoConfirmacion.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User, Smartphone, Package, Calendar,
   DollarSign, Clock, Star, Camera,
-  MessageCircle, Printer, CheckCircle, Wrench,
-  CreditCard
+  Printer, CheckCircle, Wrench,
+  CreditCard, AlertTriangle
 } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import { useCajaStore } from '../../../store/cajaStore';
+import { imprimirTicketServicio } from '../../../utils/printUtils.js';
+import { api } from '../../../config/api';
+import toast from '../../../utils/toast.jsx';
+import { delay } from '../../../utils/saleProcessingHelpers';
+import { PROCESSING_CONFIG } from '../../../constants/processingConstants';
 
-export default function PasoConfirmacion({ datos, onActualizar, loading }) {
+export default function PasoConfirmacion({ datos, onActualizar, loading, servicioCreado, onAccionesCompletadas, onOpcionesCambio, procesandoModalRef, opcionesProcesamiento: opcionesProcesamientoProp }) {
   const { tasaCambio } = useCajaStore();
   const [opcionesProcesamiento, setOpcionesProcesamiento] = useState({
     enviarWhatsapp: false,
-    imprimir: false
+    imprimir: true // 🆕 Por defecto seleccionado
   });
+  const [ejecutandoAcciones, setEjecutandoAcciones] = useState(false);
+  
+  // Usar opciones del prop si están disponibles (desde el modal de procesamiento)
+  const opcionesFinales = opcionesProcesamientoProp || opcionesProcesamiento;
 
   const calcularTotal = () => {
     const totalItems = (datos.items || []).reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0);
     return totalItems;
+  };
+
+  // Notificar cambios en las opciones al componente padre
+  useEffect(() => {
+    if (onOpcionesCambio) {
+      onOpcionesCambio(opcionesProcesamiento);
+    }
+  }, [opcionesProcesamiento, onOpcionesCambio]);
+
+  // 🆕 Ejecutar acciones cuando se crea el servicio
+  useEffect(() => {
+    if (servicioCreado && !ejecutandoAcciones) {
+      ejecutarAcciones();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servicioCreado?.id]); // Solo ejecutar cuando cambie el ID del servicio creado
+
+  const ejecutarAcciones = async () => {
+    if (!servicioCreado || ejecutandoAcciones) return;
+    
+    setEjecutandoAcciones(true);
+    const accionesEjecutadas = [];
+
+    try {
+      // 1. Imprimir si está seleccionado
+      if (opcionesFinales.imprimir) {
+        try {
+          // Avanzar paso de impresión en el modal
+          await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION - 500);
+          if (procesandoModalRef?.current) {
+            procesandoModalRef.current.avanzarPaso('imprimir');
+          }
+          
+          await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION);
+          
+          await imprimirTicketServicio(
+            servicioCreado,
+            { nombre: servicioCreado.usuarioCreador || 'Sistema' },
+            servicioCreado.linkSeguimiento,
+            servicioCreado.qrCode
+          );
+          accionesEjecutadas.push('imprimir');
+          // ✅ ELIMINADO: toast.success('Ticket impreso exitosamente');
+        } catch (error) {
+          console.error('Error imprimiendo:', error);
+          // ✅ ELIMINADO: toast.error('Error al imprimir: ' + (error.message || 'Error desconocido'));
+          // Avanzar paso incluso si falla para no bloquear el flujo
+          if (procesandoModalRef?.current) {
+            procesandoModalRef.current.avanzarPaso('imprimir');
+          }
+        }
+      }
+
+      // 2. Enviar WhatsApp si está seleccionado
+      if (opcionesFinales.enviarWhatsapp) {
+        try {
+          // Avanzar paso de WhatsApp en el modal
+          await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION - 500);
+          if (procesandoModalRef?.current) {
+            procesandoModalRef.current.avanzarPaso('whatsapp');
+          }
+          
+          await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION);
+          
+          // Verificar estado de WhatsApp primero
+          const estadoResponse = await api.get('/whatsapp/estado');
+          const estadoWhatsApp = estadoResponse.data?.data || estadoResponse.data;
+          
+          
+          if (!estadoWhatsApp || !estadoWhatsApp.conectado) {
+            // ✅ ELIMINADO: toast.error('WhatsApp no está conectado. Por favor, conecta WhatsApp primero desde la configuración.');
+            console.warn('⚠️ WhatsApp desconectado, no se enviará mensaje');
+            // Continuar con el flujo aunque WhatsApp falle
+            // Avanzar paso incluso si falla
+            if (procesandoModalRef?.current) {
+              procesandoModalRef.current.avanzarPaso('whatsapp');
+            }
+          } else {
+            // Enviar WhatsApp solo si está conectado
+            const response = await api.post('/whatsapp/enviar-servicio', {
+              servicioId: servicioCreado.id,
+              numero: servicioCreado.clienteTelefono
+            });
+
+            if (response.data.success) {
+              accionesEjecutadas.push('whatsapp');
+              // ✅ ELIMINADO: toast.success('Mensaje de WhatsApp enviado exitosamente');
+            } else {
+              throw new Error(response.data.message || 'Error enviando WhatsApp');
+            }
+          }
+        } catch (error) {
+          console.error('Error enviando WhatsApp:', error);
+          // ✅ ELIMINADO: const mensajeError = error.response?.data?.message || error.message || 'Error desconocido';
+          // ✅ ELIMINADO: toast.error('Error al enviar WhatsApp: ' + mensajeError);
+          // Avanzar paso incluso si falla para no bloquear el flujo
+          if (procesandoModalRef?.current) {
+            procesandoModalRef.current.avanzarPaso('whatsapp');
+          }
+        }
+      }
+
+      // Notificar que las acciones se completaron
+      if (onAccionesCompletadas) {
+        onAccionesCompletadas(accionesEjecutadas);
+      }
+    } finally {
+      setEjecutandoAcciones(false);
+    }
   };
 
   const toggleOpcion = (opcion) => {
@@ -468,64 +587,78 @@ export default function PasoConfirmacion({ datos, onActualizar, loading }) {
 
       {/* OPCIONES DE PROCESAMIENTO - ANCHO COMPLETO */}
       <div className="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-100 mb-2 flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-blue-400" />
           Opciones de Procesamiento
         </h3>
+        <p className="text-sm text-gray-400 mb-4">
+          Selecciona al menos una opción para crear la orden
+        </p>
+        
+        {!opcionesFinales.imprimir && !opcionesFinales.enviarWhatsapp && (
+          <div className="mb-4 p-3 bg-amber-900/30 border border-amber-700/50 rounded-lg">
+            <p className="text-amber-200 text-sm flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Debes seleccionar al menos una opción para continuar
+            </p>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* WhatsApp Toggle */}
+          {/* Imprimir Ticket Térmico */}
           <button
-            onClick={() => toggleOpcion('enviarWhatsapp')}
+            onClick={() => toggleOpcion('imprimir')}
+            disabled={loading || ejecutandoAcciones || servicioCreado}
             className={`p-4 rounded-lg border-2 transition-all ${
-              opcionesProcesamiento.enviarWhatsapp
-                ? 'border-green-500 bg-green-600/20 text-green-200'
+              opcionesFinales.imprimir
+                ? 'border-blue-500 bg-blue-600/20 text-blue-200'
                 : 'border-gray-600 bg-gray-700/30 text-gray-300 hover:border-gray-500'
-            }`}
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <MessageCircle className="h-5 w-5" />
+                <Printer className="h-5 w-5" />
                 <div className="text-left">
-                  <div className="font-medium">Enviar WhatsApp</div>
-                  <div className="text-xs opacity-75">Notificar al cliente por WhatsApp</div>
+                  <div className="font-medium">Imprimir Ticket Térmico</div>
+                  <div className="text-xs opacity-75">Generar ticket físico impreso</div>
                 </div>
               </div>
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                opcionesProcesamiento.enviarWhatsapp
-                  ? 'border-green-400 bg-green-500'
+                opcionesFinales.imprimir
+                  ? 'border-blue-400 bg-blue-500'
                   : 'border-gray-400'
               }`}>
-                {opcionesProcesamiento.enviarWhatsapp && (
+                {opcionesFinales.imprimir && (
                   <CheckCircle className="h-3 w-3 text-white" />
                 )}
               </div>
             </div>
           </button>
 
-          {/* Imprimir Toggle */}
+          {/* Enviar por WhatsApp */}
           <button
-            onClick={() => toggleOpcion('imprimir')}
+            onClick={() => toggleOpcion('enviarWhatsapp')}
+            disabled={loading || ejecutandoAcciones || servicioCreado}
             className={`p-4 rounded-lg border-2 transition-all ${
-              opcionesProcesamiento.imprimir
-                ? 'border-blue-500 bg-blue-600/20 text-blue-200'
+              opcionesFinales.enviarWhatsapp
+                ? 'border-green-500 bg-green-600/20 text-green-200'
                 : 'border-gray-600 bg-gray-700/30 text-gray-300 hover:border-gray-500'
-            }`}
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Printer className="h-5 w-5" />
+                <FaWhatsapp className="h-5 w-5" />
                 <div className="text-left">
-                  <div className="font-medium">Imprimir Orden</div>
-                  <div className="text-xs opacity-75">Generar orden de servicio impresa</div>
+                  <div className="font-medium">Enviar por WhatsApp</div>
+                  <div className="text-xs opacity-75">Enviar información digital al cliente</div>
                 </div>
               </div>
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                opcionesProcesamiento.imprimir
-                  ? 'border-blue-400 bg-blue-500'
+                opcionesFinales.enviarWhatsapp
+                  ? 'border-green-400 bg-green-500'
                   : 'border-gray-400'
               }`}>
-                {opcionesProcesamiento.imprimir && (
+                {opcionesFinales.enviarWhatsapp && (
                   <CheckCircle className="h-3 w-3 text-white" />
                 )}
               </div>

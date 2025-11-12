@@ -1,6 +1,6 @@
 // components/ArqueoModal.jsx (VERSIÓN FINAL CORREGIDA)
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Calculator, DollarSign, Coins, Smartphone, AlertTriangle, CheckCircle, Camera, CameraOff, Shield, Calendar, Clock, Unlock, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { X, Calculator, DollarSign, Coins, Smartphone, AlertTriangle, CheckCircle, Camera, CameraOff, Shield, Unlock, ChevronDown, ChevronUp, TrendingUp, User, Lock, FileText, Send } from 'lucide-react';
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';
@@ -45,6 +45,8 @@ const ArqueoModal = ({ isOpen, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  // Ref para formulario
+  const formRef = useRef(null);
 
   // ===================================
   // 📸 CÁMARA SILENCIOSA (COPIADO DE ABRIRCAJAMODAL)
@@ -442,119 +444,105 @@ Notificación automática del sistema Electro Caja`;
   // ===================================
   return (
     <>
-      <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden max-h-[95vh] overflow-y-auto">
+      <div className="fixed inset-0 bg-orange-900/40 backdrop-blur-sm modal-backdrop flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 max-h-[95vh] flex flex-col overflow-hidden">
           
-          {/* 🎨 HEADER ANIMADO (COPIADO DE ABRIRCAJAMODAL) */}
+          {/* HEADER PREMIUM - 2 FILAS */}
           <div className={`bg-gradient-to-r ${
             fase === 'diferencia' ? 'from-red-500 to-red-600' :
             fase === 'completado' ? 'from-green-500 to-green-600' :
             'from-orange-500 to-orange-600'
-          } relative overflow-hidden`}>
-            {/* Efecto de brillo */}
+          } relative overflow-hidden flex-shrink-0`}>
+            {/* Efecto de brillo animado */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 animate-shimmer"></div>
             
-            <div className="px-6 py-4 text-white relative">
-              <div className="flex items-center">
-              <div className="flex items-center space-x-3">
-                  <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
-                    {fase === 'diferencia' ? <AlertTriangle className="h-6 w-6" /> :
-                     fase === 'completado' ? <CheckCircle className="h-6 w-6" /> :
-                     <Calculator className="h-6 w-6" />}
+            <div className="px-6 py-4 text-white relative flex gap-4">
+              {/* Icono que ocupa ambas filas */}
+              <div className="flex items-center justify-center flex-shrink-0">
+                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg shadow-lg flex items-center justify-center">
+                  {fase === 'diferencia' ? <AlertTriangle className="h-7 w-7" /> :
+                   fase === 'completado' ? <CheckCircle className="h-7 w-7" /> :
+                   <Calculator className="h-7 w-7" />}
+                </div>
+              </div>
+
+              {/* Contenedor de las dos filas */}
+              <div className="flex-1 min-w-0">
+                {/* FILA 1: Título */}
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xl font-bold">
+                    {fase === 'diferencia' ? 'Diferencia Crítica Detectada' :
+                     fase === 'completado' ? 'Arqueo Completado' :
+                     'Arqueo Crítico de Caja'}
+                  </h2>
+                  
+                  {/* Botón cerrar */}
+                  <button 
+                    onClick={handleClose}
+                    className="bg-white/20 hover:bg-white/30 p-1.5 rounded-lg transition-colors disabled:opacity-50 shadow-sm"
+                    disabled={loading || fase === 'diferencia'}
+                    title="Cerrar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* FILA 2: Componentes */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Usuario */}
+                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-lg whitespace-nowrap border border-white/10">
+                    <User className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="text-sm font-medium">{usuario?.nombre || 'Usuario'}</span>
+                    <span className="text-xs text-white/70">{usuario?.rol?.toUpperCase()}</span>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {fase === 'diferencia' ? '🚨 Diferencia Crítica Detectada' :
-                       fase === 'completado' ? '✅ Arqueo Completado' :
-                       '🧮 Arqueo Crítico de Caja'}
-                    </h2>
-                    <div className="text-sm text-orange-100 flex items-center justify-between">
-                      <span>
-                        {fase === 'diferencia' ? 'Requiere autorización administrativa inmediata' :
-                        fase === 'completado' ? 'Proceso finalizado exitosamente' :
-                        'Verificación completa de efectivo • Usuarios bloqueados'}
-                      </span>
-                      {fase === 'conteo' && (
-                        <div className="flex items-center space-x-1">
-                          {cameraStatus === 'ready' && (
-                            <div className="flex items-center space-x-1 bg-green-500/20 text-green-200 px-2 py-0.5 rounded-full text-xs">
-                              <Camera className="h-3 w-3" />
-                              <span>Cámara conectada</span>
-                            </div>
-                          )}
-                          {cameraStatus === 'error' && (
-                            <div className="flex items-center space-x-1 bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded-full text-xs">
-                              <CameraOff className="h-3 w-3" />
-                              <span>Sin cámara</span>
-                            </div>
-                          )}
-                        </div>
+                  
+                  {/* Bloqueado y En Progreso - Combinado y Animado */}
+                  {fase === 'conteo' && (
+                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-lg whitespace-nowrap border border-white/10 animate-pulse">
+                      {bloqueandoUsuarios && (
+                        <>
+                          <Shield className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-sm font-medium">Bloqueado</span>
+                          <span className="text-white/50 mx-0.5">•</span>
+                        </>
                       )}
+                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse flex-shrink-0"></div>
+                      <span className="text-sm">En Progreso</span>
                     </div>
-                  </div>
+                  )}
+                  
+                  {/* Solo Bloqueado (si no está en fase de conteo) */}
+                  {fase !== 'conteo' && bloqueandoUsuarios && (
+                    <div className="flex items-center gap-1.5 bg-red-500/30 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-red-400/50 whitespace-nowrap">
+                      <Shield className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="text-sm font-medium">Bloqueado</span>
+                    </div>
+                  )}
+                  
+                  {/* Estado de cámara */}
+                  {fase === 'conteo' && cameraStatus === 'ready' && (
+                    <div className="flex items-center gap-1 bg-green-500/30 text-green-100 px-2 py-1 rounded-full text-xs border border-green-400/50 whitespace-nowrap">
+                      <Camera className="h-3 w-3 flex-shrink-0" />
+                      <span>Cámara OK</span>
+                    </div>
+                  )}
+                  {fase === 'conteo' && cameraStatus === 'error' && (
+                    <div className="flex items-center gap-1 bg-amber-500/30 text-amber-100 px-2 py-1 rounded-full text-xs border border-amber-400/50 whitespace-nowrap">
+                      <CameraOff className="h-3 w-3 flex-shrink-0" />
+                      <span>Sin cámara</span>
+                    </div>
+                  )}
                 </div>
-                {/* Botón X eliminado - usar botón Cancelar en su lugar */}
               </div>
             </div>
           </div>
 
-         {/* 👤 INFORMACIÓN COMPACTA DEL USUARIO */}
-          <div className="bg-orange-50 border-b border-orange-100 px-6 py-2">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <Calculator className="h-4 w-4 text-orange-600" />
-                </div>
-                <div>
-                  <span className="font-semibold text-orange-900">{usuario?.nombre || 'Usuario'}</span>
-                  <span className="text-orange-600 ml-2">{usuario?.rol?.toUpperCase()}</span>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4 text-xs text-orange-600">
-                <div className="flex items-center space-x-1">
-                  <Calendar className="h-3 w-3" />
-                  <span>{cajaActual.fecha_apertura}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Clock className="h-3 w-3" />
-                  <span>{new Date().toLocaleTimeString('es-VE', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}</span>
-                </div>
-                {bloqueandoUsuarios && (
-                  <div className="flex items-center space-x-1 bg-red-100 text-red-700 px-2 py-1 rounded-full">
-                    <Shield className="h-3 w-3" />
-                    <span>Bloqueado</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* 📄 CONTENIDO PRINCIPAL */}
-          <div className="p-6">
-
-            {/* 🔧 INDICADOR DE PROGRESO DEL ARQUEO */}
+          {/* CONTENIDO PRINCIPAL (CON SCROLL) */}
+          <div className="flex-1 overflow-y-auto p-6">
             {fase === 'conteo' && (
-              <div className="bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 rounded-lg p-3 mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-orange-800">Arqueo en Progreso</span>
-                  </div>
-                  <div className="flex items-center space-x-1 text-xs text-orange-600">
-                    <Shield className="h-3 w-3" />
-                    <span>Sistema bloqueado • Evidencia automática activa</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {fase === 'conteo' && (
-              <form onSubmit={handleSubmit}>
+              <form ref={formRef} onSubmit={handleSubmit}>
                 
-                {/* 💰 CONTEO CRÍTICO CON CARDS MEJORADAS */}
+                {/* CONTEO CRÍTICO CON CARDS MEJORADAS */}
                 <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-5 mb-6">
                   <h4 className="font-bold text-orange-900 mb-4 flex items-center">
                     <Calculator className="h-5 w-5 mr-2" />
@@ -567,7 +555,7 @@ Notificación automática del sistema Electro Caja`;
                     Verifique cada monto cuidadosamente. Las diferencias requerirán autorización administrativa.
                   </div>
                 
-                {/* 📊 RESUMEN COMPACTO ARQUEO */}
+                {/* RESUMEN COMPACTO ARQUEO */}
                 <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-3 mb-4 border border-orange-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -578,10 +566,10 @@ Notificación automática del sistema Electro Caja`;
                   </div>
                 </div>
 
-                {/* 💰 3 TARJETAS EN FILA */}
+                {/* 3 TARJETAS EN FILA */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                   
-                  {/* 💵 BOLÍVARES */}
+                  {/* BOLÍVARES */}
                   <div className="bg-white border-2 border-orange-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
                     <div className="flex items-center space-x-3 mb-4">
                       <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
@@ -602,8 +590,9 @@ Notificación automática del sistema Electro Caja`;
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-semibold text-orange-800 mb-2">
-                          💵 Contado Físicamente *
+                        <label className="block text-sm font-semibold text-orange-800 mb-2 flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          Contado Físicamente *
                         </label>
                         <input
                           type="number"
@@ -645,8 +634,9 @@ Notificación automática del sistema Electro Caja`;
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-semibold text-green-800 mb-2">
-                          💵 Contado Físicamente *
+                        <label className="block text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          Contado Físicamente *
                         </label>
                         <input
                           type="number"
@@ -688,8 +678,9 @@ Notificación automática del sistema Electro Caja`;
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-semibold text-purple-800 mb-2">
-                          📱 Contado Digitalmente *
+                        <label className="block text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
+                          <Smartphone className="h-4 w-4" />
+                          Contado Digitalmente *
                         </label>
                         <input
                           type="number"
@@ -711,14 +702,17 @@ Notificación automática del sistema Electro Caja`;
                   </div>
                 </div>
 
-                {/* 📝 OBSERVACIONES DESPLEGABLES (ESTILO CERRAR CAJA) */}
+                {/* OBSERVACIONES DESPLEGABLES */}
                 <div className="mb-6">
                   <button
                     type="button"
                     onClick={() => setObservacionesAbiertas(!observacionesAbiertas)}
                     className="w-full flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
                   >
-                    <span className="font-medium text-slate-700">Observaciones del Arqueo</span>
+                    <span className="font-medium text-slate-700 flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Observaciones del Arqueo
+                    </span>
                     {observacionesAbiertas ? (
                       <ChevronUp className="h-4 w-4 text-slate-500" />
                     ) : (
@@ -739,26 +733,33 @@ Notificación automática del sistema Electro Caja`;
                             : 'border-gray-300 focus:ring-orange-500 focus:border-orange-500'
                         }`}
                       />
-                      <div className={`mt-2 text-xs ${
+                      <div className={`mt-2 text-xs flex items-center gap-2 ${
                         hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil
                           ? 'text-red-600'
                           : 'text-slate-500'
                       }`}>
-                        {hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil
-                          ? '🚨 Las observaciones son importantes para el registro de ajustes automáticos.'
-                          : 'Estas observaciones se incluirán en el registro del arqueo.'
-                        }
+                        {hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil ? (
+                          <>
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>Las observaciones son importantes para el registro de ajustes automáticos.</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="h-3 w-3" />
+                            <span>Estas observaciones se incluirán en el registro del arqueo.</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* 🚨 ALERTA DE DIFERENCIAS */}
+                {/* ALERTA DE DIFERENCIAS */}
                 {hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil && (
                   <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6">
                     <div className="flex items-center space-x-2 mb-3">
                       <AlertTriangle className="h-6 w-6 text-red-600" />
-                      <span className="font-bold text-red-800 text-lg">⚠️ Diferencias Críticas Detectadas</span>
+                      <span className="font-bold text-red-800 text-lg">Diferencias Críticas Detectadas</span>
                     </div>
                     <div className="space-y-2 text-sm text-red-700">
                       <div className="font-semibold">Se procederá con el protocolo de emergencia:</div>
@@ -774,119 +775,103 @@ Notificación automática del sistema Electro Caja`;
                         )}
                       </div>
                       <div className="text-xs text-red-600 mt-2 space-y-1">
-                        <div>🔒 Al continuar, se bloqueará todo el sistema hasta recibir autorización administrativa</div>
-                        <div>📝 Se registrarán ajustes automáticos como transacciones de ingreso/egreso</div>
-                        <div>📱 Se enviará notificación WhatsApp crítica al supervisor</div>
-                        <div>📸 Se capturará evidencia fotográfica automáticamente</div>
+                        <div className="flex items-center gap-2">
+                          <Lock className="h-3 w-3" />
+                          <span>Al continuar, se bloqueará todo el sistema hasta recibir autorización administrativa</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3 w-3" />
+                          <span>Se registrarán ajustes automáticos como transacciones de ingreso/egreso</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Send className="h-3 w-3" />
+                          <span>Se enviará notificación WhatsApp crítica al supervisor</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Camera className="h-3 w-3" />
+                          <span>Se capturará evidencia fotográfica automáticamente</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* 🔘 BOTONES DE ACCIÓN */}
-                <div className="flex space-x-4">
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    disabled={loading}
-                    className="flex-1 px-6 py-3 text-gray-700 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50 font-medium"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading || !arqueo.efectivo_bs || !arqueo.efectivo_usd || !arqueo.pago_movil}
-                    className={`flex-1 px-6 py-3 ${
-                      hayDiferencias 
-                        ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' 
-                        : 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
-                    } text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl transform hover:scale-105`}
-                  >
-                    {loading ? (
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Procesando...</span>
-                      </div>
-                    ) : hayDiferencias ? (
-                      <div className="flex items-center justify-center space-x-2">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span>🚨 Continuar con Diferencias Críticas</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center space-x-2">
-                        <Calculator className="h-4 w-4" />
-                        <span>✅ Completar Arqueo Sin Diferencias</span>
-                      </div>
-                    )}
-                  </button>
-                </div>
+                {/* Cerrar div de CONTEO CRÍTICO CON CARDS MEJORADAS */}
                 </div>
               </form>
             )}
 
-            {/* 🚨 FASE: AUTORIZACIÓN REQUERIDA */}
+            {/* FASE: AUTORIZACIÓN REQUERIDA */}
             {fase === 'diferencia' && (
               <div className="text-center py-8">
                 <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 max-w-md mx-auto">
                   <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-red-800 mb-4">
-                    🚨 Sistema Bloqueado - Autorización Crítica Requerida
+                    Sistema Bloqueado - Autorización Crítica Requerida
                   </h3>
                   <div className="text-red-700 mb-6 space-y-2">
                     <p className="font-semibold">Diferencias críticas detectadas en arqueo:</p>
                     <div className="bg-red-100 p-3 rounded-lg text-sm space-y-1">
                       {diferencias.bs !== 0 && (
-                        <div>💵 Bolívares: {diferencias.bs > 0 ? '+' : ''}{formatearBolivares(diferencias.bs)} Bs</div>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          <span>Bolívares: {diferencias.bs > 0 ? '+' : ''}{formatearBolivares(diferencias.bs)} Bs</span>
+                        </div>
                       )}
                       {diferencias.usd !== 0 && (
-                        <div>💵 Dólares: {diferencias.usd > 0 ? '+' : ''}${diferencias.usd.toFixed(2)}</div>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          <span>Dólares: {diferencias.usd > 0 ? '+' : ''}${diferencias.usd.toFixed(2)}</span>
+                        </div>
                       )}
                       {diferencias.pagoMovil !== 0 && (
-                        <div>📱 Pago Móvil: {diferencias.pagoMovil > 0 ? '+' : ''}{formatearBolivares(diferencias.pagoMovil)} Bs</div>
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="h-4 w-4" />
+                          <span>Pago Móvil: {diferencias.pagoMovil > 0 ? '+' : ''}{formatearBolivares(diferencias.pagoMovil)} Bs</span>
+                        </div>
                       )}
                     </div>
-                    <p className="text-xs mt-3">
-                      🔒 Todo el sistema está bloqueado hasta completar la autorización administrativa
+                    <p className="text-xs mt-3 flex items-center justify-center gap-2">
+                      <Lock className="h-3 w-3" />
+                      <span>Todo el sistema está bloqueado hasta completar la autorización administrativa</span>
                     </p>
                   </div>
-                  
-                  <button
-                    onClick={() => setShowQRScanner(true)}
-                    className="w-full px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center space-x-2"
-                  >
-                    <Shield className="h-5 w-5" />
-                    <span>🛡️ Autorizar con Quick Access Token</span>
-                  </button>
                 </div>
               </div>
             )}
 
-            {/* 🆕 CONFIRMACIÓN DE EVIDENCIA CAPTURADA */}
+            {/* CONFIRMACIÓN DE EVIDENCIA CAPTURADA */}
              {fotoEvidencia && fase === 'conteo' && (
                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                  <div className="flex items-center space-x-3">
                    <Camera className="h-5 w-5 text-green-600" />
                    <div>
-                     <div className="font-semibold text-green-800">✅ Evidencia Fotográfica Capturada</div>
+                     <div className="font-semibold text-green-800 flex items-center gap-2">
+                       <CheckCircle className="h-4 w-4" />
+                       Evidencia Fotográfica Capturada
+                     </div>
                      <div className="text-sm text-green-700">Se ha registrado automáticamente la evidencia del arqueo</div>
                    </div>
                  </div>
                </div>
              )}
 
-             {/* ✅ FASE: COMPLETADO */}
+             {/* FASE: COMPLETADO */}
              {fase === 'completado' && (
               <div className="text-center py-8">
                 <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 max-w-md mx-auto">
                   <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-green-800 mb-4">
-                    ✅ Arqueo Crítico Completado Exitosamente
+                    Arqueo Crítico Completado Exitosamente
                   </h3>
                   <div className="text-green-700 mb-4 space-y-2">
                     <p>Arqueo realizado por: <span className="font-semibold">{usuario?.nombre}</span></p>
                     {hayDiferencias && (
                       <div className="bg-green-100 p-3 rounded-lg text-sm">
-                        <p className="font-semibold mb-1">✅ Ajustes registrados automáticamente:</p>
+                        <p className="font-semibold mb-1 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Ajustes registrados automáticamente:
+                        </p>
                         {diferencias.bs !== 0 && (
                           <div>• {diferencias.bs > 0 ? 'Ingreso' : 'Egreso'} por {formatearBolivares(Math.abs(diferencias.bs))} Bs</div>
                         )}
@@ -896,11 +881,21 @@ Notificación automática del sistema Electro Caja`;
                         {diferencias.pagoMovil !== 0 && (
                           <div>• {diferencias.pagoMovil > 0 ? 'Ingreso' : 'Egreso'} por {formatearBolivares(Math.abs(diferencias.pagoMovil))} Bs PM</div>
                         )}
-                        <p className="text-xs mt-2">🛡️ Autorizado por: {adminAutorizado?.nombre}</p>
+                        <p className="text-xs mt-2 flex items-center gap-2">
+                          <Shield className="h-3 w-3" />
+                          <span>Autorizado por: {adminAutorizado?.nombre}</span>
+                        </p>
                       </div>
                     )}
-                    <p className="text-sm">
-                      🔓 Sistema desbloqueado • 📸 Evidencia capturada • 📱 Notificaciones enviadas
+                    <p className="text-sm flex items-center justify-center gap-2">
+                      <Unlock className="h-4 w-4" />
+                      <span>Sistema desbloqueado</span>
+                      <span>•</span>
+                      <Camera className="h-4 w-4" />
+                      <span>Evidencia capturada</span>
+                      <span>•</span>
+                      <Send className="h-4 w-4" />
+                      <span>Notificaciones enviadas</span>
                     </p>
                   </div>
                 </div>
@@ -908,21 +903,92 @@ Notificación automática del sistema Electro Caja`;
             )}
 
           </div>
+
+          {/* FOOTER FIJO CON BOTONES */}
+          <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex-shrink-0">
+            {fase === 'conteo' && (
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={loading}
+                  className="flex-1 px-6 py-3 text-gray-700 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50 font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (formRef.current) {
+                      formRef.current.requestSubmit();
+                    }
+                  }}
+                  disabled={loading || !arqueo.efectivo_bs || !arqueo.efectivo_usd || !arqueo.pago_movil}
+                  className={`flex-1 px-6 py-3 ${
+                    hayDiferencias 
+                      ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' 
+                      : 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
+                  } text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl transform hover:scale-105`}
+                >
+                  {loading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Procesando...</span>
+                    </div>
+                  ) : hayDiferencias ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>Procesar Arqueo</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center space-x-2">
+                      <Calculator className="h-4 w-4" />
+                      <span>Completar Arqueo Sin Diferencias</span>
+                    </div>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {fase === 'diferencia' && (
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setShowQRScanner(true)}
+                  disabled={loading}
+                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <Shield className="h-5 w-5" />
+                  <span>Autorizar con Quick Access Token</span>
+                </button>
+              </div>
+            )}
+
+            {fase === 'completado' && (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 🔧 SCANNER QR PARA AUTORIZACIÓN (INTEGRADO CON LOGINMODAL) */}
+      {/* SCANNER QR PARA AUTORIZACIÓN */}
       {showQRScanner && (
         <QuickAccessAuthModal
           isOpen={showQRScanner}
           onClose={() => setShowQRScanner(false)}
           onSuccess={handleAutorizacionAdmin}
-          title="🚨 Autorización Crítica para Diferencias en Arqueo"
+          title="Autorización Crítica para Diferencias en Arqueo"
           subtitle={`Diferencias: ${diferencias.bs !== 0 ? `${formatearBolivares(diferencias.bs)} Bs` : ''} ${diferencias.usd !== 0 ? `$${formatearDolares(diferencias.usd)}` : ''} ${diferencias.pagoMovil !== 0 ? `${formatearBolivares(diferencias.pagoMovil)} Bs PM` : ''}`}
         />
       )}
-
-      {/* 📸 ELEMENTOS OCULTOS PARA CÁMARA */}
       <video
         ref={videoRef}
         autoPlay
@@ -935,8 +1001,8 @@ Notificación automática del sistema Electro Caja`;
         style={{ display: 'none' }}
       />
 
-      {/* CSS PARA ANIMACIONES (COPIADO DE ABRIRCAJAMODAL) */}
-      <style jsx>{`
+      {/* CSS PARA ANIMACIONES */}
+      <style>{`
         @keyframes shimmer {
           0% { transform: translateX(-100%) skewX(-12deg); }
           100% { transform: translateX(200%) skewX(-12deg); }
@@ -949,9 +1015,7 @@ Notificación automática del sistema Electro Caja`;
   );
 };
 
-// ===================================
-// 🔧 COMPONENTE QUICK ACCESS AUTH (OPTIMIZADO)
-// ===================================
+// COMPONENTE QUICK ACCESS AUTH (OPTIMIZADO)
 const QuickAccessAuthModal = ({ isOpen, onClose, onSuccess, title, subtitle }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -971,25 +1035,17 @@ const handleQuickAccess = async (codigo = null) => {
     return;
   }
 
-  console.log('🔧 Validando Quick Access Token...');
+  console.log('Validando Quick Access Token...');
 
   try {
-    // Usar fetch en lugar de axios para evitar interceptores
-    const response = await fetch('https://localhost:3001/api/auth/validate-quick-token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        token: codigo,
-        accion: 'autorizar_arqueo'
-      })
+    // Usar api en lugar de fetch para usar la configuración correcta
+    const response = await api.post('/auth/validate-quick-token', {
+      token: codigo,
+      accion: 'autorizar_arqueo'
     });
 
-    const data = await response.json();
-
-    if (response.ok && data.success && data.user) {
-      const user = data.user;
+    if (response.data.success && response.data.user) {
+      const user = response.data.user;
       
       if (user.rol === 'admin') {
         onSuccess({
@@ -1008,7 +1064,7 @@ const handleQuickAccess = async (codigo = null) => {
         }
       }
     } else {
-      setError(data.message || 'Token de autorización inválido');
+      setError(response.data.message || 'Token de autorización inválido');
       const input = document.querySelector('input[placeholder*="Escanee"]');
       if (input) {
         input.value = '';
@@ -1016,8 +1072,8 @@ const handleQuickAccess = async (codigo = null) => {
       }
     }
   } catch (error) {
-    console.error('❌ Error validando Quick Access Token:', error);
-    setError('Error de conexión con el servidor');
+    console.error('Error validando Quick Access Token:', error);
+    setError(error.response?.data?.message || 'Error de conexión con el servidor');
     const input = document.querySelector('input[placeholder*="Escanee"]');
     if (input) {
       input.value = '';
@@ -1089,7 +1145,10 @@ const handleQuickAccess = async (codigo = null) => {
         </div>
 
         <div className="mt-4 text-xs text-gray-500 text-center">
-          <p>⚠️ Esta operación requiere autorización administrativa</p>
+          <p className="flex items-center justify-center gap-2">
+            <AlertTriangle className="h-3 w-3" />
+            <span>Esta operación requiere autorización administrativa</span>
+          </p>
           <p>El sistema permanecerá bloqueado hasta completar la autorización</p>
         </div>
       </div>

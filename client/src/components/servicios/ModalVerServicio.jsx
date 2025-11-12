@@ -4,20 +4,27 @@ import { createPortal } from 'react-dom';
 import {
   X, Flag, Inbox, Stethoscope, Clock, Wrench, CheckCircle, PackageCheck,
   User, CalendarDays, DollarSign, StickyNote, ShoppingCart, AlertTriangle,
-  Printer, MessageCircle, Camera, Truck, Phone, Mail, MapPin, Zap, CreditCard, Mic,
+  Printer, Camera, Truck, Phone, Mail, MapPin, Zap, CreditCard, Mic,
   Banknote, Smartphone, Building2, Coins
 } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import toast from '../../utils/toast.jsx';
+import { imprimirTicketServicio } from '../../utils/printUtils.js';
+import ModalReimprimirTicket from './ModalReimprimirTicket';
+import ModalConfirmarWhatsApp from './ModalConfirmarWhatsApp';
+import ModalConfirmarEntrega from './ModalConfirmarEntrega';
 import PagoRetiroModal from './PagoRetiroModal';
 import HistorialPagosPanel from './HistorialPagosPanel';
 import { useAuthStore } from '../../store/authStore';
 import { useServiciosStore } from '../../store/serviciosStore';
+import { useCajaStore } from '../../store/cajaStore';
+import { api } from '../../config/api';
 
 const estadoConfig = {
-  'Recibido': { color: 'bg-gradient-to-r from-purple-400 to-purple-600', headerColor: 'bg-gradient-to-r from-purple-800 to-purple-900', textColor: 'text-gray-100', icon: <Inbox size={14} />, progreso: 20 },
-  'En Diagnóstico': { color: 'bg-gradient-to-r from-amber-700 to-yellow-800', headerColor: 'bg-gradient-to-r from-amber-800 to-yellow-900', textColor: 'text-amber-100', icon: <Stethoscope size={14} />, progreso: 40 },
-  'Esperando Aprobación': { color: 'bg-gradient-to-r from-orange-700 to-red-800', headerColor: 'bg-gradient-to-r from-orange-800 to-red-900', textColor: 'text-orange-100', icon: <Clock size={14} />, progreso: 60 },
-  'En Reparación': { color: 'bg-gradient-to-r from-red-800 to-red-900', headerColor: 'bg-gradient-to-r from-red-900 to-red-950', textColor: 'text-red-100', icon: <Wrench size={14} />, progreso: 80 },
+  'Recibido': { color: 'bg-gradient-to-r from-purple-400 to-purple-600', headerColor: 'bg-gradient-to-r from-purple-800 to-purple-900', textColor: 'text-gray-100', icon: <Inbox size={14} />, progreso: 0 },
+  'En Diagnóstico': { color: 'bg-gradient-to-r from-amber-700 to-yellow-800', headerColor: 'bg-gradient-to-r from-amber-800 to-yellow-900', textColor: 'text-amber-100', icon: <Stethoscope size={14} />, progreso: 25 },
+  'Esperando Aprobación': { color: 'bg-gradient-to-r from-orange-700 to-red-800', headerColor: 'bg-gradient-to-r from-orange-800 to-red-900', textColor: 'text-orange-100', icon: <Clock size={14} />, progreso: 50 },
+  'En Reparación': { color: 'bg-gradient-to-r from-red-800 to-red-900', headerColor: 'bg-gradient-to-r from-red-900 to-red-950', textColor: 'text-red-100', icon: <Wrench size={14} />, progreso: 75 },
   'Listo para Retiro': { color: 'bg-gradient-to-r from-emerald-700 to-green-800', headerColor: 'bg-gradient-to-r from-emerald-800 to-green-900', textColor: 'text-emerald-100', icon: <CheckCircle size={14} />, progreso: 100 },
   'Entregado': { color: 'bg-gradient-to-r from-gray-800 to-gray-900', headerColor: 'bg-gradient-to-r from-gray-900 to-slate-900', textColor: 'text-gray-200', icon: <PackageCheck size={14} />, progreso: 100 }
 };
@@ -49,6 +56,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
 
   const { socket } = useAuthStore();
   const { obtenerServicio } = useServiciosStore();
+  const { tasaCambio } = useCajaStore();
   
   const [imagenExpandida, setImagenExpandida] = useState(null);
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState('');
@@ -56,6 +64,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [servicioLocal, setServicioLocal] = useState(servicio);
+  const [loading, setLoading] = useState(false);
+  const [showModalReimprimir, setShowModalReimprimir] = useState(false);
+  const [showModalWhatsApp, setShowModalWhatsApp] = useState(false);
+  const [showModalEntrega, setShowModalEntrega] = useState(false);
   const tooltipButtonRef = useRef(null);
   
   // ✅ Usar refs para mantener referencias estables y evitar loops infinitos
@@ -90,20 +102,16 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   useEffect(() => {
     if (!socket || typeof socket.on !== 'function' || !servicioIdRef.current) return;
 
-    console.log('ModalVerServicio: Configurando listeners de socket para servicio', servicioIdRef.current);
 
     const handleNotaAgregada = async (data) => {
-      console.log('ModalVerServicio: Nueva nota recibida', data);
       
       // ✅ Evitar procesamiento simultáneo
       if (actualizandoRef.current) {
-        console.log('ModalVerServicio: Ya hay una actualización en curso, ignorando...');
         return;
       }
       
       // Solo actualizar si la nota es para este servicio
       if (data.servicioId === servicioIdRef.current) {
-        console.log('ModalVerServicio: Nota corresponde a este servicio, actualizando...');
         
         // ✅ Marcar como actualizando
         actualizandoRef.current = true;
@@ -139,7 +147,6 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
     // Cleanup
     return () => {
       socket.off('nota_servicio_agregada', handleNotaAgregada);
-      console.log('ModalVerServicio: Listeners removidos');
       actualizandoRef.current = false; // Limpiar bandera al desmontar
     };
   }, [socket]); // ✅ Solo depender de socket para evitar loops infinitos
@@ -244,7 +251,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const estado = estadoConfig[estadoNormalizado] || estadoConfig['Recibido'];
   
   // Asegurar que el progreso esté definido
-  const progreso = estado?.progreso ?? 20;
+  const progreso = estado?.progreso ?? 0;
   
   // 🔧 Calcular totales desde items (API) o productos (legacy)
   const items = servicioActual.items || servicioActual.productos || [];
@@ -264,6 +271,22 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   
   // 🔧 Extraer notas (API usa 'notas', legacy usa 'notasTecnicas')
   const notas = servicioActual.notas || servicioActual.notasTecnicas || [];
+
+  // Formatear montos en Bs
+  const formatearBs = (valor) => {
+    if (!valor && valor !== 0) return '0,00';
+    const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
+    return numero.toLocaleString('es-VE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  // Calcular montos en Bs usando la tasa de cambio
+  const tasa = tasaCambio || 37.50;
+  const totalGeneralBs = totalGeneral * tasa;
+  const totalPagadoBs = totalPagado * tasa;
+  const saldoPendienteBs = saldoPendiente * tasa;
 
   // Forzar re-render cuando cambia el estado del servicio
   useEffect(() => {
@@ -297,24 +320,164 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   }, [tooltipAbierto]);
 
   const handleEntregarDispositivo = () => {
-    if (window.confirm('¿Confirmar entrega del dispositivo al cliente?')) {
-      if (typeof actualizarEstado === 'function') {
-        actualizarEstado(servicio.id, {
-          estado: 'Entregado',
-          entregadoEn: new Date().toISOString()
-        });
-        toast.success('Dispositivo marcado como entregado');
-      }
-      if (typeof onClose === 'function') onClose();
-    }
+    setShowModalEntrega(true);
   };
 
   const handleReimprimirOrden = () => {
-    toast.success('Función de reimprimir en desarrollo');
+    setShowModalReimprimir(true);
+  };
+
+  const handleImprimirCliente = async () => {
+    try {
+      setLoading(true);
+      
+      // Obtener servicio completo desde el backend con todos los datos necesarios
+      const servicioCompleto = await obtenerServicio(servicioActual.id);
+      
+      if (!servicioCompleto) {
+        toast.error('No se pudo cargar el servicio para reimprimir');
+        return;
+      }
+
+      // Solicitar regeneración al backend con tipo 'cliente' para marcar como reimpresión
+      try {
+        const response = await api.get(`/servicios/${servicioActual.id}/ticket?tipo=cliente`);
+        
+        if (response.data.success && response.data.data) {
+          const { ticketHTML, qrCode, linkSeguimiento } = response.data.data;
+          
+          // Imprimir solo el ticket del cliente
+          const ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+          
+          if (!ventanaImpresion) {
+            throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
+          }
+          
+          let htmlConQR = ticketHTML;
+          if (qrCode && ticketHTML.includes('qr-code-placeholder')) {
+            htmlConQR = ticketHTML.replace(
+              /<div id="qr-code-placeholder"[^>]*>[\s\S]*?<\/div>/,
+              `<img src="${qrCode}" alt="QR Code" style="max-width: 150px; height: auto; margin: 5px auto; display: block;" />`
+            );
+          }
+          
+          ventanaImpresion.document.write(htmlConQR);
+          ventanaImpresion.document.close();
+          
+          // Esperar a que se cargue y luego imprimir
+          ventanaImpresion.onload = () => {
+            setTimeout(() => {
+              ventanaImpresion.print();
+            }, 250);
+          };
+          
+          toast.success('Ticket del cliente reimpreso exitosamente');
+        } else {
+          throw new Error('No se pudo generar el ticket');
+        }
+      } catch (error) {
+        console.error('Error regenerando ticket:', error);
+        toast.error('Error al reimprimir el ticket: ' + (error.message || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error reimprimiendo orden:', error);
+      toast.error('Error al reimprimir el ticket: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImprimirInterno = async () => {
+    try {
+      setLoading(true);
+      
+      // Obtener servicio completo desde el backend con todos los datos necesarios
+      const servicioCompleto = await obtenerServicio(servicioActual.id);
+      
+      if (!servicioCompleto) {
+        toast.error('No se pudo cargar el servicio para reimprimir');
+        return;
+      }
+
+      // Solicitar regeneración al backend con tipo 'interno'
+      try {
+        const response = await api.get(`/servicios/${servicioActual.id}/ticket?tipo=interno`);
+        
+        if (response.data.success && response.data.data) {
+          const { ticketHTMLInterno } = response.data.data;
+          
+          if (!ticketHTMLInterno) {
+            throw new Error('No se pudo generar el ticket interno');
+          }
+          
+          // Imprimir solo el ticket interno
+          const ventanaImpresion = window.open('', '_blank', 'width=302,height=400,scrollbars=yes');
+          
+          if (!ventanaImpresion) {
+            throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
+          }
+          
+          ventanaImpresion.document.write(ticketHTMLInterno);
+          ventanaImpresion.document.close();
+          
+          // Esperar a que se cargue y luego imprimir
+          ventanaImpresion.onload = () => {
+            setTimeout(() => {
+              ventanaImpresion.print();
+            }, 250);
+          };
+          
+          toast.success('Ticket interno reimpreso exitosamente');
+        } else {
+          throw new Error('No se pudo generar el ticket');
+        }
+      } catch (error) {
+        console.error('Error regenerando ticket:', error);
+        toast.error('Error al reimprimir el ticket: ' + (error.message || 'Error desconocido'));
+      }
+    } catch (error) {
+      console.error('Error reimprimiendo orden:', error);
+      toast.error('Error al reimprimir el ticket: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNotificarWhatsApp = () => {
-    toast.success('Función de WhatsApp en desarrollo');
+    setShowModalWhatsApp(true);
+  };
+
+  const handleConfirmarWhatsApp = async () => {
+    try {
+      setLoading(true);
+      
+      // Verificar estado de WhatsApp primero
+      const estadoResponse = await api.get('/whatsapp/estado');
+      const estadoWhatsApp = estadoResponse.data?.data || estadoResponse.data;
+      
+      
+      if (!estadoWhatsApp || !estadoWhatsApp.conectado) {
+        toast.error('WhatsApp no está conectado. Por favor, conecta WhatsApp primero desde la configuración.');
+        return;
+      }
+
+      // Enviar WhatsApp
+      const response = await api.post('/whatsapp/enviar-servicio', {
+        servicioId: servicioActual.id,
+        numero: servicioActual.clienteTelefono
+      });
+
+      if (response.data.success) {
+        toast.success('Mensaje de WhatsApp enviado exitosamente');
+      } else {
+        throw new Error(response.data.message || 'Error enviando WhatsApp');
+      }
+    } catch (error) {
+      console.error('Error enviando WhatsApp:', error);
+      toast.error('Error al enviar WhatsApp: ' + (error.response?.data?.message || error.message || 'Error desconocido'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Calcular posición del tooltip cuando se abre
@@ -339,7 +502,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
       >
         <User size={12} />
         {clienteNombre}
-        <MessageCircle size={10} />
+        <FaWhatsapp size={10} />
       </button>
       
       {/*  Tooltip renderizado fuera del modal usando portal */}
@@ -386,7 +549,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                   }}
                   className="flex-1 px-2 py-1 bg-green-600/20 hover:bg-green-600/30 text-green-300 rounded text-xs flex items-center justify-center gap-1"
                 >
-                  <MessageCircle size={10} />
+                  <FaWhatsapp size={10} />
                   WA
                 </button>
                 <button 
@@ -429,7 +592,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                   {estado.icon && React.cloneElement(estado.icon, { className: "h-5 w-5" })}
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold">Orden #{servicioActual.id}</h1>
+                  <h1 className="text-lg font-bold">Orden #{servicioActual.numeroServicio || servicioActual.id}</h1>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="bg-white/20 px-2 py-0.5 rounded-full text-white/90 text-[10px] font-medium flex items-center gap-1">
                       <User size={9} />
@@ -577,49 +740,77 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                     </span>
                   </h3>
                 </div>
-                <div className="flex-1 overflow-y-auto min-h-0 p-4">
-                  <table className="w-full text-xs">
-                    <thead className="bg-gray-700/50 border-b border-gray-600 sticky top-0 z-10">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-semibold text-gray-300">Item</th>
-                        <th className="px-3 py-2 text-center font-semibold text-gray-300">Cant.</th>
-                        <th className="px-3 py-2 text-right font-semibold text-gray-300">Precio</th>
-                        <th className="px-3 py-2 text-right font-semibold text-gray-300">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-700/50">
-                      {items.length > 0 ? (
-                        items.map((item, i) => (
-                          <tr key={i} className="hover:bg-gray-700/30 transition-colors">
-                            <td className="px-3 py-2 text-gray-200 font-medium">{item.descripcion || item.nombre || '—'}</td>
-                            <td className="px-3 py-2 text-center text-gray-300">{item.cantidad}</td>
-                            <td className="px-3 py-2 text-right text-gray-300">
-                              ${Number((item.precioUnitario || item.precio_unitario || item.precio) ?? 0).toFixed(2)}
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold text-emerald-400">
-                              ${Number(item.subtotal || ((item.precioUnitario || item.precio_unitario || item.precio) ?? 0) * (item.cantidad ?? 0)).toFixed(2)}
+                <div className="flex-1 overflow-y-auto min-h-0 p-2 sm:p-3">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-[10px] sm:text-xs">
+                      <thead className="bg-gray-700/50 border-b-2 border-gray-600 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-1.5 sm:px-2 py-1.5 text-left font-semibold text-gray-300">Descripción</th>
+                          <th className="px-1.5 sm:px-2 py-1.5 text-center font-semibold text-gray-300 w-12 sm:w-16">Cant.</th>
+                          <th className="px-1.5 sm:px-2 py-1.5 text-right font-semibold text-gray-300 w-20 sm:w-24">P. Unit.</th>
+                          <th className="px-1.5 sm:px-2 py-1.5 text-right font-semibold text-gray-300 w-24 sm:w-28">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700/50">
+                        {items.length > 0 ? (
+                          items.map((item, i) => {
+                            const precioUnitario = Number((item.precioUnitario || item.precio_unitario || item.precio) ?? 0);
+                            const cantidad = Number(item.cantidad ?? 0);
+                            const subtotal = precioUnitario * cantidad;
+                            const precioUnitarioBs = precioUnitario * tasa;
+                            const subtotalBs = subtotal * tasa;
+                            return (
+                              <tr key={i} className="hover:bg-gray-700/30 transition-colors">
+                                <td className="px-1.5 sm:px-2 py-1.5 text-gray-200 font-medium break-words max-w-[120px] sm:max-w-none">
+                                  <div className="truncate sm:break-words" title={item.descripcion || item.nombre || '—'}>
+                                    {item.descripcion || item.nombre || '—'}
+                                  </div>
+                                </td>
+                                <td className="px-1.5 sm:px-2 py-1.5 text-center text-gray-300 whitespace-nowrap">{cantidad}</td>
+                                <td className="px-1.5 sm:px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[9px] sm:text-xs">
+                                  {formatearBs(precioUnitarioBs)} Bs
+                                </td>
+                                <td className="px-1.5 sm:px-2 py-1.5 text-right font-semibold text-emerald-400 whitespace-nowrap text-[9px] sm:text-xs">
+                                  {formatearBs(subtotalBs)} Bs
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan="4" className="px-3 py-8 text-center text-gray-500 italic">
+                              <div className="flex flex-col items-center gap-2">
+                                <ShoppingCart className="h-10 w-10 text-gray-600 opacity-50" />
+                                <span className="text-xs">No hay productos registrados</span>
+                              </div>
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="4" className="px-3 py-8 text-center text-gray-500 italic">
-                            <div className="flex flex-col items-center gap-2">
-                              <ShoppingCart className="h-10 w-10 text-gray-600 opacity-50" />
-                              <span className="text-xs">No hay productos registrados</span>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="p-3 border-t border-gray-700 bg-gradient-to-r from-emerald-900/20 to-emerald-800/10 flex-shrink-0">
-                  <div className="flex justify-end">
-                    <div className="bg-emerald-800/40 border border-emerald-600/50 rounded-lg px-3 py-2 shadow-lg">
-                      <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
-                        <DollarSign size={14} />
-                        <span>Total: ${totalGeneral.toFixed(2)}</span>
+                <div className="p-2 sm:p-3 border-t-2 border-gray-600 bg-gradient-to-r from-emerald-900/20 to-emerald-800/10 flex-shrink-0">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] sm:text-xs text-gray-400 font-medium">Subtotal:</span>
+                      <div className="text-[10px] sm:text-xs text-gray-100 font-semibold break-all text-right">{formatearBs(totalGeneralBs)} Bs</div>
+                    </div>
+                    {totalPagado > 0 && (
+                      <div className="flex justify-between items-center pt-1.5 border-t border-gray-700">
+                        <span className="text-[10px] sm:text-xs text-gray-400 font-medium">Total Pagado:</span>
+                        <div className="text-[10px] sm:text-xs text-emerald-400 font-semibold break-all text-right">{formatearBs(totalPagadoBs)} Bs</div>
+                      </div>
+                    )}
+                    {saldoPendiente > 0 && (
+                      <div className="flex justify-between items-center pt-1.5 border-t-2 border-gray-600">
+                        <span className="text-[10px] sm:text-xs text-gray-300 font-bold">Saldo Pendiente:</span>
+                        <div className="text-[10px] sm:text-xs text-red-400 font-bold break-all text-right">{formatearBs(saldoPendienteBs)} Bs</div>
+                      </div>
+                    )}
+                    <div className="pt-1.5 border-t border-gray-700 mt-1.5">
+                      <div className="text-[9px] sm:text-[10px] text-gray-500 text-center">
+                        Tasa: {formatearBs(tasa)} Bs/USD
                       </div>
                     </div>
                   </div>
@@ -643,24 +834,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                 </div>
                 <div className="flex-1 overflow-y-auto min-h-0 p-4">
                   {notas.length > 0 ? (
-                    <div className="space-y-3">
-                      {notas.map((nota, idx) => {
-                        const contenidoNota = nota.contenido || nota.mensaje || nota.texto || '';
-                        const fechaNota = nota.fecha || nota.createdAt || nota.updatedAt;
-                        const tipoNota = nota.tipo?.toLowerCase() || '';
-                        
-                        // Detectar imágenes
-                        const imagenes = tipoNota === 'imagen' && nota.archivoUrl 
-                          ? [nota.archivoUrl]
-                          : Array.isArray(nota.imagenes) 
-                            ? nota.imagenes 
-                            : (nota.archivoUrl && tipoNota !== 'audio' ? [nota.archivoUrl] : []);
-                        
-                        // Detectar audio
-                        const audioUrl = tipoNota === 'audio' 
-                          ? (nota.archivoUrl || nota.audio)
-                          : null;
-                        
+                    (() => {
                         // ✅ Función para renderizar contenido con iconos de Lucide
                         const renderizarContenidoConIconos = (texto) => {
                           if (!texto) return <i className="text-gray-500">Sin mensaje</i>;
@@ -699,7 +873,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                         };
                         
                         // ✅ Determinar estilo premium según tipo de nota
-                        const obtenerEstiloNota = () => {
+                      const obtenerEstiloNota = (nota) => {
+                        const tipoNota = (nota.tipo?.toLowerCase() || '');
+                        const contenidoNota = nota.contenido || nota.mensaje || nota.texto || '';
+                        
                           if (tipoNota === 'cambio_estado') {
                             const estadoNuevo = nota.estadoNuevo || '';
                             const estadoConfigMap = {
@@ -719,8 +896,252 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                           return 'bg-gray-800/50 border-gray-700/50';
                         };
                         
+                        // ✅ Función para renderizar cambio de estado visualmente
+                      const renderizarCambioEstado = (nota) => {
+                        const tipoNota = (nota.tipo?.toLowerCase() || '');
+                          if (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) {
+                            return null;
+                          }
+
+                          // Función para obtener configuración de estado
+                          const obtenerConfigEstado = (estadoCodigo) => {
+                            if (!estadoCodigo) return { color: 'bg-gray-600', textColor: 'text-gray-100', icon: <Flag size={12} />, label: 'Desconocido' };
+                            
+                            const estadoUpper = estadoCodigo.toUpperCase();
+                            const mapaEstados = {
+                              'RECIBIDO': { color: 'bg-gradient-to-r from-purple-400 to-purple-600', textColor: 'text-gray-100', icon: <Inbox size={12} />, label: 'Recibido' },
+                              'EN_DIAGNOSTICO': { color: 'bg-gradient-to-r from-amber-700 to-yellow-800', textColor: 'text-amber-100', icon: <Stethoscope size={12} />, label: 'En Diagnóstico' },
+                              'EN DIAGNOSTICO': { color: 'bg-gradient-to-r from-amber-700 to-yellow-800', textColor: 'text-amber-100', icon: <Stethoscope size={12} />, label: 'En Diagnóstico' },
+                              'ESPERANDO_APROBACION': { color: 'bg-gradient-to-r from-orange-700 to-red-800', textColor: 'text-orange-100', icon: <Clock size={12} />, label: 'Esperando Aprobación' },
+                              'ESPERANDO APROBACION': { color: 'bg-gradient-to-r from-orange-700 to-red-800', textColor: 'text-orange-100', icon: <Clock size={12} />, label: 'Esperando Aprobación' },
+                              'EN_REPARACION': { color: 'bg-gradient-to-r from-red-800 to-red-900', textColor: 'text-red-100', icon: <Wrench size={12} />, label: 'En Reparación' },
+                              'EN REPARACION': { color: 'bg-gradient-to-r from-red-800 to-red-900', textColor: 'text-red-100', icon: <Wrench size={12} />, label: 'En Reparación' },
+                              'LISTO_RETIRO': { color: 'bg-gradient-to-r from-emerald-700 to-green-800', textColor: 'text-emerald-100', icon: <CheckCircle size={12} />, label: 'Listo para Retiro' },
+                              'LISTO RETIRO': { color: 'bg-gradient-to-r from-emerald-700 to-green-800', textColor: 'text-emerald-100', icon: <CheckCircle size={12} />, label: 'Listo para Retiro' },
+                              'ENTREGADO': { color: 'bg-gradient-to-r from-gray-800 to-gray-900', textColor: 'text-gray-200', icon: <PackageCheck size={12} />, label: 'Entregado' }
+                            };
+                            
+                            // Buscar por código exacto primero
+                            if (mapaEstados[estadoUpper]) {
+                              return mapaEstados[estadoUpper];
+                            }
+                            
+                            // Si no se encuentra, normalizar y buscar
+                            const estadoNormalizado = estadoUpper.replace(/_/g, ' ');
+                            if (mapaEstados[estadoNormalizado]) {
+                              return mapaEstados[estadoNormalizado];
+                            }
+                            
+                            // Fallback
+                            return {
+                              color: 'bg-gray-600',
+                              textColor: 'text-gray-100',
+                              icon: <Flag size={12} />,
+                              label: estadoCodigo.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                            };
+                          };
+
+                          const estadoAnterior = obtenerConfigEstado(nota.estadoAnterior);
+                          const estadoNuevo = obtenerConfigEstado(nota.estadoNuevo);
+
+                          return (
+                            <div className="mt-3 p-2 sm:p-3 bg-gradient-to-r from-gray-900/60 via-gray-800/60 to-gray-900/60 border border-gray-600/30 rounded-lg backdrop-blur-sm">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                                {/* Badges de estado - Responsive */}
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-1 flex-wrap w-full sm:w-auto">
+                                  <span className={`px-2 sm:px-3 py-1 sm:py-1.5 ${estadoAnterior.color} ${estadoAnterior.textColor} rounded-md font-medium border border-white/20 flex items-center gap-1 sm:gap-1.5 shadow-sm text-xs sm:text-sm whitespace-nowrap`}>
+                                    {estadoAnterior.icon}
+                                    <span className="truncate">{estadoAnterior.label}</span>
+                                  </span>
+                                  <span className="text-gray-400 font-bold text-sm sm:text-lg flex-shrink-0">→</span>
+                                  <span className={`px-2 sm:px-3 py-1 sm:py-1.5 ${estadoNuevo.color} ${estadoNuevo.textColor} rounded-md font-medium border border-white/20 flex items-center gap-1 sm:gap-1.5 shadow-sm text-xs sm:text-sm whitespace-nowrap`}>
+                                    {estadoNuevo.icon}
+                                    <span className="truncate">{estadoNuevo.label}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        };
+                      
+                      // ✅ Agrupar notas por grupoId (si existe)
+                      // Crear un mapa de grupos por grupoId
+                      const gruposPorId = new Map();
+                      const notasSinGrupo = [];
+                      
+                      notas.forEach((nota) => {
+                        const grupoId = nota.grupoId;
+                        
+                        // Si tiene grupoId, agregarlo al grupo correspondiente
+                        if (grupoId) {
+                          if (!gruposPorId.has(grupoId)) {
+                            gruposPorId.set(grupoId, []);
+                          }
+                          gruposPorId.get(grupoId).push(nota);
+                        } else {
+                          // Nota sin grupoId, se mostrará individualmente
+                          notasSinGrupo.push(nota);
+                        }
+                      });
+                      
+                      // Ordenar notas dentro de cada grupo: texto primero, luego imágenes
+                      gruposPorId.forEach((notasGrupo) => {
+                        notasGrupo.sort((a, b) => {
+                          const tipoA = (a.tipo?.toLowerCase() || '');
+                          const tipoB = (b.tipo?.toLowerCase() || '');
+                          
+                          // Texto primero
+                          if (tipoA === 'texto' && tipoB !== 'texto') return -1;
+                          if (tipoA !== 'texto' && tipoB === 'texto') return 1;
+                          
+                          // Luego por fecha (más antiguas primero dentro del grupo)
+                          const fechaA = new Date(a.fecha || a.createdAt || a.updatedAt || 0);
+                          const fechaB = new Date(b.fecha || b.createdAt || b.updatedAt || 0);
+                          return fechaA - fechaB;
+                        });
+                      });
+                      
+                      const notasAgrupadas = [];
+                      
+                      // Agregar grupos (con grupoId)
+                      gruposPorId.forEach((notasGrupo) => {
+                        // Solo crear grupo si hay más de una nota o si hay texto + imágenes
+                        const tieneTexto = notasGrupo.some(n => {
+                          const tipo = (n.tipo?.toLowerCase() || '');
+                          const contenido = n.contenido || n.mensaje || n.texto || '';
+                          return tipo === 'texto' && contenido.trim();
+                        });
+                        const tieneImagenes = notasGrupo.some(n => {
+                          const tipo = (n.tipo?.toLowerCase() || '');
+                          return tipo === 'imagen';
+                        });
+                        
+                        if (notasGrupo.length > 1 || (tieneTexto && tieneImagenes)) {
+                          notasAgrupadas.push({ tipo: 'grupo', notas: notasGrupo });
+                        } else {
+                          // Si solo hay una nota en el grupo, tratarla como individual
+                          notasSinGrupo.push(notasGrupo[0]);
+                        }
+                      });
+                      
+                      // Agregar notas sin grupo como individuales
+                      notasSinGrupo.forEach((nota) => {
+                        notasAgrupadas.push({ tipo: 'individual', nota: nota });
+                      });
+                      
+                      // Ordenar los grupos/notas finales por fecha (más recientes primero) para visualización
+                      notasAgrupadas.sort((a, b) => {
+                        const fechaA = a.tipo === 'grupo' 
+                          ? (a.notas[0].fecha || a.notas[0].createdAt || a.notas[0].updatedAt || 0)
+                          : (a.nota.fecha || a.nota.createdAt || a.nota.updatedAt || 0);
+                        const fechaB = b.tipo === 'grupo'
+                          ? (b.notas[0].fecha || b.notas[0].createdAt || b.notas[0].updatedAt || 0)
+                          : (b.nota.fecha || b.nota.createdAt || b.nota.updatedAt || 0);
+                        return new Date(fechaB) - new Date(fechaA); // Más recientes primero para visualización
+                      });
+                      
+                      return notasAgrupadas.map((item, idx) => {
+                        if (item.tipo === 'grupo') {
+                          // Renderizar grupo: puede ser texto + imágenes o solo imágenes
+                          const primeraNota = item.notas[0];
+                          const tipoPrimeraNota = (primeraNota.tipo?.toLowerCase() || '');
+                          const contenidoPrimeraNota = primeraNota.contenido || primeraNota.mensaje || primeraNota.texto || '';
+                          
+                          // Determinar si el grupo tiene texto o solo imágenes
+                          const tieneTexto = tipoPrimeraNota === 'texto' && contenidoPrimeraNota.trim();
+                          
+                          // Separar texto e imágenes
+                          const notaTexto = tieneTexto ? primeraNota : null;
+                          const imagenesNotas = tieneTexto ? item.notas.slice(1) : item.notas;
+                          
+                          const contenidoNota = notaTexto ? (notaTexto.contenido || notaTexto.mensaje || notaTexto.texto || '') : '';
+                          const fechaNota = primeraNota.fecha || primeraNota.createdAt || primeraNota.updatedAt;
+                          const tipoNota = tieneTexto ? (notaTexto.tipo?.toLowerCase() || '') : '';
+                          
+                          // Recopilar todas las imágenes del grupo
+                          const imagenes = imagenesNotas
+                            .map(n => n.archivoUrl)
+                            .filter(Boolean);
+                        
                         return (
-                          <div key={idx} className={`${obtenerEstiloNota()} rounded-xl p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
+                            <div key={`grupo-${idx}`} className={`${obtenerEstiloNota(primeraNota)} rounded-xl p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
+                              <div className="flex items-center justify-between text-gray-300 text-xs mb-3">
+                                <span className="font-medium">{fechaNota ? new Date(fechaNota).toLocaleDateString('es-VE', { 
+                                  day: '2-digit', 
+                                  month: 'short', 
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : '—'}</span>
+                                <div className="flex items-center gap-2">
+                                  {imagenes.length > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">
+                                      <Camera size={12} />
+                                      {imagenes.length}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Mostrar texto solo si existe */}
+                              {contenidoNota && (
+                                <div className="text-gray-100 text-sm leading-relaxed mb-3 font-medium">
+                                  {tipoNota !== 'cambio_estado' && renderizarContenidoConIconos(contenidoNota)}
+                                </div>
+                              )}
+                              
+                              {/* Imágenes agrupadas */}
+                              {imagenes.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {imagenes.map((imagen, imgIdx) => (
+                                    <div 
+                                      key={imgIdx} 
+                                      className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
+                                      style={{ width: '80px', height: '80px' }}
+                                      onClick={() => setImagenExpandida(imagen)}
+                                    >
+                                      <div className="w-full h-full bg-gray-800">
+                                        <img
+                                          src={imagen}
+                                          alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
+                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                                          loading="lazy"
+                                        />
+                                      </div>
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
+                                            <Camera size={12} className="text-white" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else {
+                          // Renderizar nota individual normal
+                          const nota = item.nota;
+                          const contenidoNota = nota.contenido || nota.mensaje || nota.texto || '';
+                          const fechaNota = nota.fecha || nota.createdAt || nota.updatedAt;
+                          const tipoNota = (nota.tipo?.toLowerCase() || '');
+                          
+                          // Detectar imágenes
+                          const imagenes = tipoNota === 'imagen' && nota.archivoUrl 
+                            ? [nota.archivoUrl]
+                            : Array.isArray(nota.imagenes) 
+                              ? nota.imagenes 
+                              : (nota.archivoUrl && tipoNota !== 'audio' ? [nota.archivoUrl] : []);
+                          
+                          // Detectar audio
+                          const audioUrl = tipoNota === 'audio' 
+                            ? (nota.archivoUrl || nota.audio)
+                            : null;
+                          
+                          return (
+                            <div key={idx} className={`${obtenerEstiloNota(nota)} rounded-xl p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
                             <div className="flex items-center justify-between text-gray-300 text-xs mb-3">
                               <span className="font-medium">{fechaNota ? new Date(fechaNota).toLocaleDateString('es-VE', { 
                                 day: '2-digit', 
@@ -745,8 +1166,12 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                               </div>
                             </div>
                             <div className="text-gray-100 text-sm leading-relaxed mb-3 font-medium">
-                              {renderizarContenidoConIconos(contenidoNota)}
+                              {/* Ocultar texto si es cambio de estado (ya se muestra visualmente con badges) */}
+                              {tipoNota !== 'cambio_estado' && renderizarContenidoConIconos(contenidoNota)}
                             </div>
+                            
+                            {/* Renderizar cambio de estado visualmente */}
+                              {renderizarCambioEstado(nota)}
                             
                             {/* Reproductor de audio */}
                             {audioUrl && (
@@ -764,23 +1189,26 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                             
                             {/* Imágenes */}
                             {imagenes.length > 0 && (
-                              <div className="grid grid-cols-4 gap-2">
+                                <div className="flex flex-wrap gap-2">
                                 {imagenes.map((imagen, imgIdx) => (
                                   <div 
                                     key={imgIdx} 
                                     className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
+                                      style={{ width: '80px', height: '80px' }}
                                     onClick={() => setImagenExpandida(imagen)}
                                   >
+                                      <div className="w-full h-full bg-gray-800">
                                     <img
                                       src={imagen}
                                       alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
-                                      className="w-full h-24 object-cover group-hover:scale-110 transition-transform duration-200"
+                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
                                       loading="lazy"
                                     />
+                                      </div>
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
-                                          <Camera size={16} className="text-white" />
+                                          <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
+                                            <Camera size={12} className="text-white" />
                                         </div>
                                       </div>
                                     </div>
@@ -790,8 +1218,9 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                             )}
                           </div>
                         );
-                      })}
-                    </div>
+                        }
+                      });
+                    })()
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full py-12">
                       <StickyNote className="h-16 w-16 text-gray-600 opacity-50 mb-4" />
@@ -822,7 +1251,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
               onClick={handleNotificarWhatsApp}
               className="group px-4 py-2 bg-green-700/50 border border-green-600 hover:bg-green-600/70 hover:border-green-500 text-green-100 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm"
             >
-              <MessageCircle size={14} className="group-hover:text-white transition-colors" />
+              <FaWhatsapp size={14} className="group-hover:text-white transition-colors" />
               <span>WhatsApp</span>
             </button>
 
@@ -904,6 +1333,27 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
         </div>
       )}
 
+       {/* MODAL DE REIMPRESIÓN */}
+       {showModalReimprimir && (
+         <ModalReimprimirTicket
+           isOpen={showModalReimprimir}
+           onClose={() => setShowModalReimprimir(false)}
+           onImprimirCliente={handleImprimirCliente}
+           onImprimirInterno={handleImprimirInterno}
+         />
+       )}
+
+       {/* MODAL DE CONFIRMACIÓN WHATSAPP */}
+       {showModalWhatsApp && (
+         <ModalConfirmarWhatsApp
+           isOpen={showModalWhatsApp}
+           onClose={() => setShowModalWhatsApp(false)}
+           onConfirmar={handleConfirmarWhatsApp}
+           clienteNombre={clienteNombre}
+           numeroServicio={servicioActual.numeroServicio || servicioActual.id}
+         />
+       )}
+
        {/* MODAL DE PAGO AL RETIRO */}
        {showPagoModal && (
          <PagoRetiroModal
@@ -911,7 +1361,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
            onClose={() => setShowPagoModal(false)}
            servicio={servicioActual}
            saldoPendiente={saldoPendiente}
-          onPagoCompletado={async (servicioActualizado) => {
+          onPagoCompletado={async (servicioActualizado, debeAbrirEntrega = false) => {
             // El servicio ya viene actualizado del backend
             // Actualizar el servicio local para reflejar cambios
             if (servicioActualizado) {
@@ -928,6 +1378,31 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
               // Si ya no tiene saldo pendiente y está listo, mostrar mensaje
               if (nuevoSaldoPendiente <= 0 && estadoNormalizado === 'Listo para Retiro') {
                 toast.success('El servicio está completamente pagado y listo para entregar');
+                
+                // 🆕 Si debe abrir el modal de entrega (pago final completado), abrirlo automáticamente
+                if (debeAbrirEntrega) {
+                  // Verificar que el servicio esté en LISTO_RETIRO antes de abrir el modal
+                  const estadoActual = servicioActualizado.estado;
+                  const estadoNormalizadoActual = normalizarEstado(estadoActual);
+                  
+                  // Solo abrir el modal si el estado es LISTO_RETIRO y no hay saldo pendiente
+                  if (estadoNormalizadoActual === 'Listo para Retiro' && nuevoSaldoPendiente <= 0) {
+                    // Asegurar que el servicio local esté actualizado antes de abrir el modal
+                    setServicioLocal(servicioActualizado);
+                    
+                    // Pequeño delay para que el usuario vea el mensaje de éxito y el estado se actualice
+                    setTimeout(() => {
+                      setShowModalEntrega(true);
+                    }, 500);
+                  } else {
+                    console.warn('⚠️ No se puede abrir modal de entrega:', {
+                      estado: estadoNormalizadoActual,
+                      saldoPendiente: nuevoSaldoPendiente,
+                      esperado: 'Listo para Retiro'
+                    });
+                    toast.warning('El servicio debe estar en estado "Listo para Retiro" para entregar');
+                  }
+                }
               }
               
               // ✅ Liberar la bandera después de un delay para evitar procesamiento de eventos socket duplicados
@@ -938,6 +1413,41 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
             
             setShowPagoModal(false);
           }}
+         />
+       )}
+
+       {/* MODAL DE CONFIRMACIÓN DE ENTREGA */}
+       {showModalEntrega && (
+         <ModalConfirmarEntrega
+           isOpen={showModalEntrega}
+           onClose={() => setShowModalEntrega(false)}
+           servicio={servicioActual}
+           onEntregaCompletada={async (servicioActualizado) => {
+             // Actualizar servicio local
+             if (servicioActualizado) {
+               actualizandoRef.current = true;
+               setServicioLocal(servicioActualizado);
+               
+               setTimeout(() => {
+                 actualizandoRef.current = false;
+               }, 1000);
+             }
+             
+             // Recargar servicio completo
+             const servicioCompleto = await obtenerServicio(servicioActual.id);
+             if (servicioCompleto) {
+               setServicioLocal(servicioCompleto);
+             }
+             
+             setShowModalEntrega(false);
+             
+             // Cerrar modal principal después de un delay
+             setTimeout(() => {
+               if (typeof onClose === 'function') {
+                 onClose();
+               }
+             }, 1500);
+           }}
          />
        )}
     </div>

@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import toast from '../../utils/toast.jsx';
 import { useServiciosStore } from '../../store/serviciosStore';
+import { useAuthStore } from '../../store/authStore';
+import api from '../../config/api';
+import ConfirmarEliminarNotaModal from './ConfirmarEliminarNotaModal';
 
 // ====== Estados (SIN "Entregado") ======
 const estadosConEstilo = {
@@ -163,24 +166,78 @@ async function fileToDataURL(file) {
   });
 }
 
-// Comprimir imagen a máx 1280px ancho/alto y calidad 0.8
-async function compressImageToDataURL(file, maxSide = 1280, quality = 0.8) {
+// Comprimir imagen mejorada con mejor calidad y tamaño optimizado
+async function compressImageToDataURL(file, maxSide = 1920, quality = 0.75) {
   const dataURL = await fileToDataURL(file);
   const img = new Image();
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     img.onload = () => {
+      try {
       const canvas = document.createElement('canvas');
       let { width, height } = img;
+        
+        // Calcular dimensiones manteniendo aspecto
       const scale = Math.min(1, maxSide / Math.max(width, height));
       width = Math.round(width * scale);
       height = Math.round(height * scale);
+        
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
+        
+        // Mejorar calidad de renderizado
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
       ctx.drawImage(img, 0, 0, width, height);
+        
+        // Usar JPEG para mejor compresión
       const out = canvas.toDataURL('image/jpeg', quality);
       resolve(out);
+      } catch (error) {
+        reject(error);
+      }
     };
+    img.onerror = reject;
+    img.src = dataURL;
+  });
+}
+
+// Generar miniatura premium para previsualización
+async function generateThumbnail(dataURL, size = 100) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        // Calcular dimensiones manteniendo aspecto
+        const scale = Math.min(size / img.width, size / img.height);
+        const x = (size - img.width * scale) / 2;
+        const y = (size - img.height * scale) / 2;
+        const width = img.width * scale;
+        const height = img.height * scale;
+        
+        // Fondo blanco para transparencias
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+        
+        // Mejorar calidad
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        
+        ctx.drawImage(img, x, y, width, height);
+        
+        const thumbnail = canvas.toDataURL('image/jpeg', 0.85);
+        resolve(thumbnail);
+      } catch (error) {
+        reject(error);
+      }
+    };
+    img.onerror = reject;
     img.src = dataURL;
   });
 }
@@ -188,8 +245,15 @@ async function compressImageToDataURL(file, maxSide = 1280, quality = 0.8) {
 export default function ModalEditarServicio({ servicio: servicioInicial, onClose, onGuardar }) {
   // Store de servicios
   const { cambiarEstado, actualizarServicio, agregarNota, obtenerServicio } = useServiciosStore();
+  const { usuario } = useAuthStore();
   const [servicio, setServicio] = useState(servicioInicial);
   const [loadingServicio, setLoadingServicio] = useState(false);
+
+  // Estado para modal de confirmación de eliminación
+  const [showConfirmarEliminar, setShowConfirmarEliminar] = useState(false);
+  const [notaAEliminar, setNotaAEliminar] = useState(null);
+  const [esGrupoEliminar, setEsGrupoEliminar] = useState(false);
+  const [cantidadElementosEliminar, setCantidadElementosEliminar] = useState(1);
 
   // Recargar servicio desde backend al abrir el modal
   useEffect(() => {
@@ -240,6 +304,8 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
   const [notasBackend, setNotasBackend] = useState([]);
   // Notas nuevas en draft (se guardan al hacer clic en Guardar)
   const [notasNuevas, setNotasNuevas] = useState([]);
+  // Imágenes adjuntas a la nota actual (máximo 10)
+  const [imagenesAdjuntas, setImagenesAdjuntas] = useState([]);
   // Notas combinadas para mostrar (backend + nuevas)
   const notasDraft = [...notasBackend, ...notasNuevas];
 
@@ -330,12 +396,15 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
         return tecnicoAsignado;
       })(),
       estadoAnterior: n.estadoAnterior || null,
-      estadoNuevo: n.estadoNuevo || null
+      estadoNuevo: n.estadoNuevo || null,
+      publica: n.publica || false, // Incluir campo publica del backend
+      grupoId: n.grupoId || null // Incluir grupoId del backend
     }));
     
     setNotasBackend(notasNormalizadas);
-    // Limpiar notas nuevas cuando cambia el servicio
+    // Limpiar notas nuevas e imágenes adjuntas cuando cambia el servicio
     setNotasNuevas([]);
+    setImagenesAdjuntas([]);
   }, [servicio?.notas, servicio?.id, tecnicoAsignado]);
 
   // Inicializar video cuando se abre el modal
@@ -473,7 +542,8 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
         imagen: dataURL,
         archivoUrl: dataURL,
         fecha: new Date().toISOString(),
-        tecnico: tecnicoAsignado
+        tecnico: tecnicoAsignado,
+        publica: false // Por defecto no es pública
       };
       
       setNotasNuevas(prev => [...prev, nuevaNota]);
@@ -487,9 +557,58 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
 
   // ======= NOTAS (Draft - se guardan al hacer clic en Guardar) =======
   const handleAgregarNotaRapida = () => {
-    if (!nota.trim()) return toast.error('Escriba una nota antes de agregar');
+    if (!nota.trim() && imagenesAdjuntas.length === 0) {
+      return toast.error('Escriba una nota o adjunte imágenes antes de agregar');
+    }
     
-    // Agregar nota al draft
+    // Si hay imágenes adjuntas, crear una nota de texto con el contenido y luego las imágenes
+    if (imagenesAdjuntas.length > 0) {
+      // Generar un grupoId único para agrupar todas las notas relacionadas
+      const grupoId = `grupo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Crear una nota de texto con el contenido (si existe)
+      if (nota.trim()) {
+        const notaTexto = {
+          id: uid(),
+          esDelBackend: false,
+          tipo: 'texto',
+          contenido: nota.trim(),
+          texto: nota.trim(),
+          fecha: new Date().toISOString(),
+          tecnico: tecnicoAsignado,
+          publica: false,
+          grupoId: grupoId // Agregar grupoId para agrupar con las imágenes
+        };
+        setNotasNuevas(prev => [...prev, notaTexto]);
+      }
+      
+      // Crear una nota por cada imagen adjunta (sin texto duplicado)
+      imagenesAdjuntas.forEach((imagen) => {
+        const nuevaNota = {
+          id: uid(),
+          esDelBackend: false,
+          tipo: 'imagen',
+          contenido: '', // Sin contenido, el texto está en la nota de texto anterior
+          texto: '',
+          imagen: imagen.archivo,
+          archivoUrl: imagen.archivo,
+          nombreArchivo: imagen.nombreArchivo,
+          fecha: new Date().toISOString(),
+          tecnico: tecnicoAsignado,
+          publica: false,
+          grupoId: grupoId // Mismo grupoId para agrupar con la nota de texto
+        };
+        
+        setNotasNuevas(prev => [...prev, nuevaNota]);
+      });
+      
+      // Limpiar imágenes adjuntas después de agregarlas a las notas
+      const cantidadImagenes = imagenesAdjuntas.length;
+      setImagenesAdjuntas([]);
+      setNota('');
+      toast.success(`Nota con ${cantidadImagenes} imagen${cantidadImagenes > 1 ? 'es' : ''} agregada`);
+    } else {
+      // Solo texto, sin imágenes
     const nuevaNota = {
       id: uid(),
       esDelBackend: false,
@@ -497,18 +616,113 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
       contenido: nota.trim(),
       texto: nota.trim(),
       fecha: new Date().toISOString(),
-      tecnico: tecnicoAsignado
+      tecnico: tecnicoAsignado,
+        publica: false
     };
     
     setNotasNuevas(prev => [...prev, nuevaNota]);
     setNota('');
     toast.success('Nota agregada (pendiente de guardar)');
+    }
   };
 
   const handleEliminarNota = (id) => {
     // Solo se pueden eliminar notas nuevas (draft), no las del backend
     setNotasNuevas(prev => prev.filter(n => n.id !== id));
     toast.success('Nota eliminada del draft');
+  };
+
+  // Función para eliminar nota del backend
+  const handleEliminarNotaBackend = async (notaId) => {
+    try {
+      setLoading(true);
+      await api.delete(`/servicios/${servicio.id}/notas/${notaId}`);
+      toast.success('Nota eliminada exitosamente');
+      
+      // Recargar servicio completo desde backend
+      const servicioActualizado = await obtenerServicio(servicio.id);
+      if (servicioActualizado) {
+        setServicio(servicioActualizado);
+      }
+    } catch (error) {
+      console.error('Error eliminando nota:', error);
+      toast.error(error.response?.data?.message || 'Error al eliminar la nota');
+    } finally {
+      setLoading(false);
+      setShowConfirmarEliminar(false);
+      setNotaAEliminar(null);
+    }
+  };
+
+  // Función para confirmar eliminación
+  const confirmarEliminacion = async () => {
+    if (!notaAEliminar) return;
+    
+    try {
+      setLoading(true);
+      
+      if (esGrupoEliminar) {
+        // Eliminar todas las notas del grupo
+        const notasBackend = notaAEliminar.filter(n => n.esDelBackend);
+        const notasDraft = notaAEliminar.filter(n => !n.esDelBackend);
+        
+        // Eliminar notas del backend una por una
+        for (const nota of notasBackend) {
+          await api.delete(`/servicios/${servicio.id}/notas/${nota.id}`);
+        }
+        
+        // Eliminar notas del draft del estado local
+        notasDraft.forEach(n => {
+          setNotasNuevas(prev => prev.filter(nota => nota.id !== n.id));
+        });
+        
+        toast.success(`Nota con ${notaAEliminar.length} elemento${notaAEliminar.length > 1 ? 's' : ''} eliminada exitosamente`);
+      } else {
+        // Eliminar nota individual
+        if (notaAEliminar.esDelBackend) {
+          await api.delete(`/servicios/${servicio.id}/notas/${notaAEliminar.id}`);
+          toast.success('Nota eliminada exitosamente');
+        } else {
+          setNotasNuevas(prev => prev.filter(n => n.id !== notaAEliminar.id));
+          toast.success('Nota eliminada del draft');
+        }
+      }
+      
+      // Recargar servicio completo desde backend
+      const servicioActualizado = await obtenerServicio(servicio.id);
+      if (servicioActualizado) {
+        setServicio(servicioActualizado);
+      }
+    } catch (error) {
+      console.error('Error eliminando nota:', error);
+      toast.error(error.response?.data?.message || 'Error al eliminar la nota');
+    } finally {
+      setLoading(false);
+      setShowConfirmarEliminar(false);
+      setNotaAEliminar(null);
+    }
+  };
+
+  // Función para abrir modal de confirmación
+  const solicitarEliminacion = (nota, esGrupo = false, cantidad = 1) => {
+    setNotaAEliminar(nota);
+    setEsGrupoEliminar(esGrupo);
+    setCantidadElementosEliminar(cantidad);
+    setShowConfirmarEliminar(true);
+  };
+
+  // Función para verificar si el usuario puede eliminar una nota
+  const puedeEliminarNota = (nota) => {
+    if (!usuario) return false;
+    
+    // Las notas de cambio de estado no se pueden eliminar
+    const tipoNota = (nota.tipo?.toLowerCase() || '');
+    if (tipoNota === 'cambio_estado' || tipoNota === 'cambio estado') {
+      return false;
+    }
+    
+    // Solo el usuario que creó la nota o un admin puede eliminarla
+    return usuario.rol === 'admin' || nota.tecnico === usuario.nombre;
   };
 
   const handleEditarNotaNueva = (id, nuevoTexto) => {
@@ -518,40 +732,93 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
     ));
   };
 
+  // Cambiar visibilidad de nota nueva (draft)
+  const handleToggleVisibilidadNotaNueva = (id) => {
+    setNotasNuevas(prev => prev.map(n => 
+      n.id === id ? { ...n, publica: !n.publica } : n
+    ));
+  };
+
+  // Cambiar visibilidad de nota existente (backend)
+  const handleToggleVisibilidadNotaBackend = async (notaId) => {
+    try {
+      const nota = notasBackend.find(n => n.id === notaId);
+      if (!nota) return;
+
+      const nuevaVisibilidad = !nota.publica;
+      
+      // Actualizar en el backend
+      await api.patch(`/servicios/${servicio.id}/notas/${notaId}/visibilidad`, {
+        publica: nuevaVisibilidad
+      });
+
+      // Actualizar en el estado local
+      setNotasBackend(prev => prev.map(n => 
+        n.id === notaId ? { ...n, publica: nuevaVisibilidad } : n
+      ));
+
+      toast.success(nuevaVisibilidad ? 'Nota marcada como pública' : 'Nota marcada como privada');
+    } catch (error) {
+      console.error('Error actualizando visibilidad:', error);
+      toast.error('Error al actualizar visibilidad de la nota');
+    }
+  };
+
   const handleAdjuntarImagen = () => {
     imageInputRef.current?.click();
   };
 
   const onImageSelected = async (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return toast.error('Archivo no es imagen');
+    
+    if (files.length === 0) return;
+    
+    // Validar que todos sean imágenes
+    const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
+    if (invalidFiles.length > 0) {
+      toast.error('Solo se permiten archivos de imagen');
+      return;
+    }
+    
+    // Validar límite de 10 imágenes
+    const totalImagenes = imagenesAdjuntas.length + files.length;
+    if (totalImagenes > 10) {
+      toast.error(`Máximo 10 imágenes por nota. Ya tienes ${imagenesAdjuntas.length} y estás intentando agregar ${files.length}`);
+      return;
+    }
 
     try {
-      const dataURL = await compressImageToDataURL(file, 1280, 0.8);
+      const nuevasImagenes = [];
       
-      // Agregar imagen al draft
-      const nuevaNota = {
+      for (const file of files) {
+        // Comprimir imagen principal
+        const imagenComprimida = await compressImageToDataURL(file, 1920, 0.75);
+      
+        // Generar miniatura premium
+        const miniatura = await generateThumbnail(imagenComprimida, 100);
+        
+        nuevasImagenes.push({
         id: uid(),
-        esDelBackend: false,
-        tipo: 'imagen',
-        contenido: nota.trim() || `Imagen: ${file.name}`,
-        texto: nota.trim() || `Imagen: ${file.name}`,
-        imagen: dataURL,
-        archivoUrl: dataURL,
+          archivo: imagenComprimida,
+          miniatura: miniatura,
         nombreArchivo: file.name,
-        fecha: new Date().toISOString(),
-        tecnico: tecnicoAsignado
-      };
+          tamaño: file.size,
+          fecha: new Date().toISOString()
+        });
+      }
       
-      setNotasNuevas(prev => [...prev, nuevaNota]);
-      setNota('');
-      toast.success('Imagen agregada (pendiente de guardar)');
+      setImagenesAdjuntas(prev => [...prev, ...nuevasImagenes]);
+      toast.success(`${nuevasImagenes.length} imagen${nuevasImagenes.length > 1 ? 'es' : ''} adjuntada${nuevasImagenes.length > 1 ? 's' : ''} a la nota`);
     } catch (err) {
       console.error(err);
-      toast.error('No se pudo procesar la imagen');
+      toast.error('Error al procesar las imágenes');
     }
+  };
+
+  const eliminarImagenAdjunta = (id) => {
+    setImagenesAdjuntas(prev => prev.filter(img => img.id !== id));
+    toast.success('Imagen eliminada');
   };
 
   const handleNotaVoz = async () => {
@@ -612,7 +879,8 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
               archivoUrl: base64,
               fecha: new Date().toISOString(),
               tecnico: tecnicoAsignado,
-              mime: mimeType
+              mime: mimeType,
+              publica: false // Por defecto no es pública
             };
             
             setNotasNuevas(prev => [...prev, nuevaNota]);
@@ -690,8 +958,13 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
       const estadoBackend = mapearEstadoABackend(estado);
       const estadoActualBackend = servicio.estado || 'EN_DIAGNOSTICO';
       if (estadoActualBackend !== estadoBackend) {
-        console.log(`🔄 Cambiando estado de ${estadoActualBackend} a ${estadoBackend}`);
-        await cambiarEstado(servicioId, estadoBackend);
+        // 🆕 Capturar la respuesta de cambiarEstado para obtener información del WhatsApp
+        const resultadoCambioEstado = await cambiarEstado(servicioId, estadoBackend);
+        
+        // 🆕 Si el estado cambió a LISTO_RETIRO, el toast ya se muestra en el store
+        // pero podemos agregar lógica adicional aquí si es necesario
+        if (estadoBackend === 'LISTO_RETIRO') {
+        }
       }
 
       // 2. Actualizar fecha de entrega si cambió
@@ -699,7 +972,6 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
         ? new Date(servicio.fechaEntregaEstimada).toISOString().split('T')[0]
         : null;
       if (fechaActual !== nuevaFecha) {
-        console.log(`📅 Actualizando fecha de entrega a ${nuevaFecha}`);
         await actualizarServicio(servicioId, {
           diagnostico: {
             fechaEntrega: nuevaFecha
@@ -707,9 +979,8 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
         });
       }
 
-      // 3. Guardar todas las notas nuevas al backend
+      // 3. Guardar todas las notas nuevas al backend (incluye notas con imágenes adjuntas)
       if (notasNuevas.length > 0) {
-        console.log(`📝 Guardando ${notasNuevas.length} notas nuevas`);
         for (const notaNueva of notasNuevas) {
           try {
             const tipoBackend = mapearTipoNotaABackend(notaNueva.tipo);
@@ -717,18 +988,16 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
             // Priorizar archivoUrl, luego imagen, luego audio
             const archivoUrl = notaNueva.archivoUrl || notaNueva.imagen || notaNueva.audio || null;
             
-            console.log(`📤 Enviando nota al backend:`, {
-              tipo: tipoBackend,
-              contenido: contenido.substring(0, 50) + (contenido.length > 50 ? '...' : ''),
-              tieneArchivo: !!archivoUrl,
-              tamañoArchivo: archivoUrl ? Math.round(archivoUrl.length / 1024) + 'KB' : 'N/A',
-              tipoNota: notaNueva.tipo
-            });
-            
             const datosNota = {
               tipo: tipoBackend,
-              contenido: contenido
+              contenido: contenido,
+              publica: notaNueva.publica || false
             };
+            
+            // Agregar grupoId si existe (para agrupar notas relacionadas)
+            if (notaNueva.grupoId) {
+              datosNota.grupoId = notaNueva.grupoId;
+            }
             
             // Solo agregar archivoUrl si existe
             if (archivoUrl) {
@@ -737,7 +1006,6 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
             
             await agregarNota(servicioId, datosNota);
             
-            console.log(`✅ Nota guardada correctamente`);
           } catch (error) {
             console.error(`❌ Error guardando nota:`, error);
             console.error(`Detalles del error:`, {
@@ -749,14 +1017,16 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
         }
       }
 
-      // 4. Recargar servicio completo desde backend para obtener todos los cambios
+      // 5. Recargar servicio completo desde backend para obtener todos los cambios
       const servicioActualizado = await obtenerServicio(servicioId);
       if (servicioActualizado) {
         setServicio(servicioActualizado);
       }
 
-      // 5. Limpiar notas nuevas después de guardar
+      // 6. Limpiar notas nuevas e imágenes adjuntas después de guardar
       setNotasNuevas([]);
+      setImagenesAdjuntas([]);
+      setNota('');
 
       // 6. Notificar al componente padre
       await onGuardar?.(servicioId, {
@@ -776,8 +1046,9 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
 
   // ======= CANCELAR =======
   const handleCancelar = () => {
-    // Limpiar todas las notas nuevas (draft)
+    // Limpiar todas las notas nuevas (draft) e imágenes adjuntas
     setNotasNuevas([]);
+    setImagenesAdjuntas([]);
     setNota('');
     // Cerrar modal de cámara si está abierto
     if (showModalCamara) {
@@ -821,7 +1092,7 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
                   <History className="h-6 w-6" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold">Historial #{servicio.id}</h1>
+                  <h1 className="text-xl font-bold">Historial #{servicio.numeroServicio || servicio.id}</h1>
                   <div className="text-sm text-white/80">
                     {clienteNombre} • {dispositivoTexto}
                   </div>
@@ -934,12 +1205,150 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
                 {/* Área de notas - MÁXIMO PROTAGONISMO */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
                   {notasDraft.length > 0 ? (
-                    notasDraft
+                    (() => {
+                      // Agrupar notas relacionadas por grupoId
+                      const notasOrdenadas = notasDraft
                       .slice()
-                      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha)) // Más recientes primero
-                      .map((n) => (
-                        <div key={n.id} className="bg-gray-900/70 rounded-lg p-3 border border-gray-700/50 hover:border-gray-600/50 transition-colors">
+                        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha)); // Más recientes primero
+                      
+                      const notasAgrupadas = [];
+                      const notasProcesadas = new Set();
+                      
+                      for (let i = 0; i < notasOrdenadas.length; i++) {
+                        if (notasProcesadas.has(i)) continue;
+                        
+                        const nota = notasOrdenadas[i];
+                        
+                        // Si tiene grupoId, buscar todas las notas con el mismo grupoId
+                        if (nota.grupoId) {
+                          const grupo = [nota];
+                          notasProcesadas.add(i);
                           
+                          // Buscar todas las notas con el mismo grupoId
+                          for (let j = i + 1; j < notasOrdenadas.length; j++) {
+                            if (notasProcesadas.has(j)) continue;
+                            
+                            if (notasOrdenadas[j].grupoId === nota.grupoId) {
+                              grupo.push(notasOrdenadas[j]);
+                              notasProcesadas.add(j);
+                            }
+                          }
+                          
+                          // Ordenar el grupo: texto primero, luego imágenes
+                          grupo.sort((a, b) => {
+                            const tipoA = (a.tipo?.toLowerCase() || '');
+                            const tipoB = (b.tipo?.toLowerCase() || '');
+                            if (tipoA === 'texto' && tipoB !== 'texto') return -1;
+                            if (tipoA !== 'texto' && tipoB === 'texto') return 1;
+                            return 0;
+                          });
+                          
+                          notasAgrupadas.push({ tipo: 'grupo', notas: grupo });
+                        } else {
+                          // Nota individual sin grupoId
+                          notasAgrupadas.push({ tipo: 'individual', nota: nota });
+                          notasProcesadas.add(i);
+                        }
+                      }
+                      
+                      return notasAgrupadas.map((item, idx) => {
+                        if (item.tipo === 'grupo') {
+                          // Renderizar grupo: nota de texto + imágenes
+                          // Separar texto e imágenes del grupo
+                          const notaTexto = item.notas.find(n => (n.tipo?.toLowerCase() || '') === 'texto');
+                          const imagenes = item.notas.filter(n => (n.tipo?.toLowerCase() || '') === 'imagen');
+                          
+                          // Si no hay texto, usar la primera nota como referencia
+                          const primeraNota = notaTexto || item.notas[0];
+                          
+                          return (
+                            <div key={`grupo-${primeraNota.id}`} className="bg-gray-900/70 rounded-lg p-3 border border-gray-700/50 hover:border-gray-600/50 transition-colors">
+                              {/* Header compacto de la nota */}
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                  <Clock size={12} />
+                                  <span>{formatearFechaVE(primeraNota.fecha)}</span>
+                                  <span>{formatearHora(primeraNota.fecha)}</span>
+                                  <span className="text-blue-400">• {typeof primeraNota.tecnico === 'object' ? primeraNota.tecnico?.nombre || 'Técnico' : primeraNota.tecnico || 'Técnico'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {/* Switch de visibilidad */}
+                                  {notaTexto && (
+                                    <button
+                                      onClick={() => {
+                                        if (notaTexto.esDelBackend) {
+                                          handleToggleVisibilidadNotaBackend(notaTexto.id);
+                                        } else {
+                                          handleToggleVisibilidadNotaNueva(notaTexto.id);
+                                        }
+                                      }}
+                                      className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                                        notaTexto.publica
+                                          ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-600/30'
+                                          : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700 border border-gray-600/30'
+                                      }`}
+                                      title={notaTexto.publica ? 'Visible para el cliente' : 'Solo visible para técnicos'}
+                                    >
+                                      {notaTexto.publica ? <Eye size={12} /> : <EyeOff size={12} />}
+                                      <span className="hidden sm:inline">{notaTexto.publica ? 'Pública' : 'Privada'}</span>
+                                    </button>
+                                  )}
+                                  {/* Botón eliminar */}
+                                  {(!primeraNota.esDelBackend || puedeEliminarNota(primeraNota)) && (
+                                    <button
+                                      onClick={() => solicitarEliminacion(item.notas, true, item.notas.length)}
+                                      className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                      title="Eliminar nota completa"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Contenido de texto */}
+                              {notaTexto && (notaTexto.texto || notaTexto.contenido) && (
+                                <div className="text-gray-200 text-sm leading-relaxed mb-3">
+                                  {notaTexto.texto || notaTexto.contenido}
+                                </div>
+                              )}
+
+                              {/* Imágenes agrupadas en fila horizontal */}
+                              {imagenes.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                  {imagenes.map((imgNota) => (
+                                    <div
+                                      key={imgNota.id}
+                                      className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
+                                      style={{ width: '80px', height: '80px' }}
+                                      onClick={() => window.open(imgNota.imagen || imgNota.archivoUrl, '_blank')}
+                                    >
+                                      <div className="w-full h-full bg-gray-800">
+                                        <img
+                                          src={imgNota.imagen || imgNota.archivoUrl}
+                                          alt={imgNota.nombreArchivo || 'Evidencia'}
+                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                                          loading="lazy"
+                                        />
+                                      </div>
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
+                                            <Camera size={12} className="text-white" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else {
+                          // Renderizar nota individual normal
+                          const n = item.nota;
+                          return (
+                            <div key={n.id} className="bg-gray-900/70 rounded-lg p-3 border border-gray-700/50 hover:border-gray-600/50 transition-colors">
                           {/* Header compacto de la nota */}
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -948,16 +1357,37 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
                               <span>{formatearHora(n.fecha)}</span>
                               <span className="text-blue-400">• {typeof n.tecnico === 'object' ? n.tecnico?.nombre || 'Técnico' : n.tecnico || 'Técnico'}</span>
                             </div>
-                            {/* Solo mostrar botón eliminar para notas nuevas */}
-                            {!n.esDelBackend && (
+                            <div className="flex items-center gap-2">
+                              {/* Switch de visibilidad */}
                               <button
-                                onClick={() => handleEliminarNota(n.id)}
-                                className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition-colors"
-                                title="Eliminar"
+                                onClick={() => {
+                                  if (n.esDelBackend) {
+                                    handleToggleVisibilidadNotaBackend(n.id);
+                                  } else {
+                                    handleToggleVisibilidadNotaNueva(n.id);
+                                  }
+                                }}
+                                className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                                  n.publica
+                                    ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30 border border-green-600/30'
+                                    : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700 border border-gray-600/30'
+                                }`}
+                                title={n.publica ? 'Visible para el cliente' : 'Solo visible para técnicos'}
                               >
-                                <Trash2 size={14} />
+                                {n.publica ? <Eye size={12} /> : <EyeOff size={12} />}
+                                <span className="hidden sm:inline">{n.publica ? 'Pública' : 'Privada'}</span>
                               </button>
-                            )}
+                                  {/* Botón eliminar - mostrar si es nota nueva O si es del backend y el usuario tiene permisos */}
+                                  {(!n.esDelBackend || puedeEliminarNota(n)) && (
+                                <button
+                                      onClick={() => solicitarEliminacion(n, false, 1)}
+                                  className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Contenido optimizado */}
@@ -1037,7 +1467,10 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
                             </div>
                           )}
                         </div>
-                      ))
+                          );
+                        }
+                      });
+                    })()
                   ) : (
                     <div className="text-center py-12">
                       <StickyNote className="h-16 w-16 text-gray-600 mx-auto mb-4" />
@@ -1058,16 +1491,79 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
                       placeholder="Escriba detalles técnicos..."
                     />
 
+                    {/* Miniaturas premium de imágenes adjuntas */}
+                    {imagenesAdjuntas.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-400">
+                            Imágenes adjuntas ({imagenesAdjuntas.length}/10)
+                          </span>
+                          {imagenesAdjuntas.length >= 10 && (
+                            <span className="text-xs text-yellow-500">Límite alcanzado</span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-6 gap-2">
+                          {imagenesAdjuntas.map((img) => (
+                            <div
+                              key={img.id}
+                              className="relative group rounded-lg overflow-hidden border-2 border-gray-600 hover:border-yellow-500 transition-all duration-200 bg-gray-900 shadow-lg"
+                            >
+                              {/* Miniatura */}
+                              <div className="aspect-square w-full overflow-hidden bg-gray-800">
+                                <img
+                                  src={img.miniatura}
+                                  alt={img.nombreArchivo}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              
+                              {/* Overlay con botón eliminar */}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                                <button
+                                  onClick={() => eliminarImagenAdjunta(img.id)}
+                                  className="p-1.5 bg-red-600 hover:bg-red-700 rounded-full text-white shadow-lg transition-all duration-200 hover:scale-110"
+                                  title="Eliminar imagen"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                              
+                              {/* Indicador de imagen */}
+                              <div className="absolute top-1 right-1 bg-yellow-500/90 text-white text-[10px] px-1.5 py-0.5 rounded font-medium shadow-md">
+                                {imagenesAdjuntas.indexOf(img) + 1}
+                              </div>
+                              
+                              {/* Nombre del archivo truncado */}
+                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-1.5">
+                                <p className="text-[10px] text-white truncate font-medium">
+                                  {img.nombreArchivo}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {/* Nota rápida */}
+                        {/* Nota/Enviar - Cambia según si hay imágenes adjuntas */}
                         <button
                           onClick={handleAgregarNotaRapida}
-                          disabled={!nota.trim()}
+                          disabled={!nota.trim() && imagenesAdjuntas.length === 0}
                           className="flex items-center gap-1 px-3 py-1.5 text-xs bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 text-white rounded-md font-medium transition-colors disabled:opacity-50"
                         >
+                          {imagenesAdjuntas.length > 0 ? (
+                            <>
+                              <MessageSquarePlus size={14} />
+                              Enviar
+                            </>
+                          ) : (
+                            <>
                           <MessageSquarePlus size={14} />
                           Nota
+                            </>
+                          )}
                         </button>
 
                         {/*  BOTÓN CÁMARA - Abre modal */}
@@ -1082,10 +1578,15 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
                         {/* Archivo */}
                         <button
                           onClick={handleAdjuntarImagen}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-md transition-colors"
+                          disabled={imagenesAdjuntas.length >= 10}
+                          className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-md font-medium transition-colors ${
+                            imagenesAdjuntas.length >= 10
+                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                              : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                          }`}
                         >
                           <FileText size={14} />
-                          Archivo
+                          Archivo {imagenesAdjuntas.length > 0 && `(${imagenesAdjuntas.length})`}
                         </button>
 
                         {/* Audio */}
@@ -1149,11 +1650,12 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
       {/* Canvas oculto para captura de fotos */}
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Input oculto para archivos */}
+      {/* Input oculto para archivos - múltiples imágenes */}
       <input
         ref={imageInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={onImageSelected}
       />
@@ -1237,6 +1739,17 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
           </div>
         </div>
       )}
+
+      {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
+      <ConfirmarEliminarNotaModal
+        isOpen={showConfirmarEliminar}
+        onConfirm={confirmarEliminacion}
+        onCancel={() => {
+          setShowConfirmarEliminar(false);
+          setNotaAEliminar(null);
+        }}
+        cantidadElementos={cantidadElementosEliminar}
+      />
     </div>
   </div>
 );

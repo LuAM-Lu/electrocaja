@@ -260,44 +260,34 @@ const TotalsPanel = ({
   const [animatingTotal, setAnimatingTotal] = useState(false);
 
   //  CÁLCULOS PRINCIPALES
-  //  CÁLCULOS PRINCIPALES CON LÓGICA IVA VENEZOLANA
+  //  CÁLCULOS PRINCIPALES CON LÓGICA IVA VENEZOLANA - IVA DESGLOSADO (INCLUIDO EN EL PRECIO)
 const calculos = React.useMemo(() => {
-  //  CALCULAR SUBTOTAL CONSIDERANDO IVA POR PRODUCTO
-  const subtotal = items.reduce((sum, item) => {
+  //  CALCULAR SUBTOTAL TOTAL (PRECIO CON IVA INCLUIDO)
+  // Si el precio es $10, ese $10 ya incluye el IVA
+  const subtotalConIva = items.reduce((sum, item) => {
     const precioUnitario = item.precio_unitario || 0;
-    
-    // Determinar si el precio ya incluye IVA
-    const tieneIvaIncluido = item.proveedor_factura_iva !== false;
-    const esServicio = item.tipo === 'servicio';
-    
-    let precioBase;
-    if (esServicio || !tieneIvaIncluido) {
-      // Servicios o productos sin IVA del proveedor: precio es base
-      precioBase = precioUnitario;
-    } else {
-      // Productos con IVA del proveedor: descontar IVA
-      precioBase = precioUnitario / 1.16;
-    }
-    
-    return sum + (item.cantidad * precioBase);
+    return sum + (item.cantidad * precioUnitario);
   }, 0);
 
-  // Descuento en USD (sobre la base sin IVA)
+  // Descuento en USD (sobre el subtotal con IVA)
   let descuentoUsd;
   if (tipoDescuento === 'porcentaje') {
-    descuentoUsd = (subtotal * descuentoGlobal) / 100;
+    descuentoUsd = (subtotalConIva * descuentoGlobal) / 100;
   } else {
     descuentoUsd = descuentoGlobal / tasaCambio; // Convertir de Bs a USD
   }
   
-  // Base imponible (después del descuento)
-  const baseImponible = subtotal - descuentoUsd;
+  // Subtotal después del descuento (aún con IVA incluido)
+  const subtotalDespuesDescuento = subtotalConIva - descuentoUsd;
   
-  // IVA (siempre 16% sobre la base imponible final)
-  const ivaUsd = (baseImponible * impuesto) / 100;
+  // ✅ DESGLOSAR IVA DEL SUBTOTAL (el IVA está incluido en el precio)
+  // Si el subtotal es $10, el IVA incluido es: $10 * (16/116) = $1.38
+  // La base imponible es: $10 - $1.38 = $8.62
+  const ivaUsd = (subtotalDespuesDescuento * impuesto) / (100 + impuesto);
+  const baseImponible = subtotalDespuesDescuento - ivaUsd;
   
-  // Total en USD
-  const totalUsd = baseImponible + ivaUsd;
+  // Total en USD (igual al subtotal después del descuento, ya que el IVA está incluido)
+  const totalUsd = subtotalDespuesDescuento;
   
   // Total en Bs
   const totalBs = totalUsd * tasaCambio;
@@ -306,13 +296,13 @@ const calculos = React.useMemo(() => {
   const cantidadItems = items.reduce((sum, item) => sum + item.cantidad, 0);
 
  return {
-  subtotal,
+  subtotal: subtotalConIva, // Subtotal original con IVA incluido
   descuentoUsd,
   descuentoBs: descuentoUsd * tasaCambio,
-  baseImponible,
-  ivaUsd,
+  baseImponible, // Base imponible después de desglosar IVA
+  ivaUsd, // IVA desglosado (incluido en el precio)
   ivaBs: ivaUsd * tasaCambio,
-  totalUsd,
+  totalUsd, // Total = subtotal después del descuento (IVA ya incluido)
   totalBs,
   cantidadItems
 };

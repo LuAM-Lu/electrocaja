@@ -34,7 +34,7 @@ const CajaStatus = () => {
   if (!cajaActual) {
     return (
       <>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col w-full">
           {/* Header elegante */}
           <div className="bg-gradient-to-r from-slate-600 to-slate-700 px-4 py-3">
             <div className="flex items-center justify-between">
@@ -111,7 +111,7 @@ const CajaStatus = () => {
 
   // SI HAY CAJA ABIERTA
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col w-full">
       {/* Header profesional */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
         <div className="flex items-center justify-between">
@@ -158,7 +158,7 @@ const CajaStatus = () => {
               <span className="text-xs font-semibold text-green-800">Efectivo $</span>
             </div>
             <div className="text-sm font-bold text-green-900">
-              ${cajaActual.monto_inicial_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${(cajaActual.monto_inicial_usd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
 

@@ -167,13 +167,6 @@ const validarExcesoVuelto = (valorActual) => {
   if (tipo !== "vuelto" || !valorActual) return true;
   
   const montoNumerico = parseFloat(valorActual.replace(',', '.')) || 0;
-  const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
-  
-  console.log(' ===== VALIDACIÓN DE VUELTO =====');
-  console.log(' Exceso total (Bs):', exceso);
-  console.log(' Total vueltos ya dados (Bs):', totalVueltoActual);
-  console.log(' Método actual:', metodoInfo?.label, metodoInfo?.moneda);
-  console.log(' Monto solicitado:', montoNumerico);
   
   //  NO VALIDAR LÍMITE - PERMITIR VUELTOS MÚLTIPLES
   // El usuario puede dar $4 USD + equivalente en Bs del resto
@@ -190,7 +183,6 @@ const validarExcesoVuelto = (valorActual) => {
     return false;
   }
   
-  console.log(' Validación pasada - Monto válido');
   return true;
 };
  
@@ -450,40 +442,19 @@ const PagosPanel = ({
  };
 
  const calcularTotalVuelto = () => {
-  console.log(' ===== CALCULANDO TOTAL VUELTO =====');
-  console.log(' vueltos:', vueltos);
-  console.log(' tasaCambio:', tasaCambio);
-
   const total = vueltos.reduce((total, vuelto) => {
     const monto = limpiarNumero(vuelto.monto);
     const metodoInfo = METODOS_PAGO.find(m => m.value === vuelto.metodo);
 
-    console.log(` Vuelto procesado:`, {
-      metodo: vuelto.metodo,
-      montoOriginal: vuelto.monto,
-      montoLimpio: monto,
-      monedaDetectada: metodoInfo?.moneda,
-      tasaCambio: tasaCambio
-    });
-
     if (metodoInfo?.moneda === 'bs') {
-      const resultado = total + monto;
-      console.log(` Vuelto en Bs: ${monto} → Total acumulado: ${resultado}`);
-      return resultado;
+      return total + monto;
     } else {
-      const montoConvertido = monto * tasaCambio;
-      const resultado = total + montoConvertido;
-      console.log(` Vuelto en USD: ${monto} × ${tasaCambio} = ${montoConvertido} → Total acumulado: ${resultado}`);
-      return resultado;
+      return total + (monto * tasaCambio);
     }
   }, 0);
 
   //  PRECISIÓN ALTA - Redondear a 4 decimales para preservar exactitud
-  const totalFinal = Math.round(total * 10000) / 10000;
-  console.log(' TOTAL VUELTO FINAL:', totalFinal);
-  console.log(' ===== FIN CALCULO VUELTO =====');
-
-  return totalFinal;
+  return Math.round(total * 10000) / 10000;
 };
 
  const totalPagado = calcularTotalPagado();
@@ -509,19 +480,13 @@ const PagosPanel = ({
     : (Math.abs(excesoPendiente) > 0.01 ? excesoPendiente : 0);
   
   // ✅ Para abonos, validar que haya monto pagado
+  // ✅ Para ventas normales, permitir avanzar si el pago está completo (no falta nada)
+  //    incluso si hay excedente (el excedente se manejará como vuelto)
   const esValido = permitirPagoParcial 
     ? (totalPagado > 0.01 && excesoPendiente <= 0.01)
-    : (transaccionCompleta && excesoPendienteSignificativo === 0);
+    : (transaccionCompleta); // Permitir avanzar si el pago está completo, incluso con excedente
   
   onValidationChange(esValido, excesoPendienteSignificativo);
-  
-  console.log(' Validación de pagos:', {
-    excesoPendiente,
-    transaccionCompleta,
-    permitirPagoParcial,
-    esValido,
-    vueltos: vueltos.length
-  });
 }, [transaccionCompleta, excesoPendiente, onValidationChange, permitirPagoParcial, totalPagado]);
 
  // ===================================

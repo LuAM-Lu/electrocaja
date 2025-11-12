@@ -136,7 +136,37 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
   useEffect(() => {
     if (isOpen) {
       if (presupuesto) {
-        setPresupuestoData({ ...presupuesto });
+        // Convertir presupuesto del backend al formato del modal
+        setPresupuestoData({
+          id: presupuesto.id,
+          numero: presupuesto.numero,
+          fecha: new Date(presupuesto.fecha).toISOString().split('T')[0],
+          fechaVencimiento: new Date(presupuesto.fechaVencimiento).toISOString().split('T')[0],
+          cliente: presupuesto.clienteId ? {
+            id: presupuesto.clienteId,
+            nombre: presupuesto.clienteNombre,
+            cedula_rif: presupuesto.clienteCedulaRif,
+            telefono: presupuesto.clienteTelefono,
+            email: presupuesto.clienteEmail
+          } : null,
+          items: Array.isArray(presupuesto.items) ? presupuesto.items : [],
+          subtotal: parseFloat(presupuesto.subtotal || 0),
+          descuentoGlobal: parseFloat(presupuesto.descuentoGlobal || 0),
+          tipoDescuento: presupuesto.tipoDescuento || 'porcentaje',
+          impuestos: parseFloat(presupuesto.impuestos || 16),
+          totalUsd: parseFloat(presupuesto.totalUsd || 0),
+          observaciones: Array.isArray(presupuesto.observaciones) ? presupuesto.observaciones : [],
+          validezDias: presupuesto.validezDias || 1,
+          exportConfig: presupuesto.exportConfig || {
+            pdf: false,
+            whatsapp: false,
+            email: false,
+            vistaPrevia: false
+          },
+          creadoPor: presupuesto.creadoPorId,
+          fechaCreacion: presupuesto.createdAt,
+          version: presupuesto.version || 1
+        });
       } else {
         const numero = `PRES-${Date.now().toString().slice(-6)}`;
         setPresupuestoData(prev => ({ ...prev, numero }));
@@ -246,7 +276,7 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     }
   };
 
-//  EJECUTOR PRINCIPAL - FUNCIÓN CORREGIDA
+//  EJECUTOR PRINCIPAL - FUNCIÓN CORREGIDA CON GUARDADO EN BACKEND
 const handleCrearPresupuesto = async () => {
   setLoadingCrear(true);
   
@@ -271,7 +301,53 @@ const handleCrearPresupuesto = async () => {
     const validacionConfig = validarExportConfig(presupuestoData.exportConfig, presupuestoData);
     if (!validacionConfig.valido) {
       toast.error('' + validacionConfig.errores.join('\n'));
+      setLoadingCrear(false);
       return;
+    }
+    
+    // ✅ VALIDAR QUE HAYA AL MENOS UNA OPCIÓN SELECCIONADA
+    const tieneOpcionSeleccionada = Object.values(presupuestoData.exportConfig || {}).some(Boolean);
+    if (!tieneOpcionSeleccionada) {
+      toast.error('Debes seleccionar al menos una opción de exportación (PDF, WhatsApp, WhatsApp Simple o Email)');
+      setLoadingCrear(false);
+      return;
+    }
+    
+    // ✅ GUARDAR EN BACKEND PRIMERO
+    const presupuestoParaGuardar = {
+      numero: presupuestoData.numero,
+      fecha: presupuestoData.fecha,
+      fechaVencimiento: presupuestoData.fechaVencimiento,
+      validezDias: presupuestoData.validezDias,
+      clienteId: presupuestoData.cliente?.id || null,
+      clienteNombre: presupuestoData.cliente?.nombre || null,
+      clienteCedulaRif: presupuestoData.cliente?.cedula_rif || null,
+      clienteTelefono: presupuestoData.cliente?.telefono || null,
+      clienteEmail: presupuestoData.cliente?.email || null,
+      items: presupuestoData.items,
+      subtotal: presupuestoData.subtotal,
+      descuentoGlobal: presupuestoData.descuentoGlobal,
+      tipoDescuento: presupuestoData.tipoDescuento,
+      impuestos: presupuestoData.impuestos,
+      totalUsd: presupuestoData.totalUsd,
+      totalBs: presupuestoData.totalUsd * tasaCambio,
+      tasaCambio: tasaCambio,
+      observaciones: presupuestoData.observaciones || [],
+      exportConfig: presupuestoData.exportConfig,
+      estado: 'ENVIADO'
+    };
+
+    let presupuestoGuardado;
+    if (presupuestoData.id) {
+      // Actualizar presupuesto existente
+      const { default: api } = await import('../config/api');
+      const response = await api.put(`/presupuestos/${presupuestoData.id}`, presupuestoParaGuardar);
+      presupuestoGuardado = response.data.data;
+    } else {
+      // Crear nuevo presupuesto
+      const { default: api } = await import('../config/api');
+      const response = await api.post('/presupuestos', presupuestoParaGuardar);
+      presupuestoGuardado = response.data.data;
     }
     
     // Ejecutar exports según configuración
@@ -281,7 +357,7 @@ const handleCrearPresupuesto = async () => {
       const exitosos = resultado.resultados.filter(r => !r.includes('')).length;
       const fallidos = resultado.errores;
       
-      let mensaje = ` Presupuesto ${presupuestoData.numero} creado exitosamente:\n\n`;
+      let mensaje = ` Presupuesto ${presupuestoData.numero} ${presupuestoData.id ? 'actualizado' : 'creado'} exitosamente:\n\n`;
       
       resultado.resultados.forEach(r => {
         if (!r.includes('')) {
@@ -313,7 +389,7 @@ const handleCrearPresupuesto = async () => {
     
   } catch (error) {
     console.error(' Error creando presupuesto:', error);
-    toast.error('Error creando presupuesto: ' + error.message);
+    toast.error('Error creando presupuesto: ' + (error.response?.data?.message || error.message));
   } finally {
     setLoadingCrear(false);
   }

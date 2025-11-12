@@ -1,11 +1,13 @@
 // src/App.jsx (COMPLETO Y ORDENADO)
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Footer from './components/Footer';
 import LoginModal from './components/LoginModal';
 import BloqueoOverlay from './components/BloqueoOverlay';
 import BloqueoCojeModal from './components/BloqueoCojeModal';
+import VistaPublicaServicio from './components/servicios/VistaPublicaServicio';
 import { useCajaStore } from './store/cajaStore';
 import { useAuthStore } from './store/authStore';
 import { useSocketEvents } from './hooks/useSocketEvents';
@@ -91,23 +93,11 @@ useEffect(() => {
     
     if (!usuario) return;
     
-    console.log(' Inicializando sistema de notificaciones...');
-    
     // Configurar listeners de Socket.IO
     setupSocketListeners();
     
     // Verificar inventario para stock bajo
     await checkInventoryAlerts();
-    
-    //  COMENTADO - Notificación innecesaria
-// addNotificacion({
-//   tipo: 'sistema',
-//   titulo: 'Sistema iniciado',
-//   descripcion: `Bienvenido ${usuario.nombre}. Sistema de notificaciones activo.`,
-//   accionable: false
-// });
-    
-    console.log(' Sistema de notificaciones inicializado');
   };
 
   const checkInventoryAlerts = async () => {
@@ -115,15 +105,11 @@ useEffect(() => {
     const { inventario, obtenerStockBajo, obtenerInventario } = useInventarioStore.getState();
     const { notificaciones, addNotificacion } = useNotificacionesStore.getState();
     
-    console.log(' Verificando inventario actual:', inventario.length, 'productos');
-    
     if (inventario.length === 0) {
-      console.log(' Cargando inventario desde backend...');
       await obtenerInventario();
     }
     
     const stockBajo = obtenerStockBajo(10);
-    console.log(' Stock bajo detectado:', stockBajo.length, 'productos');
     
     //  VERIFICAR SI YA EXISTE NOTIFICACIÓN DE STOCK BAJO
     const yaExisteStockBajo = notificaciones.some(n => 
@@ -138,9 +124,6 @@ useEffect(() => {
         accionable: true,
         datos: { productos: stockBajo }
       });
-      console.log(' Notificación stock bajo generada:', stockBajo.length, 'productos');
-    } else if (yaExisteStockBajo) {
-      console.log('ℹ Ya existe notificación de stock bajo, omitiendo duplicado');
     }
   } catch (error) {
     console.error(' Error verificando stock:', error);
@@ -151,28 +134,14 @@ useEffect(() => {
   //  FUNCIONES DE MANEJO
   // ===================================
  const handleLoginSuccess = () => {
-  console.log(' Login exitoso - inicializando sin recargar página');
   setShowLogin(false);
   initialize();
-  
-  //  NO MANIPULAR URL PARA EVITAR COMPORTAMIENTOS INESPERADOS
-  console.log(' App inicializada correctamente');
 };
 
   // ===================================
   //  EFECTOS PRINCIPALES
   // ===================================
 
-  //  DEBUG: Detectar recargas
-  useEffect(() => {
-    console.log(' APP.JSX MONTADO - Detectando si es recarga');
-    console.log(' performance.navigation.type:', performance.navigation?.type);
-    console.log(' document.referrer:', document.referrer);
-    
-    if (performance.navigation?.type === 1) {
-      console.log(' PÁGINA RECARGADA - Esto no debería pasar después del login');
-    }
-  }, []);
 
 //  EFECTO PRINCIPAL: Verificar autenticación al cargar
 useEffect(() => {
@@ -180,15 +149,12 @@ useEffect(() => {
  
   //  CONFIGURAR SISTEMA DE EVENTOS GLOBALES
   window.emitirEventoGlobal = (evento, datos) => {
-    console.log(' Evento global emitido:', evento, datos);
     const eventoCustom = new CustomEvent(evento, { detail: datos });
     window.dispatchEvent(eventoCustom);
   };
-  console.log(' Sistema de eventos globales inicializado');
  
   //  LISTENER PARA TOKEN EXPIRADO
   const handleTokenExpired = (event) => {
-    console.log(' Evento token-expired recibido:', event.detail);
     useAuthStore.getState().handleTokenExpired();
   };
 
@@ -394,8 +360,12 @@ useEffect(() => {
     );
   }
 
-  //  Mostrar login si no está autenticado
-  if (!isAuthenticated || showLogin) {
+  // Verificar si estamos en una ruta pública (no requiere autenticación)
+  const location = window.location.pathname;
+  const esRutaPublica = location.startsWith('/servicio/');
+  
+  //  Mostrar login si no está autenticado y no es ruta pública
+  if ((!isAuthenticated || showLogin) && !esRutaPublica) {
     return (
       <>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
@@ -428,158 +398,134 @@ useEffect(() => {
   //  APP PRINCIPAL
   // ===================================
   return (
-    <>
-      <div className="min-h-screen bg-gray-100 flex flex-col">
-        <Header />
-        <Dashboard emitirEvento={emitirEvento} />
-        <Footer />
-      </div>
-      
-      {/*  Overlay de bloqueo */}
-      <BloqueoOverlay 
-        usuariosBloqueados={usuariosBloqueados}
-        motivoBloqueo={motivoBloqueo}
-        usuarioCerrando={usuarioCerrando}
-      />
+    <BrowserRouter>
+      <Routes>
+        {/* Ruta pública para seguimiento de servicios */}
+        <Route path="/servicio/:token" element={<VistaPublicaServicio />} />
+        
+        {/* Ruta principal de la aplicación */}
+        <Route path="*" element={
+          <>
+            {!isAuthenticated ? (
+              <>
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl border border-blue-200">
+                      <img
+                        src="/favicon-96x96.png"
+                        alt="Electro Caja"
+                        className="h-16 w-16 mx-auto mb-4 rounded-full shadow-lg"
+                      />
+                      <h1 className="text-xl font-bold text-gray-900 mb-2">Electro Caja</h1>
+                      <p className="text-gray-600 text-sm">Sistema de control de ventas</p>
+                      <div className="mt-4 text-blue-600 text-sm">
+                        Esperando inicio de sesión...
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-      {/*  MODAL DE BLOQUEO POR CAJA PENDIENTE - MÁXIMA PRIORIDAD */}
-      {sistemaBloquedadoPorCaja && cajaPendienteCierre && (
-        <BloqueoCojeModal
-          cajaPendiente={cajaPendienteCierre}
-          esResponsable={usuario?.id === cajaPendienteCierre?.usuarioResponsableId}
-        />
-      )}
+                <LoginModal
+                  isOpen={true}
+                  onClose={handleLoginSuccess}
+                />
+              </>
+            ) : (
+              <>
+                <div className="min-h-screen bg-gray-100 flex flex-col">
+                  <Header />
+                  <Dashboard emitirEvento={emitirEvento} />
+                  <Footer />
+                </div>
+                
+                {/*  Overlay de bloqueo */}
+                <BloqueoOverlay 
+                  usuariosBloqueados={usuariosBloqueados}
+                  motivoBloqueo={motivoBloqueo}
+                  usuarioCerrando={usuarioCerrando}
+                />
 
+                {/*  MODAL DE BLOQUEO POR CAJA PENDIENTE - MÁXIMA PRIORIDAD */}
+                {sistemaBloquedadoPorCaja && cajaPendienteCierre && (
+                  <BloqueoCojeModal
+                    cajaPendiente={cajaPendienteCierre}
+                    esResponsable={usuario?.id === cajaPendienteCierre?.usuarioResponsableId}
+                  />
+                )}
+              </>
+            )}
+          </>
+        } />
+      </Routes>
       
-      
-      {/*  Panel debug avanzado (Ctrl+Shift+D) */}
-      {showDebugPanel && sessionInfo && (
-        <div className="fixed bottom-4 left-4 z-[60] bg-black/90 text-white text-xs p-3 rounded-lg font-mono max-w-sm border border-gray-700 shadow-2xl">
+      {/* Componentes globales */}
+      {showDebugPanel && (
+        <div className="fixed bottom-4 right-4 bg-gray-900 text-white p-4 rounded-lg shadow-xl z-50 text-xs max-w-xs border border-gray-700">
+          <div className="font-bold mb-2 text-yellow-400">Debug Panel</div>
           <div className="space-y-1">
-            <div className="text-amber-400 font-semibold border-b border-gray-600 pb-1 mb-2 flex items-center">
-               PANEL ADMIN
-              <div className="ml-auto text-gray-400 flex items-center space-x-1">
-                <span title="Ctrl+Shift+D para ocultar" className="text-xs"></span>
-                <span>v1.0.0</span>
-              </div>
+            <div className="text-green-400 flex items-center space-x-2">
+              <span>✅ Conectado:</span>
+              <span>{socketConnected ? 'Sí' : 'No'}</span>
             </div>
-            
-            {/* Estado Socket */}
-            <div className={`flex items-center space-x-2 ${
-              socketConnected ? 'text-green-400' : 'text-red-400'
-            }`}>
-              <span>{socketConnected ? '' : ''}</span>
-              <span>Socket: {socketConnected ? 'ONLINE' : 'OFFLINE'}</span>
-            </div>
-            
-            {/* Información de Sesión */}
             <div className="text-blue-400 flex items-center space-x-2">
-              <span></span>
-              <span>{sessionInfo.usuario?.nombre}</span>
+              <span>🔐 Autenticado:</span>
+              <span>{isAuthenticated ? 'Sí' : 'No'}</span>
             </div>
-            
-            {/* Usuarios Conectados */}
-            <div className="text-yellow-400 flex items-center space-x-2">
-              <span></span>
-              <span>Conectados: {sessionInfo.usuariosConectados}</span>
-            </div>
-            
-            {/* Caja Actual */}
-            <div className={`flex items-center space-x-2 ${
-              cajaActual ? 'text-emerald-400' : 'text-gray-400'
-            }`}>
-              <span></span>
-              <span>Caja: {cajaActual ? 'ABIERTA' : 'CERRADA'}</span>
-            </div>
-            
-            {/* Estado Base de Datos */}
             <div className="text-purple-400 flex items-center space-x-2">
-              <span></span>
-              <span>BD: POSTGRESQL</span>
+              <span>👤 Usuario:</span>
+              <span>{usuario?.nombre || 'N/A'}</span>
             </div>
-
-            {/* Recursos del Sistema */}
             <div className="text-cyan-400 flex items-center space-x-2">
-              <span></span>
-              <span>RAM: {panelStats.ram}MB</span>
+              <span>📦 Caja:</span>
+              <span>{cajaActual?.estado || 'N/A'}</span>
             </div>
-
             <div className="text-orange-400 flex items-center space-x-2">
-              <span></span>
-              <span>Uptime: {panelStats.uptime}min</span>
+              <span>⏱️ Uptime:</span>
+              <span>{Math.floor(panelStats.uptime / 60)}m {panelStats.uptime % 60}s</span>
             </div>
-
-            {/* Conexión Online */}
-            <div className={`flex items-center space-x-2 ${
-              navigator.onLine ? 'text-green-400' : 'text-red-400'
-            }`}>
-              <span>{navigator.onLine ? '' : ''}</span>
-              <span>Internet: {navigator.onLine ? 'ONLINE' : 'OFFLINE'}</span>
+            <div className="text-pink-400 flex items-center space-x-2">
+              <span>💾 RAM:</span>
+              <span>{panelStats.ram.toFixed(2)} MB</span>
             </div>
-
-            {/* Estado WhatsApp */}
-            <div className={`flex items-center space-x-2 ${
-              panelStats.whatsappStatus === 'ONLINE' ? 'text-green-400' : 
-              panelStats.whatsappStatus === 'ERROR' ? 'text-red-400' : 'text-gray-400'
-            }`}>
-              <span></span>
-              <span>WhatsApp: {panelStats.whatsappStatus}</span>
-            </div>
-
-            {/* Navegador y Dispositivo */}
             <div className="text-indigo-400 flex items-center space-x-2">
-              <span></span>
-              <span>{(() => {
-                const ua = navigator.userAgent;
-                if (ua.includes('Chrome')) return 'Chrome';
-                if (ua.includes('Firefox')) return 'Firefox';
-                if (ua.includes('Safari')) return 'Safari';
-                if (ua.includes('Edge')) return 'Edge';
-                return 'Desconocido';
-              })()}</span>
+              <span>🌐 Online:</span>
+              <span>{panelStats.online ? 'Sí' : 'No'}</span>
             </div>
-
-            <div className="text-violet-400 flex items-center space-x-2">
-              <span></span>
+            <div className="text-yellow-400 flex items-center space-x-2">
+              <span>📱 WhatsApp:</span>
+              <span>{panelStats.whatsappStatus}</span>
+            </div>
+            <div className="text-gray-300 flex items-center space-x-2">
+              <span>🖥️ Dispositivo:</span>
               <span>{(() => {
                 const ua = navigator.userAgent;
-                if (/Mobi|Android/i.test(ua)) return 'Móvil';
-                if (/Tablet|iPad/i.test(ua)) return 'Tablet';
+                if (/Mobile|Android|iPhone|iPad/.test(ua)) return 'Móvil';
+                if (/Tablet/.test(ua)) return 'Tablet';
                 return 'Desktop';
               })()}</span>
             </div>
-
-            {/* Resolución de Pantalla */}
             <div className="text-pink-400 flex items-center space-x-2">
               <span></span>
               <span>{screen.width}x{screen.height}</span>
             </div>
-
-            
-            
-            {/* Socket ID */}
             {sessionInfo.socketId && (
               <div className="text-gray-300 flex items-center space-x-2">
                 <span></span>
                 <span>{sessionInfo.socketId.substring(0, 8)}...</span>
               </div>
             )}
-            
-            {/* Estado de Bloqueo */}
             {usuariosBloqueados && (
               <div className="text-red-300 border-t border-gray-600 pt-1 mt-2 flex items-center space-x-2">
                 <span></span>
                 <span>BLOQUEADO: {motivoBloqueo.substring(0, 15)}...</span>
               </div>
-            )} 
-
-
+            )}
           </div>
         </div>
       )}
       
       <Toaster />
-    </>
+    </BrowserRouter>
   );
 }
 

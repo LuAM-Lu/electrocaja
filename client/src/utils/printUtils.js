@@ -443,25 +443,86 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
         `}
         
         <br><br><br>
+        
+        <!-- ✅ SCRIPT PARA PREVENIR RECARGA AL CERRAR -->
+        <script>
+          (function() {
+            'use strict';
+            
+            // ✅ PREVENIR TODOS LOS EVENTOS QUE PUEDAN CAUSAR REFRESH
+            // Bloquear eventos antes de que se propaguen
+            const preventDefault = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              return false;
+            };
+            
+            // Prevenir beforeunload
+            window.addEventListener('beforeunload', preventDefault, true);
+            window.onbeforeunload = null;
+            
+            // Prevenir unload
+            window.addEventListener('unload', preventDefault, true);
+            window.onunload = null;
+            
+            // Prevenir que eventos de foco afecten la ventana principal
+            window.addEventListener('blur', function(e) {
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+            }, true);
+            
+            window.addEventListener('focus', function(e) {
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+            }, true);
+            
+            // Prevenir que el cierre cause eventos en la ventana padre
+            window.addEventListener('pagehide', preventDefault, true);
+            window.addEventListener('pageshow', preventDefault, true);
+            
+            // ✅ AISLAR COMPLETAMENTE LA VENTANA DE IMPRESIÓN
+            // No permitir que ningún evento escape de esta ventana
+            const originalClose = window.close;
+            window.close = function() {
+              // Limpiar todos los listeners antes de cerrar
+              window.onbeforeunload = null;
+              window.onunload = null;
+              originalClose.call(window);
+            };
+            
+            // ✅ PREVENIR QUE EL CIERRE MANUAL CAUSE PROBLEMAS
+            // Interceptar cualquier intento de cerrar la ventana
+            document.addEventListener('visibilitychange', function(e) {
+              e.stopPropagation();
+            }, true);
+          })();
+        </script>
     </body>
     </html>
   `;
 };
 
 //  MANTENER - Impresión térmica (función actual SIN CAMBIOS)
-export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
+export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio, descuento = 0, ventanaPreAbierta = null) => {
   try {
     console.log(' Generando impresión térmica 80mm optimizada...');
     
     const contenidoHTML = generarHTMLBase(ventaData, codigoVenta, tasaCambio, descuento, 'termica');
     
     //  Configuración optimizada para impresoras térmicas 80mm
-    const ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+    // Si se proporciona una ventana pre-abierta, usarla; de lo contrario, intentar abrir una nueva
+    let ventanaImpresion = ventanaPreAbierta;
     
     if (!ventanaImpresion) {
-      throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
+      ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+      
+      if (!ventanaImpresion) {
+        throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
+      }
     }
     
+    // ✅ ESCRIBIR HTML CON SCRIPT DE PREVENCIÓN INCLUIDO
     ventanaImpresion.document.write(contenidoHTML);
     ventanaImpresion.document.close();
     
@@ -469,10 +530,51 @@ export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio,
       setTimeout(() => {
         ventanaImpresion.print();
         setTimeout(() => {
-          ventanaImpresion.close();
+          // ✅ CERRAR SIN CAUSAR EVENTOS EN LA VENTANA PRINCIPAL
+          try {
+            if (!ventanaImpresion.closed) {
+              ventanaImpresion.close();
+            }
+          } catch (e) {
+            // Ignorar errores al cerrar
+          }
         }, 1000);
       }, 500);
     };
+    
+    // ✅ PREVENIR QUE EL CIERRE MANUAL DE LA VENTANA CAUSE RECARGA
+    // ✅ AISLAR COMPLETAMENTE LA REFERENCIA DE LA VENTANA
+    let ventanaRef = ventanaImpresion;
+    
+    // ✅ PREVENIR QUE EVENTOS DE LA VENTANA DE IMPRESIÓN AFECTEN LA VENTANA PRINCIPAL
+    // Agregar listener en la ventana principal para ignorar eventos de la ventana de impresión
+    const preventMainWindowRefresh = (e) => {
+      // Solo prevenir si la ventana de impresión está abierta
+      if (ventanaRef && !ventanaRef.closed) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    
+    // Temporalmente prevenir eventos en la ventana principal mientras la ventana de impresión está abierta
+    window.addEventListener('beforeunload', preventMainWindowRefresh, true);
+    
+    const verificarCierre = setInterval(() => {
+      if (ventanaRef && ventanaRef.closed) {
+        clearInterval(verificarCierre);
+        // ✅ REMOVER LISTENER DE LA VENTANA PRINCIPAL CUANDO SE CIERRA LA VENTANA DE IMPRESIÓN
+        window.removeEventListener('beforeunload', preventMainWindowRefresh, true);
+        // Limpiar referencia
+        ventanaRef = null;
+      }
+    }, 500);
+    
+    // Limpiar el intervalo después de un tiempo razonable
+    setTimeout(() => {
+      clearInterval(verificarCierre);
+      window.removeEventListener('beforeunload', preventMainWindowRefresh, true);
+      ventanaRef = null;
+    }, 30000); // 30 segundos máximo
     
     console.log(' Ventana de impresión térmica abierta');
     
@@ -611,154 +713,250 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
 };
 
 
+// ✅ FUNCIÓN HELPER PARA CARGAR IMÁGENES
+const loadImage = (src) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+};
+
 export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
-    console.log(' ===== INICIANDO GENERACIÓN IMAGEN WHATSAPP =====');
+    console.log(' ===== INICIANDO GENERACIÓN IMAGEN WHATSAPP PREMIUM =====');
     console.log(' Usuario en WhatsApp:', ventaData.usuario?.nombre || 'No definido');
     console.log(' ventaData recibida:', ventaData);
     console.log(' codigoVenta:', codigoVenta);
     console.log(' tasaCambio:', tasaCambio);
     console.log(' descuento:', descuento);
     
-    //  CREAR IMAGEN MÁS COMPACTA (50% del ancho original)
+    // ✅ CREAR CANVAS CON MAYOR RESOLUCIÓN PARA MEJOR CALIDAD
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // Dimensiones más compactas para WhatsApp
-    canvas.width = 360; //  Reducido de 720 a 360 (50%)
-    canvas.height = 1000; // Altura inicial
+    // Dimensiones aumentadas para mejor calidad (2x para retina)
+    const scaleFactor = 2; // Factor de escala para alta calidad
+    canvas.width = 720 * scaleFactor; // 1440px de ancho real
+    canvas.height = 2000 * scaleFactor; // Altura inicial ajustable
     
-    console.log(' Canvas creado (compacto):', canvas.width, 'x', canvas.height);
+    // Escalar contexto para que todo se dibuje al doble de tamaño
+    ctx.scale(scaleFactor, scaleFactor);
     
-    // ===== FONDO BLANCO =====
+    // Ahora trabajamos con dimensiones lógicas (360x1000)
+    const width = 720;
+    const height = 2000;
+    
+    console.log(' Canvas creado (alta calidad):', canvas.width, 'x', canvas.height, '(escala:', scaleFactor + 'x)');
+    
+    // ✅ FONDO BLANCO PREMIUM CON SOMBRA SUTIL
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    console.log(' Fondo blanco aplicado');
+    ctx.fillRect(0, 0, width, height);
     
-// ===== HEADER COMPACTO CON LOGO A LA IZQUIERDA =====
-const gradient = ctx.createLinearGradient(0, 0, canvas.width, 60); //  Header más compacto (60px en lugar de 100px)
-gradient.addColorStop(0, '#3B82F6');
-gradient.addColorStop(1, '#1D4ED8');
-ctx.fillStyle = gradient;
-ctx.fillRect(0, 0, canvas.width, 60);
-console.log(' Header compacto aplicado');
-
-//  CARGAR Y DIBUJAR LOGO A LA IZQUIERDA
-let logoLoaded = false;
-try {
-  const logoUrl = `${window.location.origin}/android-chrome-512x5129.png`;
-  console.log(' Cargando logo desde:', logoUrl);
-  
-  const logo = await loadImage(logoUrl);
-  
-  // Dibujar logo a la izquierda del header
-  const logoSize = 40; // Tamaño del logo
-  const logoX = 15; // Margen izquierdo
-  const logoY = 10; // Centrado verticalmente en el header compacto
-  
-  ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-  logoLoaded = true;
-  console.log(' Logo dibujado a la izquierda');
-  
-} catch (error) {
-  console.log(' No se pudo cargar el logo:', error.message);
-  logoLoaded = false;
-}
-
-// Texto del header (a la derecha del logo)
-ctx.fillStyle = '#ffffff';
-ctx.font = 'bold 12px Arial, sans-serif'; //  Fuente ajustada
-ctx.textAlign = 'left'; //  Alineado a la izquierda
-
-const textStartX = logoLoaded ? 65 : 15; //  Inicio del texto después del logo + margen
-ctx.fillText('ELECTRO SHOP MORANDIN CA', textStartX, 20);
-
-ctx.font = '9px Arial, sans-serif'; //  Fuente más pequeña
-ctx.fillText('RIF: J-405903333 - Guanare, Venezuela', textStartX, 33);
-
-ctx.font = '8px Arial, sans-serif';
-ctx.fillText('ElectroCaja v1.0', textStartX, 45);
-
-console.log(' Texto del header compacto aplicado');
-
-let yPos = 80; //  Inicio después del header compacto (80px en lugar de 120px)
+    // Sombra sutil alrededor del comprobante
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 5;
     
-    // ===== INFORMACIÓN DE LA VENTA =====
+    console.log(' Fondo premium aplicado');
+    
+    // ✅ HEADER PREMIUM CON GRADIENTE Y LOGO MEJORADO
+    const headerHeight = 100;
+    const gradient = ctx.createLinearGradient(0, 0, width, headerHeight);
+    gradient.addColorStop(0, '#2563EB'); // Azul más vibrante
+    gradient.addColorStop(0.5, '#1D4ED8');
+    gradient.addColorStop(1, '#1E40AF'); // Azul más oscuro
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, headerHeight);
+    
+    // Sombra en el header
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
+    
+    console.log(' Header premium aplicado');
+    
+    // ✅ CARGAR Y DIBUJAR LOGO MEJORADO (MÁS GRANDE Y CON SOMBRA)
+    let logoLoaded = false;
+    try {
+      const logoUrl = `${window.location.origin}/android-chrome-512x5129.png`;
+      console.log(' Cargando logo desde:', logoUrl);
+      
+      const logo = await loadImage(logoUrl);
+      
+      // Logo más grande y mejor posicionado
+      const logoSize = 70; // Aumentado de 40 a 70
+      const logoX = 30; // Margen izquierdo
+      const logoY = (headerHeight - logoSize) / 2; // Centrado verticalmente
+      
+      // Sombra para el logo
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 2;
+      
+      // Dibujar logo con fondo circular blanco para mejor contraste
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2 + 5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.fill();
+      ctx.restore();
+      
+      ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+      logoLoaded = true;
+      
+      // Resetear sombra
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      
+      console.log(' Logo premium dibujado');
+      
+    } catch (error) {
+      console.log(' No se pudo cargar el logo:', error.message);
+      logoLoaded = false;
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    }
+    
+    // ✅ TEXTO DEL HEADER MEJORADO (MEJOR TIPOGRAFÍA Y ESPACIADO)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif'; // Fuente más grande y mejor
+    ctx.textAlign = 'left';
+    
+    const textStartX = logoLoaded ? 120 : 30; // Más espacio después del logo
+    const textStartY = 35;
+    
+    ctx.fillText('ELECTRO SHOP MORANDIN C.A.', textStartX, textStartY);
+    
+    ctx.font = '13px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.fillText('RIF: J-405903333 - Guanare, Venezuela', textStartX, textStartY + 20);
+    
+    ctx.font = '11px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillText('ElectroCaja v1.0', textStartX, textStartY + 38);
+    
+    console.log(' Texto del header premium aplicado');
+    
+    let yPos = 130; // Más espacio después del header
+    
+    // ✅ INFORMACIÓN DE LA VENTA MEJORADA
     ctx.fillStyle = '#1F2937';
-    ctx.font = 'bold 14px Arial, sans-serif'; //  Fuentes más pequeñas
+    ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`COMPROBANTE #${codigoVenta}`, canvas.width / 2, yPos);
-    yPos += 20; //  Espacios más compactos
     
-    ctx.font = '11px Arial, sans-serif'; //  Fuente más pequeña
-    ctx.fillText(`${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}`, canvas.width / 2, yPos);
-    yPos += 18;
+    // Fondo sutil para el código de venta
+    ctx.fillStyle = '#F3F4F6';
+    ctx.fillRect(width / 2 - 200, yPos - 25, 400, 50);
     
-    // Cliente
+    ctx.fillStyle = '#1F2937';
+    ctx.fillText(`COMPROBANTE #${codigoVenta}`, width / 2, yPos);
+    yPos += 35;
+    
+    ctx.font = '14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#6B7280';
+    ctx.fillText(`${new Date().toLocaleDateString('es-ES', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })} ${new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}`, width / 2, yPos);
+    yPos += 30;
+    
+    // Cliente con mejor formato
     if (ventaData.cliente && ventaData.cliente.nombre) {
-      ctx.fillText(`Cliente: ${ventaData.cliente.nombre}`, canvas.width / 2, yPos);
-      yPos += 15;
+      ctx.fillStyle = '#374151';
+      ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(`Cliente: ${ventaData.cliente.nombre}`, width / 2, yPos);
+      yPos += 25;
       if (ventaData.cliente.cedula_rif) {
-        ctx.font = '10px Arial, sans-serif';
-        ctx.fillText(`CI/RIF: ${ventaData.cliente.cedula_rif}`, canvas.width / 2, yPos);
-        yPos += 15;
-        ctx.font = '11px Arial, sans-serif';
+        ctx.font = '13px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#6B7280';
+        ctx.fillText(`CI/RIF: ${ventaData.cliente.cedula_rif}`, width / 2, yPos);
+        yPos += 25;
       }
       console.log(' Cliente aplicado:', ventaData.cliente.nombre);
     }
     
-    yPos += 15;
+    yPos += 20;
     
-    // ===== PRODUCTOS =====
-    ctx.fillStyle = '#374151';
-    ctx.font = 'bold 12px Arial, sans-serif'; //  Fuente más pequeña
+    // ✅ PRODUCTOS CON MEJOR DISEÑO
+    ctx.fillStyle = '#1F2937';
+    ctx.font = 'bold 18px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('PRODUCTOS:', 25, yPos); //  Márgenes más pequeños (25 en lugar de 50)
-    yPos += 20; //  Espacio más compacto
+    ctx.fillText('PRODUCTOS', 40, yPos);
+    yPos += 30;
     
-    ctx.font = '10px Arial, sans-serif'; //  Fuente más pequeña para productos
+    // Línea decorativa bajo "PRODUCTOS"
+    ctx.strokeStyle = '#E5E7EB';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(40, yPos - 10);
+    ctx.lineTo(width - 40, yPos - 10);
+    ctx.stroke();
+    yPos += 10;
+    
+    ctx.font = '14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#374151';
     
     if (ventaData.items && ventaData.items.length > 0) {
       console.log(' Productos a dibujar:', ventaData.items.length);
       
       ventaData.items.forEach((item, index) => {
+        // Fondo alternado para mejor legibilidad
+        if (index % 2 === 0) {
+          ctx.fillStyle = '#F9FAFB';
+          ctx.fillRect(40, yPos - 15, width - 80, 30);
+        }
+        
         const descripcion = `${item.cantidad}× ${item.descripcion}`;
         const precio = (item.cantidad * item.precio_unitario * tasaCambio).toLocaleString('es-ES', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         }) + ' Bs';
         
-        // Texto a la izquierda (más corto para espacio compacto)
+        ctx.fillStyle = '#374151';
         ctx.textAlign = 'left';
-        ctx.fillText(descripcion.substring(0, 25), 25, yPos); //  Márgenes y texto más pequeños
+        ctx.fillText(descripcion.substring(0, 40), 50, yPos);
         
-        // Precio a la derecha
         ctx.textAlign = 'right';
-        ctx.fillText(precio, canvas.width - 25, yPos); //  Margen más pequeño
+        ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+        ctx.fillText(precio, width - 50, yPos);
         
-        yPos += 18; //  Espaciado más compacto
+        ctx.font = '14px "Segoe UI", Arial, sans-serif';
+        yPos += 30;
         
         console.log(` Producto ${index + 1} dibujado:`, descripcion);
       });
     } else {
       ctx.textAlign = 'center';
-      ctx.fillText('Sin productos', canvas.width / 2, yPos);
-      yPos += 18;
+      ctx.fillStyle = '#9CA3AF';
+      ctx.fillText('Sin productos', width / 2, yPos);
+      yPos += 30;
       console.log(' Sin productos para dibujar');
     }
     
-    yPos += 15;
-    
-    // ===== LÍNEA SEPARADORA =====
-    ctx.strokeStyle = '#E5E7EB';
-    ctx.lineWidth = 1; //  Línea más fina
-    ctx.beginPath();
-    ctx.moveTo(25, yPos); //  Márgenes más pequeños
-    ctx.lineTo(canvas.width - 25, yPos);
-    ctx.stroke();
     yPos += 20;
     
-    // ===== CÁLCULOS DE TOTALES =====
+    // ✅ LÍNEA SEPARADORA MEJORADA
+    ctx.strokeStyle = '#D1D5DB';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(40, yPos);
+    ctx.lineTo(width - 40, yPos);
+    ctx.stroke();
+    yPos += 30;
+    
+    // ✅ CÁLCULOS DE TOTALES
     let subtotal = 0;
     if (ventaData.items) {
       subtotal = ventaData.items.reduce((sum, item) => {
@@ -770,99 +968,126 @@ let yPos = 80; //  Inicio después del header compacto (80px en lugar de 120px)
     
     console.log(' Cálculos:', { subtotal, descuento, totalFinal });
     
-    // ===== SUBTOTAL Y DESCUENTO =====
+    // ✅ SUBTOTAL Y DESCUENTO CON MEJOR FORMATO
     ctx.fillStyle = '#374151';
-    ctx.font = '11px Arial, sans-serif'; //  Fuente más pequeña
+    ctx.font = '15px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'left';
     
-    ctx.fillText('Subtotal:', 25, yPos);
+    ctx.fillText('Subtotal:', 40, yPos);
     ctx.textAlign = 'right';
     ctx.fillText(subtotal.toLocaleString('es-ES', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    }) + ' Bs', canvas.width - 25, yPos);
-    yPos += 18;
+    }) + ' Bs', width - 40, yPos);
+    yPos += 25;
     
-    //  MOSTRAR DESCUENTO SI EXISTE
+    // Descuento con mejor diseño
     if (descuento > 0) {
-      ctx.fillStyle = '#DC2626'; // Rojo para descuento
+      ctx.fillStyle = '#DC2626';
       ctx.textAlign = 'left';
-      ctx.fillText('Descuento:', 25, yPos);
+      ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('Descuento:', 40, yPos);
       ctx.textAlign = 'right';
       ctx.fillText('-' + descuento.toLocaleString('es-ES', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-      }) + ' Bs', canvas.width - 25, yPos);
-      yPos += 18;
+      }) + ' Bs', width - 40, yPos);
+      yPos += 25;
       
-      // Mostrar motivo del descuento si existe
       if (ventaData.motivoDescuento) {
-        ctx.font = '9px Arial, sans-serif'; //  Fuente más pequeña
-        ctx.fillStyle = '#6B7280';
+        ctx.font = '12px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#9CA3AF';
         ctx.textAlign = 'left';
-        ctx.fillText(`Motivo: ${ventaData.motivoDescuento.substring(0, 30)}`, 25, yPos); //  Texto más corto
-        yPos += 15;
-        ctx.font = '11px Arial, sans-serif';
+        ctx.fillText(`Motivo: ${ventaData.motivoDescuento.substring(0, 50)}`, 50, yPos);
+        yPos += 20;
+        ctx.font = '15px "Segoe UI", Arial, sans-serif';
       }
       
       console.log(' Descuento aplicado:', descuento);
     }
     
-    yPos += 10;
+    yPos += 15;
     
-    // ===== TOTAL FINAL =====
-    ctx.fillStyle = '#F0FDF4';
-    ctx.fillRect(25, yPos, canvas.width - 50, 60); //  Caja más pequeña y márgenes ajustados
+    // ✅ TOTAL FINAL PREMIUM CON DISEÑO MEJORADO
+    const totalBoxHeight = 80;
+    const totalBoxY = yPos - 10;
+    
+    // Fondo con gradiente verde
+    const totalGradient = ctx.createLinearGradient(40, totalBoxY, width - 40, totalBoxY + totalBoxHeight);
+    totalGradient.addColorStop(0, '#F0FDF4');
+    totalGradient.addColorStop(1, '#DCFCE7');
+    ctx.fillStyle = totalGradient;
+    ctx.fillRect(40, totalBoxY, width - 80, totalBoxHeight);
+    
+    // Borde verde más grueso
     ctx.strokeStyle = '#22C55E';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(25, yPos, canvas.width - 50, 60);
+    ctx.lineWidth = 3;
+    ctx.strokeRect(40, totalBoxY, width - 80, totalBoxHeight);
+    
+    // Sombra para el total
+    ctx.shadowColor = 'rgba(34, 197, 94, 0.3)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 3;
     
     ctx.fillStyle = '#15803D';
-    ctx.font = 'bold 20px Arial, sans-serif'; //  Fuente más pequeña
+    ctx.font = 'bold 32px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'center';
     const totalTexto = totalFinal.toLocaleString('es-ES', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }) + ' Bs';
-    ctx.fillText(totalTexto, canvas.width / 2, yPos + 25);
+    ctx.fillText(totalTexto, width / 2, totalBoxY + 35);
     
-    ctx.font = '10px Arial, sans-serif'; //  Fuente más pequeña
-    ctx.fillText('TOTAL A PAGAR', canvas.width / 2, yPos + 45);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     
-    yPos += 80;
+    ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#16A34A';
+    ctx.fillText('TOTAL A PAGAR', width / 2, totalBoxY + 60);
+    
+    yPos += totalBoxHeight + 20;
     
 
-//  MÉTODOS DE PAGO
+// ✅ MÉTODOS DE PAGO MEJORADOS
 if (ventaData.pagos && ventaData.pagos.length > 0) {
   const pagosConMonto = ventaData.pagos.filter(pago => pago.monto && parseFloat(pago.monto) > 0);
   
   if (pagosConMonto.length > 0) {
-    yPos += 15;
-    
-    ctx.fillStyle = '#374151';
-    ctx.font = 'bold 11px Arial, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('MÉTODOS DE PAGO:', 25, yPos);
     yPos += 20;
     
-    ctx.font = '10px Arial, sans-serif';
+    ctx.fillStyle = '#1F2937';
+    ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('MÉTODOS DE PAGO', 40, yPos);
+    yPos += 25;
+    
+    // Línea decorativa
+    ctx.strokeStyle = '#E5E7EB';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(40, yPos - 10);
+    ctx.lineTo(width - 40, yPos - 10);
+    ctx.stroke();
+    yPos += 5;
+    
+    ctx.font = '14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#374151';
     
     pagosConMonto.forEach((pago, index) => {
       const metodoTexto = pago.metodo.replace('_', ' ').toUpperCase();
       
-      //  DETERMINAR MONEDA SEGÚN EL MÉTODO DE PAGO
       let montoTexto;
       const monto = parseFloat(pago.monto);
       
-      // Métodos en USD
       if (pago.metodo === 'efectivo_usd' || pago.metodo === 'zelle' || pago.metodo === 'binance') {
         montoTexto = monto.toLocaleString('es-ES', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         }) + ' $';
-      } 
-      // Métodos en Bs (por defecto)
-      else {
+      } else {
         montoTexto = monto.toLocaleString('es-ES', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
@@ -870,61 +1095,59 @@ if (ventaData.pagos && ventaData.pagos.length > 0) {
       }
       
       ctx.textAlign = 'left';
-      ctx.fillText(`• ${metodoTexto}:`, 25, yPos);
+      ctx.fillText(`• ${metodoTexto}:`, 50, yPos);
       ctx.textAlign = 'right';
-      ctx.fillText(montoTexto, canvas.width - 25, yPos);
+      ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(montoTexto, width - 50, yPos);
+      ctx.font = '14px "Segoe UI", Arial, sans-serif';
       
-      yPos += 16;
+      yPos += 22;
       
-      // Mostrar referencia si existe
       if (pago.referencia && pago.referencia.trim()) {
-        ctx.font = '9px Arial, sans-serif';
+        ctx.font = '12px "Segoe UI", Arial, sans-serif';
         ctx.fillStyle = '#6B7280';
         ctx.textAlign = 'left';
-        ctx.fillText(`  Ref: ${pago.referencia.substring(0, 20)}`, 35, yPos);
-        yPos += 14;
-        ctx.font = '10px Arial, sans-serif';
+        ctx.fillText(`  Ref: ${pago.referencia.substring(0, 30)}`, 60, yPos);
+        yPos += 18;
+        ctx.font = '14px "Segoe UI", Arial, sans-serif';
         ctx.fillStyle = '#374151';
       }
       
       console.log(` Método de pago ${index + 1}:`, metodoTexto, montoTexto);
     });
     
-    yPos += 10;
+    yPos += 15;
   }
 }
 
-//  VUELTOS (también corregir aquí)
+// ✅ VUELTOS MEJORADOS
 if (ventaData.vueltos && ventaData.vueltos.length > 0) {
   const vueltosConMonto = ventaData.vueltos.filter(vuelto => vuelto.monto && parseFloat(vuelto.monto) > 0);
   
   if (vueltosConMonto.length > 0) {
-    yPos += 10;
+    yPos += 15;
     
-    ctx.fillStyle = '#374151';
-    ctx.font = 'bold 11px Arial, sans-serif';
+    ctx.fillStyle = '#1F2937';
+    ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('VUELTOS:', 25, yPos);
-    yPos += 20;
+    ctx.fillText('VUELTOS', 40, yPos);
+    yPos += 25;
     
-    ctx.font = '10px Arial, sans-serif';
+    ctx.font = '14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#374151';
     
     vueltosConMonto.forEach((vuelto, index) => {
       const metodoTexto = vuelto.metodo.replace('_', ' ').toUpperCase();
       
-      //  DETERMINAR MONEDA SEGÚN EL MÉTODO DE VUELTO
       let montoTexto;
       const monto = parseFloat(vuelto.monto);
       
-      // Métodos en USD
       if (vuelto.metodo === 'efectivo_usd' || vuelto.metodo === 'zelle' || vuelto.metodo === 'binance') {
         montoTexto = monto.toLocaleString('es-ES', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         }) + ' $';
-      } 
-      // Métodos en Bs (por defecto)
-      else {
+      } else {
         montoTexto = monto.toLocaleString('es-ES', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
@@ -932,79 +1155,84 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
       }
       
       ctx.textAlign = 'left';
-      ctx.fillText(`• ${metodoTexto}:`, 25, yPos);
+      ctx.fillText(`• ${metodoTexto}:`, 50, yPos);
       ctx.textAlign = 'right';
-      ctx.fillText(montoTexto, canvas.width - 25, yPos);
+      ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(montoTexto, width - 50, yPos);
+      ctx.font = '14px "Segoe UI", Arial, sans-serif';
       
-      yPos += 16;
+      yPos += 22;
       
       console.log(` Vuelto ${index + 1}:`, metodoTexto, montoTexto);
     });
     
-    yPos += 10;
+    yPos += 15;
   }
 }
     
-    yPos += 15;
+    yPos += 20;
     
-    // ===== FOOTER =====
+    // ✅ FOOTER PREMIUM
     ctx.fillStyle = '#6B7280';
-    ctx.font = '10px Arial, sans-serif'; //  Fuente más pequeña
+    ctx.font = '13px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('WhatsApp: +58 257 251 1282', canvas.width / 2, yPos);
-    yPos += 15;
-    ctx.fillText('Electro Shop Morandín CA', canvas.width / 2, yPos);
-    yPos += 15;
-    ctx.fillText('¡Gracias por su compra!', canvas.width / 2, yPos);
+    ctx.fillText('WhatsApp: +58 257 251 1282', width / 2, yPos);
+    yPos += 20;
+    ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#374151';
+    ctx.fillText('Electro Shop Morandín C.A.', width / 2, yPos);
+    yPos += 20;
+    ctx.font = '13px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#22C55E';
+    ctx.fillText('¡Gracias por su compra!', width / 2, yPos);
     
-    console.log(' Footer aplicado');
+    console.log(' Footer premium aplicado');
     
-    // ===== AJUSTAR ALTURA DEL CANVAS =====
-    const finalHeight = yPos + 30; //  Margen final más pequeño
+    // ✅ AJUSTAR ALTURA DEL CANVAS
+    const finalHeight = Math.ceil((yPos + 40) * scaleFactor);
     if (finalHeight !== canvas.height) {
-      // Crear nuevo canvas con altura ajustada
       const newCanvas = document.createElement('canvas');
       const newCtx = newCanvas.getContext('2d');
       newCanvas.width = canvas.width;
       newCanvas.height = finalHeight;
       
-      // Copiar contenido
       newCtx.drawImage(canvas, 0, 0);
       
-      // Usar el nuevo canvas
-      const imagenBase64 = newCanvas.toDataURL('image/jpeg', 0.9);
+      // ✅ EXPORTAR EN PNG PARA MEJOR CALIDAD (sin compresión JPEG)
+      const imagenBase64 = newCanvas.toDataURL('image/png');
       
-      console.log(' Imagen generada con altura ajustada (compacta):', {
+      console.log(' Imagen premium generada:', {
         size_kb: Math.round(imagenBase64.length / 1024),
         width: newCanvas.width,
         height: finalHeight,
-        total_length: imagenBase64.length
+        format: 'PNG',
+        scale: scaleFactor + 'x'
       });
       
       return imagenBase64;
     }
     
-    // ===== CONVERTIR A BASE64 =====
-    const imagenBase64 = canvas.toDataURL('image/jpeg', 0.9);
+    // ✅ EXPORTAR EN PNG PARA MEJOR CALIDAD
+    const imagenBase64 = canvas.toDataURL('image/png');
     
-    console.log(' Imagen generada (compacta):', {
+    console.log(' Imagen premium generada:', {
       size_kb: Math.round(imagenBase64.length / 1024),
       width: canvas.width,
-      starts_with: imagenBase64.substring(0, 50),
-      total_length: imagenBase64.length
+      height: canvas.height,
+      format: 'PNG',
+      scale: scaleFactor + 'x'
     });
     
-    //  VERIFICAR QUE NO ESTÁ VACÍA
     if (imagenBase64.length < 1000) {
       throw new Error('Imagen generada está vacía o muy pequeña');
     }
     
-    console.log(' ===== IMAGEN WHATSAPP COMPACTA COMPLETADA =====');
+    console.log(' ===== IMAGEN WHATSAPP PREMIUM COMPLETADA =====');
     
     return imagenBase64;
     
   } catch (error) {
-    console.error(' Error generando imagen para WhatsApp:', error);
+    console.error(' Error generando imagen premium para WhatsApp:', error);
     throw error;
   }
 };
@@ -1149,11 +1377,111 @@ export const descargarPDF = async (ventaData, codigoVenta, tasaCambio, descuento
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error descargando PDF:', error);
+    toast.error('Error al descargar PDF: ' + error.message);
+    throw error;
+  }
+};
+
+// 🆕 IMPRESIÓN TÉRMICA PARA SERVICIOS TÉCNICOS
+export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento, qrCode = null) => {
+  try {
+    console.log('🖨️ Generando impresión térmica de servicio técnico...');
     
-    console.log(' PDF descargado exitosamente');
+    // Si el backend ya generó el HTML, usarlo directamente
+    if (servicio.ticketHTML) {
+      const contenidoHTML = servicio.ticketHTML;
+      
+      // Si hay QR code, insertarlo en el HTML si hay placeholder
+      let htmlConQR = contenidoHTML;
+      if (qrCode && contenidoHTML.includes('qr-code-placeholder')) {
+        htmlConQR = contenidoHTML.replace(
+          '<div id="qr-code-placeholder"',
+          `<img src="${qrCode}" alt="QR Code" style="max-width: 150px; height: auto; margin: 5px auto; display: block;" />`
+        );
+      } else if (qrCode && contenidoHTML.includes('qr-code-placeholder')) {
+        // Si ya hay un placeholder pero sin img, reemplazar
+        htmlConQR = contenidoHTML.replace(
+          /<div id="qr-code-placeholder"[^>]*>[\s\S]*?<\/div>/,
+          `<img src="${qrCode}" alt="QR Code" style="max-width: 150px; height: auto; margin: 5px auto; display: block;" />`
+        );
+      }
+      
+      // 🆕 IMPRIMIR TICKET DEL CLIENTE PRIMERO
+      const ventanaImpresionCliente = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+      
+      if (!ventanaImpresionCliente) {
+        throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
+      }
+      
+      ventanaImpresionCliente.document.write(htmlConQR);
+      ventanaImpresionCliente.document.close();
+      
+      // Bandera para evitar impresión duplicada del ticket interno
+      let ticketInternoImpreso = false;
+      
+      const imprimirTicketInterno = () => {
+        // Evitar impresión duplicada
+        if (ticketInternoImpreso) return;
+        ticketInternoImpreso = true;
+        
+        // Cerrar ventana del cliente si aún está abierta
+        if (!ventanaImpresionCliente.closed) {
+          ventanaImpresionCliente.close();
+        }
+        
+        // Imprimir ticket interno inmediatamente si existe
+        if (servicio.ticketHTMLInterno) {
+          // Pequeño delay para asegurar que la ventana anterior se cerró
+          setTimeout(() => {
+            const ventanaImpresionInterno = window.open('', '_blank', 'width=302,height=200,scrollbars=yes');
+            
+            if (ventanaImpresionInterno) {
+              ventanaImpresionInterno.document.write(servicio.ticketHTMLInterno);
+              ventanaImpresionInterno.document.close();
+              
+              ventanaImpresionInterno.onload = () => {
+                setTimeout(() => {
+                  ventanaImpresionInterno.print();
+                  setTimeout(() => {
+                    ventanaImpresionInterno.close();
+                  }, 1000);
+                }, 500);
+              };
+            }
+          }, 500);
+        }
+      };
+      
+      ventanaImpresionCliente.onload = () => {
+        setTimeout(() => {
+          ventanaImpresionCliente.print();
+          
+          // 🆕 DESPUÉS DE IMPRIMIR EL TICKET DEL CLIENTE, IMPRIMIR EL TICKET INTERNO INMEDIATAMENTE
+          // Usar el evento afterprint para detectar cuando terminó la impresión del cliente
+          ventanaImpresionCliente.addEventListener('afterprint', imprimirTicketInterno, { once: true });
+          
+          // Fallback: si afterprint no funciona, usar timeout
+          setTimeout(() => {
+            if (!ticketInternoImpreso) {
+              imprimirTicketInterno();
+            }
+          }, 2000); // Timeout como fallback
+        }, 500);
+      };
+      
+      console.log('✅ Ventana de impresión térmica abierta');
+      return;
+    }
+    
+    // Si no hay HTML del backend, generar uno básico
+    console.warn('⚠️ No hay HTML del ticket del backend, generando uno básico...');
+    toast.warning('Generando ticket básico (sin QR)', { duration: 3000 });
     
   } catch (error) {
-    console.error(' Error descargando PDF:', error);
+    console.error('❌ Error en impresión térmica de servicio:', error);
+    toast.error('Error al imprimir ticket: ' + error.message);
     throw error;
   }
 };

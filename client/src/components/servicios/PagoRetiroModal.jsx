@@ -2,8 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, CreditCard, Package, AlertTriangle, CheckCircle, User, Calendar } from 'lucide-react';
 import PagosPanel from '../venta/PagosPanel';
+import DescuentoModal from '../DescuentoModal';
 import { useCajaStore } from '../../store/cajaStore';
 import { useServiciosStore } from '../../store/serviciosStore';
+import { useAuthStore } from '../../store/authStore';
+import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 import {
   parseMoney,
@@ -15,11 +18,55 @@ import {
 export default function PagoRetiroModal({ servicio, isOpen, onClose, onPagoCompletado, esAbono = false }) {
   const { tasaCambio, cajaActual } = useCajaStore();
   const { registrarPago } = useServiciosStore();
+  const { socket } = useAuthStore();
 
   const [pagos, setPagos] = useState([]);
   const [vueltos, setVueltos] = useState([]);
   const [pagoValido, setPagoValido] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [descuento, setDescuento] = useState(0);
+  const [showDescuentoModal, setShowDescuentoModal] = useState(false);
+  const [solicitudDescuentoId, setSolicitudDescuentoId] = useState(null);
+  
+  // Generar sesión ID para el modal de descuento
+  const [sesionId] = useState(() => {
+    return `sesion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  });
+
+  // Escuchar eventos de aprobación de descuentos desde el componente padre
+  useEffect(() => {
+    if (!socket || typeof socket.on !== 'function' || !isOpen) return;
+
+    const handleAprobacionDescuento = (data) => {
+      // Verificar que la solicitud corresponde a esta sesión
+      if (data.solicitud?.sesionId === sesionId || data.solicitud?.id === solicitudDescuentoId) {
+        const montoDescuento = parseFloat(data.solicitud.montoDescuento);
+        setDescuento(roundMoney(montoDescuento));
+        setSolicitudDescuentoId(null);
+        toast.success(`Descuento aprobado por ${data.aprobadoPor?.nombre || 'Administrador'}`);
+        // Cerrar modal si está abierto
+        if (showDescuentoModal) {
+          setShowDescuentoModal(false);
+        }
+      }
+    };
+
+    const handleRechazoDescuento = (data) => {
+      // Verificar que la solicitud corresponde a esta sesión
+      if (data.solicitud?.sesionId === sesionId || data.solicitud?.id === solicitudDescuentoId) {
+        setSolicitudDescuentoId(null);
+        toast.error(`Descuento rechazado: ${data.motivoRechazo || 'Sin motivo especificado'}`);
+      }
+    };
+
+    socket.on('solicitud_descuento_aprobada', handleAprobacionDescuento);
+    socket.on('solicitud_descuento_rechazada', handleRechazoDescuento);
+
+    return () => {
+      socket.off('solicitud_descuento_aprobada', handleAprobacionDescuento);
+      socket.off('solicitud_descuento_rechazada', handleRechazoDescuento);
+    };
+  }, [socket, isOpen, sesionId, solicitudDescuentoId, showDescuentoModal]);
 
   // Double-click prevention using ref
   const processingRef = useRef(false);
@@ -37,8 +84,23 @@ export default function PagoRetiroModal({ servicio, isOpen, onClose, onPagoCompl
       setPagos([]);
       setVueltos([]);
       setPagoValido(false);
+      setDescuento(0);
+      setSolicitudDescuentoId(null);
     }
   }, [isOpen]);
+
+  // Limpiar solicitud de descuento al desmontar
+  useEffect(() => {
+    return () => {
+      // Limpiar solicitud pendiente si existe
+      api.delete(`/discount-requests/sesion/${sesionId}`).catch((error) => {
+        // Silenciar solo errores 404 (solicitud no existe) - esto es normal
+        if (error.response?.status !== 404) {
+          console.error('Error eliminando solicitud de descuento:', error);
+        }
+      });
+    };
+  }, [sesionId]);
 
   if (!isOpen || !servicio) return null;
 
@@ -146,15 +208,58 @@ export default function PagoRetiroModal({ servicio, isOpen, onClose, onPagoCompl
       const servicioActualizado = await registrarPago(servicio.id, {
         pagos: pagosConMoneda, // ✅ Enviar pagos con moneda explícita
         vueltos,
+        descuento: roundMoney(descuento), // ✅ Incluir descuento
         tasaCambio: roundMoney(tasaCambio),
         esAbono: esAbonoReal // Indicar si es abono
       });
 
       toast.success(esAbonoReal ? '💰 Abono registrado exitosamente' : '💰 Pago registrado exitosamente');
 
+      // 🆕 Si es abono y hay ticket generado, imprimirlo automáticamente
+      if (esAbonoReal && servicioActualizado.ticketAbonoHTML) {
+        try {
+          const ventanaImpresion = window.open('', '_blank', 'width=302,height=600,scrollbars=yes');
+          
+          if (ventanaImpresion) {
+            let htmlConQR = servicioActualizado.ticketAbonoHTML;
+            // Si hay QR code, asegurarse de que esté en el HTML
+            if (servicioActualizado.qrAbonoCode && htmlConQR.includes('qr-code-placeholder')) {
+              htmlConQR = htmlConQR.replace(
+                /<div id="qr-code-placeholder"[^>]*>[\s\S]*?<\/div>/,
+                `<img src="${servicioActualizado.qrAbonoCode}" alt="QR Code" style="max-width: 150px; height: auto; margin: 5px auto; display: block; border: 1px solid #000;" />`
+              );
+            } else if (servicioActualizado.qrAbonoCode) {
+              // Si hay QR pero no placeholder, insertarlo en el contenedor QR
+              htmlConQR = htmlConQR.replace(
+                /<div class="qr-container"[^>]*>[\s\S]*?<div class="subtitle bold"[^>]*>ESCANEA PARA SEGUIMIENTO:<\/div>[\s\S]*?<\/div>/,
+                `<div class="qr-container" style="color: #000;">
+            <div class="subtitle bold" style="color: #000;">ESCANEA PARA SEGUIMIENTO:</div>
+            <img src="${servicioActualizado.qrAbonoCode}" alt="QR Code" style="max-width: 150px; height: auto; margin: 5px auto; display: block; border: 1px solid #000;" />
+        </div>`
+              );
+            }
+            
+            ventanaImpresion.document.write(htmlConQR);
+            ventanaImpresion.document.close();
+            
+            ventanaImpresion.onload = () => {
+              setTimeout(() => {
+                ventanaImpresion.print();
+                setTimeout(() => {
+                  ventanaImpresion.close();
+                }, 1000);
+              }, 250);
+            };
+          }
+        } catch (error) {
+          console.error('Error imprimiendo ticket de abono:', error);
+          // No mostrar error al usuario, solo log
+        }
+      }
+
       // Notificar al componente padre
       if (onPagoCompletado) {
-        onPagoCompletado(servicioActualizado);
+        onPagoCompletado(servicioActualizado, esPagoFinal && servicioActualizado.saldoPendiente <= 0);
       }
 
       onClose();
@@ -213,108 +318,69 @@ export default function PagoRetiroModal({ servicio, isOpen, onClose, onPagoCompl
         {/* Body */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
 
-          {/* Info del Cliente */}
-          <div className="bg-blue-900/20 border border-blue-700/50 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-3 mb-3">
-              <User className="h-5 w-5 text-blue-400" />
-              <h3 className="font-semibold text-white">Información del Cliente</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-blue-300 text-xs">Cliente</div>
-                <div className="text-white font-semibold">{servicio.clienteNombre}</div>
-              </div>
-              <div>
-                <div className="text-blue-300 text-xs">Teléfono</div>
-                <div className="text-white font-semibold">{servicio.clienteTelefono}</div>
-              </div>
-              {servicio.clienteEmail && (
-                <div className="col-span-2">
-                  <div className="text-blue-300 text-xs">Email</div>
-                  <div className="text-white font-semibold">{servicio.clienteEmail}</div>
+          {/* Info del Cliente + Dispositivo | Resumen Financiero - 2 columnas en 1 fila */}
+          <div className="bg-gray-700/50 rounded-xl p-3 mb-4 border border-gray-600">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Columna 1: Cliente + Dispositivo */}
+              <div className="space-y-2">
+                {/* Cliente */}
+                <div className="flex items-start gap-2">
+                  <User className="h-3.5 w-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-gray-400 text-[10px] mb-0.5">Cliente</div>
+                    <div className="text-white font-medium text-[11px] truncate">{servicio.clienteNombre}</div>
+                    {servicio.clienteTelefono && (
+                      <div className="text-gray-400 text-[10px] mt-0.5">{servicio.clienteTelefono}</div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Info del Dispositivo */}
-          <div className="bg-gray-700/50 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-3 mb-3">
-              <Package className="h-5 w-5 text-green-400" />
-              <h3 className="font-semibold text-white">Dispositivo</h3>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-gray-400">Marca:</span>
-                <span className="text-white font-medium ml-2">{servicio.dispositivoMarca}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Modelo:</span>
-                <span className="text-white font-medium ml-2">{servicio.dispositivoModelo}</span>
-              </div>
-              {servicio.dispositivoImei && (
-                <div className="col-span-2">
-                  <span className="text-gray-400">IMEI/Serial:</span>
-                  <span className="text-white font-medium font-mono ml-2 text-xs">{servicio.dispositivoImei}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Resumen de Pago */}
-          <div className="bg-gradient-to-br from-gray-700/50 to-gray-800/50 rounded-xl p-5 mb-6 border border-gray-600">
-            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-green-400" />
-              Resumen de {esAbonoReal ? 'Abono' : 'Cobro'}
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm pb-3 border-b border-gray-600">
-                <span className="text-gray-300">Total del Servicio:</span>
-                <div className="text-right">
-                  <span className="text-white font-semibold text-lg">
-                    ${totalEstimado.toFixed(2)}
-                  </span>
-                  <div className="text-xs text-gray-400">
-                    ({convertirABs(totalEstimado).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)
+                {/* Dispositivo */}
+                <div className="flex items-start gap-2">
+                  <Package className="h-3.5 w-3.5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-gray-400 text-[10px] mb-0.5">Dispositivo</div>
+                    <div className="text-white font-medium text-[11px] truncate">{servicio.dispositivoMarca} {servicio.dispositivoModelo}</div>
+                    {servicio.dispositivoImei && (
+                      <div className="text-gray-400 text-[10px] mt-0.5 font-mono truncate">{servicio.dispositivoImei}</div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {totalPagado > 0 && (
-                <div className="flex justify-between items-center text-sm pb-3 border-b border-gray-600">
-                  <span className="text-gray-300 flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-400" />
-                    Total Pagado:
-                  </span>
-                  <div className="text-right">
-                    <span className="text-green-400 font-semibold">
-                      ${totalPagado.toFixed(2)}
+              {/* Columna 2: Resumen Financiero */}
+              <div className="flex flex-col justify-center items-end border-l border-gray-600 pl-4 space-y-1.5">
+                <div className="w-full">
+                  <div className="flex justify-between items-center text-[10px] mb-0.5">
+                    <span className="text-gray-400">Total Estimado:</span>
+                    <span className="text-white font-semibold text-[11px]">
+                      {convertirABs(totalEstimado).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
                     </span>
-                    <div className="text-xs text-gray-400">
-                      ({convertirABs(totalPagado).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)
+                  </div>
+                </div>
+
+                {totalPagado > 0 && (
+                  <div className="w-full">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="text-gray-400 flex items-center gap-1">
+                        <CheckCircle className="h-2.5 w-2.5 text-green-400" />
+                        Total Pagado:
+                      </span>
+                      <span className="text-green-400 font-semibold text-[11px]">
+                        {convertirABs(totalPagado).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                      </span>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-white font-bold text-lg">Saldo {esAbonoReal ? 'Pendiente' : 'a Cobrar'}:</span>
-                <div className="text-right">
-                  <span className="text-3xl font-bold text-green-400">
-                    ${saldoPendiente.toFixed(2)}
-                  </span>
-                  <div className="text-sm text-gray-400 mt-1">
-                    ({convertirABs(saldoPendiente).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.)
+                <div className="w-full pt-1 border-t border-gray-600">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white font-bold text-xs">Saldo {esAbonoReal ? 'Pendiente' : 'a Cobrar'}:</span>
+                    <span className="text-lg font-bold text-green-400">
+                      {convertirABs(saldoPendiente).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                    </span>
                   </div>
                 </div>
               </div>
-
-              {servicio.fechaIngreso && (
-                <div className="pt-3 border-t border-gray-600 flex items-center gap-2 text-xs text-gray-400">
-                  <Calendar className="h-3 w-3" />
-                  <span>Recibido: {new Date(servicio.fechaIngreso).toLocaleDateString('es-VE')}</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -325,40 +391,29 @@ export default function PagoRetiroModal({ servicio, isOpen, onClose, onPagoCompl
               {esAbonoReal ? 'Registrar Abono' : 'Registrar Pago Final'}
             </h3>
 
-            <div className={`mb-4 p-3 rounded-lg flex items-start gap-2 text-sm ${
-              esAbonoReal 
-                ? 'bg-blue-900/20 border border-blue-700/50' 
-                : 'bg-green-900/20 border border-green-700/50'
-            }`}>
-              <AlertTriangle className={`h-4 w-4 flex-shrink-0 mt-0.5 ${
-                esAbonoReal ? 'text-blue-400' : 'text-green-400'
-              }`} />
-              <div className={esAbonoReal ? 'text-blue-200' : 'text-green-200'}>
-                <span className="font-medium">Al confirmar el {esAbonoReal ? 'abono' : 'pago'}:</span>
-                <ul className="mt-1 space-y-1 text-xs">
-                  <li>• Se registrará el ingreso en la caja actual</li>
-                  {esAbonoReal ? (
-                    <>
-                      <li>• El saldo pendiente se actualizará</li>
-                      <li>• Puedes registrar más abonos después</li>
-                    </>
-                  ) : (
-                    <>
-                      <li>• El servicio se marcará como ENTREGADO</li>
-                      <li>• Se podrá imprimir comprobante de entrega</li>
-                    </>
-                  )}
-                </ul>
-              </div>
-            </div>
-
             <PagosPanel
               pagos={pagos}
               vueltos={vueltos}
               onPagosChange={handlePagosChange}
-              totalVenta={convertirABs(saldoPendiente)} // ✅ Convertir a Bs. porque PagosPanel espera valores en Bs.
+              totalVenta={convertirABs(saldoPendiente) - roundMoney(descuento)} // ✅ Aplicar descuento
               tasaCambio={tasaCambio}
               title="Métodos de Pago"
+              descuento={descuento}
+              onDescuentoChange={() => setShowDescuentoModal(true)}
+              onDescuentoLimpiar={async () => {
+                // 🧹 Cancelar solicitud pendiente en la base de datos si existe
+                try {
+                  await api.delete(`/discount-requests/sesion/${sesionId}`);
+                } catch (error) {
+                  // Si no existe la solicitud (404) o ya fue procesada, no es crítico - silenciar el error
+                  if (error.response?.status !== 404) {
+                    console.error('Error eliminando solicitud de descuento:', error);
+                  }
+                }
+                setDescuento(0);
+                setSolicitudDescuentoId(null);
+                toast.success('Descuento eliminado');
+              }}
               onValidationChange={handleValidationChange}
               permitirPagoParcial={esAbonoReal} // Permitir pagos parciales para abonos
             />
@@ -412,6 +467,43 @@ export default function PagoRetiroModal({ servicio, isOpen, onClose, onPagoCompl
           </button>
         </div>
       </div>
+
+      {/* Modal de Descuento */}
+      {showDescuentoModal && (
+        <DescuentoModal
+          isOpen={showDescuentoModal}
+          onClose={() => setShowDescuentoModal(false)}
+          totalVenta={convertirABs(saldoPendiente)}
+          tasaCambio={tasaCambio}
+          ventaData={{
+            cliente: servicio.clienteNombre ? {
+              nombre: servicio.clienteNombre,
+              telefono: servicio.clienteTelefono,
+              email: servicio.clienteEmail
+            } : null,
+            items: [],
+            totalBs: convertirABs(saldoPendiente),
+            totalUsd: saldoPendiente
+          }}
+          items={[]}
+          cliente={servicio.clienteNombre ? {
+            nombre: servicio.clienteNombre,
+            telefono: servicio.clienteTelefono,
+            email: servicio.clienteEmail
+          } : {}}
+          sesionId={sesionId}
+            onDescuentoAprobado={(montoDescuento, motivoDescuento = '') => {
+              setDescuento(roundMoney(montoDescuento));
+              setSolicitudDescuentoId(null);
+              toast.success(`Descuento de ${montoDescuento.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs aplicado`);
+              setShowDescuentoModal(false);
+            }}
+            onSolicitudCreada={(solicitudId) => {
+              // Guardar el ID de la solicitud para escuchar eventos de aprobación
+              setSolicitudDescuentoId(solicitudId);
+            }}
+        />
+      )}
     </div>
   );
 }

@@ -21,16 +21,22 @@ export default function ConfiguracionServiciosModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (isOpen) {
+      // Verificar que el usuario sea admin antes de cargar
+      if (usuario?.rol !== 'admin') {
+        toast.error('Solo los administradores pueden acceder a esta configuración');
+        onClose();
+        return;
+      }
       cargarDatos();
     }
-  }, [isOpen]);
+  }, [isOpen, usuario]);
 
   const cargarDatos = async () => {
     setLoading(true);
     setValidationErrors({});
 
     try {
-      // 🔧 Cargar TODOS los usuarios del sistema
+      // 🔧 Cargar TODOS los usuarios del sistema (solo admin)
       const usuariosResponse = await api.get('/users');
       if (usuariosResponse.data.success) {
         setUsuarios(usuariosResponse.data.data || []);
@@ -43,7 +49,12 @@ export default function ConfiguracionServiciosModal({ isOpen, onClose }) {
       }
     } catch (error) {
       console.error('Error cargando config:', error);
+      if (error.response?.status === 403) {
+        toast.error('No tienes permisos para acceder a esta configuración');
+        onClose();
+      } else {
       toast.error('Error al cargar la configuración');
+      }
     } finally {
       setLoading(false);
     }

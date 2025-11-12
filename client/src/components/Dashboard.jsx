@@ -1,5 +1,5 @@
 // src/components/Dashboard.jsx (REORGANIZADO CON Z-INDEX, BACKDROP AZUL Y ANIMACIONES)
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CajaStatus from './CajaStatus';
 import Summary from './Summary';
 import RecentActivity from './RecentActivity';
@@ -18,18 +18,35 @@ import { useDashboardStore } from '../store/dashboardStore';
 import { api } from '../config/api';
 import ConfiguracionModal from './ConfiguracionModal';
 import PresupuestoModal from './PresupuestoModal';
+import SeleccionarPresupuestoModal from './presupuesto/SeleccionarPresupuestoModal';
 import ActividadesModal from './actividades/ActividadesModal';
 import ReportesModal from './reportes/ReportesModal';
 import ServiciosDashboard from './ServiciosDashboard';
 import TransactionDetailModal from './TransactionDetailModal';
 import ChangelogModal from './ChangelogModal';
+import DescuentoAprobacionModal from './DescuentoAprobacionModal';
+import { useDescuentoRequests } from '../hooks/useDescuentoRequests';
 import toast from '../utils/toast.jsx';
 
-const ModalBackdrop = ({ children }) => (
-  <div className="fixed inset-0 bg-gradient-to-br from-blue-900/40 via-blue-800/30 to-blue-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-2 sm:p-4 animate-modal-backdrop-enter">
+const ModalBackdrop = ({ children, color = 'blue' }) => {
+  const colorClasses = {
+    blue: 'bg-gradient-to-br from-blue-900/40 via-blue-800/30 to-blue-900/40',
+    green: 'bg-gradient-to-br from-green-900/40 via-green-800/30 to-green-900/40',
+    orange: 'bg-gradient-to-br from-orange-900/40 via-orange-800/30 to-orange-900/40',
+    red: 'bg-gradient-to-br from-red-900/40 via-red-800/30 to-red-900/40',
+    indigo: 'bg-gradient-to-br from-indigo-900/40 via-indigo-800/30 to-indigo-900/40',
+    gray: 'bg-gradient-to-br from-gray-900/40 via-gray-800/30 to-gray-900/40',
+    emerald: 'bg-gradient-to-br from-emerald-900/40 via-emerald-800/30 to-emerald-900/40',
+    cyan: 'bg-gradient-to-br from-cyan-900/40 via-cyan-800/30 to-cyan-900/40',
+    purple: 'bg-gradient-to-br from-purple-900/40 via-purple-800/30 to-purple-900/40'
+  };
+  
+  return (
+    <div className={`fixed inset-0 ${colorClasses[color] || colorClasses.blue} backdrop-blur-sm z-[60] flex items-center justify-center p-2 sm:p-4 animate-modal-backdrop-enter`}>
     {children}
   </div>
 );
+};
 
 const Dashboard = ({ emitirEvento }) => {
  const [showTestingPanel, setShowTestingPanel] = useState(false);
@@ -49,13 +66,52 @@ const Dashboard = ({ emitirEvento }) => {
  } = useDashboardStore();
  
  // Ã°Å¸â€œâ€¹ ESTADOS PARA MODALES AGRUPADOS
- const [showIngresoModal, setShowIngresoModal] = useState(false);
+ const [showIngresoModal, _setShowIngresoModal] = useState(false);
+ 
+ // 🐛 DEBUG: WRAPPER PARA INTERCEPTAR setShowIngresoModal
+ const setShowIngresoModal = useCallback((value) => {
+   if (value === true) {
+     const stackTrace = new Error().stack;
+     const stackLines = stackTrace?.split('\n') || [];
+     
+     // Buscar la línea que realmente llama a setShowIngresoModal
+     const callerLine = stackLines.find((line, index) => {
+       // Buscar después de las primeras líneas del stack (omitir el wrapper y useState)
+       return index > 3 && (
+         line.includes('handleNewTransaction') ||
+         line.includes('FloatingActions') ||
+         line.includes('Dashboard.jsx:') ||
+         line.includes('setShowIngresoModal') ||
+         line.includes('keydown') ||
+         line.includes('onClick')
+       );
+     }) || stackLines[4] || 'No encontrado';
+     
+     console.log('🔴 ============================================');
+     console.log('🔴 [DASHBOARD] INTENTO DE ABRIR IngresoModal');
+     console.log(`🔴 Llamado desde: ${callerLine}`);
+     console.log('🔴 Stack trace completo:');
+     console.log(stackTrace);
+     console.log('🔴 ============================================');
+   }
+   
+   _setShowIngresoModal(value);
+ }, []);
+ 
+ // 🐛 DEBUG: RASTREAR CAMBIOS EN showIngresoModal (solo para confirmación)
+ useEffect(() => {
+   if (showIngresoModal) {
+     console.log(`🟣 [DASHBOARD] showIngresoModal confirmado: ${showIngresoModal}`);
+   }
+ }, [showIngresoModal]);
  const [showEgresoModal, setShowEgresoModal] = useState(false);
  const [showCerrarModal, setShowCerrarModal] = useState(false);
  const [showInventarioModal, setShowInventarioModal] = useState(false);
  const [showArqueoModal, setShowArqueoModal] = useState(false);
  const [showConfiguracionModal, setShowConfiguracionModal] = useState(false);
- const [showPresupuestoModal, setShowPresupuestoModal] = useState(false);
+  const [showPresupuestoModal, setShowPresupuestoModal] = useState(false);
+  const [showSeleccionarPresupuestoModal, setShowSeleccionarPresupuestoModal] = useState(false);
+  const [presupuestoSeleccionado, setPresupuestoSeleccionado] = useState(null);
  const [showActividadesModal, setShowActividadesModal] = useState(false);
  const [showReportesModal, setShowReportesModal] = useState(false);
  const [showScannerSidebar, setShowScannerSidebar] = useState(false);
@@ -63,6 +119,38 @@ const Dashboard = ({ emitirEvento }) => {
  const [showTransactionDetail, setShowTransactionDetail] = useState(false);
  const [selectedTransactionDetail, setSelectedTransactionDetail] = useState(null);
  const [showChangelog, setShowChangelog] = useState(false);
+ 
+ // 💰 ESTADOS PARA SOLICITUDES DE DESCUENTO (SOLO ADMINS)
+ const { solicitudesPendientes, loading: loadingSolicitudes } = useDescuentoRequests();
+ const [solicitudActual, setSolicitudActual] = useState(null);
+ const [showDescuentoAprobacionModal, setShowDescuentoAprobacionModal] = useState(false);
+ 
+ // Mostrar modal de aprobación cuando hay solicitudes pendientes (solo admins)
+ useEffect(() => {
+   if (usuario?.rol === 'admin' && solicitudesPendientes.length > 0 && !showDescuentoAprobacionModal) {
+     // Mostrar la primera solicitud pendiente
+     setSolicitudActual(solicitudesPendientes[0]);
+     setShowDescuentoAprobacionModal(true);
+   }
+ }, [solicitudesPendientes, usuario?.rol, showDescuentoAprobacionModal]);
+ 
+ const handleSolicitudAprobada = (solicitud) => {
+   // Recargar solicitudes pendientes
+   // El hook ya maneja la actualización automática vía Socket.IO
+   setSolicitudActual(null);
+   setShowDescuentoAprobacionModal(false);
+ };
+ 
+ const handleSolicitudRechazada = (solicitud) => {
+   // Recargar solicitudes pendientes
+   setSolicitudActual(null);
+   setShowDescuentoAprobacionModal(false);
+ };
+ 
+ const handleCerrarAprobacionModal = () => {
+   setSolicitudActual(null);
+   setShowDescuentoAprobacionModal(false);
+ };
  
 useEffect(() => {
   obtenerInventario();
@@ -126,6 +214,21 @@ useEffect(() => {
    }
 
    if (type === 'ingreso') {
+     // ✅ PROTECCIÓN: NO ABRIR MODAL SI HAY UNA VENTA PROCESADA RECIENTEMENTE
+     const ventaProcesadaFlag = sessionStorage.getItem('venta_procesada_flag');
+     if (ventaProcesadaFlag === 'true') {
+       console.warn('⚠️ [DASHBOARD] Intento de abrir modal con venta procesada - bloqueando');
+       console.warn('⚠️ Flag en sessionStorage:', ventaProcesadaFlag);
+       // Limpiar el flag para permitir nueva venta (el proceso ya terminó)
+       sessionStorage.removeItem('venta_procesada_flag');
+       console.log('🔵 [DASHBOARD] Flag limpiado - permitiendo nueva venta');
+       // Esperar un momento antes de abrir para asegurar que el proceso anterior terminó
+       setTimeout(() => {
+         setShowIngresoModal(true);
+       }, 100);
+       return; // NO abrir el modal inmediatamente
+     }
+     
      setShowIngresoModal(true);
    } else if (type === 'egreso') {
      setShowEgresoModal(true);
@@ -156,6 +259,18 @@ useEffect(() => {
  };
 
  const handleOpenPresupuesto = () => {
+   setShowSeleccionarPresupuestoModal(true);
+ };
+
+ const handleSeleccionarPresupuesto = (presupuesto) => {
+   setPresupuestoSeleccionado(presupuesto);
+   setShowSeleccionarPresupuestoModal(false);
+   setShowPresupuestoModal(true);
+ };
+
+ const handleNuevoPresupuesto = () => {
+   setPresupuestoSeleccionado(null);
+   setShowSeleccionarPresupuestoModal(false);
    setShowPresupuestoModal(true);
  };
 
@@ -216,6 +331,12 @@ const handleShowTransactionDetail = async (transaccion) => {
 
      if (event.ctrlKey && event.key === 'i' && cajaActual && tienePermiso('REALIZAR_VENTAS')) {
        event.preventDefault();
+       // ✅ PROTECCIÓN: NO ABRIR MODAL SI HAY UNA VENTA PROCESADA RECIENTEMENTE
+       const ventaProcesadaFlag = sessionStorage.getItem('venta_procesada_flag');
+       if (ventaProcesadaFlag === 'true') {
+         console.warn('⚠️ [DASHBOARD] Intento de abrir modal con venta procesada (teclado) - bloqueando');
+         return; // NO abrir el modal
+       }
        setShowIngresoModal(true);
      } else if (event.ctrlKey && event.key === 'e' && cajaActual && tienePermiso('REALIZAR_VENTAS')) {
        event.preventDefault();
@@ -295,20 +416,26 @@ useEffect(() => {
        <div className="absolute bottom-1/4 right-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-purple-500/5 rounded-full blur-3xl" />
      </div>
 
-     {/* Ã°Å¸â€œÅ  CONTENIDO PRINCIPAL CON TRANSICIONES (z-10) - RESPONSIVE */}
+     {/* Ã°Å¸â€œÅ  CONTENIDO PRINCIPAL CON TRANSICIONES (z-10) - RESPONSIVE */}
      <div className={`relative z-10 transition-all duration-300 ease-in-out ${getTransitionClass()}`}>
        <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-3">
-         <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-3">
+         <div className="space-y-2 sm:space-y-3">
 
-           {/* Columna 1 - InformaciÃƒÂ³n y controles - RESPONSIVE */}
-           <div className="lg:col-span-1 space-y-2 sm:space-y-2">
+           {/* FILA 1: 3 COLUMNAS - InformaciÃƒÂ³n y controles */}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 items-stretch">
+             <div className="h-full w-full">
              <CajaStatus />
+             </div>
+             <div className="h-full w-full">
              <Summary />
+             </div>
+             <div className="h-full w-full">
              <RecentActivity />
+             </div>
            </div>
 
-           {/* Columna 2 - Tabla de transacciones - RESPONSIVE */}
-           <div className="lg:col-span-2">
+           {/* FILA 2: 1 COLUMNA COMPLETA - Tabla de transacciones */}
+           <div>
              <TransactionTable />
            </div>
 
@@ -377,7 +504,7 @@ useEffect(() => {
      <>
        {/* MODALES DE TRANSACCIONES */}
        {tienePermiso('REALIZAR_VENTAS') && showIngresoModal && (
-         <ModalBackdrop>
+         <ModalBackdrop color="green">
            <IngresoModal
              className="animate-modal-enter w-full"
              isOpen={showIngresoModal}
@@ -388,7 +515,7 @@ useEffect(() => {
        )}
 
        {tienePermiso('REALIZAR_VENTAS') && showEgresoModal && (
-         <ModalBackdrop>
+         <ModalBackdrop color="orange">
            <EgresoModal
              className="animate-modal-enter w-full"
              isOpen={showEgresoModal}
@@ -400,7 +527,7 @@ useEffect(() => {
 
        {/* MODALES DE CAJA */}
        {tienePermiso('CERRAR_CAJA') && showCerrarModal && (
-         <ModalBackdrop>
+         <ModalBackdrop color="red">
            <CerrarCajaModal
              className="animate-modal-enter w-full"
              isOpen={showCerrarModal}
@@ -410,7 +537,7 @@ useEffect(() => {
        )}
 
        {tienePermiso('ARQUEO_CAJA') && showArqueoModal && (
-         <ModalBackdrop>
+         <ModalBackdrop color="orange">
            <ArqueoModal
              className="animate-modal-enter w-full"
              isOpen={showArqueoModal}
@@ -421,7 +548,7 @@ useEffect(() => {
 
        {/* MODALES DE GESTION */}
        {showInventarioModal && (
-         <ModalBackdrop>
+         <ModalBackdrop color="indigo">
            <InventoryManagerModal
              className="animate-modal-enter w-full"
              isOpen={showInventarioModal}
@@ -431,7 +558,7 @@ useEffect(() => {
        )}
 
        {showConfiguracionModal && (
-         <ModalBackdrop>
+         <ModalBackdrop color="gray">
            <ConfiguracionModal
              className="animate-modal-enter w-full"
              isOpen={showConfiguracionModal}
@@ -440,19 +567,32 @@ useEffect(() => {
          </ModalBackdrop>
        )}
 
-       {showPresupuestoModal && (
-         <ModalBackdrop>
-           <PresupuestoModal
-             className="animate-modal-enter w-full"
-             isOpen={showPresupuestoModal}
-             onClose={() => setShowPresupuestoModal(false)}
-           />
-         </ModalBackdrop>
-       )}
+      {showSeleccionarPresupuestoModal && (
+        <SeleccionarPresupuestoModal
+          isOpen={showSeleccionarPresupuestoModal}
+          onClose={() => setShowSeleccionarPresupuestoModal(false)}
+          onSeleccionar={handleSeleccionarPresupuesto}
+          onNuevo={handleNuevoPresupuesto}
+        />
+      )}
+
+      {showPresupuestoModal && (
+        <ModalBackdrop color="emerald">
+          <PresupuestoModal
+            className="animate-modal-enter w-full"
+            isOpen={showPresupuestoModal}
+            onClose={() => {
+              setShowPresupuestoModal(false);
+              setPresupuestoSeleccionado(null);
+            }}
+            presupuesto={presupuestoSeleccionado}
+          />
+        </ModalBackdrop>
+      )}
 
        {/* MODALES DE REPORTES Y ACTIVIDADES */}
        {showActividadesModal && (
-         <ModalBackdrop>
+         <ModalBackdrop color="cyan">
            <ActividadesModal
              className="animate-modal-enter w-full"
              isOpen={showActividadesModal}
@@ -462,7 +602,7 @@ useEffect(() => {
        )}
 
        {usuario?.rol === 'admin' && showReportesModal && (
-         <ModalBackdrop>
+         <ModalBackdrop color="purple">
            <ReportesModal
              className="animate-modal-enter w-full"
              isOpen={showReportesModal}
@@ -488,6 +628,16 @@ useEffect(() => {
          <ChangelogModal
            isOpen={showChangelog}
            onClose={() => setShowChangelog(false)}
+         />
+       )}
+
+       {/* 💰 MODAL DE APROBACIÓN DE DESCUENTOS (SOLO ADMINS) */}
+       {usuario?.rol === 'admin' && showDescuentoAprobacionModal && solicitudActual && (
+         <DescuentoAprobacionModal
+           solicitud={solicitudActual}
+           onClose={handleCerrarAprobacionModal}
+           onAprobado={handleSolicitudAprobada}
+           onRechazado={handleSolicitudRechazada}
          />
        )}
      </>

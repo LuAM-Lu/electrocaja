@@ -1,6 +1,6 @@
 // components/FloatingActions.jsx (VERSIÓN CORREGIDA COMPLETA)
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Minus, Menu, X, Lock, Zap, Package, Calculator, Users, Settings, Search, Scan, FileText, Activity, DollarSign, Camera, XCircle } from 'lucide-react';
+import { Plus, Minus, Menu, X, Lock, Zap, Package, Calculator, Users, Settings, Search, Scan, FileText, /* Activity, */ DollarSign, Camera, XCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useCajaStore } from '../store/cajaStore';
@@ -125,8 +125,9 @@ const handleAction = (action) => {
         onOpenConfiguracion();
       } else if (action === 'reportes') {
         onOpenReportes();
-      } else if (action === 'actividades') {
-        onOpenActividades();
+      // TODO: Botón de Actividades - Comentado para uso posterior
+      // } else if (action === 'actividades') {
+      //   onOpenActividades();
       } else if (action === 'presupuesto') {
         onOpenPresupuesto();
       }
@@ -443,8 +444,9 @@ const handleAction = (action) => {
             </button>
           )}
 
-          {/*  Actividades PARA TODOS */}
-          <button
+          {/* TODO: Botón de Actividades - Comentado para uso posterior */}
+          {/* Actividades PARA TODOS */}
+          {/* <button
             onClick={() => handleAction('actividades')}
             className="group relative bg-cyan-500 hover:bg-cyan-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
           >
@@ -453,7 +455,7 @@ const handleAction = (action) => {
               Actividades
               <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
             </div>
-          </button>
+          </button> */}
 
           {/*  Presupuesto PARA ADMIN/SUPERVISOR/CAJERO */}
           {(usuario?.rol === 'admin' || usuario?.rol === 'supervisor' || usuario?.rol === 'cajero') && (

@@ -1,10 +1,11 @@
 // components/IngresoModalV2.jsx - ESTRUCTURA BASE CON PESTAÑAS
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+// ✅ REMOVIDO flushSync - usando alternativa más segura
 import {
   X, ShoppingCart, User, Package, CreditCard, CheckCircle,
   AlertCircle, ArrowRight, ArrowLeft, Clock, DollarSign,
   Receipt, Send, FileText, Printer, Percent, AlertTriangle,
-  Banknote, Star, Heart, Trash2
+  Banknote, Star, Heart, Trash2, Lock
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
@@ -16,14 +17,19 @@ import ItemsTable from './presupuesto/ItemsTable';
 import PagosPanel from './venta/PagosPanel';
 import FinalizarVentaPanel from './venta/FinalizarVentaPanel';
 import ConfirmacionVentaModal from './venta/ConfirmacionVentaModal';
+import VentaProcesandoModal from './venta/VentaProcesandoModal';
 import {
   generarPDFFactura,
   generarImagenWhatsApp,
   imprimirFacturaTermica,
   descargarPDF
-} from '../utils/printUtils'; // ✅ AGREGAR ESTA LÍNEA
-import { api } from '../config/api'; // 🆕 IMPORTAR API BACKEND
-//import { socket } from '../services/socket';
+} from '../utils/printUtils';
+import DescuentoModal from './DescuentoModal';
+import { api } from '../config/api';
+// ✅ NUEVOS IMPORTS PARA MEJORAR CÓDIGO
+import { PROCESSING_CONFIG, PROCESSING_STEPS, ERROR_MESSAGES } from '../constants/processingConstants';
+import { handleError, validateBackendResponse } from '../utils/errorHandler';
+import { executePostSaleOption, delay, waitForRef, prepareSalePayload } from '../utils/saleProcessingHelpers';
 
 
 // 📡 COMPONENTE INDICADOR DE CONEXIÓN
@@ -193,529 +199,113 @@ const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
 
   return (
     <div className="bg-white border-b border-gray-200 px-8 py-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Procesar Venta</h3>
-        <div className="text-sm text-gray-500">
-          Paso {currentIndex + 1} de {tabs.length}
-        </div>
-      </div>
+      <div className="flex items-center justify-center">
+        {/* Tabs/Pasos */}
+        <div className="flex items-center space-x-2">
+          {tabs.map((tab, index) => {
+            const isActive = tab.id === activeTab;
+            const isCompleted = validaciones[tab.id]?.valido;
+            const isPast = index < currentIndex;
+            const isAccessible = validaciones[tab.id]?.accesible !== false; // Por defecto true si no está definido
+            const canAccess = isAccessible && (index <= currentIndex || isPast || isCompleted);
 
-      <div className="flex items-center space-x-2">
-        {tabs.map((tab, index) => {
-          const isActive = tab.id === activeTab;
-          const isCompleted = validaciones[tab.id]?.valido;
-          const isPast = index < currentIndex;
-          const isAccessible = validaciones[tab.id]?.accesible !== false; // Por defecto true si no está definido
-          const canAccess = isAccessible && (index <= currentIndex || isPast || isCompleted);
-
-          return (
-            <React.Fragment key={tab.id}>
-              <button
-                onClick={() => canAccess && onTabChange(tab.id)}
-                disabled={!canAccess}
-                title={!isAccessible ? 
-                  tab.id === 'items' ? 'Selecciona un cliente primero' :
-                  tab.id === 'pagos' ? 'Completa items primero' :
-                  tab.id === 'finalizar' ? 'Completa pagos primero' : ''
-                  : ''
-                }
-               className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  !isAccessible
-                    ? 'text-gray-400 cursor-not-allowed border border-gray-200 opacity-50 bg-gray-50'
-                    : isActive
-                      ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
-                      : isCompleted
-                        ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
-                        : 'text-gray-600 hover:bg-gray-100 border border-gray-200'
-                }`}
-              >
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  !isAccessible
-                    ? 'bg-gray-200 text-gray-400'
-                    : isCompleted
-                      ? 'bg-green-500 text-white'
+            return (
+              <React.Fragment key={tab.id}>
+                <button
+                  onClick={() => canAccess && onTabChange(tab.id)}
+                  disabled={!canAccess}
+                  title={!isAccessible ? 
+                    tab.id === 'items' ? 'Selecciona un cliente primero' :
+                    tab.id === 'pagos' ? 'Completa items primero' :
+                    tab.id === 'finalizar' ? 'Completa pagos primero' : ''
+                    : ''
+                  }
+                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                    !isAccessible
+                      ? 'text-gray-400 cursor-not-allowed border border-gray-200 opacity-50 bg-gray-50'
                       : isActive
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-gray-300 text-gray-600'
-                }`}>
-                  {!isAccessible ? tab.step : isCompleted ? '✓' : tab.step}
-                </div>
-                
-                <tab.icon className={`h-4 w-4 ${!canAccess ? 'text-gray-400' : ''}`} />
-                <span className={!canAccess ? 'text-gray-400' : ''}>{tab.label}</span>
-                
-                {/* Badge de errores - solo mostrar si es accesible */}
-                {isAccessible && validaciones[tab.id]?.errores > 0 && (
-                  <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                    {validaciones[tab.id].errores}
-                  </div>
-                )}
-                
-                {/* Icono de bloqueo para pestañas no accesibles */}
-                {!isAccessible && (
-                  <div className="bg-gray-300 text-gray-500 text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                    🔒
-                  </div>
-                )}
-              </button>
-              
-              {index < tabs.length - 1 && (
-                <ArrowRight className={`h-4 w-4 ${canAccess ? 'text-gray-300' : 'text-gray-200'}`} />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-// 💰 MODAL DE DESCUENTO CON VALIDACIÓN ADMIN
-const DescuentoAdminModal = ({ isOpen, onClose, totalVenta, tasaCambio, onDescuentoAprobado }) => {
-  const { usuario } = useAuthStore();
-  const [tipoDescuento, setTipoDescuento] = useState('porcentaje');
-  const [monto, setMonto] = useState('');
-  const [moneda, setMoneda] = useState('bs');
-  const [motivo, setMotivo] = useState('');
-  const [adminCode, setAdminCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [needsAdminValidation, setNeedsAdminValidation] = useState(true);
-  const [isQRValidated, setIsQRValidated] = useState(false);
-
-// Verificar si es admin al abrir y limpiar al cerrar
-  useEffect(() => {
-    if (isOpen && usuario?.rol === 'admin') {
-      setNeedsAdminValidation(false);
-      setIsQRValidated(true); // Admin no necesita validar QR
-    } else if (isOpen) {
-      setNeedsAdminValidation(true);
-      setIsQRValidated(false); // No admin necesita validar QR primero
-    } else if (!isOpen) {
-      // Limpiar estados al cerrar
-      setTipoDescuento('porcentaje');
-      setMonto('');
-      setMoneda('bs');
-      setMotivo('');
-      setAdminCode('');
-      setLoading(false);
-      setIsQRValidated(false);
-      if (usuario?.rol !== 'admin') {
-        setNeedsAdminValidation(true);
-      }
-    }
-  }, [isOpen, usuario]);
-
-  const handleValidateQR = async () => {
-    if (!adminCode.trim()) {
-      toast.error('Código QR requerido');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch('/api/users/login-by-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: adminCode.trim() })
-      });
-
-      const data = await response.json();
-
-      if (!data.success || data.data.user.rol !== 'admin') {
-        toast.error('Código de admin inválido');
-        setLoading(false);
-        return;
-      }
-
-      // QR válido - habilitar inputs
-      setIsQRValidated(true);
-      setNeedsAdminValidation(false);
-      toast.success('Código validado - Puede aplicar descuento');
-    } catch (error) {
-      toast.error('Error validando código de admin');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    const montoDescuento = parseFloat(monto) || 0;
-    if (montoDescuento <= 0) {
-      toast.error('El descuento debe ser mayor a 0');
-      return;
-    }
-
-    // Validar límites según tipo
-    if (tipoDescuento === 'porcentaje' && montoDescuento > 70) {
-      toast.error('El porcentaje máximo permitido es 70%');
-      return;
-    }
-
-    // Calcular monto final en Bs
-    let montoEnBs;
-    if (tipoDescuento === 'porcentaje') {
-      montoEnBs = (totalVenta * montoDescuento) / 100;
-    } else {
-      montoEnBs = moneda === 'bs' ? montoDescuento : montoDescuento * tasaCambio;
-    }
-    
-    if (montoEnBs >= totalVenta) {
-      toast.error('El descuento no puede ser mayor o igual al total de la venta');
-      return;
-    }
-
-    if (!motivo.trim()) {
-      toast.error('El motivo del descuento es obligatorio');
-      return;
-    }
-
-    // Validar admin si es necesario
-    if (needsAdminValidation) {
-      setLoading(true);
-      try {
-        const response = await fetch('/api/users/login-by-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: adminCode.trim() })
-        });
-
-        const data = await response.json();
-
-        if (!data.success || data.data.user.rol !== 'admin') {
-          toast.error('Código de admin inválido');
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        toast.error('Error validando código de admin');
-        setLoading(false);
-        return;
-      }
-      setLoading(false);
-    }
-
-    onDescuentoAprobado(montoEnBs, motivo.trim());
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-        
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4 rounded-t-xl">
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center space-x-2">
-              <Percent className="h-5 w-5" />
-              <h3 className="text-lg font-bold">Aplicar Descuento</h3>
-            </div>
-            <button onClick={onClose} className="bg-white/20 hover:bg-white/30 p-1 rounded-lg transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6 space-y-4">
-          
-          {/* Solo mostrar código QR si no está validado y no es admin */}
-          {needsAdminValidation && !isQRValidated && (
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-700">
-                  <strong>Autorización requerida:</strong> Escanee o ingrese el código QR de administrador para continuar.
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Código QR de Administrador *</label>
-                <input
-                      id="admin-code-input"
-                      name="adminCode"
-                      type="password"
-                      value={adminCode}
-                      onChange={(e) => setAdminCode(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if (!loading && adminCode.trim()) {
-                            handleValidateQR();
-                          }
-                        }
-                      }}
-                      placeholder="Escanee o ingrese el código QR..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                      autoFocus
-                    />
-              </div>
-              
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                        : isCompleted
+                          ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
+                          : 'text-gray-600 hover:bg-gray-100 border border-gray-200'
+                  }`}
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleValidateQR}
-                  disabled={loading || !adminCode.trim()}
-                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Validando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Validar Código</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Mostrar campos de descuento solo después de validación */}
-          {isQRValidated && (
-            <form 
-              onSubmit={handleSubmit} 
-              className="space-y-4"
-              onClick={(e) => e.stopPropagation()}
-              onMouseMove={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              {/* Tipo de Descuento */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Descuento</label>
-                <select
-                  value={tipoDescuento}
-                  onChange={(e) => {
-                    setTipoDescuento(e.target.value);
-                    setMonto(''); // Limpiar monto al cambiar tipo
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  onMouseMove={(e) => e.stopPropagation()}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                >
-                  <option value="porcentaje">📊 Porcentaje (%)</option>
-                  <option value="monto">💰 Monto Fijo</option>
-                </select>
-              </div>
-
-              {/* Monto/Porcentaje y Moneda */}
-              <div className={tipoDescuento === 'porcentaje' ? 'space-y-3' : 'grid grid-cols-2 gap-3'}>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {tipoDescuento === 'porcentaje' ? 'Porcentaje' : 'Monto'}
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="descuento-monto-input"
-                      name="descuentoMonto"
-                      type="number"
-                      step={tipoDescuento === 'porcentaje' ? '1' : '0.01'}
-                      max={tipoDescuento === 'porcentaje' ? '70' : undefined}
-                      min="0"
-                      value={monto}
-                      onChange={(e) => setMonto(e.target.value)}
-                      placeholder={tipoDescuento === 'porcentaje' ? '0' : '0.00'}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                      required
-                    />
-                    {tipoDescuento === 'porcentaje' && (
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <span className="text-gray-500 text-sm">%</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {tipoDescuento !== 'porcentaje' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
-                    <select
-                      value={moneda}
-                      onChange={(e) => setMoneda(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                    >
-                      <option value="bs">Bolívares (Bs)</option>
-                      <option value="usd">Dólares ($)</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {/* Botones Rápidos de Porcentaje */}
-              {tipoDescuento === 'porcentaje' && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                  <label className="block text-xs font-medium text-purple-700 mb-2">Porcentajes Rápidos:</label>
-                  <div className="flex space-x-2">
-                    {[
-                      { valor: 25, etiqueta: '75% Margen', descripcion: 'Desc. Leve' },
-                      { valor: 50, etiqueta: '50% Margen', descripcion: 'Desc. Medio' },
-                      { valor: 70, etiqueta: '30% Margen', descripcion: 'Efectivo' }
-                    ].map(boton => (
-                      <button
-                        key={boton.valor}
-                        type="button"
-                        onClick={() => setMonto(boton.valor.toString())}
-                        className={`flex-1 px-2 py-2 text-sm font-medium rounded-lg transition-colors ${
-                          monto === boton.valor.toString()
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-white text-purple-600 border border-purple-300 hover:bg-purple-50'
-                        }`}
-                      >
-                        <div className="text-center">
-                          <div className="font-bold">{boton.etiqueta}</div>
-                          <div className="text-xs opacity-75">{boton.descripcion}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Motivo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo del descuento *</label>
-                <textarea
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                  placeholder="Ej: Cliente frecuente, promoción especial..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                  rows="2"
-                  required
-                />
-                
-                {/* Botones Rápidos de Motivo */}
-                <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                  <label className="block text-xs font-medium text-gray-600 mb-2">Motivos Frecuentes:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { icono: Banknote, texto: 'Pago Rápido', color: 'text-green-600' },
-                      { icono: Star, texto: 'Cliente Especial', color: 'text-yellow-600' },
-                      { icono: Heart, texto: 'Cliente Leal', color: 'text-red-600' }
-                    ].map((motivoRapido, index) => {
-                      const IconoComponente = motivoRapido.icono;
-                      return (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => setMotivo(motivoRapido.texto)}
-                          className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg text-center transition-colors flex items-center justify-center space-x-2 ${
-                            motivo === motivoRapido.texto
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-purple-50 hover:border-purple-300'
-                          }`}
-                        >
-                          <IconoComponente className={`h-4 w-4 ${
-                            motivo === motivoRapido.texto ? 'text-white' : motivoRapido.color
-                          }`} />
-                          <span>{motivoRapido.texto}</span>
-                        </button>
-                      );
-                    })}
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    !isAccessible
+                      ? 'bg-gray-200 text-gray-400'
+                      : isCompleted
+                        ? 'bg-green-500 text-white'
+                        : isActive
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-gray-300 text-gray-600'
+                  }`}>
+                    {!isAccessible ? tab.step : isCompleted ? '✓' : tab.step}
                   </div>
                   
-                  {/* Botón para limpiar motivo */}
-                  {motivo && (
-                    <button
-                      type="button"
-                      onClick={() => setMotivo('')}
-                      className="mt-2 w-full px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-1"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      <span>Limpiar y escribir personalizado</span>
-                    </button>
+                  <tab.icon className={`h-4 w-4 ${!canAccess ? 'text-gray-400' : ''}`} />
+                  <span className={!canAccess ? 'text-gray-400' : ''}>{tab.label}</span>
+                  
+                  {/* Badge de errores - solo mostrar si es accesible */}
+                  {isAccessible && validaciones[tab.id]?.errores > 0 && (
+                    <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                      {validaciones[tab.id].errores}
+                    </div>
                   )}
-                </div>
-              </div>
-
-              {/* Vista Previa Mejorada */}
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <h4 className="text-sm font-semibold text-purple-900 mb-2">📋 Vista Previa del Descuento</h4>
-                <div className="space-y-1 text-sm text-purple-700">
-                  <div className="flex justify-between">
-                    <span>Total venta:</span>
-                    <span className="font-medium">{formatearVenezolano(totalVenta)} Bs</span>
-                  </div>
-                  {monto && parseFloat(monto) > 0 && (
-                    <>
-                      <div className="flex justify-between">
-                        <span>Descuento:</span>
-                        <span className="font-medium text-purple-800">
-                          {tipoDescuento === 'porcentaje' 
-                            ? `Margen final: ${100 - parseFloat(monto)}% = ${formatearVenezolano(
-                                totalVenta - (totalVenta / 2) * (1 + (100 - parseFloat(monto)) / 100)
-                              )} Bs descuento`
-                            : `${formatearVenezolano(moneda === 'bs' ? parseFloat(monto) : parseFloat(monto) * tasaCambio)} Bs`
-                          }
-                        </span>
-                      </div>
-                      <hr className="border-purple-300" />
-                      <div className="flex justify-between font-bold">
-                        <span>Total final:</span>
-                        <span className="text-purple-900">
-                          {formatearVenezolano(
-                            totalVenta - (tipoDescuento === 'porcentaje' 
-                              ? (totalVenta * parseFloat(monto)) / 100
-                              : (moneda === 'bs' ? parseFloat(monto) : parseFloat(monto) * tasaCambio)
-                            )
-                          )} Bs
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  {(!monto || parseFloat(monto) === 0) && (
-                    <p className="text-purple-600 italic text-center py-2">
-                      Ingresa un {tipoDescuento === 'porcentaje' ? 'porcentaje' : 'monto'} para ver la vista previa
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Botones */}
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Validando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4" />
-                      <span>Aplicar Descuento</span>
-                    </>
+                  
+                  {/* Icono de bloqueo para pestañas no accesibles */}
+                  {!isAccessible && (
+                    <Lock className="h-3 w-3 text-gray-500" />
                   )}
                 </button>
-              </div>
-            </form>
-          )}
+                
+                {index < tabs.length - 1 && (
+                  <ArrowRight className={`h-4 w-4 ${canAccess ? 'text-gray-300' : 'text-gray-200'}`} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 };
+
 
 // 🎯 COMPONENTE PRINCIPAL
 const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
   const { usuario } = useAuthStore();
+  
+  // 🐛 DEBUG: INTERCEPTAR CAMBIOS EN isOpen PARA RASTREAR QUIÉN LO ABRE
+  const isOpenRef = useRef(isOpen);
+  useEffect(() => {
+    if (isOpen !== isOpenRef.current) {
+      const cambio = isOpen ? 'ABRIÓ' : 'CERRÓ';
+      const stackTrace = new Error().stack;
+      
+      console.log(`🟢 [INGRESO MODAL] Estado cambió: ${cambio}`);
+      console.log(`🟢 Anterior: ${isOpenRef.current}, Nuevo: ${isOpen}`);
+      console.log(`🟢 Stack trace del cambio:`);
+      console.log(stackTrace);
+      
+      // Buscar quién está llamando a setShowIngresoModal
+      const stackLines = stackTrace?.split('\n') || [];
+      const callerLine = stackLines.find(line => 
+        line.includes('setShowIngresoModal') || 
+        line.includes('handleNewTransaction') ||
+        line.includes('FloatingActions') ||
+        line.includes('Dashboard') ||
+        line.includes('onClose')
+      );
+      
+      if (callerLine) {
+        console.log(`🟢 Llamado desde: ${callerLine}`);
+      } else {
+        console.log(`🟢 No se encontró el caller en el stack trace`);
+      }
+      
+      isOpenRef.current = isOpen;
+    }
+  }, [isOpen]);
   
   // 🆕 HOOK PARA SOCKET (MEJORADO)
   const [socket, setSocket] = useState(null);
@@ -726,30 +316,20 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
     if (isOpen && !socket && !socketLoading) {
       setSocketLoading(true);
       import('../services/socket').then(socketModule => {
-        console.log('🔍 Módulo socket cargado:', Object.keys(socketModule));
-        
         // Obtener socket existente o inicializar si no existe
         let socketInstance = socketModule.getSocket();
         
         if (!socketInstance) {
-          console.log('🔧 Socket no inicializado, inicializando...');
           const token = localStorage.getItem('auth-token');
           if (token) {
             socketInstance = socketModule.initializeSocket(token);
           } else {
-            console.warn('⚠️ No hay token disponible para inicializar socket');
             return;
           }
         }
         
-        console.log('🔍 Socket obtenido:', socketInstance);
-        console.log('🔍 Socket tiene .on?', typeof socketInstance?.on);
-        
         if (socketInstance && typeof socketInstance.on === 'function') {
           setSocket(socketInstance);
-          console.log('✅ Socket configurado correctamente');
-        } else {
-          console.error('❌ Socket inválido después de inicialización');
         }
       }).catch(error => {
         console.error('❌ Error cargando socket:', error);
@@ -781,8 +361,6 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
  // 🆕 ID de sesión del backend
 const [sesionId] = useState(() => {
   const id = generarSesionId();
-  console.log('🔑 SESIÓN ID GENERADO:', id);
-  window.modalSesionId = id; // Para debugging
   return id;
 });
   
@@ -853,6 +431,159 @@ const [showExitModal, setShowExitModal] = useState(false);
 
   // ✅ ESTADO PARA MODAL DE CONFIRMACIÓN DE VENTA
   const [showConfirmacionModal, setShowConfirmacionModal] = useState(false);
+  
+  // ✅ ESTADO PARA MODAL DE ALERT DE EXCEDENTE
+  const [showExcedenteModal, setShowExcedenteModal] = useState(false);
+
+  // ✅ ESTADO PARA MODAL DE PROCESAMIENTO DE VENTA
+  const [showProcesandoModal, setShowProcesandoModal] = useState(false);
+  const procesandoModalRef = useRef(null);
+  // ✅ CAPTURAR OPCIONES DE PROCESAMIENTO PARA EL MODAL (evitar que se resetee)
+  const [opcionesProcesamientoParaModal, setOpcionesProcesamientoParaModal] = useState(null);
+  
+  // ✅ REF PARA PREVENIR REAPERTURA DESPUÉS DE PROCESAR VENTA
+  const ventaProcesadaRef = useRef(false);
+  
+  // ✅ PERSISTIR FLAG EN sessionStorage PARA SOBREVIVIR RE-MOUNTS
+  const VENTA_PROCESADA_KEY = 'venta_procesada_flag';
+  
+  // ✅ INICIALIZAR FLAG DESDE sessionStorage INMEDIATAMENTE (ANTES DE CUALQUIER OTRO EFECTO)
+  // Esto debe ejecutarse ANTES de cualquier otro useEffect que pueda resetear el flag
+  const flagPersistido = typeof window !== 'undefined' ? sessionStorage.getItem(VENTA_PROCESADA_KEY) : null;
+  if (flagPersistido === 'true' && !ventaProcesadaRef.current) {
+    ventaProcesadaRef.current = true;
+    console.log('🔵 [INGRESO MODAL] Flag de venta procesada restaurado desde sessionStorage (inicialización)');
+  }
+  
+  // Inicializar desde sessionStorage si existe (backup para efectos)
+  useEffect(() => {
+    const flagPersistido = sessionStorage.getItem(VENTA_PROCESADA_KEY);
+    if (flagPersistido === 'true' && !ventaProcesadaRef.current) {
+      ventaProcesadaRef.current = true;
+      console.log('🔵 [INGRESO MODAL] Flag de venta procesada restaurado desde sessionStorage (useEffect)');
+    }
+  }, []); // ✅ SOLO AL MONTAR, SIN DEPENDENCIAS
+  
+  // Función helper para marcar venta como procesada (persistente)
+  const marcarVentaProcesada = useCallback(() => {
+    ventaProcesadaRef.current = true;
+    sessionStorage.setItem(VENTA_PROCESADA_KEY, 'true');
+    console.log('🔵 [INGRESO MODAL] Venta marcada como procesada (persistente)');
+  }, []);
+  
+  // Función helper para resetear flag (solo cuando realmente se abre una nueva venta)
+  const resetearFlagVentaProcesada = useCallback(() => {
+    ventaProcesadaRef.current = false;
+    sessionStorage.removeItem(VENTA_PROCESADA_KEY);
+    console.log('🔵 [INGRESO MODAL] Flag de venta procesada reseteado');
+  }, []);
+  
+  // ✅ REF PARA RASTREAR SI EL COMPONENTE ESTÁ MONTADO (para limpiar setTimeout)
+  const isMountedRef = useRef(true);
+  const timeoutsRef = useRef([]); // ✅ REF PARA RASTREAR TIMEOUTS Y LIMPIARLOS
+  
+  // 🐛 DEBUG: CONTADOR DE APERTURAS DEL MODAL
+  const aperturasRef = useRef(0);
+  const aperturasHistorialRef = useRef([]);
+  
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false; // Marcar como desmontado
+      // ✅ LIMPIAR TODOS LOS TIMEOUTS PENDIENTES AL DESMONTAR
+      timeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+      timeoutsRef.current = [];
+    };
+  }, []);
+  
+  // 🐛 DEBUG: RASTREAR APERTURAS DEL MODAL (MEJORADO PARA DETECTAR STRICT MODE)
+  useEffect(() => {
+    if (isOpen) {
+      // ✅ VERIFICAR FLAG DESDE sessionStorage ANTES DE CONTAR APERTURA
+      const flagPersistido = sessionStorage.getItem(VENTA_PROCESADA_KEY);
+      if (flagPersistido === 'true' && !ventaProcesadaRef.current) {
+        ventaProcesadaRef.current = true;
+        console.log('🔵 [INGRESO MODAL] Flag restaurado desde sessionStorage en rastreo de aperturas');
+      }
+      
+      const ahora = Date.now();
+      const ultimaApertura = aperturasHistorialRef.current[aperturasHistorialRef.current.length - 1];
+      const tiempoDesdeUltimaApertura = ultimaApertura ? ahora - new Date(ultimaApertura.timestamp).getTime() : Infinity;
+      
+      // ✅ DETECTAR RE-RENDERS DE REACT STRICT MODE (menos de 50ms = probablemente Strict Mode)
+      if (tiempoDesdeUltimaApertura < 50) {
+        console.log('🟡 [INGRESO MODAL] Re-render de React Strict Mode detectado (ignorando)');
+        console.log(`🟡 Tiempo desde última apertura: ${tiempoDesdeUltimaApertura}ms`);
+        console.log('🟡 Esto es normal en desarrollo - React ejecuta efectos dos veces para detectar bugs');
+        return; // No contar como apertura real
+      }
+      
+      // ✅ PROTECCIÓN: NO CONTAR APERTURA SI LA VENTA FUE PROCESADA
+      if (ventaProcesadaRef.current) {
+        console.log('🔵 [INGRESO MODAL] PROTECCIÓN: Intento de contar apertura después de procesar venta - bloqueando (normal)');
+        console.log('🔵 ventaProcesadaRef.current:', ventaProcesadaRef.current);
+        return; // No contar como apertura real
+      }
+      
+      aperturasRef.current += 1;
+      const timestamp = new Date().toISOString();
+      const stackTrace = new Error().stack;
+      
+      // Analizar stack trace para encontrar quién llamó a setShowIngresoModal
+      const stackLines = stackTrace?.split('\n') || [];
+      const callerLine = stackLines.find(line => 
+        line.includes('setShowIngresoModal') || 
+        line.includes('handleNewTransaction') ||
+        line.includes('FloatingActions') ||
+        line.includes('Dashboard')
+      ) || 'No encontrado';
+      
+      const callerInfo = {
+        ventaProcesada: ventaProcesadaRef.current,
+        showProcesandoModal,
+        isMounted: isMountedRef.current,
+        activeTab,
+        hasItems: ventaData.items.length > 0,
+        hasCliente: !!ventaData.cliente,
+        caller: callerLine.substring(0, 200) // Primeros 200 caracteres
+      };
+      
+      aperturasHistorialRef.current.push({
+        numero: aperturasRef.current,
+        timestamp,
+        ...callerInfo,
+        stackTrace: stackTrace?.split('\n').slice(0, 10).join('\n') // Más líneas para mejor debugging
+      });
+      
+      console.log('🔵 ============================================');
+      console.log(`🔵 [INGRESO MODAL] APERTURA REAL #${aperturasRef.current}`);
+      console.log(`🔵 Timestamp: ${timestamp}`);
+      console.log(`🔵 Estado del componente:`, callerInfo);
+      console.log(`🔵 Llamado desde:`, callerLine);
+      console.log(`🔵 Total de aperturas REALES en esta sesión: ${aperturasRef.current}`);
+      console.log('🔵 Stack trace completo:');
+      console.log(stackTrace);
+      console.log('🔵 ============================================');
+      
+      // También mostrar en la UI si está en modo desarrollo
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔵 Historial completo de aperturas REALES:', aperturasHistorialRef.current);
+        
+        // Mostrar alerta si hay más de 1 apertura en menos de 1 segundo
+        if (aperturasRef.current > 1) {
+          const ultimasDos = aperturasHistorialRef.current.slice(-2);
+          const tiempoEntreAperturas = new Date(ultimasDos[1].timestamp).getTime() - new Date(ultimasDos[0].timestamp).getTime();
+          
+          if (tiempoEntreAperturas < 1000) {
+            console.warn('⚠️ [INGRESO MODAL] MÚLTIPLES APERTURAS REALES DETECTADAS EN MENOS DE 1 SEGUNDO');
+            console.warn(`⚠️ Tiempo entre aperturas: ${tiempoEntreAperturas}ms`);
+            console.warn('⚠️ Esto podría indicar un problema de aperturas no deseadas');
+            console.warn('⚠️ Revisa el historial completo para ver quién está llamando al modal');
+          }
+        }
+      }
+    }
+  }, [isOpen]); // ✅ SOLO DEPENDER DE isOpen PARA EVITAR RE-EJECUCIONES
 
   // 🧹 ESTADO PARA AUTO-LIMPIEZA INTELIGENTE
   const [totalAnterior, setTotalAnterior] = useState(0);
@@ -865,13 +596,11 @@ const [showExitModal, setShowExitModal] = useState(false);
   const [excesoPendiente, setExcesoPendiente] = useState(0);
 
   const handlePagosValidationChange = (esValido, exceso = 0) => {
-  console.log('🔍 PagosPanel validation:', esValido, 'Exceso:', exceso); // Debug
-  setPagosValidos(esValido);
-  setExcesoPendiente(exceso);
-};
+    setPagosValidos(esValido);
+    setExcesoPendiente(exceso);
+  };
 
   const handleItemsValidationChange = (tieneItems) => {
-    console.log('🔍 Items disponibles:', tieneItems); // Debug
     setItemsDisponibles(tieneItems);
   };
 
@@ -886,31 +615,76 @@ const [showExitModal, setShowExitModal] = useState(false);
  // 🆕 GENERAR CÓDIGO AL ABRIR MODAL Y LIMPIAR AL CERRAR
   useEffect(() => {
     if (isOpen) {
+      // ✅ PROTECCIÓN: NO LIMPIAR FLAG SI HAY UNA VENTA PROCESADA
+      // Si el flag está activo, significa que hay una venta procesada recientemente
+      // NO debemos limpiar el flag en este caso, sino cerrar el modal
+      const flagPersistido = sessionStorage.getItem(VENTA_PROCESADA_KEY);
+      if (flagPersistido === 'true' || ventaProcesadaRef.current) {
+        console.log('🔵 [INGRESO MODAL] Intento de abrir modal con venta procesada - cerrando (normal)');
+        console.log('🔵 Flag en sessionStorage:', flagPersistido);
+        console.log('🔵 ventaProcesadaRef.current:', ventaProcesadaRef.current);
+        // Cerrar el modal inmediatamente
+        setTimeout(() => {
+          onClose();
+        }, 0);
+        // NO limpiar el flag aquí - se limpiará cuando el usuario intente abrir una nueva venta manualmente
+        return; // NO limpiar el flag ni generar código
+      }
+      
+      // ✅ RESETEAR FLAG AL ABRIR MODAL (nueva venta) - SOLO SI NO HAY VENTA PROCESADA
+      resetearFlagVentaProcesada();
+      
       const codigo = generarCodigoVenta();
       setCodigoVenta(codigo);
     } else {
-  // 🧹 LIMPIAR RESERVAS AL CERRAR MODAL SIN GUARDAR
-  console.log('🚪 MODAL CERRADO - useEffect cleanup');
-  const limpiarReservasAlCerrar = async () => {
-    console.log('🧹 Limpiando reservas al cerrar modal...');
-    if (ventaData.items.length > 0) {
-      try {
-        for (const item of ventaData.items) {
-          if (item.productoId) {
-            console.log('🔓 Liberando al cerrar:', item.descripcion);
-            await liberarStockAPI(item.productoId, sesionId);
+      // ✅ NO LIMPIAR SI EL MODAL DE PROCESAMIENTO ESTÁ ABIERTO
+      if (showProcesandoModal) {
+        return;
+      }
+      
+      // ✅ NO LIMPIAR SI LA VENTA FUE PROCESADA (prevenir reapertura)
+      if (ventaProcesadaRef.current) {
+        return;
+      }
+      
+      // 🧹 LIMPIAR RESERVAS AL CERRAR MODAL SIN GUARDAR
+      const limpiarReservasAlCerrar = async () => {
+        if (ventaData.items.length > 0) {
+          try {
+            for (const item of ventaData.items) {
+              if (item.productoId) {
+                await liberarStockAPI(item.productoId, sesionId);
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error liberando reservas al cerrar modal:', error);
           }
         }
-        console.log('✅ Reservas liberadas al cerrar modal');
-      } catch (error) {
-        console.error('❌ Error liberando reservas al cerrar modal:', error);
-      }
+      };
+      
+      limpiarReservasAlCerrar();
     }
-  };
+  }, [isOpen, showProcesandoModal]);
+
+  // ✅ PROTECCIÓN: SOLO PREVENIR REAPERTURA SI EL MODAL SE INTENTA ABRIR DESPUÉS DE INICIAR PROCESAMIENTO
+  // NO cerrar si el modal ya estaba abierto antes de iniciar el procesamiento
+  // El modal principal debe permanecer abierto durante el procesamiento, solo ocultamos su contenido
+  const prevIsOpenRef = useRef(false);
+  const prevShowProcesandoModalRef = useRef(false);
   
-  limpiarReservasAlCerrar();
-}
-  }, [isOpen]);
+  useEffect(() => {
+    // Si el modal se intenta abrir (isOpen cambió de false a true) DESPUÉS de que el procesamiento ya estaba activo
+    if (!prevIsOpenRef.current && isOpen && showProcesandoModal && prevShowProcesandoModalRef.current) {
+      console.log('🔵 [INGRESO MODAL] Intento de abrir modal mientras se procesa venta - cerrando (normal)');
+      setTimeout(() => {
+        onClose();
+      }, 0);
+    }
+    
+    // Actualizar referencias
+    prevIsOpenRef.current = isOpen;
+    prevShowProcesandoModalRef.current = showProcesandoModal;
+  }, [isOpen, showProcesandoModal, onClose]);
 
 /// 🔄 EFECTO PARA INICIALIZAR TOTAL ANTERIOR
   useEffect(() => {
@@ -926,8 +700,15 @@ const [showExitModal, setShowExitModal] = useState(false);
     if (!isOpen || !socket || typeof socket.on !== 'function') return;
 
     const handleModalAFK = (data) => {
-      // ✅ NO CERRAR SI EL MODAL DE DESCUENTO ESTÁ ABIERTO
-      if (showDescuentoModal) {
+      // ✅ NO CERRAR SI EL MODAL DE DESCUENTO O PROCESAMIENTO ESTÁ ABIERTO
+      if (showDescuentoModal || showProcesandoModal) {
+        return;
+      }
+
+      // ✅ PROTECCIÓN ADICIONAL: NO CERRAR SI LA VENTA FUE PROCESADA
+      if (ventaProcesadaRef.current) {
+        console.log('🔵 [AFK] Intento de cerrar modal después de procesar venta - bloqueado (normal)');
+        console.log('🔵 [AFK] ventaProcesadaRef.current:', ventaProcesadaRef.current);
         return;
       }
 
@@ -949,7 +730,6 @@ const [showExitModal, setShowExitModal] = useState(false);
 
 // ✅ ESCUCHAR EVENTOS DE SINCRONIZACIÓN - SOLO EVENTOS ESPECÍFICOS DEL MODAL
   const handleInventarioActualizado = (data) => {
-    console.log('📦 Inventario actualizado:', data);
     // Actualizar store de inventario sin recargar
     import('../store/inventarioStore').then(({ useInventarioStore }) => {
       useInventarioStore.getState().obtenerInventario();
@@ -966,27 +746,20 @@ const [showExitModal, setShowExitModal] = useState(false);
       socket.off('cerrar_modal_venta_afk', handleModalAFK);
       socket.off('inventario_actualizado', handleInventarioActualizado);
     };
-  }, [isOpen, socket]); // ✅ REMOVIDO showDescuentoModal de las dependencias
+  }, [isOpen, socket, showDescuentoModal, showProcesandoModal]); // ✅ AGREGAR showProcesandoModal
 
   // 🔄 RE-VALIDACIÓN AL RECONECTAR (PARA MÓVILES)
   useEffect(() => {
     if (!isOpen || !socket || typeof socket.on !== 'function') return;
     
-    console.log('🔍 Configurando eventos de reconexión...');
-    
     const handleReconexion = () => {
-      console.log('🔄 Socket reconectado - Verificando estado del modal...');
-      
       // Solo re-validar si estamos en pestañas que requieren stock reservado
       if (activeTab === 'pagos' || activeTab === 'finalizar') {
-        console.log('📱 Re-validando reservas después de reconexión...');
         revalidarReservasAlReconectar();
       }
     };
     
     const handleStockLiberado = (data) => {
-      console.log('📡 Stock liberado por desconexión de otro usuario:', data);
-      
       // Mostrar notificación discreta de que hay stock disponible
       toast.success(`Stock disponible: ${data.productos.join(', ')}`, {
         duration: 4000,
@@ -1012,8 +785,6 @@ const [showExitModal, setShowExitModal] = useState(false);
     if (ventaData.items.length === 0) return;
     
     try {
-      console.log('🔄 Re-validando stock después de reconexión...');
-      
       // Filtrar items que necesitan reserva
       const itemsParaRevalidar = ventaData.items
         .filter(item => item.cantidad > 0 && item.productoId && !item.esPersonalizado)
@@ -1032,7 +803,6 @@ const [showExitModal, setShowExitModal] = useState(false);
       });
       
       if (response.data.success) {
-        console.log('✅ Re-validación exitosa - Stock reservado nuevamente');
         toast.success('Conexión restaurada - Stock reservado', {
           duration: 3000
         });
@@ -1064,7 +834,6 @@ const [showExitModal, setShowExitModal] = useState(false);
   // 💓 HEARTBEAT PARA MANTENER RESERVAS VIVAS (USUARIO ACTIVO)
   useEffect(() => {
     if (!isOpen || !socket || activeTab === 'cliente' || activeTab === 'items') return;
-    console.log('🔍 Configurando heartbeat...');
     
     // Solo enviar heartbeat en pestañas PAGOS y FINALIZAR
     const heartbeatInterval = setInterval(() => {
@@ -1072,13 +841,11 @@ const [showExitModal, setShowExitModal] = useState(false);
       const ultimaActividad = Date.now() - (window.lastActivity || Date.now());
       
       if (ultimaActividad < 3 * 60 * 1000) { // Activo en últimos 3 minutos
-        console.log('💓 Enviando heartbeat para mantener reservas...');
-        
         // Llamar endpoint para renovar reservas
         api.post('/ventas/stock/heartbeat', { 
           sesionId: sesionId 
-        }).catch(error => {
-          console.warn('⚠️ Error en heartbeat:', error);
+        }).catch(() => {
+          // Silenciar errores de heartbeat
         });
       }
     }, 2 * 60 * 1000); // Cada 2 minutos
@@ -1090,11 +857,7 @@ const [showExitModal, setShowExitModal] = useState(false);
 
  // 🎯 DETECTAR ACTIVIDAD DEL USUARIO
   useEffect(() => {
-    if (!isOpen) return; // Solo verificar isOpen, no necesita socket
-    
-    console.log('🔍 Configurando detección de actividad...');
-    
-    console.log('🔍 Configurando indicador de conexión...');
+    if (!isOpen) return;
     
     const updateActivity = () => {
       window.lastActivity = Date.now();
@@ -1112,14 +875,12 @@ const [showExitModal, setShowExitModal] = useState(false);
   }, [isOpen, socket]);
 
 
- // 🔄 VALIDACIONES AUTOMÁTICAS CON DEPENDENCIAS (ACTUALIZADO PARA RESERVAS EN "SIGUIENTE")
+ // 🔄 VALIDACIONES AUTOMÁTICAS CON DEPENDENCIAS OPTIMIZADAS
   useEffect(() => {
-  const tieneCliente = !!ventaData.cliente; // Cliente obligatorio
+  const tieneCliente = !!ventaData.cliente;
   const tieneItems = ventaData.items.length > 0;
   const tieneItemsConCantidad = ventaData.items.some(item => item.cantidad > 0);
-  const pagosCompletos = pagosValidos; // Viene de PagosPanel
-  
-  console.log('🔍 Validaciones:', { tieneCliente, tieneItems, tieneItemsConCantidad, pagosCompletos }); // Debug
+  const pagosCompletos = pagosValidos;
   
   const nuevasValidaciones = {
     cliente: {
@@ -1144,15 +905,19 @@ const [showExitModal, setShowExitModal] = useState(false);
     }
   };
   
-    console.log('🔍 Nuevas validaciones:', nuevasValidaciones); // Debug
-  console.log('🔍 Accesibilidad por pestaña:', {
-    cliente: nuevasValidaciones.cliente.accesible,
-    items: nuevasValidaciones.items.accesible,
-    pagos: nuevasValidaciones.pagos.accesible,
-    finalizar: nuevasValidaciones.finalizar.accesible
-  });
   setValidaciones(nuevasValidaciones);
-}, [ventaData.cliente, ventaData.items, ventaData.totalBs, opcionesProcesamiento, descuento, activeTab, pagosValidos]);
+}, [
+  ventaData.cliente?.id, // Solo ID para evitar renders innecesarios
+  ventaData.items.length, // Solo longitud
+  ventaData.items.map(i => `${i.id || i.codigo}-${i.cantidad}`).join(','), // Cambios en items
+  opcionesProcesamiento.generarFactura,
+  opcionesProcesamiento.imprimirRecibo,
+  opcionesProcesamiento.enviarWhatsApp,
+  opcionesProcesamiento.enviarEmail,
+  descuento,
+  activeTab,
+  pagosValidos
+]);
 
  // 🧮 FUNCIONES DE CÁLCULO
 const calcularSubtotal = () => {
@@ -1175,6 +940,18 @@ const calcularSubtotal = () => {
     } else if (direction === 'prev' && activeTab === 'pagos') {
       // 🔓 LIBERAR STOCK al ir de PAGOS → ITEMS  
       await liberarTodoElStockAlAtras();
+    } else if (direction === 'next' && activeTab === 'pagos') {
+      // ✅ VALIDAR EXCEDENTE ANTES DE AVANZAR DESDE PAGOS (PASO 3)
+      if (excesoPendiente > 100) {
+        // Mostrar modal personalizado de excedente
+        setShowExcedenteModal(true);
+        return; // No avanzar hasta que el usuario confirme
+      }
+      
+      // Continuar con la navegación normal
+      if (currentIndex < TABS.length - 1) {
+        setActiveTab(TABS[currentIndex + 1].id);
+      }
     } else {
       // Navegación normal sin cambios de reserva
       if (direction === 'next' && currentIndex < TABS.length - 1) {
@@ -1192,9 +969,6 @@ const handleClienteSeleccionado = (cliente) => {
 };
 
 const handleItemsChange = async (items) => {
-  console.log('🔄 ===== HANDLE ITEMS CHANGE =====');
-  console.log('🔄 Items recibidos:', items.length);
-  console.log('🔄 Items anteriores:', ventaData.items.length);
   // 🔒 GESTIONAR RESERVAS DE STOCK CON API
   const itemsAnteriores = ventaData.items;
   
@@ -1322,9 +1096,6 @@ const handleItemsChange = async (items) => {
   
 
     // 🆕 ELIMINAMOS RESERVAS AUTOMÁTICAS - SOLO VALIDACIÓN VISUAL
-    console.log('📋 ===== VALIDACIÓN SIN RESERVAS =====');
-    console.log('📋 Items validados:', itemsValidados.length);
-    console.log('📋 Reservas se harán al hacer "Siguiente"');
 
   // Calcular totales
   const subtotal = itemsValidados.reduce((total, item) => {
@@ -1353,7 +1124,6 @@ const handleItemsChange = async (items) => {
   }
   
  setVentaData(ventaActualizada);
- console.log('🔄 ===== FIN HANDLE ITEMS CHANGE =====');
   
   // 📊 ACTUALIZAR TOTAL ANTERIOR PARA PRÓXIMA COMPARACIÓN
   setTotalAnterior(subtotal * tasaCambio);
@@ -1436,385 +1206,389 @@ const handleItemsChange = async (items) => {
   };
 
 
+// 🧹 Función para limpiar estado de venta
+const limpiarEstadoVenta = () => {
+  setVentaData({
+    cliente: null,
+    items: [],
+    pagos: [{
+      id: 1,
+      metodo: 'efectivo_bs',
+      monto: '',
+      banco: '',
+      referencia: ''
+    }],
+    vueltos: [],
+    descuentoAutorizado: 0,
+    motivoDescuento: '',
+    observaciones: '',
+    subtotal: 0,
+    totalUsd: 0,
+    totalBs: 0
+  });
+
+  // Resetear estados
+  setActiveTab('cliente');
+  setDescuento(0);
+  setHasUnsavedChanges(false);
+  setTotalAnterior(0);
+  setHayPagosConfigurados(false);
+  setPagosValidos(false);
+  setItemsDisponibles(false);
+  setExcesoPendiente(0);
+
+  // Limpiar opciones de procesamiento
+  setOpcionesProcesamiento({
+    imprimirRecibo: false,
+    enviarWhatsApp: false,
+    enviarEmail: false,
+    generarFactura: true
+  });
+};
+
 // 🔄 Función para procesar la venta (se ejecuta al confirmar en el modal)
 const procesarVentaConfirmada = async () => {
   // Cerrar modal de confirmación
   setShowConfirmacionModal(false);
 
-  // Continuar con el procesamiento normal
-  console.log('🚀 ===== INICIANDO PROCESAMIENTO DE VENTA =====');
-  console.log('🔍 Opciones seleccionadas:', opcionesProcesamiento);
-  console.log('🔍 Cliente:', ventaData.cliente);
-  console.log('🔍 Items:', ventaData.items.length);
-  console.log('🔍 Total venta:', ventaData.totalBs, 'Bs');
+  // ✅ CAPTURAR OPCIONES ANTES DE ABRIR EL MODAL
+  const opcionesProcesamientoCapturadas = { ...opcionesProcesamiento };
+  
+  // ✅ ABRIR VENTANA DE IMPRESIÓN INMEDIATAMENTE (si se necesita) - ANTES DE CUALQUIER AWAIT
+  // Esto evita que el navegador bloquee la ventana emergente
+  let ventanaImpresion = null;
+  if (opcionesProcesamientoCapturadas.generarFactura) {
+    try {
+      ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+      if (!ventanaImpresion) {
+        console.warn('⚠️ No se pudo abrir la ventana de impresión. El navegador puede estar bloqueando ventanas emergentes.');
+      }
+    } catch (error) {
+      console.warn('⚠️ Error al abrir ventana de impresión:', error);
+    }
+  }
+  
+  // ✅ ABRIR MODAL SIN flushSync (más seguro)
+  setShowProcesandoModal(true);
+  setOpcionesProcesamientoParaModal(opcionesProcesamientoCapturadas);
+  
+  // ✅ ESPERAR A QUE EL REF ESTÉ DISPONIBLE USANDO HELPER
+  try {
+    await waitForRef(procesandoModalRef, PROCESSING_CONFIG.MAX_REF_RETRIES);
+  } catch (error) {
+    setShowProcesandoModal(false);
+    handleError(error, 'Modal Initialization', {
+      customMessage: ERROR_MESSAGES.MODAL_INIT_FAILED
+    });
+    setLoading(false);
+    return;
+  }
   
   setLoading(true);
 
   // ✅ CAPTURAR USUARIO ACTUAL AL MOMENTO DEL PROCESAMIENTO
   const ventaDataConUsuario = {
     ...ventaData,
-    usuario: usuario // Usuario de la sesión que procesa la venta
+    usuario: usuario
   };
 
-  console.log('👤 Usuario que procesa la venta:', usuario?.nombre);
-
-  try {
+    try {
    // ✅ CALCULAR TOTALES ANTES DE ENVIAR
     const { totales } = validarYCalcularTotales(ventaData, descuento, tasaCambio);
     
     if (!totales) {
-      toast.error('Error calculando totales de la venta');
+      setShowProcesandoModal(false);
+      handleError(new Error('Totales inválidos'), 'Sale Validation', {
+        customMessage: ERROR_MESSAGES.VALIDATION_FAILED
+      });
       setLoading(false);
       return;
     }
 
-    // 🚀 PROCESAR VENTA CON API BACKEND - AGREGANDO TOTALES CALCULADOS
-    const ventaParaEnviar = {
-      clienteId: ventaData.cliente?.id || null,
-      clienteNombre: ventaData.cliente?.nombre || null,
-      items: ventaData.items.map(item => ({
-        productoId: item.productoId || null,
-        descripcion: item.descripcion,
-        codigoBarras: item.codigo,
-        cantidad: item.cantidad,
-        precioUnitario: item.precio_unitario,
-        precioCosto: item.precio_costo || 0,
-        descuento: item.descuento || 0
-      })),
-      pagos: ventaData.pagos.filter(pago => pago.monto && parseFloat(pago.monto) > 0).map(pago => {
-        const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
-        // 🔧 FIX: Convertir formato venezolano (coma) a formato numérico (punto)
-        const montoNormalizado = typeof pago.monto === 'string'
-          ? pago.monto.replace(',', '.')
-          : pago.monto;
-        const montoNumerico = Math.round(parseFloat(montoNormalizado) * 100) / 100;
+    // Avanzar paso de validación con delay usando constante
+    await delay(PROCESSING_CONFIG.STEP_DELAYS.VALIDATION);
+    if (procesandoModalRef.current) {
+      procesandoModalRef.current.avanzarPaso(PROCESSING_STEPS.VALIDATING);
+    }
 
-        return {
-          metodo: pago.metodo,
-          monto: montoNumerico,
-          moneda: metodoInfo?.moneda || 'bs',
-          banco: pago.banco || null,
-          referencia: pago.referencia || null
-        };
-      }),
-      vueltos: ventaData.vueltos.filter(vuelto => vuelto.monto && parseFloat(vuelto.monto) > 0).map(vuelto => {
-  const metodoInfo = METODOS_PAGO.find(m => m.value === vuelto.metodo);
-  const montoNumerico = parseFloat(vuelto.monto.replace(',', '.')) || 0;
-  console.log('🔍 VUELTO ENVIADO AL BACKEND:', {
-    metodo: vuelto.metodo,
-    montoOriginal: vuelto.monto,
-    montoNumerico: montoNumerico,
-    moneda: metodoInfo?.moneda
-  });
-  return {
-    metodo: vuelto.metodo,
-    monto: montoNumerico,
-    moneda: metodoInfo?.moneda || 'bs',
-    banco: vuelto.banco || null,
-    referencia: vuelto.referencia || null
-  };
-}),
-     // ✅ AGREGAR TOTALES CALCULADOS PARA SINCRONIZAR CON BACKEND
-      subtotalUsd: totales.subtotalUsd,
-      subtotalBs: totales.subtotalBs,
-      totalBs: totales.totalAPagar,
-      totalUsd: totales.totalUsd,
-     
-      // ✅ DEBUG: Verificar que el descuento se está pasando correctamente
-      descuentoTotal: (() => {
-        console.log('🔍 DESCUENTO DEBUG:', {
-          descuentoVariable: descuento,
-          descuentoEnVentaData: ventaData.descuentoAutorizado,
-          motivoDescuento: ventaData.motivoDescuento,
-          tasaCambio: tasaCambio
-        });
-        return ventaData.descuentoAutorizado || descuento || 0;
-      })(),
-      observaciones: ventaData.observaciones || `Venta procesada con código ${codigoVenta}`,
-      tasaCambio: tasaCambio,
-      sesionId: sesionId,
-      opcionesProcesamiento: opcionesProcesamiento
-    };
+    // 🚀 PROCESAR VENTA CON API BACKEND - USANDO HELPER PARA PREPARAR PAYLOAD
+    const ventaParaEnviar = prepareSalePayload(
+      ventaData,
+      totales,
+      descuento,
+      tasaCambio,
+      codigoVenta,
+      sesionId,
+      opcionesProcesamientoCapturadas,
+      METODOS_PAGO
+    );
 
-    console.log('📊 TOTALES CALCULADOS ENVIADOS:', {
-      subtotalUsd: totales.subtotalUsd,
-      subtotalBs: totales.subtotalBs,
-      totalBs: totales.totalAPagar,
-      totalUsd: totales.totalUsd,
-      descuento: descuento,
-      tasaCambio: tasaCambio
-    });
-
-    // ✅ DEBUG: Ver exactamente qué se envía al backend
-    console.log('🚀 DATOS COMPLETOS ENVIADOS AL BACKEND:', JSON.stringify(ventaParaEnviar, null, 2));
-
+    // ✅ MARCAR FLAG ANTES DE ENVIAR LA PETICIÓN (PROTECCIÓN TEMPRANA)
+    // Esto previene que el modal se reabra incluso si el componente se re-monta durante el procesamiento
+    marcarVentaProcesada();
+    console.log('🔵 [INGRESO MODAL] Flag marcado ANTES de enviar petición (protección temprana)');
+    
     // Llamar API de procesamiento de venta
     const response = await api.post('/ventas/procesar', ventaParaEnviar);
     
     let ventaProcesada = null;
 
     if (response.data.success) {
-      ventaProcesada = response.data.data;
-      console.log('✅ Venta procesada exitosamente:', ventaProcesada);
+      // ✅ VALIDAR RESPUESTA DEL BACKEND
+      ventaProcesada = validateBackendResponse(response.data.data, ['codigoVenta']);
+      
+      // ✅ CONFIRMAR FLAG (ya está marcado arriba, pero confirmamos aquí también)
+      marcarVentaProcesada();
+      console.log('🔵 [INGRESO MODAL] Venta procesada exitosamente - Flag confirmado');
+      
+      // Avanzar paso de procesamiento con delay usando constante
+      await delay(PROCESSING_CONFIG.STEP_DELAYS.PROCESSING);
+      
+      if (procesandoModalRef.current) {
+        procesandoModalRef.current.avanzarPaso(PROCESSING_STEPS.PROCESSING);
+      }
     } else {
-      throw new Error(response.data.message || 'Error procesando venta');
+      throw new Error(response.data.message || ERROR_MESSAGES.BACKEND_ERROR);
     }
 
     // EJECUTAR OPCIONES SELECCIONADAS DESPUÉS DEL PROCESAMIENTO
     const opcionesEjecutadas = [];
     let erroresOpciones = [];
 
-    // GENERAR PDF (si está seleccionado)
-    if (opcionesProcesamiento.imprimirRecibo) {
-      try {
-        console.log('Ejecutando: Generar PDF...');
-        toast.loading('Generando PDF...', { id: 'pdf-process' });
-
-        await descargarPDF(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
-
+    // GENERAR PDF (si está seleccionado) - USANDO HELPER
+    if (opcionesProcesamientoCapturadas.imprimirRecibo) {
+      const resultado = await executePostSaleOption({
+        optionName: 'PDF Generation',
+        stepId: PROCESSING_STEPS.PDF,
+        execute: () => descargarPDF(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento),
+        modalRef: procesandoModalRef,
+        isMountedRef: isMountedRef
+      });
+      
+      if (resultado.success) {
         opcionesEjecutadas.push('PDF descargado');
-        toast.success('PDF generado', { id: 'pdf-process' });
-      } catch (error) {
-        console.error('Error generando PDF:', error);
+      } else {
         erroresOpciones.push('PDF fallo');
-        toast.error('Error generando PDF', { id: 'pdf-process' });
       }
     }
-      // IMPRIMIR FACTURA TÉRMICA (si está seleccionado)
-      if (opcionesProcesamiento.generarFactura) {
-        try {
-          console.log('===== INICIANDO IMPRESION TERMICA =====');
-          console.log('Codigo venta:', ventaProcesada?.codigoVenta || codigoVenta);
-
-          toast.loading('Preparando impresion...', { id: 'print-process' });
-
-          // ESPERAR UN POCO PARA EVITAR CONFLICTOS CON OTRAS OPERACIONES
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          toast.loading('Abriendo ventana de impresion...', { id: 'print-process' });
-
-         const resultadoImpresion = await imprimirFacturaTermica(
+    
+    // IMPRIMIR FACTURA TÉRMICA (si está seleccionado) - USANDO HELPER
+    if (opcionesProcesamientoCapturadas.generarFactura) {
+      // Avanzar paso de factura primero
+      await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION - 500);
+      if (procesandoModalRef.current) {
+        procesandoModalRef.current.avanzarPaso(PROCESSING_STEPS.FACTURA);
+      }
+      
+      // Esperar antes de ejecutar la impresión
+      await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION);
+      
+      const resultado = await executePostSaleOption({
+        optionName: 'Print Thermal',
+        stepId: PROCESSING_STEPS.IMPRIMIR,
+        execute: () => imprimirFacturaTermica(
           ventaDataConUsuario,
           ventaProcesada?.codigoVenta || codigoVenta,
           tasaCambio,
-          descuento
-        );
-
-          console.log('Resultado impresion:', resultadoImpresion);
-
-          opcionesEjecutadas.push('Enviado a impresora termica');
-          toast.success('Impresion completada', { id: 'print-process' });
-
-        } catch (error) {
-          console.error('===== ERROR IMPRESION =====');
-          console.error('Error:', error.message);
-          console.error('========================');
-
-          erroresOpciones.push('Impresion fallo');
-
-          if (error.message.includes('bloqueada')) {
-            toast.error('Popup bloqueado. Habilita popups para esta pagina', {
-              id: 'print-process',
-              duration: 8000
-            });
-          } else {
-            toast.error(`Error de impresion: ${error.message}`, {
-              id: 'print-process',
-              duration: 6000
-            });
-          }
-        }
+          descuento,
+          ventanaImpresion // ✅ Pasar la ventana pre-abierta
+        ),
+        modalRef: procesandoModalRef,
+        isMountedRef: isMountedRef
+      });
+      
+      if (resultado.success) {
+        opcionesEjecutadas.push('Enviado a impresora termica');
+      } else {
+        erroresOpciones.push('Impresion fallo');
       }
+      
+      // Esperar un poco más después de la impresión para que el usuario vea el progreso
+      await delay(1000);
+    }
 
-    // ENVIAR WHATSAPP (si está seleccionado)
-    if (opcionesProcesamiento.enviarWhatsApp && ventaData.cliente?.telefono) {
-      try {
-        console.log('Ejecutando: Enviar WhatsApp desde IngresoModal...');
-        console.log('Cliente:', ventaData.cliente.nombre, 'Tel:', ventaData.cliente.telefono);
-        console.log('Codigo venta:', ventaProcesada?.codigoVenta || codigoVenta);
-
-        toast.loading('Enviando WhatsApp...', { id: 'whatsapp-process' });
-
-        const imagenBase64 = await generarImagenWhatsApp(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
-
-        console.log('Imagen generada, tamaño:', Math.round(imagenBase64.length / 1024), 'KB');
-
-        const whatsappResponse = await api.post('/whatsapp/enviar-factura', {
-          numero: ventaData.cliente.telefono,
-          clienteNombre: ventaData.cliente.nombre,
-          codigoVenta: ventaProcesada?.codigoVenta || codigoVenta,
-          imagen: imagenBase64,
-          mensaje: `Hola ${ventaData.cliente.nombre || 'Cliente'}, aqui tienes tu comprobante de compra #${ventaProcesada?.codigoVenta || codigoVenta}. Gracias por tu compra.`
-        });
-
-        console.log('Respuesta API WhatsApp:', whatsappResponse.data);
-
-        if (whatsappResponse.data.success) {
-          console.log('WhatsApp enviado exitosamente');
-
+    // ENVIAR WHATSAPP (si está seleccionado) - USANDO HELPER
+    if (opcionesProcesamientoCapturadas.enviarWhatsApp && ventaData.cliente?.telefono) {
+      const resultado = await executePostSaleOption({
+        optionName: 'WhatsApp Send',
+        stepId: PROCESSING_STEPS.WHATSAPP,
+        execute: async () => {
+          const imagenBase64 = await generarImagenWhatsApp(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
+          const whatsappResponse = await api.post('/whatsapp/enviar-factura', {
+            numero: ventaData.cliente.telefono,
+            clienteNombre: ventaData.cliente.nombre,
+            codigoVenta: ventaProcesada?.codigoVenta || codigoVenta,
+            imagen: imagenBase64,
+            mensaje: `Hola ${ventaData.cliente.nombre || 'Cliente'}, aqui tienes tu comprobante de compra #${ventaProcesada?.codigoVenta || codigoVenta}. Gracias por tu compra.`
+          });
+          
+          if (!whatsappResponse.data.success) {
+            throw new Error(whatsappResponse.data.message || 'Error enviando WhatsApp');
+          }
+          
           if (whatsappResponse.data.data?.tipo_fallback === 'simple_sin_imagen') {
             opcionesEjecutadas.push('WhatsApp enviado (sin imagen)');
-            toast.success('WhatsApp enviado sin imagen', { id: 'whatsapp-process' });
           } else if (whatsappResponse.data.data?.fallback) {
             opcionesEjecutadas.push('WhatsApp enviado (texto)');
-            toast.success('WhatsApp enviado solo texto', { id: 'whatsapp-process' });
           } else {
             opcionesEjecutadas.push('WhatsApp con imagen enviado');
-            toast.success('WhatsApp enviado correctamente', { id: 'whatsapp-process' });
           }
-        } else {
-          console.error('Respuesta fallida de API WhatsApp:', whatsappResponse.data);
-          throw new Error(whatsappResponse.data.message || 'Error enviando WhatsApp');
-        }
-      } catch (error) {
-        console.error('===== ERROR WHATSAPP DETALLADO =====');
-        console.error('Error completo:', error);
-        console.error('Error response:', error.response?.data);
-        console.error('Status:', error.response?.status);
-        console.error('===================================');
-
+        },
+        modalRef: procesandoModalRef,
+        isMountedRef: isMountedRef
+      });
+      
+      if (!resultado.success) {
         erroresOpciones.push('WhatsApp fallo');
-
-        const errorMsg = error.response?.data?.message || error.message || 'Error desconocido';
-        toast.error(`Error WhatsApp: ${errorMsg}`, { id: 'whatsapp-process' });
       }
-    } else {
-      console.log('WhatsApp NO ejecutado:', {
-        opcionActivada: opcionesProcesamiento.enviarWhatsApp,
-        clienteTelefono: ventaData.cliente?.telefono,
-        cliente: ventaData.cliente
-      });
     }
 
-    // ENVIAR EMAIL (si está seleccionado)
-    if (opcionesProcesamiento.enviarEmail && ventaData.cliente?.email) {
-      try {
-        console.log('Ejecutando: Enviar Email...');
-        toast.loading('Enviando email...', { id: 'email-process' });
-
-        const pdfBlob = await generarPDFFactura(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
-
-        // Convertir blob a base64
-        const reader = new FileReader();
-        const pdfBase64 = await new Promise((resolve) => {
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.readAsDataURL(pdfBlob);
-        });
-
-        const emailResponse = await api.post('/email/enviar-factura', {
-          destinatario: ventaData.cliente.email,
-          clienteNombre: ventaData.cliente.nombre,
-          codigoVenta: ventaProcesada?.codigoVenta || codigoVenta,
-          pdfBase64: pdfBase64,
-          asunto: `Comprobante #${ventaProcesada?.codigoVenta || codigoVenta} - Electro Shop Morandin`,
-          mensaje: `Estimado(a) ${ventaData.cliente.nombre || 'Cliente'},\n\nAdjunto encontrara su comprobante de compra #${ventaProcesada?.codigoVenta || codigoVenta}.\n\nGracias por su compra.\n\nSaludos cordiales,\nElectro Shop Morandin C.A.`
-        });
-
-        if (emailResponse.data.success) {
+    // ENVIAR EMAIL (si está seleccionado) - USANDO HELPER
+    if (opcionesProcesamientoCapturadas.enviarEmail && ventaData.cliente?.email) {
+      const resultado = await executePostSaleOption({
+        optionName: 'Email Send',
+        stepId: PROCESSING_STEPS.EMAIL,
+        execute: async () => {
+          const pdfBlob = await generarPDFFactura(ventaDataConUsuario, ventaProcesada?.codigoVenta || codigoVenta, tasaCambio, descuento);
+          
+          // Convertir blob a base64
+          const reader = new FileReader();
+          const pdfBase64 = await new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.readAsDataURL(pdfBlob);
+          });
+          
+          const emailResponse = await api.post('/email/enviar-factura', {
+            destinatario: ventaData.cliente.email,
+            clienteNombre: ventaData.cliente.nombre,
+            codigoVenta: ventaProcesada?.codigoVenta || codigoVenta,
+            pdfBase64: pdfBase64,
+            asunto: `Comprobante #${ventaProcesada?.codigoVenta || codigoVenta} - Electro Shop Morandin`,
+            mensaje: `Estimado(a) ${ventaData.cliente.nombre || 'Cliente'},\n\nAdjunto encontrara su comprobante de compra #${ventaProcesada?.codigoVenta || codigoVenta}.\n\nGracias por su compra.\n\nSaludos cordiales,\nElectro Shop Morandin C.A.`
+          });
+          
+          if (!emailResponse.data.success) {
+            throw new Error('Error enviando email');
+          }
+          
           opcionesEjecutadas.push('Email enviado');
-          toast.success('Email enviado', { id: 'email-process' });
-        } else {
-          throw new Error('Error enviando email');
-        }
-      } catch (error) {
-        console.error('Error enviando email:', error);
+        },
+        modalRef: procesandoModalRef,
+        isMountedRef: isMountedRef
+      });
+      
+      if (!resultado.success) {
         erroresOpciones.push('Email fallo');
-        toast.error('Error enviando email', { id: 'email-process' });
       }
     }
 
-    // MOSTRAR RESULTADO FINAL
-    let mensajeFinal = 'Venta procesada exitosamente';
-
-    if (opcionesEjecutadas.length > 0) {
-      mensajeFinal += ` - ${opcionesEjecutadas.join(', ')}`;
-    }
-
-    if (erroresOpciones.length > 0) {
-      mensajeFinal += ` | Errores: ${erroresOpciones.join(', ')}`;
-    }
-
-    // VENTA PROCESADA - LIMPIAR PARA NUEVA VENTA PERO NO CERRAR
-    console.log('===== VENTA PROCESADA EXITOSAMENTE =====');
-    console.log('Opciones ejecutadas:', opcionesEjecutadas);
-    console.log('Errores (si los hay):', erroresOpciones);
-
-    // ✅ MOSTRAR TOAST DE ÉXITO
-    toast.success(mensajeFinal, {
-      duration: 3000,
-      style: {
-        maxWidth: '450px',
-        fontSize: '14px'
-      },
-      id: 'venta-exitosa-modal'
-    });
-
-    // 🚪 CERRAR MODAL AUTOMÁTICAMENTE DESPUÉS DE VENTA EXITOSA
-    // Esperar 500ms para que el usuario vea el toast, luego cerrar
-    setTimeout(() => {
-      console.log('🚪 Cerrando modal automáticamente después de venta exitosa');
-
-      // Limpiar estado antes de cerrar
-      setVentaData({
-        cliente: null,
-        items: [],
-        pagos: [{
-          id: 1,
-          metodo: 'efectivo_bs',
-          monto: '',
-          banco: '',
-          referencia: ''
-        }],
-        vueltos: [],
-        descuentoAutorizado: 0,
-        motivoDescuento: '',
-        observaciones: '',
-        subtotal: 0,
-        totalUsd: 0,
-        totalBs: 0
-      });
-
-      // Resetear estados
-      setActiveTab('cliente');
-      setDescuento(0);
-      setHasUnsavedChanges(false);
-      setTotalAnterior(0);
-      setHayPagosConfigurados(false);
-      setPagosValidos(false);
-      setItemsDisponibles(false);
-      setExcesoPendiente(0);
-
-      // Limpiar opciones de procesamiento
-      setOpcionesProcesamiento({
-        imprimirRecibo: false,
-        enviarWhatsApp: false,
-        enviarEmail: false,
-        generarFactura: true
-      });
-
-      // Cerrar modal
+    // VENTA PROCESADA - Completar el proceso usando constantes
+    if (!procesandoModalRef.current) {
+      // Si el modal ya no está disponible, esperar un momento antes de cerrar
+      await delay(PROCESSING_CONFIG.CLEANUP_DELAY);
+      if (!isMountedRef.current) return;
+      
+      // ✅ MARCAR VENTA COMO PROCESADA ANTES DE CERRAR (CRÍTICO) - PERSISTENTE
+      marcarVentaProcesada();
+      
+      setShowProcesandoModal(false);
+      limpiarEstadoVenta();
+      
+      // ✅ CERRAR MODAL Y PREVENIR REAPERTURA
+      console.log('🔴 [INGRESO MODAL] Cerrando modal después de procesar venta (fallback)');
+      console.log('🔴 ventaProcesadaRef.current:', ventaProcesadaRef.current);
+      
+      // Cerrar modal inmediatamente
       onClose();
-      console.log('✅ Modal cerrado y limpio para próxima venta');
-    }, 500);
+      
+      // ✅ REDIRIGIR INMEDIATAMENTE PARA EVITAR REAPERTURA (reducir delay)
+      const timeoutId = setTimeout(() => {
+        if (!isMountedRef.current) return;
+        console.log('🔴 [INGRESO MODAL] Redirigiendo al dashboard... (fallback)');
+        // ✅ LIMPIAR FLAG DESPUÉS DE REDIRIGIR (no antes, para evitar reapertura)
+        // El flag se limpiará automáticamente cuando el usuario intente abrir una nueva venta
+        window.location.replace('/');
+      }, 200); // Reducido de 1000ms a 200ms para evitar reapertura
+      
+      timeoutsRef.current.push(timeoutId);
+      return;
+    }
+
+    // Avanzar paso final y completar usando constantes
+    await delay(PROCESSING_CONFIG.STEP_DELAYS.FINALIZATION);
+    
+    if (procesandoModalRef.current && isMountedRef.current) {
+      procesandoModalRef.current.avanzarPaso(PROCESSING_STEPS.FINALIZING);
+      
+      // Esperar antes de completar para que el usuario vea el paso "Finalizando"
+      await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION);
+      
+      const timeoutId1 = setTimeout(() => {
+        if (!isMountedRef.current) return;
+        
+        if (procesandoModalRef.current) {
+          procesandoModalRef.current.completar();
+        }
+        
+        // Esperar para mostrar mensaje de éxito usando constante (aumentado)
+        const timeoutId2 = setTimeout(() => {
+          if (!isMountedRef.current) return;
+          
+          // ✅ MARCAR VENTA COMO PROCESADA ANTES DE CERRAR (CRÍTICO) - PERSISTENTE
+          marcarVentaProcesada();
+          
+          setShowProcesandoModal(false);
+          limpiarEstadoVenta();
+          
+          // ✅ CERRAR MODAL Y PREVENIR REAPERTURA
+          console.log('🔴 [INGRESO MODAL] Cerrando modal después de procesar venta');
+          console.log('🔴 ventaProcesadaRef.current:', ventaProcesadaRef.current);
+          
+          // Cerrar modal inmediatamente
+          onClose();
+          
+          // ✅ REDIRIGIR INMEDIATAMENTE PARA EVITAR REAPERTURA (reducir delay)
+          const timeoutId3 = setTimeout(() => {
+            if (!isMountedRef.current) return;
+            console.log('🔴 [INGRESO MODAL] Redirigiendo al dashboard...');
+            // ✅ LIMPIAR FLAG DESPUÉS DE REDIRIGIR (no antes, para evitar reapertura)
+            // El flag se limpiará automáticamente cuando el usuario intente abrir una nueva venta
+            window.location.replace('/');
+          }, 200); // Reducido de 1000ms a 200ms para evitar reapertura
+          
+          timeoutsRef.current.push(timeoutId3);
+        }, PROCESSING_CONFIG.STEP_DELAYS.SUCCESS_MESSAGE);
+        
+        timeoutsRef.current.push(timeoutId2);
+      }, PROCESSING_CONFIG.MIN_SUCCESS_DISPLAY_TIME);
+      
+      timeoutsRef.current.push(timeoutId1);
+    }
+    
+    setLoading(false);
 
 
     } catch (error) {
-      console.error('❌ Error procesando venta:', error);
-      toast.error(`Error al procesar venta: ${error.response?.data?.message || error.message}`);
-    } finally {
+      setShowProcesandoModal(false);
+      handleError(error, 'Backend Processing', {
+        customMessage: error.response?.data?.message || ERROR_MESSAGES.BACKEND_ERROR
+      });
       setLoading(false);
     }
   };
 
 // 🚪 MANEJADORES DE SALIDA
 const handleCancelar = async () => {
-  console.log('🚫 BOTÓN CANCELAR PRESIONADO');
+  // ✅ NO PERMITIR CANCELAR SI EL MODAL DE PROCESAMIENTO ESTÁ ABIERTO
+  if (showProcesandoModal) {
+    toast.warning('No se puede cancelar mientras se procesa la venta');
+    return;
+  }
   
   // SIEMPRE liberar reservas, independiente de hasUnsavedChanges
   if (hasUnsavedChanges) {
     setShowExitModal(true);
   } else {
-    console.log('🚫 Sin cambios, liberando directamente...');
     await limpiarYCerrar();
   }
 };
@@ -1829,35 +1603,48 @@ const handleCancelExit = () => {
 };
 
 const limpiarYCerrar = async () => {
-  console.log('🧹 ===== INICIANDO LIMPIEZA OPTIMIZADA =====');
-  console.log('🧹 SesionId a limpiar:', sesionId);
+  // ✅ NO CERRAR SI EL MODAL DE PROCESAMIENTO ESTÁ ABIERTO
+  if (showProcesandoModal) {
+    return;
+  }
+  
+  // ✅ PROTECCIÓN ADICIONAL: NO CERRAR SI LA VENTA FUE PROCESADA
+  if (ventaProcesadaRef.current) {
+    console.log('🔵 [LIMPIAR] Intento de limpiar modal después de procesar venta - bloqueado (normal)');
+    console.log('🔵 [LIMPIAR] ventaProcesadaRef.current:', ventaProcesadaRef.current);
+    // Cerrar modal sin limpiar estados (solo cerrar)
+    onClose();
+    return;
+  }
+  
+  // 🆕 CANCELAR SOLICITUD DE DESCUENTO PENDIENTE SI EXISTE
+  try {
+    await api.delete(`/discount-requests/sesion/${sesionId}`);
+  } catch (error) {
+    // Silenciar error 404 (normal que no exista)
+  }
   
   // 🆕 LIBERACIÓN MASIVA POR SESIÓN (MÁS EFICIENTE)
   try {
-    await liberarStockAPI(null, sesionId); // null = liberar toda la sesión
-    console.log('✅ Liberación masiva completada exitosamente');
+    await liberarStockAPI(null, sesionId);
     
-    // No mostrar toast si es cierre automático por AFK
     const esLimpiezaManual = !document.querySelector('[data-afk-cleanup]');
     if (esLimpiezaManual) {
       toast.success('Reservas liberadas para sesión');
     }
   } catch (error) {
-    console.error('❌ Error en liberación masiva:', error);
+    console.error('Error en liberación masiva:', error);
     
     // 🔄 FALLBACK: Liberación individual
     const itemsConReserva = ventaData.items.filter(item => 
       item.productoId && !item.esPersonalizado && item.cantidad > 0
     );
     
-    if (itemsConReserva.length > 0) {
-      console.log('🔄 Fallback: liberación individual de', itemsConReserva.length, 'items');
-      for (const item of itemsConReserva) {
-        try {
-          await liberarStockAPI(item.productoId, sesionId);
-        } catch (error) {
-          console.error(`❌ Error liberando ${item.descripcion}:`, error);
-        }
+    for (const item of itemsConReserva) {
+      try {
+        await liberarStockAPI(item.productoId, sesionId);
+      } catch (error) {
+        // Silenciar errores individuales
       }
     }
   }
@@ -2076,12 +1863,33 @@ const limpiarYCerrar = async () => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {/* ✅ PREVENIR QUE EL MODAL PRINCIPAL SE CIERRE MIENTRAS SE PROCESA */}
+      {/* ✅ OCULTAR MODAL PRINCIPAL CUANDO SE ESTÁ PROCESANDO */}
+      {!showProcesandoModal && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Prevenir cierre al hacer clic fuera si el modal de procesamiento está abierto
+            if (showProcesandoModal && e.target === e.currentTarget) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          }}
+          onKeyDown={(e) => {
+            // Prevenir cierre con ESC si el modal de procesamiento está abierto
+            if (showProcesandoModal && e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          }}
+        >
         {/* 🎯 MODAL CON ALTURA FIJA */}
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden h-[90vh] flex flex-col">
 
           {/* 🎨 HEADER ELEGANTE (FIJO) */}
-          <div className="relative bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 overflow-hidden flex-shrink-0">
+          <div className="relative bg-gradient-to-r from-green-500 via-green-600 to-green-700 overflow-hidden flex-shrink-0">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute inset-0" style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
@@ -2098,6 +1906,12 @@ const limpiarYCerrar = async () => {
                     <h1 className="text-2xl font-bold">Nueva Venta #{codigoVenta}</h1>
                     <p className="text-emerald-100 text-sm">
                       Sistema de punto de venta - {usuario?.nombre || 'Usuario'}
+                      {/* 🐛 DEBUG: Mostrar contador de aperturas en desarrollo */}
+                      {process.env.NODE_ENV === 'development' && (
+                        <span className="ml-2 text-xs bg-white/20 px-2 py-1 rounded">
+                          Aperturas: {aperturasRef.current}
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -2114,16 +1928,6 @@ const limpiarYCerrar = async () => {
                   {/* Indicador de conexión */}
                   <div className="flex items-center space-x-3">
                     <ConexionIndicador socket={socket} />
-                    
-                    {/* Total rápido */}
-                    <div className="text-right">
-                      <div className="text-emerald-100 text-xs">Total</div>
-                      <div className="text-xl font-bold">
-                        {ventaData.totalBs.toLocaleString('es-ES', { 
-                          minimumFractionDigits: 2 
-                        })} Bs
-                      </div>
-                    </div>
                   </div>
 
                 </div>
@@ -2208,7 +2012,14 @@ const limpiarYCerrar = async () => {
   title="Métodos de Pago de la Venta"
   descuento={descuento}
   onDescuentoChange={() => setShowDescuentoModal(true)}
-  onDescuentoLimpiar={() => {
+  onDescuentoLimpiar={async () => {
+    // 🧹 Cancelar solicitud pendiente en la base de datos si existe
+    try {
+      await api.delete(`/discount-requests/sesion/${sesionId}`);
+    } catch (error) {
+      // Si no existe la solicitud (404) o ya fue procesada, no es crítico - silenciar el error
+    }
+    
     // 🧹 Limpiar pagos si hay descuento y pagos configurados
     if (hayPagosConfigurados && descuento > 0) {
       setVentaData(prev => ({
@@ -2272,7 +2083,10 @@ const limpiarYCerrar = async () => {
                 {/* Cancelar */}
                 <button
                   onClick={handleCancelar}
-                  className="flex items-center space-x-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                  disabled={showProcesandoModal}
+                  className={`flex items-center space-x-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors ${
+                    showProcesandoModal ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
                   <X className="h-4 w-4" />
                   <span>Cancelar</span>
@@ -2342,6 +2156,73 @@ const limpiarYCerrar = async () => {
 
       </div>
       </div>
+      )}
+
+      {/* ⚠️ MODAL DE ALERT DE EXCEDENTE */}
+      {showExcedenteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center space-x-3 text-white">
+                <AlertTriangle className="h-6 w-6" />
+                <h3 className="text-lg font-bold">Excedente Significativo Detectado</h3>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="bg-amber-100 rounded-full p-4">
+                    <DollarSign className="h-8 w-8 text-amber-600" />
+                  </div>
+                </div>
+                <p className="text-gray-700 text-center mb-2">
+                  El excedente es de{' '}
+                  <span className="font-bold text-amber-600 text-lg">
+                    {formatearVenezolano(excesoPendiente)} Bs
+                  </span>
+                </p>
+                <p className="text-gray-600 text-sm text-center mb-4">
+                  (Supera los 100 Bs)
+                </p>
+                <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
+                  <p className="text-sm text-amber-800">
+                    <strong>Nota:</strong> Este excedente deberá ser entregado como vuelto al cliente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowExcedenteModal(false);
+                    toast.info('Operación cancelada. Revise el excedente antes de continuar.', {
+                      duration: 3000
+                    });
+                  }}
+                  className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowExcedenteModal(false);
+                    // Continuar con la navegación normal
+                    const currentIndex = TABS.findIndex(tab => tab.id === activeTab);
+                    if (currentIndex < TABS.length - 1) {
+                      setActiveTab(TABS[currentIndex + 1].id);
+                    }
+                  }}
+                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center space-x-2"
+                >
+                  <span>Continuar</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🚨 MODAL DE CONFIRMACIÓN DE SALIDA */}
       {showExitModal && (
@@ -2382,45 +2263,49 @@ const limpiarYCerrar = async () => {
 
 
 
-    {/* 💰 MODAL DE DESCUENTO CON VALIDACIÓN ADMIN */}
+    {/* 💰 MODAL DE DESCUENTO REFACTORIZADO */}
       {showDescuentoModal && (
-        <DescuentoAdminModal
+        <DescuentoModal
           isOpen={showDescuentoModal}
           onClose={() => setShowDescuentoModal(false)}
           totalVenta={ventaData.totalBs}
           tasaCambio={tasaCambio}
+          ventaData={ventaData}
+          items={ventaData.items || []}
+          cliente={ventaData.cliente || {}}
+          sesionId={sesionId}
           onDescuentoAprobado={(montoDescuento, motivoDescuento = '') => {
-          // ✅ SIEMPRE ACTUALIZAR EL DESCUENTO PRIMERO
-          setDescuento(montoDescuento);
-          
-          // 🧹 Limpiar pagos si hay descuento y pagos configurados
-          if (hayPagosConfigurados && montoDescuento > 0) {
-            setVentaData(prev => ({
-              ...prev,
-              descuentoAutorizado: montoDescuento,
-              motivoDescuento: motivoDescuento,
-              pagos: [{
-                id: 1,
-                metodo: 'efectivo_bs',
-                monto: '',
-                banco: '',
-                referencia: ''
-              }],
-              vueltos: []
-            }));
-            setHayPagosConfigurados(false);
-            setPagosValidos(false);
-            toast.success(`Pagos limpiados - Se aplicó descuento de ${formatearVenezolano(montoDescuento)} Bs`);
-          } else {
-            setVentaData(prev => ({
-              ...prev,
-              descuentoAutorizado: montoDescuento,
-              motivoDescuento: motivoDescuento
-            }));
-            toast.success(`Descuento de ${formatearVenezolano(montoDescuento)} Bs aplicado`);
-          }
-          setShowDescuentoModal(false);
-        }}
+            // ✅ SIEMPRE ACTUALIZAR EL DESCUENTO PRIMERO
+            setDescuento(montoDescuento);
+            
+            // 🧹 Limpiar pagos si hay descuento y pagos configurados
+            if (hayPagosConfigurados && montoDescuento > 0) {
+              setVentaData(prev => ({
+                ...prev,
+                descuentoAutorizado: montoDescuento,
+                motivoDescuento: motivoDescuento,
+                pagos: [{
+                  id: 1,
+                  metodo: 'efectivo_bs',
+                  monto: '',
+                  banco: '',
+                  referencia: ''
+                }],
+                vueltos: []
+              }));
+              setHayPagosConfigurados(false);
+              setPagosValidos(false);
+              toast.success(`Pagos limpiados - Se aplicó descuento de ${formatearVenezolano(montoDescuento)} Bs`);
+            } else {
+              setVentaData(prev => ({
+                ...prev,
+                descuentoAutorizado: montoDescuento,
+                motivoDescuento: motivoDescuento
+              }));
+              toast.success(`Descuento de ${formatearVenezolano(montoDescuento)} Bs aplicado`);
+            }
+            setShowDescuentoModal(false);
+          }}
         />
       )}
 
@@ -2544,8 +2429,28 @@ const limpiarYCerrar = async () => {
         onCancel={() => setShowConfirmacionModal(false)}
         opciones={opcionesProcesamiento}
       />
+
+      {/* Modal de Procesamiento de Venta - SIEMPRE VISIBLE CUANDO SE ESTÁ PROCESANDO */}
+      {showProcesandoModal && (
+        <VentaProcesandoModal
+          ref={procesandoModalRef}
+          isOpen={showProcesandoModal}
+          opcionesProcesamiento={opcionesProcesamientoParaModal || opcionesProcesamiento}
+          onCompletado={() => {
+            // ✅ NO HACER NADA - La redirección al dashboard se maneja en procesarVentaConfirmada
+            // ✅ PROTECCIÓN: No permitir que onCompletado cause efectos secundarios
+            if (ventaProcesadaRef.current) {
+              console.log('🔵 [INGRESO MODAL] onCompletado llamado pero venta ya procesada - ignorando');
+              return;
+            }
+          }}
+          onNuevaVenta={null}
+          onIrDashboard={null}
+        />
+      )}
     </>
   );
 };
 
 export default IngresoModalV2;
+

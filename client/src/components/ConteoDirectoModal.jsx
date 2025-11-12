@@ -1,6 +1,6 @@
 // components/ConteoDirectoModal.jsx - INTEGRADO CON useMontosEnCaja Y PDF + BLOQUEO DE USUARIOS
 import React, { useState, useEffect, useRef } from 'react';
-import { X, DollarSign, Coins, Smartphone, Calculator, Shield, AlertTriangle, Lock, Calendar, User, TrendingUp, TrendingDown, Minus, FileText, Send } from 'lucide-react';
+import { X, DollarSign, Coins, Smartphone, Calculator, Shield, AlertTriangle, Lock, Calendar, User, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';
@@ -12,14 +12,12 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
  // ===================================
  //  ESTADOS
  // ===================================
- const [loading, setLoading] = useState(false);
- const [loadingPDF, setLoadingPDF] = useState(false);
- const [montoFinalBs, setMontoFinalBs] = useState('');
- const [montoFinalUsd, setMontoFinalUsd] = useState('');
- const [montoFinalPagoMovil, setMontoFinalPagoMovil] = useState('');
- const [observaciones, setObservaciones] = useState('');
- const [datosEsperados, setDatosEsperados] = useState(null);
- const [pdfGenerado, setPdfGenerado] = useState(false);
+const [loading, setLoading] = useState(false);
+const [montoFinalBs, setMontoFinalBs] = useState('');
+const [montoFinalUsd, setMontoFinalUsd] = useState('');
+const [montoFinalPagoMovil, setMontoFinalPagoMovil] = useState('');
+const [observaciones, setObservaciones] = useState('');
+const [datosEsperados, setDatosEsperados] = useState(null);
  const [bloqueandoUsuarios, setBloqueandoUsuarios] = useState(false);
  const { usuario } = useAuthStore();
  const { emitirEvento } = useSocketEvents();
@@ -173,86 +171,80 @@ const ConteoDirectoModal = ({ cajaPendiente, onClose, onComplete }) => {
      return;
    }
 
-   setLoadingPDF(true);
-   
-   try {
-     console.log(' Iniciando generación de PDF para caja pendiente...');
-     
-     // Preparar datos completos para el PDF
-     const datosPDF = {
-       // Información de la caja
-       caja: {
-         id: cajaPendiente.id,
-         fecha: cajaPendiente.fecha,
-         horaApertura: datosEsperados.horaApertura || '08:00',
-         horaCierre: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-         estado: 'CERRADA_PENDIENTE',
-         
-         // Montos iniciales
-         montoInicialBs: montosCalculados.montosIniciales.efectivoBs,
-         montoInicialUsd: montosCalculados.montosIniciales.efectivoUsd,
-         montoInicialPagoMovil: montosCalculados.montosIniciales.pagoMovil,
-         
-         // Totales calculados
-         totalIngresosBs: montosCalculados.ingresosBs,
-         totalEgresosBs: montosCalculados.egresosBs,
-         totalIngresosUsd: montosCalculados.ingresosUsd,
-         totalEgresosUsd: montosCalculados.egresosUsd,
-         totalPagoMovil: montosCalculados.ingresosPagoMovil,
-         
-         // Montos finales (conteo físico)
-         montoFinalBs: parseFloat(montoFinalBs),
-         montoFinalUsd: parseFloat(montoFinalUsd),
-         montoFinalPagoMovil: parseFloat(montoFinalPagoMovil),
-         
-         // Usuario de cierre
-         usuarioCierre: {
-           nombre: usuario?.nombre || 'Usuario Desconocido'
-         }
-       },
-       
-       // Transacciones
-       transacciones: datosEsperados.transacciones || [],
-       
-       // Usuario
-       usuario: {
-         nombre: usuario?.nombre || 'Usuario Desconocido',
-         rol: usuario?.rol || 'cajero',
-         sucursal: usuario?.sucursal || 'Principal'
-       },
-       
-       // Diferencias si las hay
-       diferencias: hayDiferencias() ? calcularDiferencias() : null,
-       
-       // Observaciones
-       observaciones: observaciones.trim() || 'Caja pendiente resuelta mediante conteo físico',
-       
-       // Evidencia
-       evidenciaFotografica: true, // Siempre true para cajas pendientes
-       
-       // Fecha de generación
-       fechaGeneracion: new Date().toISOString()
-     };
+  try {
+    console.log(' Iniciando generación de PDF para caja pendiente...');
+    
+    // Preparar datos completos para el PDF
+    const datosPDF = {
+      // Información de la caja
+      caja: {
+        id: cajaPendiente.id,
+        fecha: cajaPendiente.fecha,
+        horaApertura: datosEsperados.horaApertura || '08:00',
+        horaCierre: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+        estado: 'CERRADA_PENDIENTE',
+        
+        // Montos iniciales
+        montoInicialBs: montosCalculados.montosIniciales.efectivoBs,
+        montoInicialUsd: montosCalculados.montosIniciales.efectivoUsd,
+        montoInicialPagoMovil: montosCalculados.montosIniciales.pagoMovil,
+        
+        // Totales calculados
+        totalIngresosBs: montosCalculados.ingresosBs,
+        totalEgresosBs: montosCalculados.egresosBs,
+        totalIngresosUsd: montosCalculados.ingresosUsd,
+        totalEgresosUsd: montosCalculados.egresosUsd,
+        totalPagoMovil: montosCalculados.ingresosPagoMovil,
+        
+        // Montos finales (conteo físico)
+        montoFinalBs: parseFloat(montoFinalBs),
+        montoFinalUsd: parseFloat(montoFinalUsd),
+        montoFinalPagoMovil: parseFloat(montoFinalPagoMovil),
+        
+        // Usuario de cierre
+        usuarioCierre: {
+          nombre: usuario?.nombre || 'Usuario Desconocido'
+        }
+      },
+      
+      // Transacciones
+      transacciones: datosEsperados.transacciones || [],
+      
+      // Usuario
+      usuario: {
+        nombre: usuario?.nombre || 'Usuario Desconocido',
+        rol: usuario?.rol || 'cajero',
+        sucursal: usuario?.sucursal || 'Principal'
+      },
+      
+      // Diferencias si las hay
+      diferencias: hayDiferencias() ? calcularDiferencias() : null,
+      
+      // Observaciones
+      observaciones: observaciones.trim() || 'Caja pendiente resuelta mediante conteo físico',
+      
+      // Evidencia
+      evidenciaFotografica: true, // Siempre true para cajas pendientes
+      
+      // Fecha de generación
+      fechaGeneracion: new Date().toISOString()
+    };
 
-     console.log(' Datos preparados para PDF:', datosPDF);
+    console.log(' Datos preparados para PDF:', datosPDF);
 
-     // Llamar al servicio de PDF
     // Llamar al servicio de PDF unificado
-      const response = await api.post('/cajas/generar-pdf-temporal', {
-        ...datosPDF,
-        esPendiente: true,
-        transacciones: datosEsperados.transacciones || []
-      });
-     
-     if (!response.data.success) {
-       throw new Error('Error generando PDF en backend');
-     }
+    const response = await api.post('/cajas/generar-pdf-temporal', {
+      ...datosPDF,
+      esPendiente: true,
+      transacciones: datosEsperados.transacciones || []
+    });
+    
+    if (!response.data.success) {
+      throw new Error('Error generando PDF en backend');
+    }
 
-     const pdfInfo = response.data.data;
-     console.log(' PDF generado:', pdfInfo);
-
-     // Marcar como generado
-     setPdfGenerado(true);
+    const pdfInfo = response.data.data;
+    console.log(' PDF generado:', pdfInfo);
 
      // Preparar mensaje para WhatsApp
      const diferenciasTexto = hayDiferencias() ? 
@@ -312,48 +304,12 @@ _Caja pendiente resuelta - Electro Caja_`;
        toast.warning('PDF generado pero WhatsApp falló');
      }
 
-   } catch (error) {
-     console.error(' Error generando PDF:', error);
-     toast.error('Error generando PDF: ' + (error.response?.data?.message || error.message));
-     throw error;
-   } finally {
-     setLoadingPDF(false);
-   }
- };
-
- //  FUNCIÓN MANUAL PARA GENERAR PDF (BOTÓN INDEPENDIENTE)
- const handleGenerarPDFManual = async () => {
-   // Validar datos completos
-   if (!montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil) {
-     toast.error('Complete todos los conteos antes de generar el PDF');
-     return;
-   }
-
-   const diferencias = calcularDiferencias();
-   const hayDiferenciasSignif = hayDiferenciasSignificativas();
-
-   // Si hay diferencias significativas y no es admin, bloquear
-   if (hayDiferenciasSignif && usuario?.rol?.toLowerCase() !== 'admin') {
-     toast.error('No se puede generar PDF con diferencias significativas sin autorización de administrador');
-     return;
-   }
-
-   const confirmar = window.confirm(
-     `¿Generar PDF con los montos actuales?\n\n` +
-     ` Bolívares: ${formatearBolivares(parseFloat(montoFinalBs))} Bs\n` +
-     ` Dólares: $${formatearDolares(parseFloat(montoFinalUsd))}\n` +
-     ` Pago Móvil: ${formatearBolivares(parseFloat(montoFinalPagoMovil))} Bs\n\n` +
-     `${hayDiferencias() ? ' Con diferencias detectadas' : ' Sin diferencias detectadas'}`
-   );
-   
-   if (!confirmar) return;
-
-   try {
-     await generarPDFCierre();
-   } catch (error) {
-     // Error ya manejado en generarPDFCierre
-   }
- };
+  } catch (error) {
+    console.error(' Error generando PDF:', error);
+    toast.error('Error generando PDF: ' + (error.response?.data?.message || error.message));
+    throw error;
+  }
+};
 
  // ===================================
  //  FUNCIÓN PRINCIPAL DE ENVÍO
@@ -763,83 +719,31 @@ const diferencias = calcularDiferencias();
              </div>
            )}
 
-           {/* Observaciones */}
-           <div className="mb-6">
-             <label className="block text-sm font-medium text-gray-700 mb-2">
-               Observaciones del Cierre (opcional)
-             </label>
-             <textarea
-               value={observaciones}
-               onChange={(e) => setObservaciones(e.target.value)}
-               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-               rows={3}
-               placeholder="Observaciones adicionales sobre el conteo físico..."
-             />
-           </div>
+          {/* Observaciones */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Observaciones del Cierre (opcional)
+            </label>
+            <textarea
+              value={observaciones}
+              onChange={(e) => setObservaciones(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              rows={3}
+              placeholder="Observaciones adicionales sobre el conteo físico..."
+            />
+          </div>
 
-           {/*  SECCIÓN DE PDF */}
-           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-             <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
-               <FileText className="h-4 w-4 mr-2" />
-               Reporte PDF
-             </h4>
-             <div className="flex items-center justify-between">
-               <div className="text-sm text-blue-700">
-                 {pdfGenerado ? (
-                   <span className="flex items-center text-green-700">
-                      PDF generado y enviado por WhatsApp
-                   </span>
-                 ) : (
-                   <span>
-                     El PDF se generará automáticamente al completar el cierre
-                   </span>
-                 )}
-               </div>
-               <button
-                 type="button"
-                 onClick={handleGenerarPDFManual}
-                 disabled={loadingPDF || !montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil}
-                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-               >
-                 {loadingPDF ? (
-                   <>
-                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                     <span>Generando...</span>
-                   </>
-                 ) : (
-                   <>
-                     <Send className="h-4 w-4" />
-                     <span>Generar PDF Ahora</span>
-                   </>
-                 )}
-               </button>
-             </div>
-           </div>
-
-           {/* Indicador de progreso */}
-           {loading && (
-             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-               <div className="flex items-center space-x-3">
-                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600"></div>
-                 <div className="text-sm text-amber-700">
-                   Procesando cierre de caja pendiente...
-                 </div>
-               </div>
-             </div>
-           )}
-
-           {/* Confirmación de PDF generado */}
-           {pdfGenerado && (
-             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-               <div className="flex items-center space-x-3">
-                 <FileText className="h-5 w-5 text-green-600" />
-                 <div>
-                   <div className="font-semibold text-green-800"> PDF Generado y Enviado</div>
-                   <div className="text-sm text-green-700">Reporte enviado por WhatsApp y descargado localmente</div>
-                 </div>
-               </div>
-             </div>
-           )}
+          {/* Indicador de progreso */}
+          {loading && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600"></div>
+                <div className="text-sm text-amber-700">
+                  Procesando cierre de caja pendiente...
+                </div>
+              </div>
+            </div>
+          )}
 
            {/* Botones */}
           <div className="flex space-x-3">

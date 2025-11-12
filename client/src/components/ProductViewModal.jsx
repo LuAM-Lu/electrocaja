@@ -112,7 +112,7 @@ const ProductViewModal = ({ isOpen, onClose, product, tasaCambio, openedFrom, on
   const handleWhatsAppShare = async (phoneNumber) => {
     try {
       setSharingLoading(true);
-      const { base64 } = await captureModalScreenshot(modalRef, product.descripcion, product);
+      const { base64 } = await captureModalScreenshot(modalRef, product.descripcion, product, tasaCambio);
       const precioFormateado = `${precioVentaBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs`;
       const success = await shareViaWhatsApp(base64, phoneNumber, product.descripcion, precioFormateado);
       if (success) {
@@ -130,7 +130,7 @@ const ProductViewModal = ({ isOpen, onClose, product, tasaCambio, openedFrom, on
     try {
       setSharingLoading(true);
       setShowWhatsAppModal(true);
-      const { base64 } = await captureModalScreenshot(modalRef, product.descripcion, product);
+      const { base64 } = await captureModalScreenshot(modalRef, product.descripcion, product, tasaCambio);
       setPreviewImage(base64);
     } catch (error) {
       console.error('Error generando preview:', error);
@@ -143,7 +143,7 @@ const ProductViewModal = ({ isOpen, onClose, product, tasaCambio, openedFrom, on
   const handleInstagramShare = async () => {
     try {
       setSharingLoading(true);
-      const { blob } = await captureModalScreenshot(modalRef, product.descripcion);
+      const { blob } = await captureModalScreenshot(modalRef, product.descripcion, product, tasaCambio);
       await shareViaInstagram(blob, product.descripcion);
     } catch (error) {
       console.error('Error compartiendo en Instagram:', error);
@@ -155,7 +155,7 @@ const ProductViewModal = ({ isOpen, onClose, product, tasaCambio, openedFrom, on
   const handleTikTokShare = async () => {
     try {
       setSharingLoading(true);
-      const { blob } = await captureModalScreenshot(modalRef, product.descripcion);
+      const { blob } = await captureModalScreenshot(modalRef, product.descripcion, product, tasaCambio);
       await shareViaTikTok(blob, product.descripcion);
     } catch (error) {
       console.error('Error compartiendo en TikTok:', error);

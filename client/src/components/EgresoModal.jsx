@@ -1,8 +1,11 @@
 // components/EgresoModal.jsx - HEADER MODERNIZADO
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Minus, Calculator, Trash2, DollarSign, Smartphone, CreditCard, Coins, ChevronDown, ChevronUp, Plus, Settings } from 'lucide-react';
 import { useCajaStore } from '../store/cajaStore';
 import toast from '../utils/toast.jsx';
+import PagosPanel from './venta/PagosPanel';
+import DescuentoModal from './DescuentoModal';
+import { api } from '../config/api';
 
 const METODOS_PAGO = [
  { value: 'efectivo_bs', label: 'Efectivo Bs', requiere_referencia: false, moneda: 'bs' },
@@ -29,6 +32,9 @@ const CATEGORIAS_EGRESO = [
  'Pago a Proveedores',
  'Otros Gastos'
 ];
+
+// Categorías que se consideran servicios y requieren modal de descuento
+const CATEGORIAS_SERVICIO = ['Servicios Básicos', 'Mantenimiento'];
 
 // ===========================
 //  FUNCIONES DE FORMATEO VENEZOLANO
@@ -364,7 +370,19 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
    banco: '',
    referencia: ''
  }]);
+ const [vueltos, setVueltos] = useState([]);
+ const [descuento, setDescuento] = useState(0);
+ const [showDescuentoModal, setShowDescuentoModal] = useState(false);
+ const [pagosValidos, setPagosValidos] = useState(false);
  const [loading, setLoading] = useState(false);
+ 
+ // Generar sesión ID para el modal de descuento
+ const [sesionId] = useState(() => {
+   return `sesion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+ });
+ 
+ // Detectar si es servicio
+ const esServicio = CATEGORIAS_SERVICIO.includes(categoriaEgreso);
 
  React.useEffect(() => {
    setTasaActualTransaccion(tasaCambio);
@@ -555,11 +573,11 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
  const estadisticas = obtenerEstadisticasEgreso();
 
  return (
-   <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-     <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+   <div className="fixed inset-0 bg-orange-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+     <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
        
-       {/*  HEADER MODERNIZADO CON PATRÓN */}
-       <div className="relative bg-gradient-to-br from-red-500 via-red-600 to-red-700 overflow-hidden">
+       {/*  HEADER MODERNIZADO CON PATRÓN - FIXED */}
+       <div className="relative bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 overflow-hidden flex-shrink-0 rounded-t-2xl">
          {/* Patrón de fondo sutil */}
          <div className="absolute inset-0 opacity-10">
            <div className="absolute inset-0" style={{
@@ -604,9 +622,9 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
          </div>
        </div>
 
-       {/* Contenido */}
-       <div className="p-8 overflow-y-auto max-h-[calc(90vh-140px)]">
-         <form onSubmit={handleSubmit} className="space-y-8">
+       {/* Contenido scrolleable */}
+       <div className="flex-1 overflow-y-auto p-8">
+         <form onSubmit={handleSubmit} className="space-y-8" id="egreso-form">
            
            {/* 1. Información General - MEJORADA */}
            <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-2xl p-6 border-2 border-red-200 shadow-sm">
@@ -910,20 +928,26 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
            </div>
           </div>
 
-          {/* Botones de Acción - MODERNIZADOS */}
-          <div className="flex space-x-4 pt-6 border-t-2 border-gray-200">
+        </form>
+      </div>
+
+      {/* FOOTER CON BOTONES - FIXED */}
+      <div className="border-t border-gray-200 bg-gray-50 px-8 py-4 flex-shrink-0 rounded-b-2xl">
+        <div className="flex space-x-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-8 py-4 text-gray-700 border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-semibold hover:shadow-lg transform hover:scale-[1.02] flex items-center justify-center space-x-2"
+            disabled={loading}
+            className="flex-1 px-8 py-3 text-gray-700 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50 font-semibold flex items-center justify-center space-x-2"
             >
               <X className="h-5 w-5" />
               <span>Cancelar</span>
             </button>
             <button
               type="submit"
+            form="egreso-form"
               disabled={loading || !estadisticas.transaccionValida}
-              className="flex-1 px-8 py-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-[1.02] bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:from-gray-400 disabled:to-gray-500 flex items-center justify-center space-x-2"
+            className="flex-1 px-8 py-3 rounded-xl font-semibold transition-all duration-200 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-500 flex items-center justify-center space-x-2"
             >
               {loading ? (
                 <>
@@ -938,12 +962,11 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
               )}
             </button>
           </div>
-        </form>
       </div>
     </div>
 
     {/* CSS para animaciones */}
-    <style jsx>{`
+    <style>{`
       @keyframes shimmer {
         0% { transform: translateX(-100%) skewX(-12deg); }
         100% { transform: translateX(200%) skewX(-12deg); }

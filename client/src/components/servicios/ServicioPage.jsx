@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   PlusCircle, Eye, Pencil, Trash2, Inbox, Stethoscope, Clock,
-  Wrench, CheckCircle, PackageCheck, Flag, Info, History, Search, X
+  Wrench, CheckCircle, PackageCheck, Flag, Info, History, Search, X, Lock, ClipboardList
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useServiciosStore } from '../../store/serviciosStore';
 import toast from '../../utils/toast.jsx'; //  IMPORT AGREGADO
+import TokenAccesoModal from './TokenAccesoModal';
 
 const estadoConfig = {
   'Recibido': { 
@@ -111,6 +112,33 @@ const calcularDiasTranscurridos = (fechaEntrega) => {
   return diferencia;
 };
 
+// 🆕 Función para encontrar la fecha en que cambió a LISTO_RETIRO
+const encontrarFechaListoRetiro = (servicio) => {
+  if (!servicio.notas || !Array.isArray(servicio.notas)) {
+    return null;
+  }
+  
+  // Buscar la nota más reciente donde el estado cambió a LISTO_RETIRO
+  const notaListoRetiro = servicio.notas
+    .filter(nota => {
+      const tipo = nota.tipo?.toUpperCase() || '';
+      const estadoNuevo = nota.estadoNuevo?.toUpperCase() || '';
+      return tipo === 'CAMBIO_ESTADO' && 
+             (estadoNuevo === 'LISTO_RETIRO' || estadoNuevo === 'LISTO RETIRO');
+    })
+    .sort((a, b) => {
+      const fechaA = new Date(a.fecha || a.createdAt || 0);
+      const fechaB = new Date(b.fecha || b.createdAt || 0);
+      return fechaB - fechaA; // Más reciente primero
+    })[0];
+  
+  if (notaListoRetiro) {
+    return notaListoRetiro.fecha || notaListoRetiro.createdAt;
+  }
+  
+  return null;
+};
+
 export default function ServicioPage({
   filtroEstado,
   onVerServicio,
@@ -120,14 +148,54 @@ export default function ServicioPage({
 }) {
   const { usuario } = useAuthStore();
   const { servicios, loading, cargarServicios } = useServiciosStore();
+  
+  // Estados para el modal de token
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [accionPendiente, setAccionPendiente] = useState(null);
+  const [servicioPendiente, setServicioPendiente] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [busqueda, setBusqueda] = useState('');
-  const itemsPerPage = 10;
+  const itemsPerPage = 6; // 🆕 Máximo de 6 items por página
 
   // 🔧 Cargar servicios desde la API al montar el componente
   useEffect(() => {
     cargarServicios({ incluirRelaciones: true });
   }, [cargarServicios]);
+
+  // Función para verificar si un servicio requiere token de acceso
+  const requiereTokenAcceso = (estado) => {
+    const estadoNormalizado = normalizarEstado(estado);
+    return estadoNormalizado === 'Listo para Retiro' || estadoNormalizado === 'Entregado';
+  };
+
+  // Función para manejar clic en botón que requiere token
+  const handleAccionConToken = (servicio, accion) => {
+    if (requiereTokenAcceso(servicio.estado)) {
+      setServicioPendiente(servicio);
+      setAccionPendiente(accion);
+      setShowTokenModal(true);
+    } else {
+      // Ejecutar acción directamente si no requiere token
+      if (accion === 'editar') {
+        onEditarServicio?.(servicio);
+      } else if (accion === 'historial') {
+        onVerHistorial?.(servicio);
+      }
+    }
+  };
+
+  // Función para cuando el token es validado
+  const handleTokenValidado = (adminUser) => {
+    if (servicioPendiente && accionPendiente) {
+      if (accionPendiente === 'editar') {
+        onEditarServicio?.(servicioPendiente);
+      } else if (accionPendiente === 'historial') {
+        onVerHistorial?.(servicioPendiente);
+      }
+    }
+    setServicioPendiente(null);
+    setAccionPendiente(null);
+  };
 
   //  DATOS SIMULADOS RESTAURADOS (AHORA REEMPLAZADOS POR API)
   /* COMENTADO - AHORA USA EL STORE
@@ -345,13 +413,14 @@ export default function ServicioPage({
       {/* HEADER DE LA SECCIÓN CON BÚSQUEDA */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-100 mb-2">
+          <h2 className="text-2xl font-bold text-gray-100 mb-2 flex items-center gap-2">
+            <ClipboardList className="h-7 w-7 text-white" />
             Órdenes de Servicio
           </h2>
         </div>
         
         {/* BARRA DE BÚSQUEDA INTELIGENTE */}
-        <div className="relative w-full sm:w-auto sm:min-w-[300px]">
+        <div className="relative w-full sm:w-auto sm:min-w-[400px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
@@ -381,29 +450,23 @@ export default function ServicioPage({
       {/* TABLA DE SERVICIOS MEJORADA */}
       <div className="bg-gray-800/70 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 overflow-hidden">
         
-        {/* Header de la tabla */}
-        <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-6 py-4 border-b border-gray-600/50">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h3 className="text-lg font-semibold text-gray-100">
-              Lista de Servicios Técnicos
-            </h3>
-            <div className="text-sm text-gray-400 flex items-center gap-2 flex-wrap">
-              <span>
-                Total: {itemsFiltrados.length} servicios
-              </span>
+        {/* Header de la tabla - Compacto */}
+        {(filtroEstado || busqueda) && (
+          <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-4 py-2 border-b border-gray-600/50">
+            <div className="flex items-center justify-end gap-2 flex-wrap">
               {filtroEstado && (
-                <span className="px-2 py-1 bg-gray-600 rounded-full text-xs">
+                <span className="px-2 py-0.5 bg-gray-600 rounded-full text-xs text-gray-300">
                   Filtrado por: {filtroEstado}
                 </span>
               )}
               {busqueda && (
-                <span className="px-2 py-1 bg-blue-600/30 border border-blue-500/30 rounded-full text-xs text-blue-300">
+                <span className="px-2 py-0.5 bg-blue-600/30 border border-blue-500/30 rounded-full text-xs text-blue-300">
                   Búsqueda: "{busqueda}"
                 </span>
               )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Tabla */}
         <div className="overflow-x-auto">
@@ -460,15 +523,41 @@ export default function ServicioPage({
               {!loading && currentItems.map((s) => {
                 const estadoNormalizado = normalizarEstado(s.estado);
                 const estado = estadoConfig[estadoNormalizado] || estadoConfig['Recibido'];
-                const diasTranscurridos = calcularDiasTranscurridos(s.fechaEntrega || s.fechaEntregaEstimada);
+                
+                // 🆕 Si está en "Listo para Retiro", calcular días desde que cambió a ese estado
+                let diasTranscurridos;
+                let fechaReferencia;
+                let esListoRetiro = estadoNormalizado === 'Listo para Retiro';
+                
+                if (esListoRetiro) {
+                  const fechaListoRetiro = encontrarFechaListoRetiro(s);
+                  if (fechaListoRetiro) {
+                    fechaReferencia = fechaListoRetiro;
+                    diasTranscurridos = calcularDiasTranscurridos(fechaListoRetiro);
+                  } else {
+                    // Si no se encuentra la fecha en las notas, usar la fecha de ingreso como fallback
+                    fechaReferencia = s.fechaEntrega || s.fechaEntregaEstimada;
+                    diasTranscurridos = calcularDiasTranscurridos(fechaReferencia);
+                  }
+                } else {
+                  fechaReferencia = s.fechaEntrega || s.fechaEntregaEstimada;
+                  diasTranscurridos = calcularDiasTranscurridos(fechaReferencia);
+                }
+                
                 const estaVencido = diasTranscurridos > 5 && estadoNormalizado === 'Recibido';
 
                 let diasTexto = '—';
                 if (estadoNormalizado !== 'Entregado') {
-                  diasTexto =
-                    diasTranscurridos < 0
+                  if (esListoRetiro) {
+                    // 🆕 Mostrar días en azul cuando está listo para retiro (días desde que cambió a ese estado)
+                    diasTexto = diasTranscurridos < 0
+                      ? <span className="text-blue-400 font-semibold">{Math.abs(diasTranscurridos)} días restantes</span>
+                      : <span className="text-blue-400 font-semibold">{diasTranscurridos} días listo</span>;
+                  } else {
+                    diasTexto = diasTranscurridos < 0
                       ? <span className="text-emerald-400 font-semibold">{Math.abs(diasTranscurridos)} días restantes</span>
                       : <span className={estaVencido ? 'text-red-400 font-semibold' : 'text-gray-300'}>{diasTranscurridos} días</span>;
+                  }
                 }
 
                 return (
@@ -480,7 +569,7 @@ export default function ServicioPage({
                     `}
                   >
                     <td className="px-3 py-3 text-left font-semibold text-gray-100 text-xs">
-                      #{s.id}
+                      #{s.numeroServicio || s.id}
                     </td>
                     <td className="px-3 py-3 text-left text-gray-300 text-xs">
                       <div className="truncate max-w-[140px]" title={s.dispositivo}>
@@ -573,42 +662,58 @@ export default function ServicioPage({
                       })()}
                     </td>
                     <td className="px-3 py-3">
-                      <div className="flex justify-center gap-1 flex-wrap">
+                      <div className="flex justify-center gap-2 flex-wrap">
                         {/* Botón Ver */}
                         <button
                           onClick={() => onVerServicio?.(s)}
-                          className="p-1.5 rounded-md bg-slate-700/50 border border-slate-600 hover:bg-blue-600 hover:border-blue-500 transition-all duration-200 group"
+                          className="p-2.5 rounded-md bg-slate-700/50 border border-slate-600 hover:bg-blue-600 hover:border-blue-500 transition-all duration-200 group"
                           title="Ver detalles"
                         >
-                          <Eye size={14} className="text-gray-400 group-hover:text-white" />
+                          <Eye size={18} className="text-gray-400 group-hover:text-white" />
                         </button>
                         
                         {/*  Botón Editar */}
                         <button
-                          onClick={() => onEditarServicio?.(s)}
-                          className="p-1.5 rounded-md bg-slate-700/50 border border-slate-600 hover:bg-amber-600 hover:border-amber-500 transition-all duration-200 group"
-                          title="Editar servicio"
+                          onClick={() => handleAccionConToken(s, 'editar')}
+                          className={`p-2.5 rounded-md border transition-all duration-200 group ${
+                            requiereTokenAcceso(s.estado)
+                              ? 'bg-slate-700/30 border-slate-600/50 hover:bg-slate-700/50'
+                              : 'bg-slate-700/50 border-slate-600 hover:bg-amber-600 hover:border-amber-500'
+                          }`}
+                          title={requiereTokenAcceso(s.estado) ? 'Requiere autorización de administrador' : 'Editar servicio'}
                         >
-                          <Pencil size={14} className="text-gray-400 group-hover:text-white" />
+                          {requiereTokenAcceso(s.estado) ? (
+                            <Lock size={18} className="text-gray-500 group-hover:text-gray-400" />
+                          ) : (
+                            <Pencil size={18} className="text-gray-400 group-hover:text-white" />
+                          )}
                         </button>
 
                         {/*  Botón Historial */}
                         <button
-                          onClick={() => onVerHistorial?.(s)}
-                          className="p-1.5 rounded-md bg-slate-700/50 border border-slate-600 hover:bg-purple-600 hover:border-purple-500 transition-all duration-200 group"
-                          title="Ver historial técnico completo"
+                          onClick={() => handleAccionConToken(s, 'historial')}
+                          className={`p-2.5 rounded-md border transition-all duration-200 group ${
+                            requiereTokenAcceso(s.estado)
+                              ? 'bg-slate-700/30 border-slate-600/50 hover:bg-slate-700/50'
+                              : 'bg-slate-700/50 border-slate-600 hover:bg-purple-600 hover:border-purple-500'
+                          }`}
+                          title={requiereTokenAcceso(s.estado) ? 'Requiere autorización de administrador' : 'Ver historial técnico completo'}
                         >
-                          <History size={14} className="text-gray-400 group-hover:text-white" />
+                          {requiereTokenAcceso(s.estado) ? (
+                            <Lock size={18} className="text-gray-500 group-hover:text-gray-400" />
+                          ) : (
+                            <History size={18} className="text-gray-400 group-hover:text-white" />
+                          )}
                         </button>
                         
                         {/* Botón Eliminar - Solo para admin */}
                         {usuario?.rol === 'admin' && (
                           <button
                             onClick={() => onBorrarServicio?.(s)}
-                            className="p-1.5 rounded-md bg-slate-700/50 border border-slate-600 hover:bg-red-600 hover:border-red-500 transition-all duration-200 group"
+                            className="p-2.5 rounded-md bg-slate-700/50 border border-slate-600 hover:bg-red-600 hover:border-red-500 transition-all duration-200 group"
                             title="Eliminar servicio"
                           >
-                            <Trash2 size={14} className="text-gray-400 group-hover:text-white" />
+                            <Trash2 size={18} className="text-gray-400 group-hover:text-white" />
                           </button>
                         )}
                       </div>
@@ -667,6 +772,18 @@ export default function ServicioPage({
           </div>
         </div>
       </div>
+
+      {/* Modal de Token de Acceso */}
+      <TokenAccesoModal
+        isOpen={showTokenModal}
+        onClose={() => {
+          setShowTokenModal(false);
+          setServicioPendiente(null);
+          setAccionPendiente(null);
+        }}
+        onTokenValidado={handleTokenValidado}
+        accion={accionPendiente}
+      />
     </div>
   );
 }

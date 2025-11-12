@@ -33,21 +33,21 @@ const loadImage = (src) => {
 
 //  Capturar screenshot del modal
 // Buscar y reemplazar la función completa:
-export const captureModalScreenshot = async (modalRef, productName = 'producto', productData = {}) => {
+export const captureModalScreenshot = async (modalRef, productName = 'producto', productData = {}, tasaCambio = 37.50) => {
   try {
     toast.loading('Generando imagen...', { id: 'capture' });
 
-    // Crear canvas optimizado
+    // Crear canvas optimizado - Mayor resolución para mejor calidad
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // Dimensiones optimizadas para redes sociales
-    canvas.width = 720; ;
+    // Dimensiones optimizadas para redes sociales (aumentada para mejor calidad)
+    const escala = 2; // Escala 2x para mejor calidad
+    canvas.width = 720 * escala;
     canvas.height = 0;
     
-   // Fondo blanco
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // NO escalar aquí todavía, primero establecer altura
+    // ctx.scale(escala, escala); // Movido después de establecer altura
     
     // ===== CARGAR IMAGEN DEL PRODUCTO =====
     let productImage = null;
@@ -71,9 +71,13 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     // Header
     yPos += 80;
     
-    // Imagen del producto o ícono
-    const imgHeight = productImage ? 280 : 60;
-    yPos += imgHeight + 30;
+    // Imagen del producto (solo si existe) - Aumentada para hacerla más grande
+    const imgHeight = productImage ? 320 : 0; // Aumentado de 280 a 320
+    if (productImage) {
+      yPos += imgHeight + 30;
+    } else {
+      yPos += 20; // Espacio mínimo si no hay imagen
+    }
     
     // Nombre del producto (calcular líneas)
     const maxWidth = 680;
@@ -99,36 +103,38 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     lines.push(line);
     
     yPos += lines.length * 35 + 30; // Espacio para nombre
-    yPos += 100 + 30; // Caja de precio (más compacta)
+    yPos += 130 + 30; // Espacio para precio (sin contenedor)
     
-    // Información adicional (solo si existe)
-    const codigoBarras = document.querySelector('.font-mono')?.textContent;
-    const stockElement = document.querySelector('.text-2xl.font-bold.text-blue-700');
-    
-    if (codigoBarras) yPos += 25;
-    if (stockElement) yPos += 25;
-    yPos += 25; // IVA
+    // Información adicional (código y hora)
+    yPos += 30; // Espacio para código y hora
     
     yPos += 80; // Contacto (más compacto)
     yPos += 30; // Footer (más pequeño)
     
-    // Establecer altura del canvas
-    canvas.height = yPos;
-    console.log(' Canvas dinámico - Ancho:', canvas.width, 'Alto:', canvas.height);
+    // Establecer altura del canvas (ya escalado)
+    canvas.height = yPos * escala;
+    console.log(' Canvas dinámico - Ancho:', canvas.width, 'Alto:', canvas.height, 'Escala:', escala);
+    
+    // AHORA escalar el contexto después de establecer las dimensiones
+    ctx.scale(escala, escala);
     
     // ===== AHORA DIBUJAR TODO =====
     yPos = 0; // Resetear posición
     
-    // Fondo blanco
+    // Dimensiones sin escala (ya que el contexto está escalado)
+    const width = canvas.width / escala;
+    const height = canvas.height / escala;
+    
+    // Fondo blanco - PRIMERO dibujar el fondo completo
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
     
     // ===== HEADER CON LOGO =====
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 80);
+    const gradient = ctx.createLinearGradient(0, 0, width, 80);
     gradient.addColorStop(0, '#3B82F6');
     gradient.addColorStop(1, '#1D4ED8');
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, 80);
+    ctx.fillRect(0, 0, width, 80);
     
     // Cargar y dibujar logo
     try {
@@ -136,9 +142,9 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
       const logo = await loadImage(logoUrl);
       const logoSize = 55; //  Logo más grande (era 45)
       
-      // Calcular posiciones más hacia la izquierda
+      // Calcular posiciones más hacia la izquierda (usar dimensiones sin escala)
       const totalWidth = logoSize + 15 + 300; // logo + espacio + texto estimado
-      const startX = (canvas.width - totalWidth) / 2 - 40; //  Mover 40px a la izquierda
+      const startX = (width - totalWidth) / 2 - 40; //  Mover 40px a la izquierda
       
       const logoX = startX;
       const logoY = 12; // Ajustar para centrar mejor
@@ -159,20 +165,20 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
       
     } catch (error) {
       console.log(' No se pudo cargar el logo:', error.message);
-      // Fallback centrado
+      // Fallback centrado (usar dimensiones sin escala)
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 24px Arial, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('ELECTRO SHOP MORANDIN CA', canvas.width / 2, 35);
+      ctx.fillText('ELECTRO SHOP MORANDIN CA', width / 2, 35);
       ctx.font = '16px Arial, sans-serif';
-      ctx.fillText('            J-405903333 - GUANARE, VENEZUELA', canvas.width / 2, 60);
+      ctx.fillText('            J-405903333 - GUANARE, VENEZUELA', width / 2, 60);
     }
     
     yPos = 110; // Después del header
     
     // ===== IMAGEN DEL PRODUCTO =====
-    const imgWidth = 350;
-    const imgX = (canvas.width - imgWidth) / 2;
+    const imgWidth = 400; // Aumentado de 350 a 400 para hacerla más grande
+    const imgX = (width - imgWidth) / 2;
     
     if (productImage) {
       // Fondo para la imagen
@@ -199,18 +205,8 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
       ctx.drawImage(productImage, drawX, drawY, drawWidth, drawHeight);
       yPos += imgHeight + 50;
     } else {
-      // Sin imagen, agregar ícono más pequeño
-      const iconSize = 50;
-      const iconX = (canvas.width - iconSize) / 2;
-      
-      ctx.fillStyle = '#F3F4F6';
-      ctx.fillRect(iconX, yPos, iconSize, iconSize);
-      ctx.fillStyle = '#9CA3AF';
-      ctx.font = '32px Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('', canvas.width / 2, yPos + 38);
-      
-      yPos += iconSize + 20;
+      // Sin imagen, simplemente continuar sin mostrar placeholder innecesario
+      yPos += 20; // Solo un pequeño espacio antes del nombre
     }
     
     // ===== NOMBRE DEL PRODUCTO =====
@@ -220,87 +216,105 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
     
     // Dibujar líneas del producto
     lines.forEach((line, index) => {
-      ctx.fillText(line.trim(), canvas.width / 2, yPos + (index * 35));
+      ctx.fillText(line.trim(), width / 2, yPos + (index * 35));
     });
     
     yPos += lines.length * 35 + 5;
     
-    // ===== PRECIO PRINCIPAL (SIN USD) =====
+    // ===== PRECIO PRINCIPAL (SIN CONTENEDOR) =====
     
-    ctx.fillStyle = '#F0FDF4';
-    ctx.strokeStyle = '#22C55E';
-    ctx.lineWidth = 2;
-    const priceBoxHeight = 100; // Más compacto
-    ctx.fillRect(50, yPos, canvas.width - 100, priceBoxHeight);
-    ctx.strokeRect(50, yPos, canvas.width - 100, priceBoxHeight);
+    // Calcular precio desde los datos del producto (más confiable que leer del DOM)
+    const precioVentaUSD = parseFloat(productData.precio_venta || productData.precio || 0);
+    const precioVentaBs = precioVentaUSD * (tasaCambio || 37.50);
+    const precioTexto = precioVentaBs.toLocaleString('es-VE', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
     
-    // Precio en Bolívares
-    ctx.fillStyle = '#15803D';
-    ctx.font = 'bold 44px Arial, sans-serif';
+    console.log('💰 Precio calculado para imagen:', {
+      precioVentaUSD,
+      tasaCambio,
+      precioVentaBs,
+      precioTexto
+    });
+    
+    // Precio en Bolívares (sin contenedor, centrado) - Más grande y grueso
+    ctx.fillStyle = '#1D4ED8'; // Color del header (azul oscuro)
+    ctx.font = 'bold 52px Arial, sans-serif'; // Aumentado de 44px a 52px
+    ctx.textAlign = 'center';
+    ctx.fillText(precioTexto, width / 2, yPos + 45);
+    
+    ctx.font = 'bold 20px Arial, sans-serif'; // Aumentado de 18px a 20px
+    ctx.fillStyle = '#3B82F6'; // Color del header (azul)
+    ctx.fillText('BOLÍVARES', width / 2, yPos + 70);
+    
+    // IVA y Tasa en la misma fila centrada
+    const tasaTexto = `${(tasaCambio || 37.50).toFixed(2)} Bs/USD`;
+    const ivaTasaTexto = `Incluye IVA 16% • Tasa: ${tasaTexto}`;
+    ctx.font = '13px Arial, sans-serif';
+    ctx.fillStyle = '#3B82F6'; // Color del header (azul)
+    ctx.fillText(ivaTasaTexto, width / 2, yPos + 95);
+    
+    yPos += 130; // Espacio después del precio
+    
+    // ===== CÓDIGO Y HORA =====
+    ctx.fillStyle = '#6B7280';
+    ctx.font = '12px Arial, sans-serif';
     ctx.textAlign = 'center';
     
-    // Obtener precio del producto (desde el contexto)
-    const precioElement = document.querySelector('.text-6xl.font-bold.text-green-700');
-    const precioTexto = precioElement ? precioElement.textContent : '0.00';
+    // Obtener código del producto si existe
+    const codigoProducto = productData.codigo_interno || productData.codigo_barras || '';
+    const codigoTexto = codigoProducto ? `Código: ${codigoProducto}` : '';
     
-    ctx.fillText(precioTexto, canvas.width / 2, yPos + 40);
-    ctx.font = 'bold 18px Arial, sans-serif';
-    ctx.fillText('BOLÍVARES', canvas.width / 2, yPos + 60);
+    // Obtener hora actual
+    const ahora = new Date();
+    const horaTexto = ahora.toLocaleTimeString('es-VE', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
     
-    // Agregar "Incluye IVA" en el espacio libre
-    ctx.font = '12px Arial, sans-serif';
-    ctx.fillStyle = '#16A34A';
-    ctx.fillText(' Incluye IVA 16%', canvas.width / 2, yPos + 80);
-    
-    yPos += priceBoxHeight + 25; //  Menos espacio después del precio
-    
-    // ===== INFORMACIÓN ADICIONAL (más compacta) =====
-    ctx.fillStyle = '#374151';
-    ctx.font = '14px Arial, sans-serif';
-    ctx.textAlign = 'left';
-    
-    // Códigos (si existen)
-    if (codigoBarras) {
-      ctx.fillText(' Código: ' + codigoBarras, 60, yPos);
-      yPos += 25;
+    // Mostrar código y hora en una sola línea centrada
+    if (codigoTexto) {
+      ctx.fillText(`${codigoTexto} • ${horaTexto}`, width / 2, yPos);
+    } else {
+      ctx.fillText(horaTexto, width / 2, yPos);
     }
     
-    // Stock (si es producto)
-    if (stockElement) {
-      ctx.fillText(' Stock: ' + stockElement.textContent + ' unidades', 60, yPos);
-      yPos += 25;
-    }
-    
+    yPos += 25; // Espacio después de código/hora
     
     // ===== CONTACTO (más compacto) =====
     ctx.fillStyle = '#F9FAFB';
-    ctx.fillRect(0, yPos, canvas.width, 80);
+    ctx.fillRect(0, yPos, width, 80);
     
     ctx.fillStyle = '#4B5563';
     ctx.font = 'bold 16px Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(' CONSULTA DISPONIBILIDAD', canvas.width / 2, yPos + 25);
+    ctx.fillText('CONSULTA DISPONIBILIDAD', width / 2, yPos + 25);
     
+    // Mostrar WhatsApp e Instagram con sus datos
     ctx.font = '14px Arial, sans-serif';
-    ctx.fillText('WhatsApp: +58 257 251 1282', canvas.width / 2, yPos + 45);
-    ctx.fillText('Electro Shop Morandin CA - Tu tienda de confianza', canvas.width / 2, yPos + 65);
+    ctx.fillStyle = '#4B5563';
+    ctx.fillText('WhatsApp: +58 257 251 1282 • Instagram: @electroshopgre', width / 2, yPos + 50);
+    ctx.fillText('Electro Shop Morandin CA - Tu tienda de confianza', width / 2, yPos + 65);
     
     yPos += 80;
     
     // ===== FOOTER (más pequeño) =====
     ctx.fillStyle = '#E5E7EB';
-    ctx.fillRect(0, yPos, canvas.width, 30);
+    ctx.fillRect(0, yPos, width, 30);
     
     ctx.fillStyle = '#005effff';
     ctx.font = 'bold italic 12px Arial, sans-serif';
     ctx.textAlign = 'center';
     const fecha = new Date().toLocaleDateString('es-VE');
-    ctx.fillText(`Generado por SADES v1.0 el ${fecha}`, canvas.width / 2, yPos + 20);
+    ctx.fillText(`Generado por SADES v1.0 el ${fecha}`, width / 2, yPos + 20);
     
-    // Convertir a blob con debug
+    // Convertir a blob con debug - Calidad mejorada
     return new Promise((resolve) => {
+      const calidad = 0.95; // Calidad alta (95%)
       canvas.toBlob((blob) => {
-        const base64 = canvas.toDataURL('image/jpeg', 0.7);
+        const base64 = canvas.toDataURL('image/jpeg', calidad);
         
         // DEBUG de la imagen generada
         console.log(' Imagen generada:', {
@@ -308,12 +322,13 @@ export const captureModalScreenshot = async (modalRef, productName = 'producto',
           base64_length: base64.length,
           base64_starts_with: base64.substring(0, 50),
           canvas_width: canvas.width,
-          canvas_height: canvas.height
+          canvas_height: canvas.height,
+          calidad: calidad
         });
         
         toast.success('Imagen generada perfectamente', { id: 'capture' });
         resolve({ blob, base64, canvas });
-      }, 'image/jpeg', 0.7);
+      }, 'image/jpeg', calidad);
     });
 
   } catch (error) {

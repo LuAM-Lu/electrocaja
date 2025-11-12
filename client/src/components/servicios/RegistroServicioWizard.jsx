@@ -1,5 +1,5 @@
 // components/servicios/RegistroServicioWizard.jsx - COMPLETO CON MODO EDICIÓN
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X, User, Smartphone, ShoppingCart, CheckCircle,
   ChevronLeft, ChevronRight, Save, Edit3, Eye
@@ -8,12 +8,42 @@ import ClienteSelector from '../presupuesto/ClienteSelector';
 import ItemsTable from '../presupuesto/ItemsTable';
 import toast from '../../utils/toast.jsx';
 import { useServiciosStore } from '../../store/serviciosStore';
+import { useCajaStore } from '../../store/cajaStore';
+import { api } from '../../config/api';
 
 // Pasos del wizard
 import PasoDispositivo from './wizard/PasoDispositivo';
 import PasoModalidadPago from './wizard/PasoModalidadPago';
 import PasoConfirmacion from './wizard/PasoConfirmacion';
+import ServicioProcesandoModal from './ServicioProcesandoModal';
 import { CreditCard } from 'lucide-react';
+import { delay, waitForRef } from '../../utils/saleProcessingHelpers';
+import { PROCESSING_CONFIG } from '../../constants/processingConstants';
+
+// 🔒 FUNCIONES PARA GESTIÓN DE STOCK (copiadas de IngresoModal.jsx)
+const liberarStockAPI = async (productoId, sesionId, cantidad = null) => {
+  try {
+    const payload = { productoId, sesionId };
+    if (cantidad !== null) {
+      payload.cantidad = cantidad;
+    }
+    
+    const response = await api.post('/ventas/stock/liberar', payload);
+    
+    if (response.data.success) {
+      console.log('✅ Stock liberado en backend:', response.data.data);
+      return response.data.data;
+    }
+  } catch (error) {
+    console.error('❌ Error liberando stock:', error);
+    throw error;
+  }
+};
+
+// Generar ID de sesión único
+const generarSesionId = () => {
+  return `sesion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
 
 const PASOS = [
   {
@@ -59,10 +89,28 @@ export default function RegistroServicioWizard({
 }) {
   // Store de servicios
   const { crearServicio, actualizarServicio } = useServiciosStore();
+  // Obtener tasa de cambio del store de caja
+  const { tasaCambio } = useCajaStore();
+
+  // 🆕 ID de sesión del backend (para reserva de stock)
+  const [sesionId] = useState(() => {
+    const id = generarSesionId();
+    return id;
+  });
 
   // Inicializar en paso 3 si es modo edición
   const [pasoActual, setPasoActual] = useState(modoEdicion ? 3 : 1);
   const [loading, setLoading] = useState(false);
+  const [servicioCreado, setServicioCreado] = useState(null);
+  const [opcionesProcesamiento, setOpcionesProcesamiento] = useState({
+    enviarWhatsapp: false,
+    imprimir: true // 🆕 Por defecto seleccionado
+  });
+  
+  // ✅ ESTADO PARA MODAL DE PROCESAMIENTO DE SERVICIO
+  const [showProcesandoModal, setShowProcesandoModal] = useState(false);
+  const procesandoModalRef = useRef(null);
+  const [opcionesProcesamientoParaModal, setOpcionesProcesamientoParaModal] = useState(null);
 
   // Estados del wizard con datos pre-cargados si es modo edición
   const [datosServicio, setDatosServicio] = useState(() => {
@@ -287,10 +335,45 @@ export default function RegistroServicioWizard({
     }
   };
 
-  const siguientePaso = () => {
-    if (validarPaso(pasoActual)) {
-      if (pasoActual < PASOS.length) {
-        // En modo edición, saltar del paso 3 al paso 5 (omitir pago)
+  // 🔒 RESERVAR TODO EL STOCK AL HACER "SIGUIENTE" (del paso 3 al 4)
+  const reservarTodoElStockAlSiguiente = async () => {
+    setLoading(true);
+    try {
+      console.log('🔒 Reservando stock completo al hacer "Siguiente" en paso 3...');
+      
+      // Filtrar solo items con cantidad > 0 y que necesiten reserva
+      const itemsParaReservar = datosServicio.items
+        .filter(item => item.cantidad > 0 && item.productoId && !item.esPersonalizado)
+        .map(item => ({
+          productoId: item.productoId,
+          cantidad: item.cantidad,
+          descripcion: item.descripcion
+        }));
+      
+      if (itemsParaReservar.length === 0) {
+        // No hay items físicos para reservar, continuar normalmente
+        if (modoEdicion && pasoActual === 3) {
+          setPasoActual(5);
+        } else {
+          setPasoActual(pasoActual + 1);
+        }
+        setErroresPaso({});
+        return;
+      }
+      
+      console.log(`🔒 Intentando reservar ${itemsParaReservar.length} productos:`, itemsParaReservar);
+      
+      // Llamar API para reservar múltiples productos
+      const response = await api.post('/ventas/stock/reservar', {
+        items: itemsParaReservar,
+        sesionId: sesionId
+      });
+      
+      if (response.data.success) {
+        console.log('✅ Stock reservado exitosamente, navegando al siguiente paso');
+        toast.success(`Stock reservado: ${response.data.data.reservadosExitosamente || itemsParaReservar.length} productos`);
+        
+        // Avanzar al siguiente paso
         if (modoEdicion && pasoActual === 3) {
           setPasoActual(5);
         } else {
@@ -298,10 +381,90 @@ export default function RegistroServicioWizard({
         }
         setErroresPaso({});
       }
+      
+    } catch (error) {
+      console.error('❌ Error reservando stock:', error);
+      
+      if (error.response?.status === 409 && error.response?.data?.errors) {
+        // Stock no disponible - mostrar errores
+        const conflictos = Array.isArray(error.response.data.errors) 
+          ? error.response.data.errors 
+          : Object.values(error.response.data.errors || {});
+        
+        const mensajesError = conflictos.map(c => 
+          `${c.producto || c.descripcion}: Stock insuficiente (Disponible: ${c.stockDisponible || 0}, Solicitado: ${c.stockSolicitado || 0})`
+        ).join('\n');
+        
+        toast.error(`Error al reservar stock:\n${mensajesError}`, {
+          duration: 6000
+        });
+      } else {
+        toast.error(`Error al reservar stock: ${error.response?.data?.message || error.message}`);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const pasoAnterior = () => {
+  const siguientePaso = async () => {
+    if (validarPaso(pasoActual)) {
+      if (pasoActual < PASOS.length) {
+        // 🔒 RESERVAR STOCK al ir del paso 3 (Items) al paso 4 (Pago)
+        if (pasoActual === 3 && datosServicio.items.length > 0) {
+          await reservarTodoElStockAlSiguiente();
+        } else {
+          // En modo edición, saltar del paso 3 al paso 5 (omitir pago)
+          if (modoEdicion && pasoActual === 3) {
+            setPasoActual(5);
+          } else {
+            setPasoActual(pasoActual + 1);
+          }
+          setErroresPaso({});
+        }
+      }
+    }
+  };
+
+  // 🔓 LIBERAR TODO EL STOCK AL HACER "ATRÁS" (del paso 4 al paso 3)
+  const liberarTodoElStockAlAtras = async () => {
+    try {
+      console.log('🔓 Liberando stock al regresar al paso 3...');
+      
+      // Filtrar items que tienen stock reservado
+      const itemsConReserva = datosServicio.items.filter(item => 
+        item.productoId && !item.esPersonalizado && item.cantidad > 0
+      );
+      
+      if (itemsConReserva.length === 0) {
+        setPasoActual(3);
+        setErroresPaso({});
+        return;
+      }
+      
+      // Liberar stock de cada producto
+      for (const item of itemsConReserva) {
+        try {
+          await liberarStockAPI(item.productoId, sesionId);
+          console.log(`🔓 Stock liberado: ${item.descripcion}`);
+        } catch (error) {
+          console.error(`❌ Error liberando ${item.descripcion}:`, error);
+        }
+      }
+      
+      setPasoActual(3);
+      setErroresPaso({});
+      toast.success(`Stock liberado: ${itemsConReserva.length} productos`);
+      
+    } catch (error) {
+      console.error('❌ Error liberando stock al retroceder:', error);
+      // Aún así permitir navegación
+      setPasoActual(3);
+      setErroresPaso({});
+      toast.warning('Navegación permitida, pero revisa las reservas');
+    }
+  };
+
+  const pasoAnterior = async () => {
     if (modoEdicion) {
       // En modo edición, solo permitir retroceder entre pasos 3 y 5
       if (pasoActual === 5) {
@@ -311,11 +474,46 @@ export default function RegistroServicioWizard({
     } else {
       // Modo normal
       if (pasoActual > 1) {
-        setPasoActual(pasoActual - 1);
-        setErroresPaso({});
+        // 🔓 LIBERAR STOCK al ir del paso 4 (Pago) al paso 3 (Items)
+        if (pasoActual === 4 && datosServicio.items.length > 0) {
+          await liberarTodoElStockAlAtras();
+        } else {
+          setPasoActual(pasoActual - 1);
+          setErroresPaso({});
+        }
       }
     }
   };
+
+  // 🧹 FUNCIÓN PARA LIBERAR STOCK AL CERRAR
+  const liberarStockAlCerrar = async () => {
+    try {
+      const itemsConReserva = datosServicio.items.filter(item => 
+        item.productoId && !item.esPersonalizado && item.cantidad > 0
+      );
+      
+      if (itemsConReserva.length === 0) return;
+      
+      for (const item of itemsConReserva) {
+        try {
+          await liberarStockAPI(item.productoId, sesionId);
+          console.log(`🔓 Stock liberado al cerrar: ${item.descripcion}`);
+        } catch (error) {
+          console.error(`❌ Error liberando ${item.descripcion}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error en limpieza de reservas:', error);
+    }
+  };
+
+  // 🧹 LIMPIAR RESERVAS AL CERRAR MODAL SIN GUARDAR
+  useEffect(() => {
+    if (!isOpen && datosServicio.items.length > 0 && !servicioCreado) {
+      // Liberar stock cuando el modal se cierra sin crear servicio
+      liberarStockAlCerrar();
+    }
+  }, [isOpen]); // Cuando isOpen cambia a false
 
   // Actualizar datos del servicio
   const actualizarDatos = (seccion, datos) => {
@@ -329,13 +527,45 @@ export default function RegistroServicioWizard({
   const finalizarAccion = async () => {
     if (!validarPaso(5)) return;
 
+    // 🆕 Validar que al menos una opción de procesamiento esté seleccionada (solo en modo creación)
+    if (!modoEdicion) {
+      if (!opcionesProcesamiento.imprimir && !opcionesProcesamiento.enviarWhatsapp) {
+        toast.error('Debes seleccionar al menos una opción de procesamiento (Imprimir Ticket Térmico o Enviar por WhatsApp)');
+        return;
+      }
+    }
+
     setLoading(true);
+    
+    // ✅ ABRIR MODAL DE PROCESAMIENTO (solo en modo creación)
+    if (!modoEdicion) {
+      const opcionesProcesamientoCapturadas = { ...opcionesProcesamiento };
+      setShowProcesandoModal(true);
+      setOpcionesProcesamientoParaModal(opcionesProcesamientoCapturadas);
+      
+      // ✅ ESPERAR A QUE EL REF ESTÉ DISPONIBLE
+      try {
+        await waitForRef(procesandoModalRef, PROCESSING_CONFIG.MAX_REF_RETRIES);
+      } catch (error) {
+        setShowProcesandoModal(false);
+        setLoading(false);
+        toast.error('Error al inicializar el modal de procesamiento');
+        return;
+      }
+      
+      // Avanzar paso de validación
+      await delay(PROCESSING_CONFIG.STEP_DELAYS.VALIDATION);
+      if (procesandoModalRef.current) {
+        procesandoModalRef.current.avanzarPaso('validando');
+      }
+    }
+    
     try {
       if (modoEdicion) {
         // 🔧 MODO EDICIÓN - ACTUALIZAR SERVICIO EXISTENTE VÍA API
         const datosActualizacion = {
           items: datosServicio.items.map(item => ({
-            productoId: item.producto_id || item.productoId || null, // ✅ Enviar como productoId (backend espera este formato)
+            productoId: item.producto_id || item.productoId || null,
             descripcion: item.descripcion,
             cantidad: item.cantidad,
             precio_unitario: item.precio_unitario,
@@ -355,6 +585,12 @@ export default function RegistroServicioWizard({
         }
 
       } else {
+        // Avanzar paso de creación
+        await delay(PROCESSING_CONFIG.STEP_DELAYS.PROCESSING);
+        if (procesandoModalRef.current) {
+          procesandoModalRef.current.avanzarPaso('creando');
+        }
+        
         // 🔧 MODO CREACIÓN - CREAR NUEVO SERVICIO VÍA API
         const datosCreacion = {
           // Cliente
@@ -390,41 +626,84 @@ export default function RegistroServicioWizard({
 
           // Items/Productos
           items: datosServicio.items.map(item => ({
-            producto_id: item.producto_id || null,
+            productoId: item.productoId || item.producto_id || null, // 🆕 Buscar productoId también
+            producto_id: item.productoId || item.producto_id || null, // Mantener compatibilidad
             descripcion: item.descripcion,
             cantidad: item.cantidad,
-            precio_unitario: item.precio_unitario
+            precio_unitario: item.precio_unitario,
+            esPersonalizado: item.esPersonalizado || false
           })),
 
           // Modalidad de pago
           modalidadPago: datosServicio.modalidadPago,
-          pagoInicial: datosServicio.pagoInicial || null
+          pagoInicial: datosServicio.pagoInicial || null,
+          
+          // 🆕 Sesión ID para liberar reservas antes de descontar stock
+          sesionId: sesionId
         };
 
         const nuevoServicio = await crearServicio(datosCreacion);
-
-        toast.success('✅ Orden de servicio creada exitosamente');
+        
+        // ✅ El backend ya liberó las reservas y descontó el stock automáticamente
+        // No es necesario liberar reservas aquí
+        
+        // 🆕 Guardar servicio creado para que PasoConfirmacion ejecute las acciones
+        setServicioCreado(nuevoServicio);
+        
         if (onServicioCreado) {
           onServicioCreado(nuevoServicio);
         }
       }
 
-      onClose();
-
     } catch (error) {
       console.error('Error procesando servicio:', error);
+      setShowProcesandoModal(false);
       toast.error(error.message || 'Error al procesar la solicitud');
     } finally {
       setLoading(false);
     }
   };
 
+  // 🆕 Callback cuando se completan las acciones en PasoConfirmacion
+  const handleAccionesCompletadas = async () => {
+    // Avanzar paso final y completar
+    await delay(PROCESSING_CONFIG.STEP_DELAYS.FINALIZATION);
+    
+    if (procesandoModalRef.current) {
+      procesandoModalRef.current.avanzarPaso('finalizando');
+      
+      // Esperar antes de completar
+      await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION);
+      
+      if (procesandoModalRef.current) {
+        procesandoModalRef.current.completar();
+      }
+      
+      // Esperar para mostrar mensaje de éxito
+      setTimeout(() => {
+        setShowProcesandoModal(false);
+        // Cerrar el wizard después de un breve delay
+        setTimeout(() => {
+          onClose();
+        }, 500);
+      }, PROCESSING_CONFIG.STEP_DELAYS.SUCCESS_MESSAGE);
+    } else {
+      // Fallback si el modal no está disponible
+      setTimeout(() => {
+        setShowProcesandoModal(false);
+        onClose();
+      }, 2000);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    // Z-INDEX ALTO PARA ESTAR SOBRE TODO
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-[100] p-4">
-      <div className="relative bg-gray-900 rounded-2xl w-full max-w-6xl h-[95vh] shadow-2xl overflow-hidden flex flex-col border border-gray-700">
+    <>
+      {/* ✅ OCULTAR WIZARD CUANDO SE ESTÁ PROCESANDO */}
+      {!showProcesandoModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-[100] p-4">
+          <div className="relative bg-gray-900 rounded-2xl w-full max-w-6xl h-[95vh] shadow-2xl overflow-hidden flex flex-col border border-gray-700">
 
         {/* HEADER DEL WIZARD */}
         <div className={`relative overflow-hidden flex-shrink-0 ${
@@ -453,7 +732,13 @@ export default function RegistroServicioWizard({
               </div>
 
               <button
-                onClick={onClose}
+                onClick={async () => {
+                  // Liberar stock antes de cerrar
+                  if (!servicioCreado && datosServicio.items.length > 0) {
+                    await liberarStockAlCerrar();
+                  }
+                  onClose();
+                }}
                 className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
                 disabled={loading}
               >
@@ -596,6 +881,11 @@ export default function RegistroServicioWizard({
                 title="Items del Servicio"
                 showAddCustom={true}
                 maxVisibleItems={6}
+                tasaCambio={tasaCambio || 38.20}
+                mostrarStockDisponible={true}
+                reservarStock={true}
+                validarStockAntes={true}
+                sesionId={sesionId}
               />
               {erroresPaso.items && (
                 <p className="text-red-400 text-sm mt-2"> {erroresPaso.items}</p>
@@ -638,6 +928,11 @@ export default function RegistroServicioWizard({
                 onActualizar={actualizarDatos}
                 loading={loading}
                 modoEdicion={modoEdicion}
+                servicioCreado={servicioCreado}
+                onAccionesCompletadas={handleAccionesCompletadas}
+                onOpcionesCambio={setOpcionesProcesamiento}
+                procesandoModalRef={procesandoModalRef}
+                opcionesProcesamiento={opcionesProcesamientoParaModal || opcionesProcesamiento}
               />
             </div>
           )}
@@ -702,7 +997,21 @@ export default function RegistroServicioWizard({
             )}
           </div>
         </div>
+        </div>
       </div>
-    </div>
+      )}
+      
+      {/* Modal de Procesamiento de Servicio - SIEMPRE VISIBLE CUANDO SE ESTÁ PROCESANDO */}
+      {showProcesandoModal && (
+        <ServicioProcesandoModal
+          ref={procesandoModalRef}
+          isOpen={showProcesandoModal}
+          opcionesProcesamiento={opcionesProcesamientoParaModal || opcionesProcesamiento}
+          onCompletado={() => {
+            // La redirección se maneja en handleAccionesCompletadas
+          }}
+        />
+      )}
+    </>
   );
 }

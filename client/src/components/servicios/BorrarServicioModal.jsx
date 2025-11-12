@@ -135,7 +135,7 @@ export default function BorrarServicioModal({ servicio, onClose, onConfirmar }) 
                 <div>
                   <h1 className="text-lg font-bold">Eliminar Servicio</h1>
                   <p className="text-red-100 text-sm">
-                    Orden #{servicio.id} • Acción irreversible
+                    Orden #{servicio.numeroServicio || servicio.id} • Acción irreversible
                   </p>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 import React from 'react';
 import {
   Inbox, Stethoscope, Clock, Wrench,
-  CheckCircle, PackageCheck, MessageCircle, Flag 
+  CheckCircle, PackageCheck, Flag 
 } from 'lucide-react';
 
 const estados = {

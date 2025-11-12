@@ -1,35 +1,33 @@
 // components/servicios/ServiciosFloatingActions.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { PlusCircle, Wrench, Settings, FileText, BarChart3, Wifi } from 'lucide-react';
+import { Menu, PlusCircle, Wrench, Settings, BarChart3 } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 
-const ServiciosFloatingActions = ({ onNewService, onSettings, onReports, onPruebaConexion }) => {
+const ServiciosFloatingActions = ({ onNewService, onSettings, onReports }) => {
+  const { usuario } = useAuthStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = useRef(null);
 
+  // Orden invertido para que "Nueva Orden" aparezca primero (arriba) con flex-col-reverse
   const actions = [
     {
-      icon: <Settings className="h-5 w-5" />,
-      label: 'Configuración',
-      onClick: onSettings,
-      color: 'from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800'
-    },
-    {
-      icon: <BarChart3 className="h-5 w-5" />,
+      icon: <BarChart3 className="h-6 w-6" />,
       label: 'Reportes',
       onClick: onReports,
       color: 'from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800'
     },
+    // Solo mostrar botón Técnico si el usuario es admin
+    ...(usuario?.rol === 'admin' ? [{
+      icon: <Wrench className="h-6 w-6" />,
+      label: 'Técnico',
+      onClick: onSettings,
+      color: 'from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800'
+    }] : []),
     {
-      icon: <FileText className="h-5 w-5" />,
-      label: 'Historial',
-      onClick: () => console.log('Historial'),
-      color: 'from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
-    },
-    {
-      icon: <Wifi className="h-5 w-5" />,
-      label: ' Prueba Conexión Nube',
-      onClick: onPruebaConexion,
-      color: 'from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
+      icon: <PlusCircle className="h-6 w-6" />,
+      label: 'Nueva Orden',
+      onClick: onNewService,
+      color: 'from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800'
     }
   ];
 
@@ -49,23 +47,18 @@ const ServiciosFloatingActions = ({ onNewService, onSettings, onReports, onPrueb
     }
   }, [isExpanded]);
 
-  //  TOGGLE EN LUGAR DE HOVER
+  //  TOGGLE DEL MENÚ
   const handleMainButtonClick = (e) => {
     e.stopPropagation();
-    if (isExpanded) {
-      // Si está expandido, crear nueva orden
-      onNewService();
-      setIsExpanded(false);
-    } else {
-      // Si está cerrado, expandir
-      setIsExpanded(true);
-    }
+    setIsExpanded(!isExpanded);
   };
 
   //  MANEJAR CLIC EN ACCIÓN SECUNDARIA
   const handleActionClick = (action, e) => {
     e.stopPropagation();
-    action.onClick();
+    if (action.onClick) {
+      action.onClick();
+    }
     setIsExpanded(false); // Cerrar después de ejecutar acción
   };
 
@@ -85,7 +78,7 @@ const ServiciosFloatingActions = ({ onNewService, onSettings, onReports, onPrueb
             {/* Botón */}
             <button
               onClick={(e) => handleActionClick(action, e)}
-              className={`p-3 rounded-full bg-gradient-to-r ${action.color} text-gray-100 shadow-lg hover:shadow-2xl transition-all duration-200 hover:scale-110`}
+              className={`w-14 h-14 rounded-full bg-gradient-to-r ${action.color} text-white shadow-lg hover:shadow-2xl transition-all duration-200 hover:scale-110 flex items-center justify-center`}
             >
               {action.icon}
             </button>
@@ -93,13 +86,13 @@ const ServiciosFloatingActions = ({ onNewService, onSettings, onReports, onPrueb
         ))}
       </div>
 
-      {/* Botón principal */}
+      {/* Botón principal - Menú hamburguesa */}
       <div className="flex items-center space-x-3 group">
         {/* Tooltip del botón principal */}
         <span className={`bg-gray-900 text-gray-100 px-3 py-2 rounded-lg text-sm font-medium transition-opacity whitespace-nowrap ${
           isExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}>
-          {isExpanded ? 'Nueva Orden de Servicio' : 'Menú de Acciones'}
+          {isExpanded ? 'Cerrar Menú' : 'Menú de Acciones'}
         </span>
        
         {/* Botón principal */}
@@ -107,10 +100,9 @@ const ServiciosFloatingActions = ({ onNewService, onSettings, onReports, onPrueb
           onClick={handleMainButtonClick}
           className="p-4 rounded-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-gray-100 shadow-2xl hover:shadow-[0_0_30px_rgba(71,85,105,0.6)] transition-all duration-300 hover:scale-110 active:scale-95 group relative"
         >
-          <PlusCircle 
-            size={24} 
-            className={`transition-transform duration-300 ${
-              isExpanded ? 'rotate-45' : 'rotate-0'
+          <Menu 
+            className={`h-8 w-8 transition-transform duration-300 ${
+              isExpanded ? 'rotate-90' : 'rotate-0'
             }`} 
           />
          

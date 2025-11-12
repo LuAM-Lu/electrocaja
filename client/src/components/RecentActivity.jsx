@@ -70,7 +70,7 @@ const obtenerMontosOriginales = (transaccion) => {
  };
 
  return (
-   <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+   <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col w-full">
      {/* Header estilo CajaStatus/Summary */}
      <div className={`px-4 py-3 ${
        cajaActual 
