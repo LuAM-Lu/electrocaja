@@ -1317,12 +1317,21 @@ const crearTransaccion = async (req, res) => {
 
     // 📡 Notificar via Socket.IO
     if (req.io) {
+      // Emitir evento nueva_transaccion (para servicios técnicos y transacciones normales)
       req.io.emit('nueva_transaccion', {
         transaccion: transaccionConvertida,
         usuario: req.user?.nombre || req.user?.email,
         timestamp: new Date().toISOString()
       });
-      console.log('📡 Notificación Socket.IO enviada - nueva transacción');
+      
+      // También emitir transaction-added para compatibilidad con listeners antiguos
+      req.io.broadcast.emit('transaction-added', {
+        transaccion: transaccionConvertida,
+        usuario: req.user?.nombre || req.user?.email,
+        timestamp: new Date().toISOString()
+      });
+      
+      console.log('📡 Notificaciones Socket.IO enviadas - nueva transacción');
     }
 
     sendSuccess(res, transaccionConvertida, 'Transacción creada correctamente');
@@ -1941,6 +1950,40 @@ const obtenerDetalleTransaccion = async (req, res) => {
             email: true,
             rol: true
           }
+        },
+        // 🔧 SERVICIO TÉCNICO (si existe)
+        servicioTecnico: {
+          select: {
+            id: true,
+            numeroServicio: true,
+            dispositivoMarca: true,
+            dispositivoModelo: true,
+            dispositivoImei: true,
+            problemas: true, // Array de problemas (requerido)
+            estado: true,
+            totalEstimado: true,
+            totalPagado: true,
+            saldoPendiente: true,
+            clienteNombre: true,
+            clienteTelefono: true,
+            clienteCedulaRif: true,
+            items: {
+              select: {
+                id: true,
+                descripcion: true,
+                cantidad: true,
+                precioUnitario: true,
+                subtotal: true,
+                producto: {
+                  select: {
+                    id: true,
+                    codigoBarras: true,
+                    tipo: true
+                  }
+                }
+              }
+            }
+          }
         }
       }
     });
@@ -1986,23 +2029,39 @@ const generarPDFTemporal = async (req, res) => {
       montosFinales,
       diferencias,
       ceoAutorizado,
-      hayDiferencias: diferencias && (diferencias.bs !== 0 || diferencias.usd !== 0 || diferencias.pagoMovil !== 0)
+      hayDiferencias: diferencias && (diferencias.bs !== 0 || diferencias.usd !== 0 || diferencias.pagoMovil !== 0),
+      esPendiente: req.body.esPendiente,
+      cajaId: caja?.id
     });
 
-    // Verificar que hay una caja abierta
-    const cajaActual = await prisma.caja.findFirst({
-      where: { 
-        estado: {
-          in: ['ABIERTA', 'PENDIENTE_CIERRE_FISICO']
-        }
+    // ✅ Si es caja pendiente, usar el ID de la caja que viene en el request
+    let cajaActual;
+    if (req.body.esPendiente && caja?.id) {
+      cajaActual = await prisma.caja.findUnique({
+        where: { id: parseInt(caja.id) }
+      });
+      
+      if (!cajaActual) {
+        return sendError(res, `No se encontró la caja pendiente con ID ${caja.id}`, 400);
       }
-    });
+    } else {
+      // Verificar que hay una caja abierta (para cajas normales)
+      cajaActual = await prisma.caja.findFirst({
+        where: { 
+          estado: {
+            in: ['ABIERTA', 'PENDIENTE_CIERRE_FISICO']
+          }
+        }
+      });
 
-    if (!cajaActual) {
-      return sendError(res, 'No hay una caja abierta', 400);
+      if (!cajaActual) {
+        return sendError(res, 'No hay una caja abierta', 400);
+      }
     }
 
     // Obtener transacciones completas para el PDF
+    // ✅ Siempre obtener desde la BD para asegurar que tengan todos los includes necesarios (pagos, items, productos)
+    // Esto garantiza que el PDF tenga la misma estructura tanto para cajas normales como pendientes
     const transaccionesCompletas = await prisma.transaccion.findMany({
       where: { cajaId: cajaActual.id },
       include: {
@@ -2029,28 +2088,83 @@ const generarPDFTemporal = async (req, res) => {
     });
 
     // Preparar datos completos para el PDF CON DIFERENCIAS
-    const datosCompletos = {
-      caja: {
+    // ✅ Normalizar datos para que cajas pendientes y normales tengan la misma estructura
+    let datosCajaNormalizados;
+    
+    if (req.body.esPendiente && caja) {
+      // ✅ Normalizar datos de caja pendiente para que coincidan con cierre normal
+      const montoEsperadoBs = (decimalToNumber(cajaActual.totalIngresosBs) - decimalToNumber(cajaActual.totalEgresosBs)) + decimalToNumber(cajaActual.montoInicialBs);
+      const montoEsperadoUsd = (decimalToNumber(cajaActual.totalIngresosUsd) - decimalToNumber(cajaActual.totalEgresosUsd)) + decimalToNumber(cajaActual.montoInicialUsd);
+      const montoEsperadoPagoMovil = decimalToNumber(cajaActual.totalPagoMovil) + decimalToNumber(cajaActual.montoInicialPagoMovil);
+      
+      datosCajaNormalizados = {
+        ...cajaActual,
+        fecha: caja.fecha || (cajaActual.fecha ? new Date(cajaActual.fecha).toLocaleDateString('es-VE') : new Date().toLocaleDateString('es-VE')),
+        horaApertura: caja.horaApertura || cajaActual.horaApertura || '08:00',
+        horaCierre: caja.horaCierre || new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+        
+        // Montos iniciales
+        montoInicialBs: caja.montoInicialBs ?? decimalToNumber(cajaActual.montoInicialBs),
+        montoInicialUsd: caja.montoInicialUsd ?? decimalToNumber(cajaActual.montoInicialUsd),
+        montoInicialPagoMovil: caja.montoInicialPagoMovil ?? decimalToNumber(cajaActual.montoInicialPagoMovil),
+        
+        // Totales del día
+        totalIngresosBs: caja.totalIngresosBs ?? decimalToNumber(cajaActual.totalIngresosBs),
+        totalEgresosBs: caja.totalEgresosBs ?? decimalToNumber(cajaActual.totalEgresosBs),
+        totalIngresosUsd: caja.totalIngresosUsd ?? decimalToNumber(cajaActual.totalIngresosUsd),
+        totalEgresosUsd: caja.totalEgresosUsd ?? decimalToNumber(cajaActual.totalEgresosUsd),
+        totalPagoMovil: caja.totalPagoMovil ?? decimalToNumber(cajaActual.totalPagoMovil),
+        
+        // Montos esperados (calculados igual que en cierre normal)
+        montoEsperadoBs: montoEsperadoBs,
+        montoEsperadoUsd: montoEsperadoUsd,
+        montoEsperadoPagoMovil: montoEsperadoPagoMovil,
+        
+        // Montos finales del conteo físico
+        montoFinalBs: montosFinales?.bs ?? caja.montoFinalBs ?? 0,
+        montoFinalUsd: montosFinales?.usd ?? caja.montoFinalUsd ?? 0,
+        montoFinalPagoMovil: montosFinales?.pagoMovil ?? caja.montoFinalPagoMovil ?? 0,
+        
+        esCajaPendiente: true
+      };
+    } else {
+      // Usar datos de la BD para cajas normales
+      const montoEsperadoBs = (decimalToNumber(cajaActual.totalIngresosBs) - decimalToNumber(cajaActual.totalEgresosBs)) + decimalToNumber(cajaActual.montoInicialBs);
+      const montoEsperadoUsd = (decimalToNumber(cajaActual.totalIngresosUsd) - decimalToNumber(cajaActual.totalEgresosUsd)) + decimalToNumber(cajaActual.montoInicialUsd);
+      const montoEsperadoPagoMovil = decimalToNumber(cajaActual.totalPagoMovil) + decimalToNumber(cajaActual.montoInicialPagoMovil);
+      
+      datosCajaNormalizados = {
         ...cajaActual,
         fecha: cajaActual.fecha ? new Date(cajaActual.fecha).toLocaleDateString('es-VE') : new Date().toLocaleDateString('es-VE'),
         horaApertura: cajaActual.horaApertura || '08:00',
         horaCierre: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
         
-        // 🔥 USAR MONTOS DESDE EL FRONTEND
-        montoInicialBs: decimalToNumber(cajaActual.montoInicialBs),
-        montoInicialUsd: decimalToNumber(cajaActual.montoInicialUsd),
-        montoInicialPagoMovil: decimalToNumber(cajaActual.montoInicialPagoMovil),
+        // Montos iniciales
+        montoInicialBs: montosFinales?.montoInicialBs ?? decimalToNumber(cajaActual.montoInicialBs),
+        montoInicialUsd: montosFinales?.montoInicialUsd ?? decimalToNumber(cajaActual.montoInicialUsd),
+        montoInicialPagoMovil: montosFinales?.montoInicialPagoMovil ?? decimalToNumber(cajaActual.montoInicialPagoMovil),
+        
+        // Totales del día
         totalIngresosBs: decimalToNumber(cajaActual.totalIngresosBs),
         totalEgresosBs: decimalToNumber(cajaActual.totalEgresosBs),
         totalIngresosUsd: decimalToNumber(cajaActual.totalIngresosUsd),
         totalEgresosUsd: decimalToNumber(cajaActual.totalEgresosUsd),
         totalPagoMovil: decimalToNumber(cajaActual.totalPagoMovil),
         
+        // Montos esperados (calculados igual que en cierre normal)
+        montoEsperadoBs: montoEsperadoBs,
+        montoEsperadoUsd: montoEsperadoUsd,
+        montoEsperadoPagoMovil: montoEsperadoPagoMovil,
+        
         // Montos finales del conteo
         montoFinalBs: montosFinales?.bs || 0,
         montoFinalUsd: montosFinales?.usd || 0,
         montoFinalPagoMovil: montosFinales?.pagoMovil || 0
-      },
+      };
+    }
+    
+    const datosCompletos = {
+      caja: datosCajaNormalizados,
       transacciones: transaccionesCompletas.map(t => ({
         ...t,
         totalBs: decimalToNumber(t.totalBs),

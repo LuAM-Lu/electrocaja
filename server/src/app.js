@@ -20,6 +20,7 @@ const proveedoresRoutes = require('./routes/proveedores');
 const auditoriaRoutes = require('./routes/auditoria');
 const cronRoutes = require('./routes/cronRoutes');
 const serviciosRoutes = require('./routes/servicios');
+const discountRequestsRoutes = require('./routes/discountRequests');
 
 const app = express();
 
@@ -338,6 +339,7 @@ app.use('/api/cajas', cajaRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/whatsapp', require('./routes/whatsapp'));
 app.use('/api/inventory', require('./routes/inventory'));
+app.use('/api/discount-requests', require('./routes/discountRequests')); // 🆕 RUTAS DE SOLICITUDES DE DESCUENTO
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/proveedores', proveedoresRoutes);
 app.use('/api/ventas', require('./routes/ventas')); // 🆕 RUTAS DE VENTAS

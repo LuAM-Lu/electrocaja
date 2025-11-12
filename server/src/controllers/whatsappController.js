@@ -357,6 +357,85 @@ const reconectar = async (req, res) => {
   }
 };
 
+// ✅ NUEVO: Enviar WhatsApp de servicio técnico
+const enviarServicio = async (req, res) => {
+  try {
+    const { servicioId, numero } = req.body;
+    
+    if (!servicioId || !numero) {
+      return res.status(400).json({
+        success: false,
+        message: 'servicioId y numero son requeridos'
+      });
+    }
+
+    // Obtener servicio completo
+    const prisma = require('../config/database');
+    const servicio = await prisma.servicioTecnico.findUnique({
+      where: { id: parseInt(servicioId) },
+      include: {
+        items: true,
+        pagos: true
+      }
+    });
+
+    if (!servicio) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado'
+      });
+    }
+
+    // Generar mensaje usando las utilidades
+    const { generarMensajeCliente } = require('../utils/whatsappServicioUtils');
+    
+    // Obtener tasa de cambio actual desde global.estadoApp (misma fuente que Header.jsx)
+    const tasaCambio = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
+    
+    const mensaje = generarMensajeCliente(servicio, servicio.linkSeguimiento, tasaCambio);
+
+    // Verificar estado de WhatsApp
+    const estado = whatsappService.getEstado();
+    if (!estado.conectado) {
+      return res.status(503).json({
+        success: false,
+        message: 'WhatsApp no está conectado',
+        tipo: 'desconectado'
+      });
+    }
+
+    // Enviar mensaje
+    const resultado = await whatsappService.enviarMensaje(numero, mensaje);
+
+    if (resultado && resultado.success !== false) {
+      // Actualizar flag de WhatsApp enviado
+      await prisma.servicioTecnico.update({
+        where: { id: servicio.id },
+        data: {
+          whatsappEnviado: true,
+          whatsappFechaEnvio: new Date()
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Mensaje de servicio enviado por WhatsApp exitosamente',
+        data: resultado
+      });
+    } else {
+      throw new Error(resultado?.message || 'Error enviando WhatsApp');
+    }
+
+  } catch (error) {
+    console.error('❌ Error enviando servicio por WhatsApp:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error enviando mensaje',
+      tipo: 'error_envio'
+    });
+  }
+};
+
 module.exports = {
   conectar,
   getEstado,
@@ -364,7 +443,8 @@ module.exports = {
   enviarMensaje,
   enviarPDF,
   enviarFactura,
-  limpiarSesion,  // 🆕 NUEVA FUNCIÓN
-  diagnostico,    // ✅ NUEVA FUNCIÓN AGREGADA
-  reconectar      // ✅ NUEVA FUNCIÓN AGREGADA
+  enviarServicio, // 🆕 Nueva función
+  limpiarSesion,
+  diagnostico,
+  reconectar
 };

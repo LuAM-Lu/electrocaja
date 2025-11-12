@@ -35,6 +35,10 @@ model User {
   serviciosEliminados        ServicioTecnico[]       @relation("ServiciosEliminados")
   pagosServicioRegistrados   ServicioTecnicoPago[]   @relation("PagosServicioRegistrados")
   tecnicoConfig              TecnicoConfig?          @relation("ConfigTecnico")
+  solicitudesDescuento       DiscountRequest[]       @relation("SolicitudesDescuento")
+  aprobacionesDescuento      DiscountRequest[]       @relation("AprobacionesDescuento")
+  rechazosDescuento          DiscountRequest[]       @relation("RechazosDescuento")
+  presupuestosCreados        Presupuesto[]          @relation("PresupuestosCreados")
 
   @@map("users")
 }
@@ -358,6 +362,7 @@ model Cliente {
   updatedAt DateTime          @updatedAt @map("updated_at")
   ventas    Transaccion[]     @relation("VentasCliente")
   servicios ServicioTecnico[] @relation("ServiciosCliente")
+  presupuestos Presupuesto[]  @relation("PresupuestosCliente")
 
   @@map("clientes")
 }
@@ -517,6 +522,13 @@ model ServicioTecnico {
   whatsappEnviado       Boolean                  @default(false) @map("whatsapp_enviado")
   whatsappFechaEnvio    DateTime?                @map("whatsapp_fecha_envio")
 
+  // Reimpresiones
+  reimpresiones         Int                      @default(0) @map("reimpresiones")
+
+  // Seguimiento público
+  tokenUnico            String?                  @unique @map("token_unico") // Token único para acceso público
+  linkSeguimiento       String?                  @map("link_seguimiento") // URL completa de seguimiento
+
   // Soft Delete
   deletedAt             DateTime?                @map("deleted_at")
   motivoEliminacion     String?                  @map("motivo_eliminacion")
@@ -542,6 +554,7 @@ model ServicioTecnico {
   @@index([tecnicoId])
   @@index([clienteId])
   @@index([fechaIngreso])
+  @@index([tokenUnico])
   @@map("servicios_tecnicos")
 }
 
@@ -589,6 +602,7 @@ model ServicioTecnicoNota {
   tipo            TipoNotaServicio
   contenido       String?          @db.Text
   archivoUrl      String?          @map("archivo_url")
+  grupoId         String?          @map("grupo_id") // ID para agrupar notas relacionadas (texto + imágenes)
 
   tecnico         String
   fecha           DateTime         @default(now())
@@ -596,9 +610,62 @@ model ServicioTecnicoNota {
   estadoAnterior  String?          @map("estado_anterior")
   estadoNuevo     String?          @map("estado_nuevo")
 
+  publica         Boolean          @default(false) // Si el cliente puede ver esta nota
+
   servicio        ServicioTecnico  @relation(fields: [servicioId], references: [id], onDelete: Cascade)
 
   @@map("servicio_tecnico_notas")
+}
+
+model DiscountRequest {
+  id                Int                @id @default(autoincrement())
+  sesionId          String             @unique @map("sesion_id") // ID único de la sesión de venta
+  usuarioId         Int                @map("usuario_id")
+  estado            DiscountRequestStatus @default(PENDIENTE)
+  
+  // Información de la venta
+  ventaData         Json               @map("venta_data") // Datos completos de la venta
+  items             Json               // Array de items de la venta
+  cliente           Json?              // Información del cliente
+  
+  // Información del descuento
+  tipoDescuento     String             @map("tipo_descuento") // 'porcentaje' | 'monto'
+  montoDescuento    Decimal            @map("monto_descuento") @db.Decimal(12, 2)
+  monedaDescuento   String             @map("moneda_descuento") // 'bs' | 'usd'
+  porcentajeDescuento Decimal?         @map("porcentaje_descuento") @db.Decimal(5, 2)
+  motivo            String             @db.Text
+  
+  // Totales
+  totalVenta        Decimal            @map("total_venta") @db.Decimal(12, 2)
+  totalConDescuento Decimal            @map("total_con_descuento") @db.Decimal(12, 2)
+  tasaCambio        Decimal            @map("tasa_cambio") @db.Decimal(8, 4)
+  
+  // Aprobación
+  aprobadoPorId     Int?               @map("aprobado_por_id")
+  rechazadoPorId    Int?               @map("rechazado_por_id")
+  motivoRechazo     String?            @map("motivo_rechazo") @db.Text
+  
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  aprobadoAt        DateTime?          @map("aprobado_at")
+  rechazadoAt       DateTime?          @map("rechazado_at")
+  
+  // Relaciones
+  usuario           User               @relation("SolicitudesDescuento", fields: [usuarioId], references: [id])
+  aprobadoPor       User?              @relation("AprobacionesDescuento", fields: [aprobadoPorId], references: [id])
+  rechazadoPor      User?              @relation("RechazosDescuento", fields: [rechazadoPorId], references: [id])
+  
+  @@index([estado])
+  @@index([usuarioId])
+  @@index([createdAt])
+  @@map("discount_requests")
+}
+
+enum DiscountRequestStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  CANCELADO
 }
 
 model TecnicoConfig {
@@ -757,4 +824,65 @@ enum EstadoAuditoria {
   EN_PROGRESO
   COMPLETADA
   CANCELADA
+}
+
+model Presupuesto {
+  id                Int                  @id @default(autoincrement())
+  numero            String               @unique
+  fecha             DateTime             @db.Date
+  fechaVencimiento  DateTime             @map("fecha_vencimiento") @db.Date
+  validezDias       Int                  @default(1) @map("validez_dias")
+  
+  // Cliente
+  clienteId         Int?                 @map("cliente_id")
+  clienteNombre     String?              @map("cliente_nombre")
+  clienteCedulaRif   String?              @map("cliente_cedula_rif")
+  clienteTelefono    String?              @map("cliente_telefono")
+  clienteEmail       String?              @map("cliente_email")
+  
+  // Items (JSON)
+  items             Json                 // Array de items
+  
+  // Totales
+  subtotal          Decimal              @db.Decimal(12, 2)
+  descuentoGlobal   Decimal              @default(0) @map("descuento_global") @db.Decimal(12, 2)
+  tipoDescuento     String               @default("porcentaje") @map("tipo_descuento")
+  impuestos         Decimal              @default(16) @db.Decimal(5, 2)
+  totalUsd          Decimal              @map("total_usd") @db.Decimal(12, 2)
+  totalBs           Decimal              @map("total_bs") @db.Decimal(12, 2)
+  tasaCambio        Decimal              @map("tasa_cambio") @db.Decimal(8, 4)
+  
+  // Observaciones
+  observaciones     Json?                // Array de strings
+  
+  // Configuración de export
+  exportConfig      Json?                @map("export_config") // {pdf, whatsapp, email, vistaPrevia}
+  
+  // Estado
+  estado            EstadoPresupuesto    @default(BORRADOR)
+  version           Int                  @default(1)
+  
+  // Auditoría
+  creadoPorId       Int                  @map("creado_por_id")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  
+  // Relaciones
+  cliente           Cliente?              @relation("PresupuestosCliente", fields: [clienteId], references: [id])
+  creadoPor         User                 @relation("PresupuestosCreados", fields: [creadoPorId], references: [id])
+  
+  @@index([clienteId])
+  @@index([estado])
+  @@index([fecha])
+  @@index([numero])
+  @@map("presupuestos")
+}
+
+enum EstadoPresupuesto {
+  BORRADOR
+  ENVIADO
+  APROBADO
+  RECHAZADO
+  VENCIDO
+  CONVERTIDO_VENTA
 }

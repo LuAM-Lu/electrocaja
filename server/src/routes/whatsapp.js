@@ -7,9 +7,10 @@ const {
   enviarMensaje,
   enviarPDF,
   enviarFactura,
-  limpiarSesion,  // 🆕 NUEVA FUNCIÓN 
-  diagnostico,    // ✅ NUEVA FUNCIÓN AGREGADA
-  reconectar      // ✅ NUEVA FUNCIÓN AGREGADA
+  enviarServicio, // 🆕 Nueva función
+  limpiarSesion,
+  diagnostico,
+  reconectar
 } = require('../controllers/whatsappController');
 
 const { verifyToken } = require('../middleware/auth');
@@ -31,7 +32,10 @@ router.post('/enviar', verifyToken, enviarMensaje);
 // POST /api/whatsapp/pdf - Enviar PDF
 router.post('/pdf', verifyToken, enviarPDF);
 
-// Agregar esta ruta
+// POST /api/whatsapp/enviar-servicio - Enviar mensaje de servicio técnico
+router.post('/enviar-servicio', verifyToken, enviarServicio);
+
+// POST /api/whatsapp/enviar-factura - Enviar factura por WhatsApp
 router.post('/enviar-factura', verifyToken, enviarFactura);
 
 // POST /api/whatsapp/limpiar-sesion - Limpiar sesión forzadamente

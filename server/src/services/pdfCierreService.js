@@ -197,7 +197,7 @@ class PDFCierreService {
             .col-tipo { width: 6%; text-align: center; font-weight: bold; }
             .col-detalles { width: 40%; }
             .col-cantidad { width: 11%; text-align: center; font-family: monospace; }
-            .col-metodo { width: 9%; text-align: center; }
+            .col-metodo { width: 12%; text-align: center; font-size: 7px; }
             .col-total { width: 15%; text-align: right; font-weight: bold; font-family: monospace; }
             
             /* 🔥 COLORES CORREGIDOS PARA TIPOS (BUG SOLUCIONADO) */
@@ -222,14 +222,15 @@ class PDFCierreService {
                 margin-bottom: 1px;
             }
             
-            /* 🔥 MÉTODOS DE PAGO CORREGIDOS (BUG SOLUCIONADO) */
+            /* 🔥 MÉTODOS DE PAGO CON MONTO MEJORADOS */
             .metodo-pago {
-                font-size: 7px;
+                font-size: 6px;
                 padding: 1px 3px;
                 border-radius: 2px;
                 display: inline-block;
                 margin: 1px;
                 font-weight: bold;
+                white-space: nowrap;
             }
             
             .metodo-pm { background: #e9d5ff; color: #6b21a8; }
@@ -503,24 +504,57 @@ class PDFCierreService {
       this.generarMetodosPagoCorregidos(transaccion.pagos || [], transaccion) :
       '<span class="continuacion">↑</span>';
     
-    // 🔥 TOTAL DEL ITEM INDIVIDUAL
+    // 🔥 TOTAL DEL ITEM INDIVIDUAL - CALCULAR DESDE PAGOS REALES SI ES POSIBLE Y MOSTRAR DESCUENTO
     const signo = esIngreso ? '+' : '-';
     let subtotalFormateado;
     
     if (subtotal > 0) {
+      // Usar subtotal del item directamente
       subtotalFormateado = esDolares ? 
         `${signo}$${this.formatearDolares(subtotal)}` :
         `${signo}${this.formatearBolivares(subtotal)} Bs`;
     } else {
-      // Si no hay subtotal, usar proporción del total de la transacción
+      // Si no hay subtotal del item, calcular proporción desde pagos reales
       const totalItems = transaccion.items.length;
-      const proporcionBs = (transaccion.totalBs || 0) / totalItems;
-      const proporcionUsd = (transaccion.totalUsd || 0) / totalItems;
+      let totalBsPagos = 0;
+      let totalUsdPagos = 0;
+      
+      if (transaccion.pagos && transaccion.pagos.length > 0) {
+        transaccion.pagos.forEach(pago => {
+          const monto = parseFloat(pago.monto || 0);
+          const moneda = pago.moneda || (pago.metodo?.includes('_usd') || pago.metodo?.includes('usd') || pago.metodo === 'zelle' || pago.metodo === 'binance' ? 'usd' : 'bs');
+          if (moneda === 'usd') {
+            totalUsdPagos += monto;
+          } else {
+            totalBsPagos += monto;
+          }
+        });
+      } else {
+        // Fallback: usar totales de transacción
+        totalBsPagos = parseFloat(transaccion.totalBs || 0);
+        totalUsdPagos = parseFloat(transaccion.totalUsd || 0);
+      }
+      
+      const proporcionBs = totalBsPagos / totalItems;
+      const proporcionUsd = totalUsdPagos / totalItems;
       
       if (proporcionUsd > 0) {
         subtotalFormateado = `${signo}$${this.formatearDolares(proporcionUsd)}`;
-      } else {
+      } else if (proporcionBs > 0) {
         subtotalFormateado = `${signo}${this.formatearBolivares(proporcionBs)} Bs`;
+      } else {
+        subtotalFormateado = `${signo}0`;
+      }
+    }
+    
+    // 🔥 AGREGAR DESCUENTO DEL ITEM SI EXISTE (SOLO EN PRIMERA FILA)
+    if (index === 0) {
+      const descuentoItem = parseFloat(item.descuento || 0);
+      if (descuentoItem > 0) {
+        const descuentoFormateado = esDolares ? 
+          `-$${this.formatearDolares(descuentoItem)}` : 
+          `-${this.formatearBolivares(descuentoItem)} Bs`;
+        subtotalFormateado += `<br/><span style="font-size: 7px; color: #dc2626; opacity: 0.8;">Desc: ${descuentoFormateado}</span>`;
       }
     }
     
@@ -587,7 +621,7 @@ class PDFCierreService {
     `;
   }
 
-  // 🔥 NUEVA FUNCIÓN PARA GENERAR DETALLE DE ITEM INDIVIDUAL
+  // 🔥 NUEVA FUNCIÓN PARA GENERAR DETALLE DE ITEM INDIVIDUAL CON TASA DE CAMBIO Y DESCUENTO
   static generarDetalleItemIndividual(item, transaccion) {
     let icon = '📦';
     let descripcion = item.descripcion || 'Item sin descripción';
@@ -634,7 +668,7 @@ class PDFCierreService {
     }
     
     // Truncar descripción si es muy larga
-    const descripcionTruncada = this.truncarTexto(descripcion, 45);
+    const descripcionTruncada = this.truncarTexto(descripcion, 35);
     
     // 🔥 AGREGAR INFORMACIÓN ADICIONAL DEL ITEM SI ESTÁ DISPONIBLE
     let infoAdicional = '';
@@ -642,10 +676,30 @@ class PDFCierreService {
       infoAdicional += ` <span style="opacity: 0.7; font-size: 6px;">[${item.codigoBarras}]</span>`;
     }
     
-    return `<span class="item-icon">${icon}</span><span class="item-descripcion">${descripcionTruncada}${infoAdicional}</span>`;
+    // 🔥 AGREGAR DESCUENTO DEL ITEM SI EXISTE
+    const descuentoItem = parseFloat(item.descuento || 0);
+    if (descuentoItem > 0) {
+      const precioUnitario = parseFloat(item.precioUnitario || 0);
+      const esDolares = precioUnitario < 100;
+      const descuentoFormateado = esDolares ? 
+        `-$${this.formatearDolares(descuentoItem)}` : 
+        `-${this.formatearBolivares(descuentoItem)} Bs`;
+      infoAdicional += ` <span style="opacity: 0.7; font-size: 6px; color: #dc2626;">[Desc: ${descuentoFormateado}]</span>`;
+    }
+    
+    // 🔥 AGREGAR TASA DE CAMBIO SI ESTÁ DISPONIBLE (SOLO EN PRIMERA FILA)
+    let tasaCambioInfo = '';
+    if (transaccion.tasaCambioUsada || transaccion.tasa_cambio_usada) {
+      const tasa = parseFloat(transaccion.tasaCambioUsada || transaccion.tasa_cambio_usada || 0);
+      if (tasa > 0) {
+        tasaCambioInfo = ` <span style="opacity: 0.6; font-size: 6px; color: #6b7280;">[TC: ${this.formatearBolivares(tasa)} Bs/$]</span>`;
+      }
+    }
+    
+    return `<span class="item-icon">${icon}</span><span class="item-descripcion">${descripcionTruncada}${infoAdicional}${tasaCambioInfo}</span>`;
   }
 
-  // GENERAR DETALLES COMPLETOS DE ITEMS (PARA CASOS SIN ITEMS ESPECÍFICOS)
+  // GENERAR DETALLES COMPLETOS DE ITEMS (PARA CASOS SIN ITEMS ESPECÍFICOS) CON TASA DE CAMBIO Y DESCUENTO
   static generarDetallesItemCompletos(transaccion) {
     let itemsTexto = [];
     
@@ -676,8 +730,30 @@ class PDFCierreService {
        icon = '💰';
      }
      
-     const descripcionTruncada = this.truncarTexto(descripcion, 40);
-     itemsTexto.push(`<span class="item-linea"><span class="item-icon">${icon}</span><span class="item-descripcion">${descripcionTruncada}</span></span>`);
+     const descripcionTruncada = this.truncarTexto(descripcion, 35);
+     
+     // 🔥 AGREGAR DESCUENTO TOTAL DE LA TRANSACCIÓN SI EXISTE
+     let descuentoInfo = '';
+     const descuentoTotal = parseFloat(transaccion.descuentoTotal || transaccion.descuento_total || 0);
+     if (descuentoTotal > 0) {
+       // Determinar moneda del descuento basándose en los pagos o totales
+       const tieneUsd = parseFloat(transaccion.totalUsd || 0) > 0;
+       const descuentoFormateado = tieneUsd ? 
+         `-$${this.formatearDolares(descuentoTotal)}` : 
+         `-${this.formatearBolivares(descuentoTotal)} Bs`;
+       descuentoInfo = ` <span style="opacity: 0.7; font-size: 6px; color: #dc2626;">[Desc: ${descuentoFormateado}]</span>`;
+     }
+     
+     // 🔥 AGREGAR TASA DE CAMBIO SI ESTÁ DISPONIBLE
+     let tasaCambioInfo = '';
+     if (transaccion.tasaCambioUsada || transaccion.tasa_cambio_usada) {
+       const tasa = parseFloat(transaccion.tasaCambioUsada || transaccion.tasa_cambio_usada || 0);
+       if (tasa > 0) {
+         tasaCambioInfo = ` <span style="opacity: 0.6; font-size: 6px; color: #6b7280;">[TC: ${this.formatearBolivares(tasa)} Bs/$]</span>`;
+       }
+     }
+     
+     itemsTexto.push(`<span class="item-linea"><span class="item-icon">${icon}</span><span class="item-descripcion">${descripcionTruncada}${descuentoInfo}${tasaCambioInfo}</span></span>`);
    }
    
    // Si hay muchos items, mostrar todos con salto de línea
@@ -724,30 +800,69 @@ class PDFCierreService {
    return 'N/A';
  }
 
- // 🔥 GENERAR MÉTODOS DE PAGO CORREGIDOS (BUG SOLUCIONADO)
+ // 🔥 GENERAR MÉTODOS DE PAGO CON MONTO Y MONEDA ORIGINAL (MEJORADO)
  static generarMetodosPagoCorregidos(pagos, transaccion = null) {
-   // 🔥 Caso especial: Vueltos usan metodoPagoPrincipal (CORREGIDO)
-   if (transaccion && transaccion.categoria?.includes('Vuelto') && transaccion.metodoPagoPrincipal) {
-     const metodo = transaccion.metodoPagoPrincipal;
-     return this.formatearMetodoPago(metodo);
+   // 🔥 Caso especial: Vueltos - usar pagos reales si existen, sino usar metodoPagoPrincipal como fallback
+   if (transaccion && transaccion.categoria?.includes('Vuelto')) {
+     // Si hay pagos reales, usarlos (preferido)
+     if (pagos && pagos.length > 0) {
+       return pagos.map(pago => {
+         const monto = parseFloat(pago.monto || 0);
+         const moneda = pago.moneda || (pago.metodo?.includes('_usd') || pago.metodo?.includes('usd') || pago.metodo === 'zelle' || pago.metodo === 'binance' ? 'usd' : 'bs');
+         return this.formatearMetodoPagoConMonto(pago.metodo, monto, moneda);
+       }).join('<br/>');
+     }
+     // Fallback: usar metodoPagoPrincipal si no hay pagos
+     if (transaccion.metodoPagoPrincipal) {
+       const metodo = transaccion.metodoPagoPrincipal;
+       // Determinar moneda basándose en el método de pago
+       const monedaVuelto = metodo?.includes('_usd') || metodo?.includes('usd') || metodo === 'zelle' || metodo === 'binance' ? 'usd' : 'bs';
+       // Usar el monto en la moneda original del método
+       const montoVuelto = monedaVuelto === 'usd' 
+         ? (transaccion.totalUsd || 0)
+         : (transaccion.totalBs || 0);
+       return this.formatearMetodoPagoConMonto(metodo, montoVuelto, monedaVuelto);
+     }
    }
 
-   // 🔥 Caso normal: usar array de pagos (CORREGIDO)
+   // 🔥 Caso normal: usar array de pagos con montos reales (MEJORADO)
    if (!pagos || pagos.length === 0) {
      return '<span class="metodo-pago">N/A</span>';
    }
 
-   // Mostrar hasta 2 métodos para evitar overflow
-   return pagos.slice(0, 2).map(pago => {
-     return this.formatearMetodoPago(pago.metodo);
-   }).join(' ') + (pagos.length > 2 ? ' +' + (pagos.length - 2) : '');
+   // Mostrar todos los métodos con sus montos reales en su moneda original
+   return pagos.map(pago => {
+     const monto = parseFloat(pago.monto || 0);
+     const moneda = pago.moneda || (pago.metodo?.includes('_usd') || pago.metodo?.includes('usd') || pago.metodo === 'zelle' || pago.metodo === 'binance' ? 'usd' : 'bs');
+     return this.formatearMetodoPagoConMonto(pago.metodo, monto, moneda);
+   }).join('<br/>');
  }
 
- // 🔥 FUNCIÓN HELPER PARA FORMATEAR MÉTODO DE PAGO (NUEVA)
- static formatearMetodoPago(metodo) {
+ // 🔥 FUNCIÓN HELPER PARA FORMATEAR MÉTODO DE PAGO CON MONTO Y MONEDA ORIGINAL (NUEVA)
+ static formatearMetodoPagoConMonto(metodo, monto, moneda) {
    let clase = 'metodo-pago';
    let texto = '';
+   let montoFormateado = '';
    
+   // Determinar moneda si no está especificada
+   if (!moneda) {
+     if (metodo?.includes('_usd') || metodo?.includes('usd') || metodo === 'zelle' || metodo === 'binance') {
+       moneda = 'usd';
+     } else {
+       moneda = 'bs';
+     }
+   }
+   
+   // Formatear monto según moneda
+   if (monto > 0) {
+     if (moneda === 'usd') {
+       montoFormateado = `$${this.formatearDolares(monto)}`;
+     } else {
+       montoFormateado = `${this.formatearBolivares(monto)} Bs`;
+     }
+   }
+   
+   // Determinar texto y clase según método
    switch (metodo) {
      case 'pago_movil':
        clase += ' metodo-pm';
@@ -755,13 +870,14 @@ class PDFCierreService {
        break;
      case 'efectivo_bs':
        clase += ' metodo-bs';
-       texto = 'Bs';
+       texto = 'Efec.'; // ✅ Cambiar "Bs" a "Efec." para efectivo en bolívares
        break;
      case 'efectivo_usd':
        clase += ' metodo-usd';
        texto = 'USD';
        break;
      case 'punto_venta':
+     case 'punto de venta':
        clase += ' metodo-punto';
        texto = 'POS';
        break;
@@ -769,60 +885,125 @@ class PDFCierreService {
        clase += ' metodo-transferencia';
        texto = 'TRANS';
        break;
+     case 'zelle':
+       clase += ' metodo-usd';
+       texto = 'ZELLE';
+       break;
+     case 'binance':
+       clase += ' metodo-usd';
+       texto = 'BIN';
+       break;
+     case 'tarjeta':
+       clase += ' metodo-bs';
+       texto = 'TARJ';
+       break;
      default:
        texto = metodo ? metodo.replace(/_/g, ' ').toUpperCase().slice(0, 4) : 'N/A';
    }
    
-   return `<span class="${clase}">${texto}</span>`;
+   // Retornar método con monto en su moneda original
+   return `<span class="${clase}">${texto} ${montoFormateado}</span>`;
+ }
+ 
+ // 🔥 FUNCIÓN HELPER LEGACY PARA COMPATIBILIDAD (mantener por si acaso)
+ static formatearMetodoPago(metodo) {
+   return this.formatearMetodoPagoConMonto(metodo, 0, null);
  }
 
- // 🔥 GENERAR TOTAL POR MONEDA SEPARADA (BUG SOLUCIONADO)
+ // 🔥 GENERAR TOTAL DESDE PAGOS REALES RESPETANDO MONEDA ORIGINAL Y MOSTRAR DESCUENTO (MEJORADO)
  static generarTotalTransaccionCorregido(transaccion, esIngreso) {
    const signo = esIngreso ? '+' : '-';
    
-   // Para vueltos, usar el monto específico del vuelto
+   // Para vueltos, usar los pagos reales para determinar la moneda correcta
    if (transaccion.categoria?.includes('Vuelto')) {
+     // Si hay pagos reales, usarlos para determinar moneda y monto
+     if (transaccion.pagos && transaccion.pagos.length > 0) {
+       const pago = transaccion.pagos[0]; // Tomar el primer pago del vuelto
+       const monto = parseFloat(pago.monto || 0);
+       const moneda = pago.moneda || (pago.metodo?.includes('_usd') || pago.metodo?.includes('usd') || pago.metodo === 'zelle' || pago.metodo === 'binance' ? 'usd' : 'bs');
+       
+       if (moneda === 'usd') {
+         return `-$${this.formatearDolares(monto)}`;
+       } else {
+         return `-${this.formatearBolivares(monto)} Bs`;
+       }
+     }
+     // Fallback: usar totales si no hay pagos
      const montoVuelto = transaccion.totalBs || transaccion.totalUsd || 0;
-     if (transaccion.totalUsd > 0) {
+     // Determinar moneda basándose en el método de pago principal
+     const metodo = transaccion.metodoPagoPrincipal || '';
+     const monedaVuelto = metodo.includes('_usd') || metodo.includes('usd') || metodo === 'zelle' || metodo === 'binance' ? 'usd' : 'bs';
+     
+     if (monedaVuelto === 'usd' && transaccion.totalUsd > 0) {
        return `-$${this.formatearDolares(transaccion.totalUsd)}`;
      } else {
        return `-${this.formatearBolivares(montoVuelto)} Bs`;
      }
    }
    
-   // 🔥 Para transacciones normales, SEPARAR MONEDAS CLARAMENTE (BUG SOLUCIONADO)
-   const totalBs = transaccion.totalBs || 0;
-   const totalUsd = transaccion.totalUsd || 0;
+   // 🔥 CALCULAR TOTALES DESDE PAGOS REALES RESPETANDO MONEDA ORIGINAL (MEJORADO)
+   let totalBsReal = 0;
+   let totalUsdReal = 0;
+   
+   if (transaccion.pagos && transaccion.pagos.length > 0) {
+     // Sumar montos desde pagos reales respetando su moneda original
+     transaccion.pagos.forEach(pago => {
+       const monto = parseFloat(pago.monto || 0);
+       const moneda = pago.moneda || (pago.metodo?.includes('_usd') || pago.metodo?.includes('usd') || pago.metodo === 'zelle' || pago.metodo === 'binance' ? 'usd' : 'bs');
+       
+       if (moneda === 'usd') {
+         totalUsdReal += monto;
+       } else {
+         totalBsReal += monto;
+       }
+     });
+   } else {
+     // Fallback: usar totales de la transacción si no hay pagos
+     totalBsReal = parseFloat(transaccion.totalBs || 0);
+     totalUsdReal = parseFloat(transaccion.totalUsd || 0);
+   }
+   
+   // 🔥 AGREGAR INFORMACIÓN DE DESCUENTO SI EXISTE
+   const descuentoTotal = parseFloat(transaccion.descuentoTotal || transaccion.descuento_total || 0);
+   let descuentoInfo = '';
+   
+   if (descuentoTotal > 0) {
+     // Determinar moneda del descuento basándose en los totales
+     if (totalUsdReal > 0) {
+       // Si hay pagos en USD, el descuento probablemente es en USD
+       descuentoInfo = `<br/><span style="font-size: 7px; color: #dc2626; opacity: 0.8;">Desc: -$${this.formatearDolares(descuentoTotal)}</span>`;
+     } else {
+       // Si solo hay pagos en Bs, el descuento es en Bs
+       descuentoInfo = `<br/><span style="font-size: 7px; color: #dc2626; opacity: 0.8;">Desc: -${this.formatearBolivares(descuentoTotal)} Bs</span>`;
+     }
+   }
    
    const totales = [];
    
-   // Agregar total en dólares si existe
-   if (totalUsd > 0) {
-     totales.push(`${signo}$${this.formatearDolares(totalUsd)}`);
+   // Agregar total en dólares si existe (solo si hay pagos en USD)
+   if (totalUsdReal > 0) {
+     totales.push(`${signo}$${this.formatearDolares(totalUsdReal)}`);
    }
    
-   // Agregar total en bolívares si existe
-   if (totalBs > 0) {
-     totales.push(`${signo}${this.formatearBolivares(totalBs)} Bs`);
+   // Agregar total en bolívares si existe (solo si hay pagos en Bs)
+   if (totalBsReal > 0) {
+     totales.push(`${signo}${this.formatearBolivares(totalBsReal)} Bs`);
    }
    
    // Si no hay totales, mostrar 0
    if (totales.length === 0) {
-     return `${signo}0`;
+     return `${signo}0${descuentoInfo}`;
    }
    
-   // 🔥 RETORNAR SEPARADO POR LÍNEAS PARA CLARIDAD (BUG SOLUCIONADO)
-   return totales.join('<br/>');
+   // 🔥 RETORNAR SEPARADO POR LÍNEAS PARA CLARIDAD + DESCUENTO
+   return totales.join('<br/>') + descuentoInfo;
  }
 
- // 🔥 CALCULAR ESTADÍSTICAS CORREGIDAS (BUG SOLUCIONADO)
+ // 🔥 CALCULAR ESTADÍSTICAS CORREGIDAS USANDO PAGOS REALES (MEJORADO)
  static calcularEstadisticas(transacciones) {
-   console.log('📊 Calculando estadísticas de', transacciones.length, 'transacciones');
-   
-   // 🔥 SEPARAR INGRESOS Y EGRESOS CORRECTAMENTE (BUG SOLUCIONADO)
+   // 🔥 SEPARAR INGRESOS Y EGRESOS CORRECTAMENTE
    const ingresos = transacciones.filter(t => {
      const tipo = t.tipo?.toString().toLowerCase();
-     console.log(`Transacción ${t.id}: tipo="${tipo}" -> es ingreso: ${tipo === 'ingreso'}`);
      return tipo === 'ingreso';
    });
    
@@ -831,12 +1012,10 @@ class PDFCierreService {
      return tipo === 'egreso';
    });
    
-   console.log(`📊 Estadísticas: ${ingresos.length} ingresos, ${egresos.length} egresos`);
-   
    const usuarios = {};
    const items = {};
    
-   // Procesar cada transacción CORRECTAMENTE
+   // Procesar cada transacción CORRECTAMENTE usando pagos reales
    transacciones.forEach(t => {
      const nombreUsuario = t.usuario || 'Sistema';
      const tipoTransaccion = t.tipo?.toString().toLowerCase();
@@ -847,92 +1026,171 @@ class PDFCierreService {
        usuarios[nombreUsuario] = { 
          nombre: nombreUsuario, 
          ventas: 0, 
-         ventasTotal: 0,
-         monto: 0, 
+         ventasTotalUsd: 0,
+         ventasTotalBs: 0,
+         montoUsd: 0,
+         montoBs: 0,
          transacciones: 0 
        };
      }
      
      usuarios[nombreUsuario].transacciones++;
      
-     // 🔥 SOLO CONTAR VENTAS (INGRESOS) PARA ESTADÍSTICAS (BUG SOLUCIONADO)
-     if (esIngreso) {
-       usuarios[nombreUsuario].ventas++;
-       const montoUsd = t.totalUsd || 0;
-       const montoBs = t.totalBs || 0;
-       // Convertir todo a USD para comparación (usando tasa aproximada)
-       const montoTotalUsd = montoUsd + (montoBs / 37);
-       usuarios[nombreUsuario].monto += montoTotalUsd;
-       usuarios[nombreUsuario].ventasTotal += montoTotalUsd;
+     // 🔥 CALCULAR MONTOS DESDE PAGOS REALES RESPETANDO MONEDA ORIGINAL
+     let montoUsdReal = 0;
+     let montoBsReal = 0;
+     
+     if (t.pagos && t.pagos.length > 0) {
+       t.pagos.forEach(pago => {
+         const monto = parseFloat(pago.monto || 0);
+         const moneda = pago.moneda || (pago.metodo?.includes('_usd') || pago.metodo?.includes('usd') || pago.metodo === 'zelle' || pago.metodo === 'binance' ? 'usd' : 'bs');
+         
+         if (moneda === 'usd') {
+           montoUsdReal += monto;
+         } else {
+           montoBsReal += monto;
+         }
+       });
+     } else {
+       // Fallback: usar totales de transacción
+       montoUsdReal = parseFloat(t.totalUsd || 0);
+       montoBsReal = parseFloat(t.totalBs || 0);
      }
      
-     // 🔥 ESTADÍSTICAS POR ITEM SOLO PARA INGRESOS (BUG SOLUCIONADO)
+     // 🔥 SOLO CONTAR VENTAS (INGRESOS) PARA ESTADÍSTICAS
+     if (esIngreso) {
+       usuarios[nombreUsuario].ventas++;
+       usuarios[nombreUsuario].ventasTotalUsd += montoUsdReal;
+       usuarios[nombreUsuario].ventasTotalBs += montoBsReal;
+       usuarios[nombreUsuario].montoUsd += montoUsdReal;
+       usuarios[nombreUsuario].montoBs += montoBsReal;
+     }
+     
+     // 🔥 ESTADÍSTICAS POR ITEM SOLO PARA INGRESOS usando pagos reales
      if (esIngreso && t.items && t.items.length > 0) {
        t.items.forEach(item => {
          const descripcion = item.producto?.descripcion || item.descripcion || t.categoria || 'Item desconocido';
-         const precio = item.precioUnitario || 0;
-         const cantidad = item.cantidad || 1;
+         const precio = parseFloat(item.precioUnitario || 0);
+         const cantidad = parseInt(item.cantidad || 1);
+         const subtotal = parseFloat(item.subtotal || (precio * cantidad));
+         
+         // Determinar moneda del item basándose en el precio
+         const esDolares = precio < 100; // Heurística: precios menores a 100 probablemente son USD
          
          if (!items[descripcion]) {
            items[descripcion] = {
              descripcion: this.truncarTexto(descripcion, 30),
              cantidad: 0,
-             precio: precio,
+             precioUsd: 0,
+             precioBs: 0,
              veces: 0,
-             montoTotal: 0
+             montoTotalUsd: 0,
+             montoTotalBs: 0,
+             esDolares: esDolares
            };
          }
          
          items[descripcion].cantidad += cantidad;
          items[descripcion].veces++;
-         items[descripcion].montoTotal += (precio * cantidad);
          
-         if (precio > items[descripcion].precio) {
-           items[descripcion].precio = precio;
+         if (esDolares) {
+           items[descripcion].montoTotalUsd += subtotal;
+           if (precio > items[descripcion].precioUsd) {
+             items[descripcion].precioUsd = precio;
+           }
+         } else {
+           items[descripcion].montoTotalBs += subtotal;
+           if (precio > items[descripcion].precioBs) {
+             items[descripcion].precioBs = precio;
+           }
          }
        });
      } else if (esIngreso && t.categoria && !t.categoria.includes('Vuelto')) {
-       // Si no hay items pero es un ingreso (no vuelto), usar la categoría
+       // Si no hay items pero es un ingreso (no vuelto), usar los pagos reales
        const descripcion = t.categoria;
-       const precio = (t.totalUsd || 0) || ((t.totalBs || 0) / 37);
        
-       if (precio > 0) {
+       if (montoUsdReal > 0 || montoBsReal > 0) {
          if (!items[descripcion]) {
            items[descripcion] = {
              descripcion: this.truncarTexto(descripcion, 30),
              cantidad: 0,
-             precio: precio,
+             precioUsd: 0,
+             precioBs: 0,
              veces: 0,
-             montoTotal: 0
+             montoTotalUsd: 0,
+             montoTotalBs: 0,
+             esDolares: montoUsdReal > 0
            };
          }
          
          items[descripcion].cantidad += 1;
          items[descripcion].veces++;
-         items[descripcion].montoTotal += precio;
+         items[descripcion].montoTotalUsd += montoUsdReal;
+         items[descripcion].montoTotalBs += montoBsReal;
          
-         if (precio > items[descripcion].precio) {
-           items[descripcion].precio = precio;
+         if (montoUsdReal > items[descripcion].precioUsd) {
+           items[descripcion].precioUsd = montoUsdReal;
+         }
+         if (montoBsReal > items[descripcion].precioBs) {
+           items[descripcion].precioBs = montoBsReal;
          }
        }
      }
    });
 
-   // 🔥 ENCONTRAR ESTADÍSTICAS CORREGIDAS (BUG SOLUCIONADO)
+   // 🔥 ENCONTRAR ESTADÍSTICAS CORREGIDAS
    const usuariosArray = Object.values(usuarios);
    const itemsArray = Object.values(items);
 
-   // Item más valioso (por precio unitario)
-   const itemMasValioso = itemsArray.reduce((max, item) => 
-     (item.precio > (max?.precio || 0)) ? item : max, null);
+   // Item más valioso (por precio unitario más alto, usando tasa de cambio histórica cuando sea necesario)
+   const itemMasValioso = itemsArray.reduce((max, item) => {
+     if (!max) return item;
+     
+     // Si ambos tienen precio en USD, comparar directamente
+     if (max.precioUsd > 0 && item.precioUsd > 0) {
+       return item.precioUsd > max.precioUsd ? item : max;
+     }
+     
+     // Si ambos tienen precio en Bs, comparar directamente
+     if (max.precioBs > 0 && item.precioBs > 0) {
+       return item.precioBs > max.precioBs ? item : max;
+     }
+     
+     // Si uno es USD y otro Bs, usar una conversión aproximada conservadora (1 USD = 100 Bs mínimo)
+     // Esto es solo para comparación, no para mostrar
+     const valorMax = max.precioUsd > 0 ? max.precioUsd : max.precioBs / 100;
+     const valorItem = item.precioUsd > 0 ? item.precioUsd : item.precioBs / 100;
+     return valorItem > valorMax ? item : max;
+   }, null);
    
    // Más vendido (por cantidad)
    const masVendido = itemsArray.reduce((max, item) => 
      (item.cantidad > (max?.cantidad || 0)) ? item : max, null);
    
-   // 🔥 MEJOR VENDEDOR CORREGIDO - Solo contar VENTAS (INGRESOS) (BUG SOLUCIONADO)
-   const mejorVendedor = usuariosArray.reduce((max, user) => 
-     (user.ventasTotal > (max?.ventasTotal || 0)) ? user : max, null);
+   // 🔥 MEJOR VENDEDOR - Comparar usando montos reales, priorizando USD si existe
+   const mejorVendedor = usuariosArray.reduce((max, user) => {
+     if (!max) return user;
+     
+     // Si ambos tienen ventas en USD, comparar por USD
+     if (max.ventasTotalUsd > 0 && user.ventasTotalUsd > 0) {
+       return user.ventasTotalUsd > max.ventasTotalUsd ? user : max;
+     }
+     
+     // Si ambos tienen ventas solo en Bs, comparar por Bs
+     if (max.ventasTotalUsd === 0 && user.ventasTotalUsd === 0) {
+       return user.ventasTotalBs > max.ventasTotalBs ? user : max;
+     }
+     
+     // Si uno tiene USD y otro solo Bs, priorizar el que tiene USD
+     if (user.ventasTotalUsd > 0 && max.ventasTotalUsd === 0) {
+       return user;
+     }
+     if (max.ventasTotalUsd > 0 && user.ventasTotalUsd === 0) {
+       return max;
+     }
+     
+     return max;
+   }, null);
    
    // Más activo (por número de transacciones)
    const masActivo = usuariosArray.reduce((max, user) => 
@@ -941,27 +1199,25 @@ class PDFCierreService {
    const estadisticas = {
      itemMasValioso: itemMasValioso ? {
        ...itemMasValioso,
-       precio: itemMasValioso.precio > 50 ? 
-         `${this.formatearBolivares(itemMasValioso.precio)} Bs` : 
-         `$${this.formatearDolares(itemMasValioso.precio)}`
+       precio: itemMasValioso.precioUsd > 0 ? 
+         `$${this.formatearDolares(itemMasValioso.precioUsd)}` : 
+         `${this.formatearBolivares(itemMasValioso.precioBs)} Bs`
      } : null,
      
-     masVendido: masVendido,
+     masVendido: masVendido ? {
+       ...masVendido,
+       cantidad: masVendido.cantidad
+     } : null,
      
-     mejorVendedor: mejorVendedor && mejorVendedor.ventasTotal > 0 ? {
+     mejorVendedor: mejorVendedor && (mejorVendedor.ventasTotalUsd > 0 || mejorVendedor.ventasTotalBs > 0) ? {
        ...mejorVendedor,
-       montoFormateado: `$${this.formatearDolares(mejorVendedor.ventasTotal)}`
+       montoFormateado: mejorVendedor.ventasTotalUsd > 0 ? 
+         `$${this.formatearDolares(mejorVendedor.ventasTotalUsd)}${mejorVendedor.ventasTotalBs > 0 ? ` + ${this.formatearBolivares(mejorVendedor.ventasTotalBs)} Bs` : ''}` :
+         `${this.formatearBolivares(mejorVendedor.ventasTotalBs)} Bs`
      } : null,
      
      masActivo: masActivo
    };
-
-   console.log('📊 Estadísticas calculadas:', {
-     itemMasValioso: estadisticas.itemMasValioso?.descripcion,
-     masVendido: estadisticas.masVendido?.descripcion,
-     mejorVendedor: estadisticas.mejorVendedor?.nombre,
-     masActivo: estadisticas.masActivo?.nombre
-   });
 
    return estadisticas;
  }
@@ -1041,41 +1297,88 @@ class PDFCierreService {
        timeout: 30000 
      });
      
-     // BUG #2 CORREGIDO: Usar fecha de la caja, no fecha actual
-     const fechaCaja = datosCompletos.caja.fecha || datosCompletos.caja.fechaApertura || new Date();
-     let fechaCajaObj = new Date(fechaCaja);
+    // ✅ Obtener fecha de la caja (fecha de apertura) para el nombre del archivo
+    let fechaCaja = null;
+    if (datosCompletos.caja?.fecha) {
+      const fechaStr = datosCompletos.caja.fecha;
+      
+      // Intentar diferentes formatos de fecha
+      // Formato 1: ISO string (2025-01-15T00:00:00.000Z)
+      fechaCaja = new Date(fechaStr);
+      
+      if (isNaN(fechaCaja.getTime())) {
+        // Formato 2: DD/MM/YYYY
+        const partes = fechaStr.split('/');
+        if (partes.length === 3) {
+          fechaCaja = new Date(partes[2], partes[1] - 1, partes[0]);
+        }
+      }
+      
+      if (isNaN(fechaCaja.getTime())) {
+        // Formato 3: YYYY-MM-DD
+        const partes = fechaStr.split('-');
+        if (partes.length === 3) {
+          fechaCaja = new Date(partes[0], partes[1] - 1, partes[2]);
+        }
+      }
+      
+      // Si aún no es válida, usar null
+      if (isNaN(fechaCaja.getTime())) {
+        fechaCaja = null;
+        console.warn(`⚠️ No se pudo parsear la fecha de la caja: ${fechaStr}`);
+      }
+    }
+    
+    // ✅ Usar fecha de generación para la hora exacta
+    const fechaGeneracion = datosCompletos.fechaGeneracion 
+      ? new Date(datosCompletos.fechaGeneracion) 
+      : new Date();
+    
+    // Validar que la fecha de generación sea válida
+    let fechaGeneracionObj = fechaGeneracion;
+    if (isNaN(fechaGeneracionObj.getTime())) {
+      console.warn('⚠️ Fecha de generación inválida, usando fecha actual');
+      fechaGeneracionObj = new Date();
+    }
 
-     // Validar que la fecha sea válida
-     if (isNaN(fechaCajaObj.getTime())) {
-       console.warn('⚠️ Fecha inválida recibida:', fechaCaja, '- Usando fecha actual');
-       fechaCajaObj = new Date();
-     }
+    // ✅ Formatear fecha de caja: YYYY-MM-DD (usar fecha de caja si está disponible, sino fecha de generación)
+    const fechaParaNombre = fechaCaja && !isNaN(fechaCaja.getTime()) ? fechaCaja : fechaGeneracionObj;
+    const fechaFormateada = fechaParaNombre.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // ✅ Formatear hora de generación: HHmmss
+    const horaGeneracion = fechaGeneracionObj.toISOString()
+      .split('T')[1]           // 02:04:06.926Z
+      .split('.')[0]            // 02:04:06
+      .replace(/:/g, '');       // 020406
 
-     // Formatear fecha con hora de cierre: YYYY-MM-DD-HHmmss
-     const isoString = fechaCajaObj.toISOString(); // 2025-10-22T02:04:06.926Z
-     const timestamp = isoString
-       .split('.')[0]           // 2025-10-22T02:04:06
-       .replace(/T/, '-')       // 2025-10-22-02:04:06
-       .replace(/:/g, '-');     // 2025-10-22-02-04-06
+    const tienesDif = datosCompletos.diferencias && (
+      datosCompletos.diferencias.bs !== 0 ||
+      datosCompletos.diferencias.usd !== 0 ||
+      datosCompletos.diferencias.pagoMovil !== 0
+    );
 
-     const tienesDif = datosCompletos.diferencias && (
-       datosCompletos.diferencias.bs !== 0 ||
-       datosCompletos.diferencias.usd !== 0 ||
-       datosCompletos.diferencias.pagoMovil !== 0
-     );
+    const esPendiente = datosCompletos.caja?.esCajaPendiente || false;
+    const sufijoPendiente = esPendiente ? '-PENDIENTE' : '';
+    const sufijoDif = tienesDif ? '-DIF' : '';
 
-     const esPendiente = datosCompletos.caja?.esCajaPendiente || false;
-     const sufijoPendiente = esPendiente ? '-PENDIENTE' : '';
-     const sufijoDif = tienesDif ? '-DIF' : '';
-
-     const nombreArchivo = `cierre-detallado-${timestamp}${sufijoPendiente}${sufijoDif}.pdf`;
-     
-     const uploadsDir = path.join(__dirname, '../../uploads');
-     if (!fs.existsSync(uploadsDir)) {
-       fs.mkdirSync(uploadsDir, { recursive: true });
-     }
-     
-     const rutaPDF = path.join(uploadsDir, nombreArchivo);
+    // ✅ Nombre del archivo: cierre-caja-YYYY-MM-DD-HHmmss[-PENDIENTE][-DIF].pdf
+    const nombreArchivo = `cierre-caja-${fechaFormateada}-${horaGeneracion}${sufijoPendiente}${sufijoDif}.pdf`;
+    
+    // ✅ Ruta absoluta al directorio uploads (desde server/src/services -> server/uploads)
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    
+    // ✅ Crear directorio si no existe
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      console.log(`📁 Directorio /uploads creado: ${uploadsDir}`);
+    }
+    
+    // ✅ Ruta completa del archivo PDF
+    const rutaPDF = path.join(uploadsDir, nombreArchivo);
+    
+    // ✅ Log para verificar ruta de guardado
+    console.log(`📄 Guardando PDF en: ${rutaPDF}`);
+    console.log(`📁 Directorio uploads: ${uploadsDir}`);
      
      await page.pdf({
        path: rutaPDF,
@@ -1093,8 +1396,21 @@ class PDFCierreService {
        height: '297mm'
      });
      
-     console.log(`✅ PDF COMPLETAMENTE CORREGIDO Y DETALLADO generado: ${nombreArchivo}`);
-     console.log(`📊 TODAS LAS CORRECCIONES APLICADAS:`);
+    // ✅ Verificar que el archivo se guardó correctamente
+    if (!fs.existsSync(rutaPDF)) {
+      throw new Error(`Error: El PDF no se guardó en ${rutaPDF}`);
+    }
+    
+    const fileSize = fs.statSync(rutaPDF).size;
+    const fileStats = fs.statSync(rutaPDF);
+    
+    console.log(`✅ PDF COMPLETAMENTE CORREGIDO Y DETALLADO generado: ${nombreArchivo}`);
+    console.log(`📄 Ruta completa: ${rutaPDF}`);
+    console.log(`📊 Tamaño del archivo: ${(fileSize / 1024).toFixed(2)} KB`);
+    console.log(`📅 Fecha de creación del archivo: ${fileStats.birthtime.toISOString()}`);
+    console.log(`📅 Fecha de modificación del archivo: ${fileStats.mtime.toISOString()}`);
+    console.log(`📋 Tipo de cierre: ${esPendiente ? 'CAJA PENDIENTE' : 'CIERRE NORMAL'}${tienesDif ? ' CON DIFERENCIAS' : ''}`);
+    console.log(`📊 TODAS LAS CORRECCIONES APLICADAS:`);
      console.log(`   - ✅ Tipos de transacción (INGRESO/EGRESO) corregidos`);
      console.log(`   - ✅ Métodos de pago legibles (USD, Bs, PM, POS)`);
      console.log(`   - ✅ Totales por moneda separados claramente`);

@@ -1,6 +1,8 @@
 // server/src/controllers/presupuestoController.js - CONTROLLER ESPECÍFICO PARA PRESUPUESTOS 🎯
+const { PrismaClient } = require('@prisma/client');
 const nodemailer = require('nodemailer');
 const { sendSuccess, sendError } = require('../utils/responses');
+const prisma = new PrismaClient();
 
 // 🔧 Configurar transporter de email (reutilizando configuración)
 const transporter = nodemailer.createTransport({
@@ -243,7 +245,284 @@ const obtenerEstadisticasPresupuestos = async (req, res) => {
   }
 };
 
+// 📝 CREAR PRESUPUESTO
+const crearPresupuesto = async (req, res) => {
+  try {
+    // ✅ VALIDAR QUE EL USUARIO ESTÉ AUTENTICADO
+    if (!req.user || !req.user.userId) {
+      return sendError(res, 'Usuario no autenticado', 401);
+    }
+    
+    const usuarioId = req.user.userId;
+
+    const {
+      numero,
+      fecha,
+      fechaVencimiento,
+      validezDias,
+      clienteId,
+      clienteNombre,
+      clienteCedulaRif,
+      clienteTelefono,
+      clienteEmail,
+      items,
+      subtotal,
+      descuentoGlobal,
+      tipoDescuento,
+      impuestos,
+      totalUsd,
+      totalBs,
+      tasaCambio,
+      observaciones,
+      exportConfig,
+      estado
+    } = req.body;
+
+    if (!numero || !items || !Array.isArray(items) || items.length === 0) {
+      return sendError(res, 'Número, items y cliente son requeridos', 400);
+    }
+
+    // Verificar si el número ya existe
+    const existe = await prisma.presupuesto.findUnique({
+      where: { numero }
+    });
+
+    if (existe) {
+      return sendError(res, 'Ya existe un presupuesto con este número', 400);
+    }
+
+    const presupuesto = await prisma.presupuesto.create({
+      data: {
+        numero,
+        fecha: new Date(fecha),
+        fechaVencimiento: new Date(fechaVencimiento),
+        validezDias: validezDias || 1,
+        clienteId: clienteId || null,
+        clienteNombre: clienteNombre || null,
+        clienteCedulaRif: clienteCedulaRif || null,
+        clienteTelefono: clienteTelefono || null,
+        clienteEmail: clienteEmail || null,
+        items: items,
+        subtotal: parseFloat(subtotal) || 0,
+        descuentoGlobal: parseFloat(descuentoGlobal) || 0,
+        tipoDescuento: tipoDescuento || 'porcentaje',
+        impuestos: parseFloat(impuestos) || 16,
+        totalUsd: parseFloat(totalUsd) || 0,
+        totalBs: parseFloat(totalBs) || 0,
+        tasaCambio: parseFloat(tasaCambio) || 0,
+        observaciones: observaciones || [],
+        exportConfig: exportConfig || {},
+        estado: estado || 'BORRADOR',
+        creadoPorId: usuarioId // ✅ Usa el ID normalizado del usuario autenticado
+      },
+      include: {
+        cliente: true,
+        creadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    sendSuccess(res, presupuesto, 'Presupuesto creado exitosamente');
+  } catch (error) {
+    console.error('❌ Error creando presupuesto:', error);
+    sendError(res, error.message, 500);
+  }
+};
+
+// 📋 LISTAR PRESUPUESTOS
+const listarPresupuestos = async (req, res) => {
+  try {
+    const { estado, clienteId, limit = 50, offset = 0 } = req.query;
+
+    const where = {};
+    if (estado) where.estado = estado;
+    if (clienteId) where.clienteId = parseInt(clienteId);
+
+    const [presupuestos, total] = await Promise.all([
+      prisma.presupuesto.findMany({
+        where,
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              cedula_rif: true,
+              telefono: true,
+              email: true
+            }
+          },
+          creadoPor: {
+            select: {
+              id: true,
+              nombre: true,
+              email: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: parseInt(limit),
+        skip: parseInt(offset)
+      }),
+      prisma.presupuesto.count({ where })
+    ]);
+
+    sendSuccess(res, {
+      presupuestos,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    }, 'Presupuestos obtenidos exitosamente');
+  } catch (error) {
+    console.error('❌ Error listando presupuestos:', error);
+    sendError(res, error.message, 500);
+  }
+};
+
+// 🔍 OBTENER PRESUPUESTO POR ID
+const obtenerPresupuesto = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const presupuesto = await prisma.presupuesto.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        cliente: true,
+        creadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (!presupuesto) {
+      return sendError(res, 'Presupuesto no encontrado', 404);
+    }
+
+    sendSuccess(res, presupuesto, 'Presupuesto obtenido exitosamente');
+  } catch (error) {
+    console.error('❌ Error obteniendo presupuesto:', error);
+    sendError(res, error.message, 500);
+  }
+};
+
+// ✏️ ACTUALIZAR PRESUPUESTO
+const actualizarPresupuesto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const datosActualizacion = req.body;
+
+    // Eliminar campos que no se pueden actualizar directamente
+    delete datosActualizacion.id;
+    delete datosActualizacion.createdAt;
+    delete datosActualizacion.creadoPorId;
+
+    // Convertir fechas si existen
+    if (datosActualizacion.fecha) {
+      datosActualizacion.fecha = new Date(datosActualizacion.fecha);
+    }
+    if (datosActualizacion.fechaVencimiento) {
+      datosActualizacion.fechaVencimiento = new Date(datosActualizacion.fechaVencimiento);
+    }
+
+    // Convertir números si existen
+    if (datosActualizacion.subtotal !== undefined) {
+      datosActualizacion.subtotal = parseFloat(datosActualizacion.subtotal);
+    }
+    if (datosActualizacion.descuentoGlobal !== undefined) {
+      datosActualizacion.descuentoGlobal = parseFloat(datosActualizacion.descuentoGlobal);
+    }
+    if (datosActualizacion.impuestos !== undefined) {
+      datosActualizacion.impuestos = parseFloat(datosActualizacion.impuestos);
+    }
+    if (datosActualizacion.totalUsd !== undefined) {
+      datosActualizacion.totalUsd = parseFloat(datosActualizacion.totalUsd);
+    }
+    if (datosActualizacion.totalBs !== undefined) {
+      datosActualizacion.totalBs = parseFloat(datosActualizacion.totalBs);
+    }
+    if (datosActualizacion.tasaCambio !== undefined) {
+      datosActualizacion.tasaCambio = parseFloat(datosActualizacion.tasaCambio);
+    }
+
+    // Incrementar versión
+    datosActualizacion.version = {
+      increment: 1
+    };
+
+    const presupuesto = await prisma.presupuesto.update({
+      where: { id: parseInt(id) },
+      data: datosActualizacion,
+      include: {
+        cliente: true,
+        creadoPor: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    sendSuccess(res, presupuesto, 'Presupuesto actualizado exitosamente');
+  } catch (error) {
+    console.error('❌ Error actualizando presupuesto:', error);
+    if (error.code === 'P2025') {
+      return sendError(res, 'Presupuesto no encontrado', 404);
+    }
+    sendError(res, error.message, 500);
+  }
+};
+
+// 🗑️ ELIMINAR PRESUPUESTO (SOLO ADMIN)
+const eliminarPresupuesto = async (req, res) => {
+  try {
+    // ✅ VALIDAR QUE SEA ADMIN
+    if (!req.user || req.user.rol !== 'admin') {
+      return sendError(res, 'Solo los administradores pueden eliminar presupuestos', 403);
+    }
+    
+    const { id } = req.params;
+
+    // Verificar que el presupuesto existe antes de eliminar
+    const presupuesto = await prisma.presupuesto.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!presupuesto) {
+      return sendError(res, 'Presupuesto no encontrado', 404);
+    }
+
+    await prisma.presupuesto.delete({
+      where: { id: parseInt(id) }
+    });
+
+    sendSuccess(res, { id: parseInt(id) }, 'Presupuesto eliminado exitosamente');
+  } catch (error) {
+    console.error('❌ Error eliminando presupuesto:', error);
+    if (error.code === 'P2025') {
+      return sendError(res, 'Presupuesto no encontrado', 404);
+    }
+    sendError(res, error.message, 500);
+  }
+};
+
 module.exports = {
+  crearPresupuesto,
+  listarPresupuestos,
+  obtenerPresupuesto,
+  actualizarPresupuesto,
+  eliminarPresupuesto,
   enviarPresupuestoPorEmail,
   enviarPresupuestoPorWhatsApp,
   obtenerEstadisticasPresupuestos

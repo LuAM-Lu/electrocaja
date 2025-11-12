@@ -957,6 +957,22 @@ const procesarVenta = async (req, res) => {
                 ipAddress: req.ip || req.connection.remoteAddress
               }
             });
+            
+            // 📡 Emitir evento de inventario actualizado para actualización en tiempo real
+            if (req.io) {
+              req.io.emit('inventario_actualizado', {
+                operacion: 'VENTA_PROCESADA',
+                producto: {
+                  id: producto.id,
+                  descripcion: producto.descripcion,
+                  stock: producto.stock - item.cantidad
+                },
+                cantidad: item.cantidad,
+                usuario: req.user?.nombre || req.user?.email,
+                motivo: `Venta ${codigoVenta}`,
+                timestamp: new Date().toISOString()
+              });
+            }
           }
         }
       }
@@ -1076,6 +1092,19 @@ const procesarVenta = async (req, res) => {
                 sesionId: sesionId
               }
             });
+            
+            // 🔥 CREAR REGISTRO DE PAGO PARA EL VUELTO CON SU MONEDA ORIGINAL
+            await tx.pago.create({
+              data: {
+                transaccionId: transaccionVuelto.id,
+                metodo: vuelto.metodo,
+                monto: toDecimal(montoVuelto), // Monto en su moneda original
+                moneda: vuelto.moneda || 'bs', // Moneda original del vuelto
+                banco: vuelto.banco || null,
+                referencia: vuelto.referencia || null
+              }
+            });
+            
             vueltosCreados.push(transaccionVuelto);
             console.log('✅ Vuelto registrado:', montoVuelto, vuelto.moneda);
           }
@@ -1122,39 +1151,90 @@ const procesarVenta = async (req, res) => {
 
     console.log('✅ Venta procesada exitosamente:', ventaProcesada.transaccion.id);
 
-    // Convertir para el frontend
-        const ventaConvertida = {
-          ...ventaProcesada.transaccion,
-          totalBs: decimalToNumber(ventaProcesada.transaccion.totalBs),
-          totalUsd: decimalToNumber(ventaProcesada.transaccion.totalUsd),
-          tasaCambioUsada: decimalToNumber(ventaProcesada.transaccion.tasaCambioUsada),
-          descuentoTotal: decimalToNumber(ventaProcesada.transaccion.descuentoTotal),
-          usuario: req.user?.nombre || req.user?.email || 'Usuario',
-          fechaHora: new Date().toISOString(),
-          pagos: ventaProcesada.pagos.map(p => ({
-            ...p,
-            monto: decimalToNumber(p.monto)
-          })),
-          items: ventaProcesada.items.map(i => ({
-            ...i,
-            precioUnitario: decimalToNumber(i.precioUnitario),
-            precioCosto: decimalToNumber(i.precioCosto),
-            descuento: decimalToNumber(i.descuento),
-            subtotal: decimalToNumber(i.subtotal)
-          }))
-        };
-
-    // 📡 Notificar via Socket.IO
-    if (req.io) {
-      req.io.emit('venta_procesada', {
-        venta: ventaConvertida,
-        usuario: req.user?.nombre || req.user?.email,
-        timestamp: new Date().toISOString()
+    // Convertir para el frontend con manejo seguro de errores
+    try {
+      // ✅ OBTENER TOTALES ACTUALIZADOS DE LA CAJA DESPUÉS DE LA TRANSACCIÓN
+      const cajaActualizada = await prisma.caja.findUnique({
+        where: { id: cajaAbierta.id },
+        select: {
+          totalIngresosBs: true,
+          totalIngresosUsd: true,
+          totalPagoMovil: true
+        }
       });
-      console.log('📡 Notificación Socket.IO enviada - venta procesada');
-    }
 
-    sendSuccess(res, ventaConvertida, 'Venta procesada correctamente');
+      const ventaConvertida = {
+        ...ventaProcesada.transaccion,
+        totalBs: decimalToNumber(ventaProcesada.transaccion.totalBs),
+        totalUsd: decimalToNumber(ventaProcesada.transaccion.totalUsd),
+        tasaCambioUsada: decimalToNumber(ventaProcesada.transaccion.tasaCambioUsada),
+        descuentoTotal: decimalToNumber(ventaProcesada.transaccion.descuentoTotal),
+        usuario: req.user?.nombre || req.user?.email || 'Usuario',
+        fechaHora: new Date().toISOString(),
+        // ✅ AGREGAR TOTALES ACTUALIZADOS PARA SINCRONIZACIÓN EN FRONTEND
+        totalesActualizados: cajaActualizada ? {
+          totalIngresosBs: decimalToNumber(cajaActualizada.totalIngresosBs),
+          totalIngresosUsd: decimalToNumber(cajaActualizada.totalIngresosUsd),
+          totalPagoMovil: decimalToNumber(cajaActualizada.totalPagoMovil || 0)
+        } : null,
+        pagos: (ventaProcesada.pagos || []).map(p => ({
+          ...p,
+          monto: decimalToNumber(p.monto)
+        })),
+        items: (ventaProcesada.items || []).map(i => ({
+          ...i,
+          precioUnitario: decimalToNumber(i.precioUnitario),
+          precioCosto: decimalToNumber(i.precioCosto || 0),
+          descuento: decimalToNumber(i.descuento || 0),
+          subtotal: decimalToNumber(i.subtotal)
+        }))
+      };
+
+      // ✅ ENVIAR RESPUESTA HTTP PRIMERO
+      try {
+        sendSuccess(res, ventaConvertida, 'Venta procesada correctamente');
+      } catch (errorRespuesta) {
+        console.error('❌ Error enviando respuesta:', errorRespuesta);
+        // Si ya se envió la respuesta, no intentar enviar otra
+        if (!res.headersSent) {
+          sendError(res, `Error procesando venta: ${errorRespuesta.message}`);
+        }
+        return;
+      }
+
+      // ✅ EMITIR EVENTOS SOCKET.IO DESPUÉS DE ENVIAR RESPUESTA HTTP
+      // Esto asegura que el frontend reciba la respuesta HTTP antes de los eventos Socket
+      if (req.io) {
+        // Emitir evento venta_procesada (para ventas)
+        req.io.emit('venta_procesada', {
+          venta: ventaConvertida,
+          usuario: req.user?.nombre || req.user?.email,
+          timestamp: new Date().toISOString()
+        });
+        
+        // También emitir nueva_transaccion para que TransactionTable se actualice
+        req.io.emit('nueva_transaccion', {
+          transaccion: ventaConvertida,
+          usuario: req.user?.nombre || req.user?.email,
+          timestamp: new Date().toISOString(),
+          tipo: 'venta'
+        });
+        
+        // También emitir transaction-added para compatibilidad (usar emit en lugar de broadcast.emit)
+        req.io.emit('transaction-added', {
+          transaccion: ventaConvertida,
+          usuario: req.user?.nombre || req.user?.email,
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log('📡 Notificaciones Socket.IO enviadas - venta procesada');
+      }
+    } catch (errorConversion) {
+      console.error('❌ Error convirtiendo datos de venta:', errorConversion);
+      console.error('Stack trace:', errorConversion.stack);
+      sendError(res, `Error procesando venta: ${errorConversion.message}`);
+      return;
+    }
 
     // ✅ LIMPIAR RESERVAS TEMPORALES DE LA SESIÓN (DATOS TEMPORALES)
     try {

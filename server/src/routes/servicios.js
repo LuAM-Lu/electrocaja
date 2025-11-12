@@ -4,7 +4,14 @@ const serviciosController = require('../controllers/serviciosController');
 const { verifyToken } = require('../middleware/auth');
 
 // ===================================
-// TODAS LAS RUTAS REQUIEREN AUTENTICACIÓN
+// 🌐 RUTA PÚBLICA (SIN AUTENTICACIÓN)
+// ===================================
+
+// GET /api/servicios/publico/:token - Obtener servicio público por token (SIN AUTENTICACIÓN)
+router.get('/publico/:token', serviciosController.getServicioPublico);
+
+// ===================================
+// TODAS LAS DEMÁS RUTAS REQUIEREN AUTENTICACIÓN
 // ===================================
 router.use(verifyToken);
 
@@ -23,6 +30,9 @@ router.get('/tecnicos/config', serviciosController.getTecnicosConfig);
 
 // POST /api/servicios/tecnicos/config - Guardar configuración de técnicos
 router.post('/tecnicos/config', serviciosController.saveTecnicosConfig);
+
+// GET /api/servicios/:id/ticket - Regenerar ticket de servicio
+router.get('/:id/ticket', serviciosController.regenerarTicketServicio);
 
 // GET /api/servicios/:id - Obtener servicio por ID
 router.get('/:id', serviciosController.getServicioById);
@@ -48,5 +58,14 @@ router.post('/:id/pagos', serviciosController.registrarPago);
 
 // POST /api/servicios/:id/notas - Agregar nota técnica
 router.post('/:id/notas', serviciosController.agregarNota);
+
+// DELETE /api/servicios/:id/notas/:notaId - Eliminar nota técnica
+router.delete('/:id/notas/:notaId', serviciosController.eliminarNota);
+
+// PATCH /api/servicios/:id/notas/:notaId/visibilidad - Actualizar visibilidad de nota
+router.patch('/:id/notas/:notaId/visibilidad', serviciosController.actualizarVisibilidadNota);
+
+// POST /api/servicios/:id/entregar - Finalizar entrega del dispositivo
+router.post('/:id/entregar', serviciosController.finalizarEntrega);
 
 module.exports = router;

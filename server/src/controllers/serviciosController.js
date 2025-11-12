@@ -1,4 +1,8 @@
 const prisma = require('../config/database');
+const { generarTokenUnico, generarLinkSeguimiento } = require('../utils/servicioUtils');
+const { generarHTMLTicketServicio, generarHTMLTicketInterno, generarQRBase64, generarHTMLTicketAbono } = require('../utils/printServicioUtils');
+const { enviarWhatsAppCliente, enviarWhatsAppTecnico, enviarWhatsAppAbono, enviarWhatsAppListoRetiro, enviarWhatsAppEntrega } = require('../utils/whatsappServicioUtils');
+const stockService = require('../services/stockService');
 
 // Función auxiliar para validar y parsear fechas de manera segura
 const parsearFechaSegura = (fecha) => {
@@ -9,15 +13,37 @@ const parsearFechaSegura = (fecha) => {
     return fecha;
   }
   
-  // Intentar parsear como string
-  const fechaParseada = new Date(fecha);
-  
-  // Verificar si la fecha es válida
-  if (isNaN(fechaParseada.getTime())) {
-    return null;
+  // Si es un string, intentar parsear
+  if (typeof fecha === 'string') {
+    // Si viene en formato YYYY-MM-DD (sin hora), agregar hora para evitar problemas de zona horaria
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      // Crear fecha en UTC para evitar problemas de zona horaria
+      const [year, month, day] = fecha.split('-').map(Number);
+      const fechaParseada = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      
+      if (!isNaN(fechaParseada.getTime())) {
+        return fechaParseada;
+      }
+    }
+    
+    // Intentar parsear como string ISO o cualquier otro formato
+    const fechaParseada = new Date(fecha);
+    
+    // Verificar si la fecha es válida
+    if (!isNaN(fechaParseada.getTime())) {
+      return fechaParseada;
+    }
   }
   
-  return fechaParseada;
+  // Si es un número (timestamp), crear Date desde timestamp
+  if (typeof fecha === 'number') {
+    const fechaParseada = new Date(fecha);
+    if (!isNaN(fechaParseada.getTime())) {
+      return fechaParseada;
+    }
+  }
+  
+  return null;
 };
 
 // ===================================
@@ -79,7 +105,7 @@ const getServicios = async (req, res) => {
           },
           notas: {
             orderBy: { fecha: 'desc' },
-            take: 5
+            take: 10 // 🆕 Aumentar a 10 para asegurar que se incluya la fecha de cambio a LISTO_RETIRO
           },
           cliente: {
             select: {
@@ -207,7 +233,8 @@ const createServicio = async (req, res) => {
       diagnostico,
       items,
       modalidadPago,
-      pagoInicial
+      pagoInicial,
+      sesionId // 🆕 Sesión ID para liberar reservas antes de descontar stock
     } = req.body;
 
     // Validar autenticación
@@ -231,15 +258,6 @@ const createServicio = async (req, res) => {
       });
     }
 
-    console.log('🔍 Validando datos recibidos:', {
-      tieneCliente: !!cliente,
-      tieneDispositivo: !!dispositivo,
-      tieneDiagnostico: !!diagnostico,
-      tieneItems: !!items,
-      tieneModalidadPago: !!modalidadPago,
-      cantidadItems: items?.length,
-      usuarioId
-    });
 
     // Validaciones básicas
     if (!cliente || !dispositivo || !diagnostico || !items || !modalidadPago) {
@@ -359,9 +377,38 @@ const createServicio = async (req, res) => {
       }
     }
 
+    // 🆕 Generar token único y link de seguimiento ANTES de crear el servicio
+    const tokenUnico = generarTokenUnico(numeroServicio, cliente.cedula_rif);
+    
+    // Obtener URL base del frontend desde variables de entorno o request
+    const frontendBaseUrl = process.env.FRONTEND_URL || 
+      process.env.CLIENT_URL || 
+      (req.headers.origin ? req.headers.origin.replace(/\/$/, '') : 'https://localhost:5173');
+    
+    const linkSeguimiento = generarLinkSeguimiento(tokenUnico, frontendBaseUrl);
+
+    // 🆕 0. Si hay sesionId, liberar reservas ANTES de iniciar la transacción principal
+    // (esto evita problemas de transacciones anidadas)
+    if (sesionId) {
+      console.log(`🔓 [Servicio] Liberando reservas de sesión ${sesionId} antes de crear servicio...`);
+      try {
+        // Liberar todas las reservas de la sesión
+        await stockService.liberarTodasLasReservasDeSesion(
+          sesionId,
+          usuarioId,
+          req.ip || req.connection.remoteAddress
+        );
+        console.log(`✅ [Servicio] Reservas liberadas exitosamente para sesión ${sesionId}`);
+      } catch (error) {
+        console.error(`⚠️ [Servicio] Error liberando reservas (continuando):`, error.message);
+        // No fallar la creación del servicio si hay error liberando reservas
+        // Las reservas se limpiarán automáticamente por timeout
+      }
+    }
+
     // Crear servicio en transacción
     const resultado = await prisma.$transaction(async (tx) => {
-      // 1. Crear servicio
+      // 1. Crear servicio con token único y link de seguimiento
       const servicio = await tx.servicioTecnico.create({
         data: {
           numeroServicio,
@@ -405,15 +452,31 @@ const createServicio = async (req, res) => {
           totalPagado,
           saldoPendiente,
           creadoPorId: usuarioId,
-          cajaIngresoId: cajaActual.id
+          cajaIngresoId: cajaActual.id,
+          // 🆕 Agregar token único y link de seguimiento
+          tokenUnico,
+          linkSeguimiento
         }
       });
 
       // 2. Crear items y descontar stock
+      const productosAfectados = []; // Para emitir eventos después de la transacción
+      
+      console.log(`📦 [Servicio] Procesando ${items.length} items para servicio ${numeroServicio}`);
+      
       for (const item of items) {
         const cantidad = parseInt(item.cantidad);
         const precioUnitario = parseFloat(item.precio_unitario || item.precioUnitario);
         const subtotal = parseFloat((cantidad * precioUnitario).toFixed(2));
+
+        // 🐛 DEBUG: Log del item recibido
+        console.log(`📦 [Servicio] Item recibido:`, {
+          descripcion: item.descripcion,
+          cantidad,
+          productoId: item.productoId,
+          producto_id: item.producto_id,
+          esPersonalizado: item.esPersonalizado || item.es_personalizado || false
+        });
 
         await tx.servicioTecnicoItem.create({
           data: {
@@ -427,21 +490,55 @@ const createServicio = async (req, res) => {
           }
         });
 
-        // 3. Descontar stock si tiene producto vinculado
+        // 3. Descontar stock si tiene producto vinculado (solo productos físicos)
         const productoId = item.productoId || item.producto_id;
+        
+        console.log(`🔍 [Servicio] Verificando productoId: ${productoId} para item: ${item.descripcion}`);
+        
         if (productoId) {
           const producto = await tx.product.findUnique({
             where: { id: productoId }
           });
 
           if (producto) {
-            const nuevoStock = producto.stock - cantidad;
+            console.log(`✅ [Servicio] Producto encontrado: ${producto.descripcion}, tipo: ${producto.tipo}, stock actual: ${producto.stock}`);
+            
+            // ✅ Validar que no sea un servicio (los servicios no tienen stock físico)
+            if (producto.tipo === 'SERVICIO') {
+              console.log(`⏭️ [Servicio] Saltando descuento de stock para servicio: ${producto.descripcion}`);
+              // Los servicios no se descuentan del inventario
+              continue;
+            }
 
+            // ✅ Validar que hay suficiente stock disponible
+            if (producto.stock < cantidad) {
+              console.error(`❌ [Stock] Stock insuficiente:`, {
+                producto: producto.descripcion,
+                stockDisponible: producto.stock,
+                cantidadRequerida: cantidad
+              });
+              throw new Error(
+                `Stock insuficiente para "${producto.descripcion}". ` +
+                `Disponible: ${producto.stock}, Requerido: ${cantidad}`
+              );
+            }
+
+            console.log(`🔽 [Servicio] Descontando ${cantidad} unidades de ${producto.descripcion} (stock antes: ${producto.stock})`);
+
+            // ✅ Descontar stock usando decrement (más seguro y atómico)
             await tx.product.update({
               where: { id: productoId },
               data: {
-                stock: nuevoStock
+                stock: { decrement: cantidad }
               }
+            });
+            
+            console.log(`✅ [Servicio] Stock descontado exitosamente para ${producto.descripcion}`);
+
+            // Obtener el stock actualizado para el movimiento
+            const productoActualizado = await tx.product.findUnique({
+              where: { id: productoId },
+              select: { stock: true }
             });
 
             // Crear movimiento de stock
@@ -451,13 +548,26 @@ const createServicio = async (req, res) => {
                 tipo: 'SALIDA',
                 cantidad,
                 stockAnterior: producto.stock,
-                stockNuevo: nuevoStock,
+                stockNuevo: productoActualizado.stock,
                 precio: precioUnitario,
                 motivo: `Servicio técnico ${numeroServicio}`,
                 usuarioId
               }
             });
+            
+            // Guardar información para emitir evento después de la transacción
+            productosAfectados.push({
+              id: producto.id,
+              descripcion: producto.descripcion,
+              stock: productoActualizado.stock,
+              cantidad: cantidad
+            });
+          } else {
+            console.log(`⚠️ [Servicio] Producto no encontrado con ID: ${productoId}`);
           }
+        } else {
+          console.log(`⚠️ [Servicio] Item sin productoId: ${item.descripcion} - Saltando descuento de stock`);
+          console.log(`⚠️ [Servicio] Item completo recibido:`, JSON.stringify(item, null, 2));
         }
       }
 
@@ -465,7 +575,7 @@ const createServicio = async (req, res) => {
       if (pagoInicial && (modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO')) {
         const totalBs = parseFloat(pagoInicial.totalBs || 0);
         const totalUsd = parseFloat(pagoInicial.totalUsd || pagoInicial.totalUsdEquivalent || 0);
-        const tasaCambio = parseFloat(pagoInicial.tasaCambio || cajaActual.tasaParalelo);
+        const tasaCambio = parseFloat(pagoInicial.tasaCambio || global.estadoApp?.tasa_bcv?.valor || 38.20);
 
         // Crear transacción en caja
         const transaccion = await tx.transaccion.create({
@@ -589,18 +699,20 @@ const createServicio = async (req, res) => {
         contenidoNota += ` Tasa: ${tasaCambio.toFixed(2)} Bs/$`;
       }
 
+      // ✅ Crear primera nota técnica pública al recibir la orden
       await tx.servicioTecnicoNota.create({
         data: {
           servicioId: servicio.id,
           tipo: 'CAMBIO_ESTADO',
           contenido: contenidoNota,
           tecnico: diagnostico.tecnico,
-          estadoNuevo: 'RECIBIDO'
+          estadoNuevo: 'RECIBIDO',
+          publica: true // ✅ Primera nota siempre pública para que el cliente pueda verla
         }
       });
 
       // Recargar servicio con todas las relaciones
-      return await tx.servicioTecnico.findUnique({
+      const servicioCompleto = await tx.servicioTecnico.findUnique({
         where: { id: servicio.id },
         include: {
           items: true,
@@ -608,14 +720,136 @@ const createServicio = async (req, res) => {
           notas: true
         }
       });
+      
+      // Retornar servicio y productos afectados para emitir eventos después
+      return { servicio: servicioCompleto, productosAfectados };
+    });
+    
+    // 📡 Emitir eventos de inventario actualizado DESPUÉS de la transacción
+    if (req.io && resultado.productosAfectados && resultado.productosAfectados.length > 0) {
+      resultado.productosAfectados.forEach(producto => {
+        req.io.emit('inventario_actualizado', {
+          operacion: 'VENTA_PROCESADA',
+          producto: {
+            id: producto.id,
+            descripcion: producto.descripcion,
+            stock: producto.stock
+          },
+          cantidad: producto.cantidad,
+          usuario: req.user?.nombre || req.user?.email,
+          motivo: `Servicio técnico ${resultado.servicio.numeroServicio}`,
+          timestamp: new Date().toISOString()
+        });
+      });
+      console.log(`📡 Emitidos ${resultado.productosAfectados.length} eventos de inventario actualizado`);
+    }
+    
+    // Extraer solo el servicio del resultado para compatibilidad con el resto del código
+    const servicioFinal = resultado.servicio;
+
+
+    // 🆕 Obtener usuario que creó el servicio y técnico asignado para WhatsApp
+    const usuarioCreador = await prisma.user.findUnique({
+      where: { id: usuarioId },
+      select: { nombre: true }
     });
 
-    console.log(`✅ Servicio ${numeroServicio} creado exitosamente`);
+    let tecnicoData = null;
+    if (servicioFinal.tecnicoId) {
+      tecnicoData = await prisma.user.findUnique({
+        where: { id: servicioFinal.tecnicoId },
+        include: {
+          tecnicoConfig: {
+            select: { telefono: true }
+          }
+        }
+      });
+    }
 
+    // 🆕 Generar QR code para el ticket
+    let qrBase64 = null;
+    try {
+      qrBase64 = await generarQRBase64(linkSeguimiento);
+    } catch (error) {
+      console.error('❌ Error generando QR:', error);
+    }
+
+    // 🆕 Obtener tasa de cambio actual desde global.estadoApp (misma fuente que Header.jsx)
+    const tasaCambio = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
+
+    // 🆕 Generar HTML del ticket térmico (cliente) con tasa de cambio
+    const htmlTicket = generarHTMLTicketServicio(
+      servicioFinal,
+      usuarioCreador,
+      linkSeguimiento,
+      qrBase64,
+      tasaCambio // 🆕 Pasar tasa de cambio
+    );
+
+    // 🆕 Generar HTML del ticket interno (uso interno en tienda)
+    const htmlTicketInterno = generarHTMLTicketInterno(servicioFinal);
+
+    // 🆕 Enviar respuesta con datos adicionales para impresión y WhatsApp
     res.status(201).json({
       success: true,
       message: 'Servicio creado exitosamente',
-      data: resultado
+      data: {
+        ...servicioFinal,
+        tokenUnico,
+        linkSeguimiento,
+        // Datos para impresión térmica
+        ticketHTML: htmlTicket,
+        ticketHTMLInterno: htmlTicketInterno, // 🆕 Ticket interno
+        qrCode: qrBase64,
+        // Datos para WhatsApp
+        usuarioCreador: usuarioCreador?.nombre || 'Sistema'
+      }
+    });
+
+    // 🆕 Ejecutar acciones adicionales en segundo plano (no bloquear respuesta)
+    setImmediate(async () => {
+      try {
+        // 1. Enviar WhatsApp al cliente
+        if (servicioFinal.clienteTelefono) {
+          const resultadoWhatsAppCliente = await enviarWhatsAppCliente(
+            servicioFinal,
+            linkSeguimiento,
+            qrBase64, // Enviar QR como imagen si está disponible
+            tasaCambio // 🆕 Pasar tasa de cambio
+          );
+          
+          if (resultadoWhatsAppCliente.success) {
+            // Actualizar flag de WhatsApp enviado
+            await prisma.servicioTecnico.update({
+              where: { id: servicioFinal.id },
+              data: {
+                whatsappEnviado: true,
+                whatsappFechaEnvio: new Date()
+              }
+            });
+          } else {
+            console.error('❌ Error enviando WhatsApp al cliente:', resultadoWhatsAppCliente.message);
+          }
+        }
+
+        // 2. Enviar WhatsApp al técnico asignado
+        if (tecnicoData?.tecnicoConfig?.telefono) {
+          const resultadoWhatsAppTecnico = await enviarWhatsAppTecnico(
+            servicioFinal,
+            tecnicoData.tecnicoConfig.telefono,
+            tasaCambio // 🆕 Pasar tasa de cambio
+          );
+          
+          if (resultadoWhatsAppTecnico.success) {
+          } else {
+            console.error('❌ Error enviando WhatsApp al técnico:', resultadoWhatsAppTecnico.message);
+          }
+        } else {
+        }
+      } catch (error) {
+        console.error('❌ Error en acciones adicionales (WhatsApp):', error);
+        // No lanzar error para no afectar la creación del servicio
+      }
     });
 
   } catch (error) {
@@ -675,6 +909,8 @@ const updateServicio = async (req, res) => {
     const resultado = await prisma.$transaction(async (tx) => {
       const updateData = {};
       let notaModificacionCreada = null; // ✅ Variable para guardar la nota creada
+      let productosAfectados = []; // Para emitir eventos después de la transacción
+      let productosDevueltos = []; // Para emitir eventos después de la transacción
 
       // Actualizar información del cliente si se envió
       if (cliente) {
@@ -718,11 +954,19 @@ const updateServicio = async (req, res) => {
             });
 
             if (productoAntiguo) {
+              const stockAnterior = productoAntiguo.stock;
+              
               await tx.product.update({
                 where: { id: itemAntiguo.productoId },
                 data: {
                   stock: { increment: itemAntiguo.cantidad }
                 }
+              });
+              
+              // Obtener stock actualizado después del increment
+              const productoActualizado = await tx.product.findUnique({
+                where: { id: itemAntiguo.productoId },
+                select: { stock: true }
               });
 
               // Crear movimiento de stock para devolución
@@ -731,12 +975,20 @@ const updateServicio = async (req, res) => {
                   productoId: itemAntiguo.productoId,
                   tipo: 'AJUSTE_POSITIVO',
                   cantidad: itemAntiguo.cantidad,
-                  stockAnterior: productoAntiguo.stock,
-                  stockNuevo: productoAntiguo.stock + itemAntiguo.cantidad,
+                  stockAnterior: stockAnterior,
+                  stockNuevo: productoActualizado.stock,
                   precio: itemAntiguo.precioUnitario,
                   motivo: `Devolución por edición de servicio ${servicioActual.numeroServicio}`,
                   usuarioId
                 }
+              });
+              
+              // Guardar información para emitir evento después de la transacción
+              productosDevueltos.push({
+                id: productoAntiguo.id,
+                descripcion: productoAntiguo.descripcion,
+                stock: productoActualizado.stock,
+                cantidad: itemAntiguo.cantidad
               });
             }
           }
@@ -749,6 +1001,7 @@ const updateServicio = async (req, res) => {
 
         // Crear nuevos items y descontar stock
         let nuevoTotal = 0;
+        
         for (const item of items) {
           const cantidad = parseInt(item.cantidad);
           const precioUnitario = parseFloat(item.precio_unitario || item.precioUnitario);
@@ -800,6 +1053,14 @@ const updateServicio = async (req, res) => {
                   motivo: `Actualización de servicio técnico ${servicioActual.numeroServicio}`,
                   usuarioId
                 }
+              });
+              
+              // Guardar información para emitir evento después de la transacción
+              productosAfectados.push({
+                id: producto.id,
+                descripcion: producto.descripcion,
+                stock: producto.stock - cantidad,
+                cantidad: cantidad
               });
             }
           }
@@ -879,11 +1140,51 @@ const updateServicio = async (req, res) => {
       
       return {
         servicio: servicioActualizado,
-        notaModificacion: notaModificacionCreada
+        notaModificacion: notaModificacionCreada,
+        productosAfectados: productosAfectados || [],
+        productosDevueltos: productosDevueltos || []
       };
     });
 
-    console.log(`✅ Servicio ${servicioActual.numeroServicio} actualizado`);
+    // 📡 Emitir eventos de inventario actualizado DESPUÉS de la transacción
+    // Emitir eventos para productos devueltos (stock incrementado)
+    if (req.io && resultado.productosDevueltos && resultado.productosDevueltos.length > 0) {
+      resultado.productosDevueltos.forEach(producto => {
+        req.io.emit('inventario_actualizado', {
+          operacion: 'STOCK_DEVUELTO',
+          producto: {
+            id: producto.id,
+            descripcion: producto.descripcion,
+            stock: producto.stock
+          },
+          cantidad: producto.cantidad,
+          usuario: req.user?.nombre || req.user?.email,
+          motivo: `Devolución por edición de servicio ${resultado.servicio.numeroServicio}`,
+          timestamp: new Date().toISOString()
+        });
+      });
+      console.log(`📡 Emitidos ${resultado.productosDevueltos.length} eventos de stock devuelto`);
+    }
+    
+    // Emitir eventos para productos afectados (stock descontado)
+    if (req.io && resultado.productosAfectados && resultado.productosAfectados.length > 0) {
+      resultado.productosAfectados.forEach(producto => {
+        req.io.emit('inventario_actualizado', {
+          operacion: 'VENTA_PROCESADA',
+          producto: {
+            id: producto.id,
+            descripcion: producto.descripcion,
+            stock: producto.stock
+          },
+          cantidad: producto.cantidad,
+          usuario: req.user?.nombre || req.user?.email,
+          motivo: `Actualización de servicio técnico ${resultado.servicio.numeroServicio}`,
+          timestamp: new Date().toISOString()
+        });
+      });
+      console.log(`📡 Emitidos ${resultado.productosAfectados.length} eventos de inventario actualizado`);
+    }
+
 
     // 📡 Emitir evento Socket.IO para actualizar notas en tiempo real
     if (req.io && resultado?.notaModificacion) {
@@ -905,7 +1206,6 @@ const updateServicio = async (req, res) => {
         timestamp: new Date().toISOString()
       });
       
-      console.log('📡 Evento Socket.IO emitido - nota de modificación de items agregada');
     }
 
     res.json({
@@ -993,14 +1293,100 @@ const cambiarEstado = async (req, res) => {
           contenido: `${iconEstado} ${contenidoNota}`,
           tecnico: req.user?.nombre || req.user?.email || 'Sistema',
           estadoAnterior: servicioActual.estado,
-          estadoNuevo: estado
+          estadoNuevo: estado,
+          publica: true // Los cambios de estado siempre son públicos
         }
       });
 
       return servicio;
     });
 
-    console.log(`✅ Estado del servicio ${servicioActual.numeroServicio} actualizado a ${estado}`);
+
+    // 🆕 Si el estado cambió a LISTO_RETIRO, enviar WhatsApp al cliente
+    let whatsappEnviado = false;
+    let mensajeWhatsApp = null;
+    
+    if (estado === 'LISTO_RETIRO') {
+      
+      if (resultado.clienteTelefono) {
+        // Enviar WhatsApp de forma síncrona para poder retornar el resultado
+        try {
+          
+          // Obtener tasa de cambio actual
+          const tasaCambio = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
+          
+          // Obtener servicio completo con todos los datos
+          let servicioCompleto = await prisma.servicioTecnico.findUnique({
+            where: { id: parseInt(id) },
+            include: {
+              items: true,
+              pagos: true
+            }
+          });
+
+          if (!servicioCompleto) {
+            console.error('❌ No se pudo obtener el servicio completo para WhatsApp');
+          } else {
+            // 🆕 Si no tiene linkSeguimiento, generarlo (para servicios antiguos)
+            if (!servicioCompleto.linkSeguimiento || !servicioCompleto.tokenUnico) {
+              const tokenUnico = generarTokenUnico(
+                servicioCompleto.clienteCedulaRif,
+                servicioCompleto.numeroServicio,
+                servicioCompleto.id.toString()
+              );
+              
+              const frontendBaseUrl = process.env.FRONTEND_URL || 
+                (process.env.NODE_ENV === 'production' 
+                  ? 'https://192.168.1.153:5173' 
+                  : 'https://localhost:5173');
+              
+              const linkSeguimiento = generarLinkSeguimiento(tokenUnico, frontendBaseUrl);
+              
+              // Actualizar servicio con token y link
+              servicioCompleto = await prisma.servicioTecnico.update({
+                where: { id: parseInt(id) },
+                data: {
+                  tokenUnico,
+                  linkSeguimiento
+                },
+                include: {
+                  items: true,
+                  pagos: true
+                }
+              });
+              
+            }
+
+            const resultadoWhatsApp = await enviarWhatsAppListoRetiro(
+              servicioCompleto,
+              servicioCompleto.linkSeguimiento,
+              tasaCambio
+            );
+            
+            if (resultadoWhatsApp.success) {
+              whatsappEnviado = true;
+              mensajeWhatsApp = 'WhatsApp enviado exitosamente al cliente';
+            } else {
+              console.error('❌ Error enviando WhatsApp de LISTO_RETIRO:', resultadoWhatsApp.message);
+              // 🆕 Mensaje más claro según el tipo de error
+              if (resultadoWhatsApp.message === 'WhatsApp no está conectado') {
+                mensajeWhatsApp = '⚠️ WhatsApp no está conectado. Conecta WhatsApp desde la configuración para notificar al cliente.';
+              } else {
+                mensajeWhatsApp = `Error enviando WhatsApp: ${resultadoWhatsApp.message}`;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error enviando WhatsApp de LISTO_RETIRO:', error);
+          console.error('Stack trace:', error.stack);
+          mensajeWhatsApp = `Error enviando WhatsApp: ${error.message}`;
+        }
+      } else {
+        console.warn('⚠️ No se puede enviar WhatsApp de LISTO_RETIRO: servicio sin teléfono del cliente');
+        mensajeWhatsApp = '⚠️ No se pudo enviar WhatsApp: servicio sin teléfono del cliente';
+      }
+    } else {
+    }
 
     // 📡 Emitir evento Socket.IO para actualizar ModalVerServicio en tiempo real
     if (req.io) {
@@ -1026,14 +1412,15 @@ const cambiarEstado = async (req, res) => {
           timestamp: new Date().toISOString()
         });
         
-        console.log('📡 Evento Socket.IO emitido - nota de cambio de estado agregada');
       }
     }
 
     res.json({
       success: true,
       message: `Estado cambiado a ${estado}`,
-      data: resultado
+      data: resultado,
+      whatsappEnviado: whatsappEnviado,
+      mensajeWhatsApp: mensajeWhatsApp
     });
 
   } catch (error) {
@@ -1320,10 +1707,12 @@ const registrarPago = async (req, res) => {
         saldoPendiente: Math.max(0, nuevoSaldo)
       };
       
-      // Solo marcar como entregado si es pago final y no hay saldo pendiente
+      // 🆕 NO marcar automáticamente como ENTREGADO - dejar que el usuario confirme desde el modal
+      // El estado se marcará como ENTREGADO cuando se confirme la entrega desde ModalConfirmarEntrega
+      // Solo guardar la caja de entrega si es pago final y no hay saldo pendiente
       if (!esAbonoReal && nuevoSaldo <= 0.01) {
-        updateData.estado = 'ENTREGADO';
         updateData.cajaEntregaId = cajaActual.id;
+        // NO actualizar estado aquí - se hará en finalizarEntrega
       }
       
       const servicioActualizado = await tx.servicioTecnico.update({
@@ -1432,7 +1821,77 @@ const registrarPago = async (req, res) => {
       };
     });
 
-    console.log(`✅ ${resultado.esAbono ? 'Abono' : 'Pago'} registrado para servicio ${servicio.numeroServicio}`);
+    // 🆕 Si es abono, generar ticket y WhatsApp automáticamente
+    let ticketAbonoHTML = null;
+    let qrAbonoBase64 = null;
+    
+    if (resultado.esAbono) {
+      try {
+        // Obtener servicio completo con todos los datos actualizados
+        const servicioCompleto = await prisma.servicioTecnico.findUnique({
+          where: { id: servicio.id },
+          include: {
+            items: true,
+            pagos: true
+          }
+        });
+
+        // Obtener tasa de cambio actual desde global.estadoApp (misma fuente que Header.jsx)
+        const tasaCambioAbono = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
+
+        // Generar QR code si hay link de seguimiento
+        if (servicioCompleto.linkSeguimiento) {
+          try {
+            qrAbonoBase64 = await generarQRBase64(servicioCompleto.linkSeguimiento);
+          } catch (error) {
+            console.error('❌ Error generando QR de abono:', error);
+          }
+        }
+
+        // Preparar datos del pago para el ticket
+        const pagoData = {
+          monto: montoPago,
+          pagos: pagos,
+          vueltos: vueltos
+        };
+
+        // Generar HTML del ticket de abono
+        ticketAbonoHTML = generarHTMLTicketAbono(
+          servicioCompleto,
+          pagoData,
+          servicioCompleto.linkSeguimiento,
+          qrAbonoBase64,
+          tasaCambioAbono
+        );
+
+
+        // Enviar WhatsApp de abono en segundo plano
+        setImmediate(async () => {
+          try {
+            if (servicioCompleto.clienteTelefono) {
+              const resultadoWhatsAppAbono = await enviarWhatsAppAbono(
+                servicioCompleto,
+                pagoData,
+                servicioCompleto.linkSeguimiento,
+                qrAbonoBase64, // Enviar QR como imagen si está disponible
+                tasaCambioAbono
+              );
+              
+              if (resultadoWhatsAppAbono.success) {
+              } else {
+                console.error('❌ Error enviando WhatsApp de abono:', resultadoWhatsAppAbono.message);
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error enviando WhatsApp de abono:', error);
+          }
+        });
+
+      } catch (error) {
+        console.error('❌ Error generando ticket/WhatsApp de abono:', error);
+        // No fallar el registro del pago si falla la generación del ticket
+      }
+    }
 
     // 📡 Emitir evento Socket.IO para actualizar ModalVerServicio en tiempo real (nota de pago)
     if (req.io && resultado.notaPago) {
@@ -1457,7 +1916,6 @@ const registrarPago = async (req, res) => {
         timestamp: new Date().toISOString()
       });
       
-      console.log('📡 Evento Socket.IO emitido - nota de pago agregada');
     }
 
     // 📡 Emitir evento Socket.IO para actualizar TransactionTable en tiempo real
@@ -1493,13 +1951,17 @@ const registrarPago = async (req, res) => {
         numeroServicio: servicio.numeroServicio
       });
       
-      console.log('📡 Evento Socket.IO emitido - nueva transacción de servicio técnico');
     }
 
     res.json({
       success: true,
       message: resultado.esAbono ? 'Abono registrado exitosamente' : 'Pago registrado exitosamente',
-      data: resultado.servicio
+      data: {
+        ...resultado.servicio,
+        // 🆕 Incluir ticket y QR de abono si existe
+        ticketAbonoHTML: ticketAbonoHTML,
+        qrAbonoCode: qrAbonoBase64
+      }
     });
 
   } catch (error) {
@@ -1518,12 +1980,91 @@ const registrarPago = async (req, res) => {
 };
 
 // ===================================
+// 🗑️ ELIMINAR NOTA TÉCNICA
+// ===================================
+const eliminarNota = async (req, res) => {
+  try {
+    const { id, notaId } = req.params;
+    const usuarioActual = req.user;
+
+    // Verificar que la nota existe
+    const nota = await prisma.servicioTecnicoNota.findUnique({
+      where: { id: parseInt(notaId) }
+    });
+
+    if (!nota) {
+      return res.status(404).json({
+        success: false,
+        message: 'Nota no encontrada'
+      });
+    }
+
+    // Verificar que la nota pertenece al servicio
+    if (nota.servicioId !== parseInt(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'La nota no pertenece a este servicio'
+      });
+    }
+
+    // Verificar permisos: solo el usuario que creó la nota o un admin puede eliminarla
+    const puedeEliminar = usuarioActual.rol === 'admin' || nota.tecnico === usuarioActual.nombre;
+
+    if (!puedeEliminar) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permisos para eliminar esta nota'
+      });
+    }
+
+    // Eliminar la nota
+    await prisma.servicioTecnicoNota.delete({
+      where: { id: parseInt(notaId) }
+    });
+
+    // 📡 Emitir evento Socket.IO para actualizar en tiempo real
+    if (req.io) {
+      // Obtener servicio completo actualizado
+      const servicioCompleto = await prisma.servicioTecnico.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          notas: {
+            orderBy: { fecha: 'desc' }
+          }
+        }
+      });
+
+      req.io.emit('nota_servicio_eliminada', {
+        servicioId: parseInt(id),
+        notaId: parseInt(notaId),
+        servicio: servicioCompleto,
+        usuario: usuarioActual?.nombre || usuarioActual?.email,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Nota eliminada exitosamente'
+    });
+
+  } catch (error) {
+    console.error('❌ Error en eliminarNota:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error eliminando nota',
+      error: error.message
+    });
+  }
+};
+
+// ===================================
 // 📝 AGREGAR NOTA TÉCNICA
 // ===================================
 const agregarNota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { tipo, contenido, archivoUrl } = req.body;
+    const { tipo, contenido, archivoUrl, publica, grupoId } = req.body;
 
     if (!tipo) {
       return res.status(400).json({
@@ -1535,12 +2076,28 @@ const agregarNota = async (req, res) => {
     // El contenido puede estar vacío si es solo una imagen o audio
     const contenidoFinal = contenido || (archivoUrl ? 'Archivo adjunto' : '');
 
-    console.log(`📝 Agregando nota al servicio ${id}:`, {
-      tipo,
-      tieneContenido: !!contenidoFinal,
-      tieneArchivo: !!archivoUrl,
-      tamañoArchivo: archivoUrl ? Math.round(archivoUrl.length / 1024) + 'KB' : 'N/A'
-    });
+    // Verificar si es una nota técnica (TEXTO, IMAGEN o AUDIO)
+    const esNotaTecnica = ['TEXTO', 'IMAGEN', 'AUDIO'].includes(tipo);
+    
+    // Determinar si debe ser pública
+    let debeSerPublica = publica === true || publica === 'true';
+    
+    // Si es una nota técnica, verificar si es la primera del servicio
+    if (esNotaTecnica) {
+      const notasExistentes = await prisma.servicioTecnicoNota.findMany({
+        where: {
+          servicioId: parseInt(id),
+          tipo: {
+            in: ['TEXTO', 'IMAGEN', 'AUDIO']
+          }
+        }
+      });
+      
+      // Si es la primera nota técnica, siempre debe ser pública
+      if (notasExistentes.length === 0) {
+        debeSerPublica = true;
+      }
+    }
 
     const nota = await prisma.servicioTecnicoNota.create({
       data: {
@@ -1548,11 +2105,12 @@ const agregarNota = async (req, res) => {
         tipo,
         contenido: contenidoFinal,
         archivoUrl: archivoUrl || null,
-        tecnico: req.user.nombre
+        grupoId: grupoId || null, // Agregar grupoId si existe
+        tecnico: req.user.nombre,
+        publica: debeSerPublica
       }
     });
 
-    console.log(`✅ Nota agregada al servicio ${id} - ID: ${nota.id}`);
 
     // 📡 Emitir evento Socket.IO para actualizar ModalVerServicio en tiempo real
     if (req.io) {
@@ -1577,7 +2135,6 @@ const agregarNota = async (req, res) => {
         timestamp: new Date().toISOString()
       });
       
-      console.log('📡 Evento Socket.IO emitido - nota agregada al servicio');
     }
 
     res.status(201).json({
@@ -1591,6 +2148,54 @@ const agregarNota = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error agregando nota',
+      error: error.message
+    });
+  }
+};
+
+// ===================================
+// 🔄 ACTUALIZAR VISIBILIDAD DE NOTA
+// ===================================
+const actualizarVisibilidadNota = async (req, res) => {
+  try {
+    const { id, notaId } = req.params;
+    const { publica } = req.body;
+
+    // Verificar que la nota pertenece al servicio
+    const nota = await prisma.servicioTecnicoNota.findFirst({
+      where: {
+        id: parseInt(notaId),
+        servicioId: parseInt(id)
+      }
+    });
+
+    if (!nota) {
+      return res.status(404).json({
+        success: false,
+        message: 'Nota no encontrada'
+      });
+    }
+
+    // Actualizar solo el campo publica
+    const notaActualizada = await prisma.servicioTecnicoNota.update({
+      where: { id: parseInt(notaId) },
+      data: {
+        publica: publica === true || publica === 'true'
+      }
+    });
+
+
+    res.json({
+      success: true,
+      message: 'Visibilidad de nota actualizada exitosamente',
+      data: notaActualizada
+    });
+
+  } catch (error) {
+    console.error('❌ Error en actualizarVisibilidadNota:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error actualizando visibilidad de nota',
       error: error.message
     });
   }
@@ -1721,7 +2326,6 @@ const deleteServicio = async (req, res) => {
             }
           });
           
-          console.log(`🗑️ Eliminadas ${transaccionIds.length} transacciones relacionadas con el servicio ${servicio.numeroServicio}`);
         }
       }
 
@@ -1778,7 +2382,6 @@ const deleteServicio = async (req, res) => {
       });
     });
 
-    console.log(`✅ Servicio ${servicio.numeroServicio} eliminado (soft-delete) por ${usuario.nombre}`);
 
     res.json({
       success: true,
@@ -1868,7 +2471,6 @@ const saveTecnicosConfig = async (req, res) => {
       }
     });
 
-    console.log(`✅ Configuración de ${tecnicos.length} técnicos actualizada`);
 
     res.json({
       success: true,
@@ -1885,16 +2487,352 @@ const saveTecnicosConfig = async (req, res) => {
   }
 };
 
+// ===================================
+// 🌐 OBTENER SERVICIO PÚBLICO POR TOKEN (SIN AUTENTICACIÓN)
+// ===================================
+const getServicioPublico = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token requerido'
+      });
+    }
+
+    // Buscar servicio por token único
+    const servicio = await prisma.servicioTecnico.findUnique({
+      where: { tokenUnico: token },
+      include: {
+        items: true,
+        pagos: {
+          orderBy: { fecha: 'desc' }
+        },
+        notas: {
+          where: {
+            publica: true // Solo mostrar notas públicas al cliente
+          },
+          orderBy: { fecha: 'desc' }
+        }
+      }
+    });
+
+    if (!servicio) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado o token inválido'
+      });
+    }
+
+    // Verificar si el servicio puede ser accedido públicamente
+    // (no debe estar eliminado, y opcionalmente no entregado)
+    if (servicio.deletedAt) {
+      return res.status(404).json({
+        success: false,
+        message: 'Este servicio ya no está disponible'
+      });
+    }
+
+    // Si está entregado, el link ya no es válido
+    if (servicio.estado === 'ENTREGADO') {
+      return res.status(404).json({
+        success: false,
+        message: 'Este servicio ya fue entregado. El link de seguimiento ya no está disponible.'
+      });
+    }
+
+    // 🆕 Obtener tasa de cambio actual desde global.estadoApp (misma fuente que Header.jsx)
+    const tasaCambio = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
+
+    // Retornar datos del servicio (sin información sensible) con tasa de cambio
+    res.json({
+      success: true,
+      data: {
+        ...servicio,
+        tasaCambio // 🆕 Incluir tasa de cambio del backend
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en getServicioPublico:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo servicio',
+      error: error.message
+    });
+  }
+};
+
+// ===================================
+// 🖨️ REGENERAR TICKET DE SERVICIO
+// ===================================
+const regenerarTicketServicio = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipo } = req.query; // 'cliente' o 'interno'
+    const esReimpresion = tipo === 'cliente'; // Solo el ticket del cliente marca como reimpresión
+
+    const servicio = await prisma.servicioTecnico.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        items: true,
+        pagos: true,
+        notas: true
+      }
+    });
+
+    if (!servicio) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado'
+      });
+    }
+
+    // Obtener usuario que creó el servicio
+    const usuarioCreador = await prisma.user.findUnique({
+      where: { id: servicio.creadoPorId },
+      select: { nombre: true }
+    });
+
+    // Generar QR code si hay link de seguimiento
+    let qrBase64 = null;
+    if (servicio.linkSeguimiento) {
+      try {
+        qrBase64 = await generarQRBase64(servicio.linkSeguimiento);
+      } catch (error) {
+        console.error('Error generando QR:', error);
+      }
+    }
+
+    // Obtener tasa de cambio actual - usar la misma fuente que Header.jsx
+    const tasaCambio = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
+
+    // Si es reimpresión del ticket del cliente, incrementar contador ANTES de generar el ticket
+    let numeroReimpresion = servicio.reimpresiones || 0;
+    if (esReimpresion) {
+      const servicioActualizado = await prisma.servicioTecnico.update({
+        where: { id: parseInt(id) },
+        data: {
+          reimpresiones: { increment: 1 }
+        },
+        select: {
+          reimpresiones: true
+        }
+      });
+      numeroReimpresion = servicioActualizado.reimpresiones || 0;
+      
+      // Actualizar el objeto servicio con el nuevo número de reimpresiones para que se refleje en el ticket
+      servicio.reimpresiones = numeroReimpresion;
+    }
+
+    // Generar HTML del ticket (cliente) con tasa de cambio
+    const htmlTicket = generarHTMLTicketServicio(
+      servicio,
+      usuarioCreador,
+      servicio.linkSeguimiento,
+      qrBase64,
+      tasaCambio, // 🆕 Pasar tasa de cambio
+      esReimpresion, // 🆕 Pasar flag de reimpresión
+      numeroReimpresion // 🆕 Pasar número de reimpresión
+    );
+
+    // Generar HTML del ticket interno
+    const htmlTicketInterno = generarHTMLTicketInterno(servicio);
+
+    res.json({
+      success: true,
+      data: {
+        ticketHTML: htmlTicket,
+        ticketHTMLInterno: htmlTicketInterno, // 🆕 Ticket interno
+        qrCode: qrBase64,
+        linkSeguimiento: servicio.linkSeguimiento
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en regenerarTicketServicio:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error regenerando ticket',
+      error: error.message
+    });
+  }
+};
+
+// ===================================
+// 📦 FINALIZAR ENTREGA
+// ===================================
+const finalizarEntrega = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { datosRetiro } = req.body; // { esDiferente: boolean, nombreRetiro?: string, cedulaRetiro?: string }
+
+    const servicioActual = await prisma.servicioTecnico.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        items: true,
+        pagos: true
+      }
+    });
+
+    if (!servicioActual) {
+      return res.status(404).json({
+        success: false,
+        message: 'Servicio no encontrado'
+      });
+    }
+
+    // Validar que no tenga saldo pendiente
+    if (parseFloat(servicioActual.saldoPendiente) > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se puede entregar el servicio con saldo pendiente'
+      });
+    }
+
+    // Validar que esté en LISTO_RETIRO
+    if (servicioActual.estado !== 'LISTO_RETIRO') {
+      return res.status(400).json({
+        success: false,
+        message: 'El servicio debe estar en estado LISTO_RETIRO para ser entregado'
+      });
+    }
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      // Obtener caja actual si no está guardada en el servicio
+      let cajaEntregaId = servicioActual.cajaEntregaId;
+      if (!cajaEntregaId) {
+        const cajaActual = await tx.caja.findFirst({
+          where: { estado: 'ABIERTA' },
+          orderBy: { createdAt: 'desc' }
+        });
+        if (cajaActual) {
+          cajaEntregaId = cajaActual.id;
+        }
+      }
+      
+      // Actualizar estado a ENTREGADO
+      const servicio = await tx.servicioTecnico.update({
+        where: { id: parseInt(id) },
+        data: {
+          estado: 'ENTREGADO',
+          fechaEntregaReal: new Date(),
+          cajaEntregaId: cajaEntregaId || servicioActual.cajaEntregaId
+        },
+        include: {
+          items: true,
+          pagos: true,
+          notas: true
+        }
+      });
+
+      // Crear nota de entrega
+      let contenidoNota = `[ICON:PACKAGE] Equipo entregado`;
+      if (datosRetiro && datosRetiro.esDiferente && datosRetiro.nombreRetiro) {
+        contenidoNota += `\n\n⚠️ Retirado por persona diferente:\n`;
+        contenidoNota += `• Nombre: ${datosRetiro.nombreRetiro}\n`;
+        contenidoNota += `• Cédula: ${datosRetiro.cedulaRetiro || 'N/A'}`;
+      }
+
+      await tx.servicioTecnicoNota.create({
+        data: {
+          servicioId: parseInt(id),
+          tipo: 'CAMBIO_ESTADO',
+          contenido: contenidoNota,
+          tecnico: req.user?.nombre || req.user?.email || 'Sistema',
+          estadoAnterior: 'LISTO_RETIRO',
+          estadoNuevo: 'ENTREGADO'
+        }
+      });
+
+      return servicio;
+    });
+
+
+    // Enviar WhatsApp de entrega
+    const tasaCambio = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
+    
+    setImmediate(async () => {
+      try {
+        if (resultado.clienteTelefono) {
+          const resultadoWhatsApp = await enviarWhatsAppEntrega(
+            resultado,
+            datosRetiro,
+            tasaCambio
+          );
+          
+          if (resultadoWhatsApp.success) {
+          } else {
+            console.error('❌ Error enviando WhatsApp de entrega:', resultadoWhatsApp.message);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error enviando WhatsApp de entrega:', error);
+      }
+    });
+
+    // 📡 Emitir evento Socket.IO
+    if (req.io) {
+      const servicioCompleto = await prisma.servicioTecnico.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          notas: {
+            orderBy: { fecha: 'desc' }
+          }
+        }
+      });
+
+      const ultimaNota = servicioCompleto?.notas?.[0];
+      if (ultimaNota) {
+        req.io.emit('nota_servicio_agregada', {
+          servicioId: parseInt(id),
+          nota: ultimaNota,
+          servicio: servicioCompleto,
+          usuario: req.user?.nombre || req.user?.email,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      req.io.emit('servicio_entregado', {
+        servicioId: parseInt(id),
+        servicio: resultado,
+        usuario: req.user?.nombre || req.user?.email,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Servicio entregado exitosamente',
+      data: resultado
+    });
+
+  } catch (error) {
+    console.error('❌ Error en finalizarEntrega:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error finalizando entrega',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getServicios,
   getServicioById,
+  getServicioPublico,
   createServicio,
   updateServicio,
   cambiarEstado,
   registrarPago,
   agregarNota,
+  eliminarNota,
+  actualizarVisibilidadNota,
+  regenerarTicketServicio,
   getTecnicos,
   getTecnicosConfig,
   saveTecnicosConfig,
-  deleteServicio
+  deleteServicio,
+  finalizarEntrega
 };

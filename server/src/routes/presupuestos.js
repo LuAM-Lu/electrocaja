@@ -4,6 +4,11 @@ const router = express.Router();
 
 // Importar controladores
 const { 
+  crearPresupuesto,
+  listarPresupuestos,
+  obtenerPresupuesto,
+  actualizarPresupuesto,
+  eliminarPresupuesto,
   enviarPresupuestoPorEmail,
   enviarPresupuestoPorWhatsApp,
   obtenerEstadisticasPresupuestos
@@ -11,6 +16,22 @@ const {
 
 // Importar middleware de autenticación
 const { verifyToken } = require('../middleware/auth');
+
+// 📝 CRUD DE PRESUPUESTOS
+// POST /api/presupuestos - Crear presupuesto
+router.post('/', verifyToken, crearPresupuesto);
+
+// GET /api/presupuestos - Listar presupuestos
+router.get('/', verifyToken, listarPresupuestos);
+
+// GET /api/presupuestos/:id - Obtener presupuesto por ID
+router.get('/:id', verifyToken, obtenerPresupuesto);
+
+// PUT /api/presupuestos/:id - Actualizar presupuesto
+router.put('/:id', verifyToken, actualizarPresupuesto);
+
+// DELETE /api/presupuestos/:id - Eliminar presupuesto
+router.delete('/:id', verifyToken, eliminarPresupuesto);
 
 // 📧 POST /api/presupuestos/enviar-email - Enviar presupuesto por email
 router.post('/enviar-email', verifyToken, enviarPresupuestoPorEmail);
