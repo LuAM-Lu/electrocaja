@@ -131,11 +131,17 @@ export default function VistaPublicaServicio() {
     return acc + (precio * cantidad);
   }, 0) || parseFloat(servicio.totalEstimado || 0);
 
+  // ✅ servicio.pagos contiene registros de servicioTecnicoPago
+  // El campo 'monto' de cada pago YA está en USD (es el total del pago en USD)
   const totalPagadoCalculado = (servicio.pagos || []).reduce((acc, pago) => {
     return acc + (Number(pago.monto) || 0);
   }, 0);
-  const totalPagado = parseFloat(servicio.totalPagado || totalPagadoCalculado);
-  const saldoPendiente = parseFloat(servicio.saldoPendiente || (totalGeneral - totalPagado));
+
+  // ✅ Usar totalPagado del servicio (que viene del backend) o calcularlo desde pagos
+  const totalPagado = parseFloat(servicio.totalPagado ?? totalPagadoCalculado);
+
+  // ✅ Usar saldoPendiente del servicio (que viene del backend) o calcularlo
+  const saldoPendiente = parseFloat(servicio.saldoPendiente ?? (totalGeneral - totalPagado));
   
   // 🆕 Convertir montos a Bs usando la tasa de cambio del backend
   const tasa = tasaCambioBackend || 37.50;

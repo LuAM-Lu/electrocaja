@@ -1387,100 +1387,268 @@ export const descargarPDF = async (ventaData, codigoVenta, tasaCambio, descuento
 // 🆕 IMPRESIÓN TÉRMICA PARA SERVICIOS TÉCNICOS
 export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento, qrCode = null) => {
   try {
-    console.log('🖨️ Generando impresión térmica de servicio técnico...');
+    console.log('🖨️ [printUtils] ========== INICIANDO IMPRESIÓN ==========');
+    console.log('🖨️ [printUtils] Datos recibidos:', {
+      servicioId: servicio?.id,
+      numeroServicio: servicio?.numeroServicio,
+      tieneTicketHTML: !!servicio?.ticketHTML,
+      tieneTicketHTMLInterno: !!servicio?.ticketHTMLInterno,
+      ticketHTMLLength: servicio?.ticketHTML?.length || 0,
+      tieneQRCode: !!qrCode,
+      tieneLinkSeguimiento: !!linkSeguimiento,
+      usuario: usuario?.nombre || 'N/A'
+    });
+    
+    // Validar que el servicio existe
+    if (!servicio) {
+      console.error('❌ [printUtils] ERROR: servicio es null o undefined');
+      throw new Error('Servicio no válido para imprimir');
+    }
+    
+    if (!servicio.id) {
+      console.error('❌ [printUtils] ERROR: servicio no tiene ID');
+      throw new Error('Servicio no tiene ID válido');
+    }
+    
+    // Si no hay ticketHTML, solicitarlo al backend
+    if (!servicio.ticketHTML && servicio.id) {
+      console.log('📥 [printUtils] No hay ticketHTML en el servicio, solicitando al backend...');
+      console.log('📥 [printUtils] Servicio ID:', servicio.id);
+      try {
+        const { api } = await import('../config/api');
+        console.log('📡 [printUtils] Realizando petición GET a /servicios/' + servicio.id + '/ticket?tipo=cliente');
+        const response = await api.get(`/servicios/${servicio.id}/ticket?tipo=cliente`);
+        
+        console.log('📥 [printUtils] Respuesta del backend:', {
+          success: response.data?.success,
+          tieneData: !!response.data?.data,
+          tieneTicketHTML: !!response.data?.data?.ticketHTML,
+          tieneTicketHTMLInterno: !!response.data?.data?.ticketHTMLInterno,
+          tieneQRCode: !!response.data?.data?.qrCode,
+          tieneLinkSeguimiento: !!response.data?.data?.linkSeguimiento
+        });
+        
+        if (response.data.success && response.data.data) {
+          servicio.ticketHTML = response.data.data.ticketHTML;
+          servicio.ticketHTMLInterno = response.data.data.ticketHTMLInterno;
+          if (!qrCode && response.data.data.qrCode) {
+            qrCode = response.data.data.qrCode;
+            console.log('✅ [printUtils] QR Code obtenido del backend');
+          }
+          if (!linkSeguimiento && response.data.data.linkSeguimiento) {
+            linkSeguimiento = response.data.data.linkSeguimiento;
+            console.log('✅ [printUtils] Link de seguimiento obtenido del backend');
+          }
+          console.log('✅ [printUtils] TicketHTML obtenido del backend:', {
+            ticketHTMLLength: servicio.ticketHTML?.length || 0,
+            ticketHTMLInternoLength: servicio.ticketHTMLInterno?.length || 0
+          });
+        } else {
+          console.error('❌ [printUtils] Respuesta del backend no tiene datos válidos:', response.data);
+          throw new Error('Respuesta del backend inválida');
+        }
+      } catch (error) {
+        console.error('❌ [printUtils] Error obteniendo ticket del backend:', error);
+        console.error('❌ [printUtils] Detalles del error:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          url: error.config?.url
+        });
+        throw new Error('No se pudo obtener el ticket del servicio: ' + (error.message || 'Error desconocido'));
+      }
+    }
     
     // Si el backend ya generó el HTML, usarlo directamente
     if (servicio.ticketHTML) {
+      console.log('✅ [printUtils] TicketHTML disponible, preparando impresión...');
       const contenidoHTML = servicio.ticketHTML;
+      console.log('📄 [printUtils] Contenido HTML:', {
+        length: contenidoHTML.length,
+        preview: contenidoHTML.substring(0, 300) + '...'
+      });
       
       // Si hay QR code, insertarlo en el HTML si hay placeholder
       let htmlConQR = contenidoHTML;
-      if (qrCode && contenidoHTML.includes('qr-code-placeholder')) {
+      const tieneQRPlaceholder = contenidoHTML.includes('qr-code-placeholder');
+      console.log('🔍 [printUtils] Verificando QR Code:', {
+        tieneQRCode: !!qrCode,
+        tieneQRPlaceholder,
+        qrCodeLength: qrCode?.length || 0
+      });
+      
+      if (qrCode && tieneQRPlaceholder) {
+        console.log('🔄 [printUtils] Insertando QR Code en HTML...');
         htmlConQR = contenidoHTML.replace(
           '<div id="qr-code-placeholder"',
           `<img src="${qrCode}" alt="QR Code" style="max-width: 150px; height: auto; margin: 5px auto; display: block;" />`
         );
+        console.log('✅ [printUtils] QR Code insertado en HTML');
       } else if (qrCode && contenidoHTML.includes('qr-code-placeholder')) {
         // Si ya hay un placeholder pero sin img, reemplazar
+        console.log('🔄 [printUtils] Reemplazando placeholder de QR Code...');
         htmlConQR = contenidoHTML.replace(
           /<div id="qr-code-placeholder"[^>]*>[\s\S]*?<\/div>/,
           `<img src="${qrCode}" alt="QR Code" style="max-width: 150px; height: auto; margin: 5px auto; display: block;" />`
         );
+        console.log('✅ [printUtils] Placeholder de QR Code reemplazado');
+      } else if (qrCode && !tieneQRPlaceholder) {
+        console.log('⚠️ [printUtils] Hay QR Code pero no hay placeholder en el HTML');
       }
       
       // 🆕 IMPRIMIR TICKET DEL CLIENTE PRIMERO
+      console.log('🪟 [printUtils] Abriendo ventana de impresión...');
+      
+      // 🆕 Asegurar que el modal no esté bloqueando
+      const modalElement = document.querySelector('[data-procesando-modal="true"]');
+      if (modalElement) {
+        console.log('👁️ [printUtils] Modal detectado, asegurando que no bloquee la impresión...');
+        modalElement.style.zIndex = '1'; // Reducir z-index temporalmente
+        modalElement.style.pointerEvents = 'none'; // Deshabilitar eventos del modal
+      }
+      
       const ventanaImpresionCliente = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
       
       if (!ventanaImpresionCliente) {
+        console.error('❌ [printUtils] ERROR: No se pudo abrir la ventana de impresión');
+        // Restaurar modal si falla
+        if (modalElement) {
+          modalElement.style.zIndex = '99999';
+          modalElement.style.pointerEvents = 'auto';
+        }
         throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
       }
       
+      console.log('✅ [printUtils] Ventana de impresión abierta, escribiendo contenido HTML...');
+      console.log('📝 [printUtils] HTML a escribir (primeros 500 caracteres):', htmlConQR.substring(0, 500));
+      
       ventanaImpresionCliente.document.write(htmlConQR);
       ventanaImpresionCliente.document.close();
+      console.log('✅ [printUtils] Contenido HTML escrito en ventana');
+      
+      // 🆕 Restaurar modal después de abrir la ventana
+      if (modalElement) {
+        setTimeout(() => {
+          modalElement.style.zIndex = '99999';
+          modalElement.style.pointerEvents = 'auto';
+          console.log('👁️ [printUtils] Modal restaurado después de abrir ventana');
+        }, 500);
+      }
       
       // Bandera para evitar impresión duplicada del ticket interno
       let ticketInternoImpreso = false;
       
       const imprimirTicketInterno = () => {
+        console.log('🖨️ [printUtils] imprimirTicketInterno llamado');
         // Evitar impresión duplicada
-        if (ticketInternoImpreso) return;
+        if (ticketInternoImpreso) {
+          console.log('⏭️ [printUtils] Ticket interno ya impreso, saltando...');
+          return;
+        }
         ticketInternoImpreso = true;
         
         // Cerrar ventana del cliente si aún está abierta
         if (!ventanaImpresionCliente.closed) {
+          console.log('🔒 [printUtils] Cerrando ventana del cliente...');
           ventanaImpresionCliente.close();
         }
         
         // Imprimir ticket interno inmediatamente si existe
         if (servicio.ticketHTMLInterno) {
+          console.log('✅ [printUtils] Ticket interno disponible, preparando impresión...');
+          console.log('📄 [printUtils] Ticket interno length:', servicio.ticketHTMLInterno.length);
           // Pequeño delay para asegurar que la ventana anterior se cerró
           setTimeout(() => {
+            console.log('🪟 [printUtils] Abriendo ventana para ticket interno...');
             const ventanaImpresionInterno = window.open('', '_blank', 'width=302,height=200,scrollbars=yes');
             
             if (ventanaImpresionInterno) {
+              console.log('✅ [printUtils] Ventana de ticket interno abierta, escribiendo contenido...');
               ventanaImpresionInterno.document.write(servicio.ticketHTMLInterno);
               ventanaImpresionInterno.document.close();
               
               ventanaImpresionInterno.onload = () => {
+                console.log('✅ [printUtils] Ticket interno cargado, imprimiendo...');
                 setTimeout(() => {
                   ventanaImpresionInterno.print();
                   setTimeout(() => {
+                    console.log('🔒 [printUtils] Cerrando ventana de ticket interno...');
                     ventanaImpresionInterno.close();
                   }, 1000);
                 }, 500);
               };
+            } else {
+              console.error('❌ [printUtils] No se pudo abrir ventana para ticket interno');
             }
           }, 500);
+        } else {
+          console.log('ℹ️ [printUtils] No hay ticket interno para imprimir');
         }
       };
       
       ventanaImpresionCliente.onload = () => {
+        console.log('✅ [printUtils] Ventana de impresión cargada, esperando 500ms antes de imprimir...');
         setTimeout(() => {
-          ventanaImpresionCliente.print();
-          
-          // 🆕 DESPUÉS DE IMPRIMIR EL TICKET DEL CLIENTE, IMPRIMIR EL TICKET INTERNO INMEDIATAMENTE
-          // Usar el evento afterprint para detectar cuando terminó la impresión del cliente
-          ventanaImpresionCliente.addEventListener('afterprint', imprimirTicketInterno, { once: true });
-          
-          // Fallback: si afterprint no funciona, usar timeout
-          setTimeout(() => {
-            if (!ticketInternoImpreso) {
+          console.log('🖨️ [printUtils] Llamando a window.print()...');
+          try {
+            ventanaImpresionCliente.print();
+            console.log('✅ [printUtils] window.print() ejecutado exitosamente');
+            
+            // 🆕 DESPUÉS DE IMPRIMIR EL TICKET DEL CLIENTE, IMPRIMIR EL TICKET INTERNO INMEDIATAMENTE
+            // Usar el evento afterprint para detectar cuando terminó la impresión del cliente
+            console.log('👂 [printUtils] Registrando listener para evento afterprint...');
+            ventanaImpresionCliente.addEventListener('afterprint', () => {
+              console.log('📄 [printUtils] Evento afterprint detectado, imprimiendo ticket interno...');
               imprimirTicketInterno();
-            }
-          }, 2000); // Timeout como fallback
+            }, { once: true });
+            
+            // Fallback: si afterprint no funciona, usar timeout
+            setTimeout(() => {
+              if (!ticketInternoImpreso) {
+                console.log('⏰ [printUtils] Timeout alcanzado, usando fallback para imprimir ticket interno...');
+                imprimirTicketInterno();
+              }
+            }, 2000); // Timeout como fallback
+          } catch (error) {
+            console.error('❌ [printUtils] Error al llamar window.print():', error);
+            throw error;
+          }
         }, 500);
       };
       
-      console.log('✅ Ventana de impresión térmica abierta');
+      // Fallback si onload no se dispara
+      setTimeout(() => {
+        if (ventanaImpresionCliente.document.readyState === 'complete') {
+          console.log('⏰ [printUtils] Ventana lista (fallback), imprimiendo...');
+          ventanaImpresionCliente.print();
+        }
+      }, 1000);
+      
+      console.log('✅ [printUtils] Ventana de impresión térmica configurada correctamente');
       return;
     }
     
     // Si no hay HTML del backend, generar uno básico
-    console.warn('⚠️ No hay HTML del ticket del backend, generando uno básico...');
+    console.warn('⚠️ [printUtils] No hay HTML del ticket del backend');
+    console.warn('⚠️ [printUtils] Estado del servicio:', {
+      tieneId: !!servicio.id,
+      tieneTicketHTML: !!servicio.ticketHTML,
+      servicioCompleto: servicio
+    });
     toast.warning('Generando ticket básico (sin QR)', { duration: 3000 });
     
   } catch (error) {
-    console.error('❌ Error en impresión térmica de servicio:', error);
+    console.error('❌ [printUtils] ========== ERROR EN IMPRESIÓN ==========');
+    console.error('❌ [printUtils] Error completo:', error);
+    console.error('❌ [printUtils] Mensaje:', error.message);
+    console.error('❌ [printUtils] Stack:', error.stack);
+    console.error('❌ [printUtils] Detalles:', {
+      servicioId: servicio?.id,
+      numeroServicio: servicio?.numeroServicio,
+      tieneTicketHTML: !!servicio?.ticketHTML,
+      response: error.response?.data,
+      status: error.response?.status
+    });
     toast.error('Error al imprimir ticket: ' + error.message);
     throw error;
   }

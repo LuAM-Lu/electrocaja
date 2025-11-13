@@ -542,6 +542,9 @@ export default function RegistroServicioWizard({
     // ✅ ABRIR MODAL DE PROCESAMIENTO (solo en modo creación)
     if (!modoEdicion) {
       const opcionesProcesamientoCapturadas = { ...opcionesProcesamiento };
+      console.log('🔍 [RegistroServicioWizard] Opciones de procesamiento capturadas:', JSON.stringify(opcionesProcesamientoCapturadas, null, 2));
+      console.log('  - imprimir:', opcionesProcesamientoCapturadas.imprimir);
+      console.log('  - enviarWhatsapp:', opcionesProcesamientoCapturadas.enviarWhatsapp);
       setShowProcesandoModal(true);
       setOpcionesProcesamientoParaModal(opcionesProcesamientoCapturadas);
       
@@ -651,19 +654,15 @@ export default function RegistroServicioWizard({
           sesionId: sesionId
         };
 
-        // 🔍 DEBUG: Ver qué datos se están enviando
-        console.log('📤 Datos que se envían al backend:', JSON.stringify(datosCreacion, null, 2));
-        console.log('📤 Cliente:', datosCreacion.cliente);
-        console.log('📤 Dispositivo:', datosCreacion.dispositivo);
-        console.log('📤 Diagnóstico:', datosCreacion.diagnostico);
-        console.log('📤 Items:', datosCreacion.items);
-        console.log('📤 Modalidad Pago:', datosCreacion.modalidadPago);
-
         const nuevoServicio = await crearServicio(datosCreacion);
-        
+
+        console.log('✅ [RegistroServicioWizard] Servicio creado:', nuevoServicio?.id);
+        console.log('📦 [RegistroServicioWizard] Servicio tiene ticketHTML:', !!nuevoServicio?.ticketHTML);
+        console.log('📦 [RegistroServicioWizard] Servicio tiene ticketHTMLInterno:', !!nuevoServicio?.ticketHTMLInterno);
+
         // ✅ El backend ya liberó las reservas y descontó el stock automáticamente
         // No es necesario liberar reservas aquí
-        
+
         // 🆕 Guardar sugerencias inteligentes (marca, modelo, problemas) después de crear el servicio
         try {
           const dispositivo = datosCreacion.dispositivo;
@@ -707,9 +706,26 @@ export default function RegistroServicioWizard({
           console.warn('Error guardando sugerencias después de crear servicio:', error);
         }
         
-        // 🆕 Guardar servicio creado para que PasoConfirmacion ejecute las acciones
+        // Guardar servicio creado
         setServicioCreado(nuevoServicio);
-        
+
+        // ℹ️ NOTA: Las acciones (imprimir, WhatsApp) se ejecutan desde PasoConfirmacion.jsx
+        // El useEffect en PasoConfirmacion detecta cuando servicioCreado cambia y ejecuta las acciones
+        // Por lo tanto, NO necesitamos ejecutar acciones aquí en RegistroServicioWizard
+        const accionesEjecutadas = [];
+
+        console.log('ℹ️ [RegistroServicioWizard] Servicio creado exitosamente. Las acciones se ejecutarán desde PasoConfirmacion.jsx useEffect');
+
+        // ✅ Las acciones (imprimir, WhatsApp) se ejecutan desde PasoConfirmacion.jsx
+        // Simplemente esperamos a que termine el flujo
+        try {
+          if (handleAccionesCompletadas) {
+            await handleAccionesCompletadas();
+          }
+        } catch (error) {
+          console.error('❌ [RegistroServicioWizard] Error ejecutando callback:', error);
+        }
+
         if (onServicioCreado) {
           onServicioCreado(nuevoServicio);
         }
@@ -1015,7 +1031,24 @@ export default function RegistroServicioWizard({
         </div>
       </div>
       )}
-      
+
+      {/* ✅ PasoConfirmacion SIEMPRE MONTADO (oculto cuando showProcesandoModal=true) para que su useEffect funcione */}
+      {pasoActual === 5 && (
+        <div style={{ display: showProcesandoModal ? 'none' : 'block' }}>
+          <PasoConfirmacion
+            datos={datosServicio}
+            onActualizar={actualizarDatos}
+            loading={loading}
+            modoEdicion={modoEdicion}
+            servicioCreado={servicioCreado}
+            onAccionesCompletadas={handleAccionesCompletadas}
+            onOpcionesCambio={setOpcionesProcesamiento}
+            procesandoModalRef={procesandoModalRef}
+            opcionesProcesamiento={opcionesProcesamientoParaModal || opcionesProcesamiento}
+          />
+        </div>
+      )}
+
       {/* Modal de Procesamiento de Servicio - SIEMPRE VISIBLE CUANDO SE ESTÁ PROCESANDO */}
       {showProcesandoModal && (
         <ServicioProcesandoModal

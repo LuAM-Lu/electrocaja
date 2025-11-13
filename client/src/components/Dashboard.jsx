@@ -8,7 +8,7 @@ import IngresoModal from './IngresoModal';
 import EgresoModal from './EgresoModal';
 import InventoryManagerModal from './InventoryManagerModal';
 import ArqueoModal from './ArqueoModal';
-import { Wrench } from 'lucide-react';
+import { Wrench, ChevronUp, ChevronDown } from 'lucide-react';
 import FloatingActions from './FloatingActions';
 import CerrarCajaModal from './CerrarCajaModal';
 import { useDashboard } from '../store/cajaStore';
@@ -51,13 +51,16 @@ const ModalBackdrop = ({ children, color = 'blue' }) => {
 const Dashboard = ({ emitirEvento }) => {
  const [showTestingPanel, setShowTestingPanel] = useState(false);
 
+ // 🎨 Estado para paneles colapsables
+ const [panelsCollapsed, setPanelsCollapsed] = useState(false);
+
  const { loading, cajaActual } = useDashboard();
  const { obtenerInventario } = useInventarioStore();
  const { tienePermiso, usuario } = useAuthStore();
- const { 
-   activeDashboard, 
-   isTransitioning, 
-   switchToServices, 
+ const {
+   activeDashboard,
+   isTransitioning,
+   switchToServices,
    switchToMain,
    isServicesActive,
    isMainActive,
@@ -356,16 +359,19 @@ const handleShowTransactionDetail = async (transaccion) => {
      } else if (event.ctrlKey && event.key === 's') {
        event.preventDefault();
        switchToServices();
+     } else if (event.ctrlKey && event.key === 'h') {
+       event.preventDefault();
+       setPanelsCollapsed(prev => !prev);
      }
    };
 
    document.addEventListener('keydown', handleKeyDown);
-   
+
    return () => {
      document.removeEventListener('keydown', handleKeyDown);
    };
- }, [showIngresoModal, showEgresoModal, showCerrarModal, showInventarioModal, 
-    showArqueoModal, showConfiguracionModal, cajaActual, tienePermiso, isMainActive, switchToServices]);
+ }, [showIngresoModal, showEgresoModal, showCerrarModal, showInventarioModal,
+    showArqueoModal, showConfiguracionModal, cajaActual, tienePermiso, isMainActive, switchToServices, panelsCollapsed]);
 
 // Registrar funciÃƒÂ³n global para TransactionTable
 useEffect(() => {
@@ -421,22 +427,78 @@ useEffect(() => {
        <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-3">
          <div className="space-y-2 sm:space-y-3">
 
-           {/* FILA 1: 3 COLUMNAS - InformaciÃƒÂ³n y controles */}
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 items-stretch">
-             <div className="h-full w-full">
-             <CajaStatus />
+           {/* 🎨 BOTÓN PARA COLAPSAR/EXPANDIR PANELES */}
+           <div className="flex justify-center">
+             <button
+               onClick={() => setPanelsCollapsed(!panelsCollapsed)}
+               title={`${panelsCollapsed ? 'Mostrar' : 'Ocultar'} Paneles (Ctrl + H)`}
+               className="
+                 group relative
+                 bg-gradient-to-r from-blue-600 to-blue-700
+                 hover:from-blue-700 hover:to-blue-800
+                 text-white
+                 px-4 py-1.5
+                 rounded-full
+                 shadow-lg hover:shadow-xl
+                 transition-all duration-300
+                 flex items-center space-x-2
+                 border border-blue-500/20
+                 hover:scale-105
+                 active:scale-95
+               "
+             >
+               {panelsCollapsed ? (
+                 <>
+                   <ChevronDown className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-y-0.5" />
+                   <span className="font-medium text-xs">Mostrar Paneles</span>
+                 </>
+               ) : (
+                 <>
+                   <ChevronUp className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-y-0.5" />
+                   <span className="font-medium text-xs">Ocultar Paneles</span>
+                 </>
+               )}
+
+               {/* Badge con atajo de teclado */}
+               <span className="ml-1 text-[10px] bg-white/20 px-1 py-0.5 rounded font-mono">
+                 Ctrl+H
+               </span>
+
+               {/* Efecto de brillo */}
+               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+             </button>
+           </div>
+
+           {/* FILA 1: 3 COLUMNAS - Información y controles CON ANIMACIÓN DE COLAPSO */}
+           <div
+             className={`
+               grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3 items-stretch
+               transition-all duration-700 ease-in-out
+               ${panelsCollapsed
+                 ? 'opacity-0 max-h-0 scale-y-0 -mt-2 overflow-hidden pointer-events-none'
+                 : 'opacity-100 max-h-[1000px] scale-y-100 mt-0'
+               }
+             `}
+             style={{
+               transformOrigin: 'top center',
+               transitionProperty: 'opacity, transform, max-height, margin',
+               transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+             }}
+           >
+             <div className={`h-full w-full transition-all duration-500 delay-0 ${panelsCollapsed ? 'opacity-0 -translate-y-4' : 'opacity-100 translate-y-0'}`}>
+               <CajaStatus />
              </div>
-             <div className="h-full w-full">
-             <Summary />
+             <div className={`h-full w-full transition-all duration-500 delay-75 ${panelsCollapsed ? 'opacity-0 -translate-y-4' : 'opacity-100 translate-y-0'}`}>
+               <Summary />
              </div>
-             <div className="h-full w-full">
-             <RecentActivity />
+             <div className={`h-full w-full transition-all duration-500 delay-150 ${panelsCollapsed ? 'opacity-0 -translate-y-4' : 'opacity-100 translate-y-0'}`}>
+               <RecentActivity />
              </div>
            </div>
 
            {/* FILA 2: 1 COLUMNA COMPLETA - Tabla de transacciones */}
-           <div>
-             <TransactionTable />
+           <div className={`transition-all duration-500 ${panelsCollapsed ? 'delay-200' : 'delay-0'}`}>
+             <TransactionTable itemsPerPage={panelsCollapsed ? 7 : 4} />
            </div>
 
          </div>

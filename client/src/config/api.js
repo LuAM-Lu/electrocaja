@@ -66,11 +66,19 @@ api.interceptors.response.use(
     // ✅ SILENCIAR ERROR 404 PARA ENDPOINTS DONDE ES ESPERADO
     const isDiscountRequestEndpoint = error.config?.url?.includes('/discount-requests/sesion/');
     if (error.response?.status === 404 && isDiscountRequestEndpoint) {
-      // 404 esperado cuando no hay solicitud de descuento pendiente - no loguear como error
-      return Promise.reject(error);
+      // 404 esperado cuando no hay solicitud de descuento pendiente - silenciar completamente
+      // Crear un error silencioso que no se mostrará en consola
+      const silentError = new Error('Solicitud de descuento no encontrada (esperado)');
+      silentError.isSilent = true;
+      silentError.response = error.response;
+      silentError.config = error.config;
+      return Promise.reject(silentError);
     }
     
-    console.error(` API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.response?.status || 'Network Error'}`);
+    // Solo loguear errores que no sean silenciosos
+    if (!error.isSilent) {
+      console.error(` API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.response?.status || 'Network Error'}`);
+    }
     
     //  MANEJO ESPECÍFICO DE TOKEN EXPIRADO
     if (error.response?.status === 401) {

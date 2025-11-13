@@ -330,11 +330,18 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   }, 0) || parseFloat(servicioActual.totalEstimado || 0);
 
   // Calcular saldo pendiente
+  // ✅ servicioActual.pagos contiene registros de servicioTecnicoPago
+  // El campo 'monto' de cada pago YA está en USD (es el total del pago en USD)
   const totalPagadoCalculado = (servicioActual.pagos || []).reduce((acc, pago) => {
     return acc + (Number(pago.monto) || 0);
   }, 0);
-  const totalPagado = parseFloat(servicioActual.totalPagado || totalPagadoCalculado);
-  const saldoPendiente = parseFloat(servicioActual.saldoPendiente || (totalGeneral - totalPagado));
+
+  // ✅ Usar totalPagado del servicio (que viene del backend) o calcularlo desde pagos
+  const totalPagado = parseFloat(servicioActual.totalPagado ?? totalPagadoCalculado);
+
+  // ✅ Usar saldoPendiente del servicio (que viene del backend) o calcularlo
+  const saldoPendiente = parseFloat(servicioActual.saldoPendiente ?? (totalGeneral - totalPagado));
+
   const tieneSaldoPendiente = saldoPendiente > 0;
   
   // 🔧 Extraer notas (API usa 'notas', legacy usa 'notasTecnicas')
@@ -826,23 +833,29 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                       </div>
                     )}
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-1 text-[9px] flex-shrink-0">
+
+                  {/* Días, Fecha Estimada y Estado en una sola fila compacta */}
+                  <div className="grid grid-cols-3 gap-1 text-[9px] flex-shrink-0">
+                    {/* Días */}
                     <div className="flex flex-col">
-                      <span className="text-gray-400 text-[8px]">Días:</span>
-                      <div className={`font-medium flex items-center gap-0.5 text-[9px] mt-0.5 ${estaVencido ? 'text-red-400' : 'text-gray-100'}`}>
+                      <span className="text-gray-400 text-[7px] mb-0.5">Días:</span>
+                      <div className={`font-bold flex items-center gap-0.5 text-[9px] ${estaVencido ? 'text-red-400' : 'text-gray-100'}`}>
                         {estadoNormalizado === 'Entregado' ? '—' : `${diasTranscurridos}d`}
                         {estaVencido && <Flag size={7} />}
                       </div>
                     </div>
+
+                    {/* Fecha Estimada */}
                     <div className="flex flex-col">
-                      <span className="text-gray-400 text-[8px]">F. Estimada:</span>
-                      <div className="font-medium text-gray-100 text-[9px] mt-0.5">{formatearFecha(fechaEntrega)}</div>
+                      <span className="text-gray-400 text-[7px] mb-0.5">F. Est.:</span>
+                      <div className="font-bold text-gray-100 text-[8px]">{formatearFecha(fechaEntrega)}</div>
                     </div>
-                    <div className="flex flex-col col-span-2">
-                      <span className="text-gray-400 text-[8px]">Estado:</span>
-                      <span className={`inline-flex items-center gap-0.5 px-1 py-0.5 text-[8px] rounded-md font-medium mt-0.5 ${estado.color} ${estado.textColor}`}>
-                        {React.cloneElement(estado.icon, { size: 9 })}
+
+                    {/* Estado */}
+                    <div className="flex flex-col">
+                      <span className="text-gray-400 text-[7px] mb-0.5">Estado:</span>
+                      <span className={`inline-flex items-center gap-0.5 px-1 py-0.5 text-[7px] rounded font-bold ${estado.color} ${estado.textColor}`}>
+                        {React.cloneElement(estado.icon, { size: 8 })}
                         <span className="truncate">{estadoNormalizado}</span>
                       </span>
                     </div>
@@ -934,6 +947,67 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                         Tasa: {formatearBs(tasa)} Bs/USD
                       </div>
                     </div>
+
+                    {/* 💰 HISTORIAL DE PAGOS Y MÉTODOS */}
+                    {(servicioActual.pagos && servicioActual.pagos.length > 0) && (
+                      <div className="pt-3 border-t border-gray-700 mt-2">
+                        <div className="text-[10px] sm:text-xs text-gray-400 font-semibold mb-2 flex items-center gap-1">
+                          <CreditCard className="h-3 w-3" />
+                          Métodos de Pago
+                        </div>
+                        <div className="space-y-1.5 max-h-[200px] overflow-y-auto custom-scrollbar">
+                          {servicioActual.pagos.map((pago, pagoIdx) => {
+                            // Parsear pagos si viene como string
+                            const pagosParsed = typeof pago.pagos === 'string'
+                              ? JSON.parse(pago.pagos)
+                              : pago.pagos || [];
+
+                            return (
+                              <div key={pagoIdx} className="bg-gray-700/30 rounded-md p-2 border border-gray-700/50">
+                                <div className="flex justify-between items-center mb-1.5">
+                                  <span className="text-[9px] text-gray-400">
+                                    {pago.tipo === 'PAGO_INICIAL' ? '💰 Inicial' : '✅ Final'}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-emerald-400">
+                                    ${parseFloat(pago.monto).toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="space-y-1">
+                                  {pagosParsed.map((metodoPago, metodoIdx) => (
+                                    <div
+                                      key={metodoIdx}
+                                      className="flex items-center justify-between text-[9px] bg-gray-800/50 rounded px-1.5 py-1"
+                                    >
+                                      <span className="text-gray-300 truncate flex-1">
+                                        {(() => {
+                                          const labelMap = {
+                                            'efectivo_bs': 'Efectivo Bs',
+                                            'efectivo_usd': 'Efectivo USD',
+                                            'pago_movil': 'Pago Móvil',
+                                            'transferencia': 'Transferencia',
+                                            'zelle': 'Zelle',
+                                            'binance': 'Binance',
+                                            'tarjeta': 'Tarjeta'
+                                          };
+                                          return labelMap[metodoPago.metodo] || metodoPago.metodo;
+                                        })()}
+                                      </span>
+                                      <span className="text-gray-100 font-medium ml-2">
+                                        {metodoPago.moneda === 'bs' ? 'Bs ' : '$'}
+                                        {parseFloat(metodoPago.monto).toLocaleString('es-VE', {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2
+                                        })}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

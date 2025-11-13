@@ -27,10 +27,6 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
     datos.modalidadPago || 'PAGO_POSTERIOR'
   );
 
-  const [montoAbono, setMontoAbono] = useState(
-    datos.pagoInicial?.monto || 0
-  );
-
   const [pagos, setPagos] = useState(datos.pagoInicial?.pagos || []);
   const [vueltos, setVueltos] = useState(datos.pagoInicial?.vueltos || []);
   const [pagoValido, setPagoValido] = useState(false);
@@ -102,21 +98,21 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
     return () => {
       // Limpiar solicitud pendiente si existe
       if (sesionId) {
+        console.log(`🧹 [PasoModalidadPago] Limpiando solicitud de descuento para sesión: ${sesionId}`);
         api.delete(`/discount-requests/sesion/${sesionId}`).catch((error) => {
           // Silenciar solo errores 404 (solicitud no existe) - esto es normal y esperado
-          if (error.response?.status !== 404) {
-            console.error('Error eliminando solicitud de descuento:', error);
+          if (error.response?.status === 404 || error.isSilent) {
+            console.log(`ℹ️ [PasoModalidadPago] Solicitud de descuento no encontrada (esperado) para sesión: ${sesionId}`);
+          } else {
+            console.error('❌ [PasoModalidadPago] Error eliminando solicitud de descuento:', error);
           }
-          // Los errores 404 son esperados cuando la solicitud ya fue procesada o no existe
-        }).catch(() => {
-          // Ignorar completamente cualquier error en la limpieza
         });
       }
     };
   }, [sesionId]);
 
   // Calculate totals with precision using utility function
-  const calcularTotales = () => {
+  const calcularTotales = React.useCallback(() => {
     try {
       if (!isValidExchangeRate(tasaCambio)) {
         throw new Error('Tasa de cambio inválida');
@@ -126,9 +122,18 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
       console.error('Error calculando totales:', error);
       return { totalBs: 0, totalUsd: 0, totalUsdEquivalent: 0 };
     }
-  };
+  }, [pagos, tasaCambio]);
 
-  // Actualizar datos cuando cambie modalidad
+  // Calcular monto del abono desde los pagos (para ABONO)
+  const montoAbono = React.useMemo(() => {
+    if (modalidadPago === 'ABONO') {
+      const { totalUsd } = calcularTotales();
+      return roundMoney(totalUsd);
+    }
+    return 0;
+  }, [modalidadPago, calcularTotales]);
+
+  // Actualizar datos cuando cambie modalidad o pagos
   useEffect(() => {
     const { totalBs, totalUsd, totalUsdEquivalent } = calcularTotales();
 
@@ -138,8 +143,9 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
     };
 
     if (modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO') {
+      // Calcular monto final: para TOTAL_ADELANTADO usar totalEstimado, para ABONO usar totalUsd de los pagos
       const montoFinal = roundMoney(
-        modalidadPago === 'TOTAL_ADELANTADO' ? totalEstimado : montoAbono
+        modalidadPago === 'TOTAL_ADELANTADO' ? totalEstimado : totalUsd
       );
 
       datosActualizados.pagoInicial = {
@@ -155,7 +161,7 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
     }
 
     onActualizar(datosActualizados);
-  }, [modalidadPago, montoAbono, pagos, vueltos, descuento, totalEstimado, tasaCambio]);
+  }, [modalidadPago, pagos, vueltos, descuento, totalEstimado, tasaCambio, calcularTotales]);
 
   const handleModalidadChange = (nuevaModalidad) => {
     setModalidadPago(nuevaModalidad);
@@ -164,10 +170,7 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
     if (nuevaModalidad === 'PAGO_POSTERIOR') {
       setPagos([]);
       setVueltos([]);
-      setMontoAbono(0);
       setDescuento(0);
-    } else if (nuevaModalidad === 'TOTAL_ADELANTADO') {
-      setMontoAbono(roundMoney(totalEstimado));
     }
   };
 
@@ -296,56 +299,8 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
                 <div className={`text-xs ${
                   modalidadPago === 'ABONO' ? 'text-blue-300/80' : 'text-gray-500'
                 }`}>
-                  Cliente paga parte ahora, el resto al entregar • Se registra abono en caja
+                  Cliente paga parte ahora, el resto al entregar • Se registra abono en caja • Usa el panel de pagos abajo para ingresar el monto
                 </div>
-
-                {modalidadPago === 'ABONO' && (
-                  <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
-                    <div className="bg-gray-800/50 rounded-lg p-2.5 border border-gray-600">
-                      <label className="block text-xs font-medium text-blue-300 mb-1.5">
-                        Monto del Abono Inicial
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Bs.</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max={totalEstimado * tasaCambio}
-                            step="0.01"
-                            value={montoAbono * tasaCambio}
-                            onChange={(e) => {
-                              const valorBs = parseMoney(e.target.value);
-                              const valorUsd = roundMoney(valorBs / tasaCambio);
-                              if (valorUsd <= totalEstimado) {
-                                setMontoAbono(roundMoney(valorUsd));
-                              }
-                            }}
-                            className="w-full pl-8 pr-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="0.00"
-                          />
-                        </div>
-                        <div className="text-xs text-blue-200 whitespace-nowrap">
-                          de {(totalEstimado * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
-                        </div>
-                      </div>
-                    </div>
-
-                    {montoAbono > 0 && (
-                      <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-blue-300">Saldo pendiente:</span>
-                          <span className="font-bold text-orange-400 text-base">
-                            {(saldoPendiente * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
-                          </span>
-                          <span className="text-xs text-blue-400 ml-2">
-                            (${saldoPendiente.toFixed(2)})
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -412,56 +367,72 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
         <div className="bg-gray-800/70 rounded-xl p-6 border border-gray-700">
           <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-green-400" />
-            Registrar Pago Inicial
+            {modalidadPago === 'TOTAL_ADELANTADO' ? 'Registrar Pago Total' : 'Registrar Abono Inicial'}
           </h3>
 
-          {modalidadPago === 'ABONO' && montoAbono === 0 && (
-            <div className="mb-3 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg flex items-start gap-2.5">
-              <AlertCircle className="h-4 w-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-yellow-200">
-                <p className="font-medium mb-0.5">Monto del abono requerido</p>
-                <p className="text-yellow-300/80">
-                  Debes especificar el monto del abono inicial en la opción de arriba antes de registrar el pago.
-                </p>
+          {modalidadPago === 'ABONO' && (
+            <div className="mb-4 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-blue-300">Total del servicio:</span>
+                <span className="font-bold text-white">
+                  {(totalEstimado * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                </span>
               </div>
+              {montoAbono > 0 && (
+                <>
+                  <div className="flex justify-between items-center text-sm mt-2 pt-2 border-t border-blue-700/30">
+                    <span className="text-green-300">Monto del abono:</span>
+                    <span className="font-bold text-green-400">
+                      {(montoAbono * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm mt-2">
+                    <span className="text-orange-300">Saldo pendiente:</span>
+                    <span className="font-bold text-orange-400">
+                      {(saldoPendiente * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
-          {((modalidadPago === 'TOTAL_ADELANTADO') || (modalidadPago === 'ABONO' && montoAbono > 0)) && (
-            <PagosPanel
-              pagos={pagos}
-              vueltos={vueltos}
-              onPagosChange={handlePagosChange}
-              totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
-                ? roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento) // ✅ Aplicar descuento
-                : roundMoney(montoAbono * tasaCambio) - roundMoney(descuento)} // ✅ Aplicar descuento
-              tasaCambio={tasaCambio}
-              title="Métodos de Pago"
-              descuento={descuento}
-              onDescuentoChange={() => setShowDescuentoModal(true)}
-              onDescuentoLimpiar={async () => {
-                // 🧹 Cancelar solicitud pendiente en la base de datos si existe
-                try {
-                  await api.delete(`/discount-requests/sesion/${sesionId}`);
-                } catch (error) {
-                  // Si no existe la solicitud (404) o ya fue procesada, no es crítico - silenciar el error
-                  if (error.response?.status !== 404) {
-                    console.error('Error eliminando solicitud de descuento:', error);
-                  }
+          <PagosPanel
+            pagos={pagos}
+            vueltos={vueltos}
+            onPagosChange={handlePagosChange}
+            totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
+              ? roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento) // ✅ Aplicar descuento
+              : roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento)} // ✅ Para ABONO, permitir pagar hasta el total
+            tasaCambio={tasaCambio}
+            title={modalidadPago === 'TOTAL_ADELANTADO' ? "Métodos de Pago" : "Métodos de Pago del Abono"}
+            descuento={descuento}
+            onDescuentoChange={() => setShowDescuentoModal(true)}
+            onDescuentoLimpiar={async () => {
+              // 🧹 Cancelar solicitud pendiente en la base de datos si existe
+              console.log(`🧹 [PasoModalidadPago] Limpiando descuento para sesión: ${sesionId}`);
+              try {
+                await api.delete(`/discount-requests/sesion/${sesionId}`);
+                console.log(`✅ [PasoModalidadPago] Solicitud de descuento eliminada para sesión: ${sesionId}`);
+              } catch (error) {
+                // Si no existe la solicitud (404) o ya fue procesada, no es crítico - silenciar el error
+                if (error.response?.status === 404 || error.isSilent) {
+                  console.log(`ℹ️ [PasoModalidadPago] Solicitud de descuento no encontrada (esperado) para sesión: ${sesionId}`);
+                } else {
+                  console.error('❌ [PasoModalidadPago] Error eliminando solicitud de descuento:', error);
                 }
-                setDescuento(0);
-                setSolicitudDescuentoId(null);
-                toast.success('Descuento eliminado');
-              }}
-              onValidationChange={handleValidationChange}
-            />
-          )}
+              }
+              setDescuento(0);
+              setSolicitudDescuentoId(null);
+              toast.success('Descuento eliminado');
+            }}
+            onValidationChange={handleValidationChange}
+          />
         </div>
       )}
 
       {/* Advertencia si modalidad requiere pago pero no está completo */}
       {(modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO') &&
-       montoAbono > 0 &&
        pagos.length > 0 &&
        !pagoValido && (
         <div className="p-3 bg-red-900/20 border border-red-700/50 rounded-xl flex items-start gap-2.5 animate-pulse">
@@ -469,7 +440,9 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
           <div>
             <div className="font-medium text-red-200 text-sm">Pago Incompleto</div>
             <div className="text-xs text-red-300/80 mt-0.5">
-              Debes registrar el pago completo antes de continuar al siguiente paso.
+              {modalidadPago === 'TOTAL_ADELANTADO' 
+                ? 'Debes registrar el pago completo antes de continuar al siguiente paso.'
+                : 'Debes registrar el abono antes de continuar al siguiente paso.'}
             </div>
           </div>
         </div>
@@ -496,17 +469,13 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
           onClose={() => setShowDescuentoModal(false)}
           totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
             ? roundMoney(totalEstimado * tasaCambio)
-            : roundMoney(montoAbono * tasaCambio)}
+            : roundMoney(totalEstimado * tasaCambio)}
           tasaCambio={tasaCambio}
           ventaData={{
             cliente: datos.cliente || null,
             items: datos.items || [],
-            totalBs: modalidadPago === 'TOTAL_ADELANTADO' 
-              ? roundMoney(totalEstimado * tasaCambio)
-              : roundMoney(montoAbono * tasaCambio),
-            totalUsd: modalidadPago === 'TOTAL_ADELANTADO' 
-              ? totalEstimado
-              : montoAbono
+            totalBs: roundMoney(totalEstimado * tasaCambio),
+            totalUsd: totalEstimado
           }}
           items={datos.items || []}
           cliente={datos.cliente || {}}

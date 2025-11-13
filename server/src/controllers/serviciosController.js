@@ -249,7 +249,9 @@ const getServicioById = async (req, res) => {
 const createServicio = async (req, res) => {
   try {
     // 🔍 DEBUG: Ver qué datos se reciben
-    console.log('📥 Datos recibidos en createServicio:', JSON.stringify(req.body, null, 2));
+    console.log('📥 [Backend] Datos recibidos en createServicio:', JSON.stringify(req.body, null, 2));
+    console.log('📥 [Backend] Items recibidos:', req.body.items?.length || 0, 'items');
+    console.log('📥 [Backend] Sesión ID:', req.body.sesionId);
     
     const {
       cliente,
@@ -260,6 +262,9 @@ const createServicio = async (req, res) => {
       pagoInicial,
       sesionId // 🆕 Sesión ID para liberar reservas antes de descontar stock
     } = req.body;
+    
+    // 🔍 DEBUG: Verificar datos desestructurados
+    console.log('📥 [Backend] Items desestructurados:', items?.length || 0, 'items');
 
     // Validar autenticación
     if (!req.user || (!req.user.userId && !req.user.id)) {
@@ -448,8 +453,20 @@ const createServicio = async (req, res) => {
       totalPagado = totalEstimado;
       saldoPendiente = 0;
     } else if (modalidadPago === 'ABONO' && pagoInicial) {
-      totalPagado = parseFloat(pagoInicial.monto);
+      // ✅ Calcular total pagado desde el array de pagos en USD
+      // pagoInicial.totalUsd contiene la conversión correcta a USD
+      // Si no está disponible, usar totalUsdEquivalent o calcular desde los pagos
+      totalPagado = parseFloat(pagoInicial.totalUsd || pagoInicial.totalUsdEquivalent || pagoInicial.monto || 0);
+
+      // ✅ Validar que el total pagado no sea mayor al total estimado
+      if (totalPagado > totalEstimado) {
+        console.warn(`⚠️ Total pagado (${totalPagado}) es mayor al total estimado (${totalEstimado}). Ajustando a total estimado.`);
+        totalPagado = totalEstimado;
+      }
+
       saldoPendiente = parseFloat((totalEstimado - totalPagado).toFixed(2));
+
+      console.log(`💰 [Servicio ABONO] Total estimado: ${totalEstimado}, Total pagado: ${totalPagado}, Saldo pendiente: ${saldoPendiente}`);
     }
 
     // Buscar o crear cliente si tiene cédula
@@ -477,7 +494,7 @@ const createServicio = async (req, res) => {
     // 🆕 0. Si hay sesionId, liberar reservas ANTES de iniciar la transacción principal
     // (esto evita problemas de transacciones anidadas)
     if (sesionId) {
-      console.log(`🔓 [Servicio] Liberando reservas de sesión ${sesionId} antes de crear servicio...`);
+      console.log(`🔓 [Backend] Liberando reservas de sesión ${sesionId} antes de crear servicio...`);
       try {
         // Liberar todas las reservas de la sesión
         await stockService.liberarTodasLasReservasDeSesion(
@@ -485,17 +502,21 @@ const createServicio = async (req, res) => {
           usuarioId,
           req.ip || req.connection.remoteAddress
         );
-        console.log(`✅ [Servicio] Reservas liberadas exitosamente para sesión ${sesionId}`);
+        console.log(`✅ [Backend] Reservas liberadas exitosamente para sesión ${sesionId}`);
       } catch (error) {
-        console.error(`⚠️ [Servicio] Error liberando reservas (continuando):`, error.message);
+        console.error(`⚠️ [Backend] Error liberando reservas (continuando):`, error.message);
         // No fallar la creación del servicio si hay error liberando reservas
         // Las reservas se limpiarán automáticamente por timeout
       }
+    } else {
+      console.log(`ℹ️ [Backend] No hay sesionId, saltando liberación de reservas`);
     }
 
     // Crear servicio en transacción
+    console.log(`🔄 [Backend] Iniciando transacción para crear servicio ${numeroServicio}...`);
     const resultado = await prisma.$transaction(async (tx) => {
       // 1. Crear servicio con token único y link de seguimiento
+      console.log(`📝 [Backend] Creando servicio ${numeroServicio} en base de datos...`);
       const servicio = await tx.servicioTecnico.create({
         data: {
           numeroServicio,
@@ -558,7 +579,11 @@ const createServicio = async (req, res) => {
       // 2. Crear items y descontar stock
       const productosAfectados = []; // Para emitir eventos después de la transacción
       
-      console.log(`📦 [Servicio] Procesando ${items.length} items para servicio ${numeroServicio}`);
+      console.log(`📦 [Backend] Procesando ${items.length} items para servicio ${numeroServicio}`);
+      
+      if (items.length === 0) {
+        console.log(`ℹ️ [Backend] Servicio sin items (solo diagnóstico) - saltando procesamiento de productos`);
+      }
       
       for (const item of items) {
         const cantidad = parseInt(item.cantidad);
@@ -668,10 +693,14 @@ const createServicio = async (req, res) => {
       }
 
       // 4. Si hay pago inicial, crear transacción y registro de pago
+      // Obtener tasa de cambio (necesaria para múltiples bloques)
+      const tasaCambio = pagoInicial && pagoInicial.tasaCambio
+        ? parseFloat(pagoInicial.tasaCambio)
+        : parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
+      
       if (pagoInicial && (modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO')) {
         const totalBs = parseFloat(pagoInicial.totalBs || 0);
         const totalUsd = parseFloat(pagoInicial.totalUsd || pagoInicial.totalUsdEquivalent || 0);
-        const tasaCambio = parseFloat(pagoInicial.tasaCambio || global.estadoApp?.tasa_bcv?.valor || 38.20);
 
         // Crear transacción en caja
         const transaccion = await tx.transaccion.create({
@@ -694,12 +723,49 @@ const createServicio = async (req, res) => {
 
         // Crear registros de pago
         for (const pago of pagoInicial.pagos) {
+          // Determinar moneda basándose en el método de pago si no viene explícitamente
+          let moneda = pago.moneda;
+          if (!moneda) {
+            // Mapeo de métodos de pago a monedas
+            const metodoMonedaMap = {
+              'efectivo_bs': 'bs',
+              'efectivo_usd': 'usd',
+              'pago_movil': 'bs',
+              'transferencia': 'bs',
+              'zelle': 'usd',
+              'binance': 'usd',
+              'tarjeta': 'bs'
+            };
+            
+            // Si el método contiene "_bs" o "bs", es bolívares
+            if (pago.metodo && (pago.metodo.includes('_bs') || pago.metodo.includes('bs'))) {
+              moneda = 'bs';
+            }
+            // Si el método contiene "_usd" o "usd", es dólares
+            else if (pago.metodo && (pago.metodo.includes('_usd') || pago.metodo.includes('usd'))) {
+              moneda = 'usd';
+            }
+            // Usar mapeo directo si existe
+            else if (metodoMonedaMap[pago.metodo]) {
+              moneda = metodoMonedaMap[pago.metodo];
+            }
+            // Por defecto, asumir bolívares
+            else {
+              moneda = 'bs';
+            }
+          }
+          
+          // Normalizar monto (convertir formato venezolano "13,00" a "13.00")
+          const montoNormalizado = typeof pago.monto === 'string' 
+            ? parseFloat(pago.monto.replace(',', '.'))
+            : parseFloat(pago.monto);
+          
           await tx.pago.create({
             data: {
               transaccionId: transaccion.id,
               metodo: pago.metodo,
-              monto: parseFloat(pago.monto),
-              moneda: pago.moneda,
+              monto: montoNormalizado,
+              moneda: moneda,
               banco: pago.banco || null,
               referencia: pago.referencia || null
             }
@@ -725,16 +791,14 @@ const createServicio = async (req, res) => {
           totalIngresosUsd: { increment: totalUsd }
         };
 
-        // Actualizar métodos de pago específicos
+        // Actualizar métodos de pago específicos (solo los que existen en el schema)
         pagoInicial.pagos.forEach(pago => {
           const monto = parseFloat(pago.monto);
           if (pago.metodo === 'pago_movil' || pago.metodo === 'pago movil') {
             updateData.totalPagoMovil = { increment: monto };
-          } else if (pago.metodo === 'punto_venta' || pago.metodo === 'punto de venta') {
-            updateData.totalPuntoVenta = { increment: monto };
-          } else if (pago.metodo === 'zelle') {
-            updateData.totalZelle = { increment: monto };
           }
+          // Nota: totalPuntoVenta y totalZelle no existen en el schema Caja
+          // Solo se actualiza totalIngresosBs/Usd y totalPagoMovil
         });
 
         await tx.caja.update({
@@ -812,13 +876,89 @@ const createServicio = async (req, res) => {
         where: { id: servicio.id },
         include: {
           items: true,
-          pagos: true,
-          notas: true
+          pagos: {
+            include: {
+              transaccion: {
+                include: {
+                  pagos: true
+                }
+              }
+            },
+            orderBy: {
+              fecha: 'desc'
+            }
+          },
+          notas: {
+            orderBy: {
+              fecha: 'desc'
+            }
+          }
         }
       });
       
+      // ✅ Asegurar que totalPagado y saldoPendiente estén correctamente calculados
+      // Calcular totalPagado desde los pagos si no está disponible
+      let totalPagadoCalculado = parseFloat(servicioCompleto.totalPagado) || 0;
+      if (totalPagadoCalculado === 0 && servicioCompleto.pagos && servicioCompleto.pagos.length > 0) {
+        totalPagadoCalculado = servicioCompleto.pagos.reduce((acc, pago) => {
+          return acc + (parseFloat(pago.monto) || 0);
+        }, 0);
+      }
+      
+      // Calcular saldoPendiente
+      const totalEstimadoCalculado = parseFloat(servicioCompleto.totalEstimado) || 0;
+      const saldoPendienteCalculado = Math.max(0, totalEstimadoCalculado - totalPagadoCalculado);
+      
+      // Actualizar servicio con valores calculados si es necesario
+      if (totalPagadoCalculado !== parseFloat(servicioCompleto.totalPagado) || 
+          saldoPendienteCalculado !== parseFloat(servicioCompleto.saldoPendiente)) {
+        await tx.servicioTecnico.update({
+          where: { id: servicio.id },
+          data: {
+            totalPagado: totalPagadoCalculado,
+            saldoPendiente: saldoPendienteCalculado
+          }
+        });
+        
+        // Recargar servicio actualizado
+        const servicioActualizado = await tx.servicioTecnico.findUnique({
+          where: { id: servicio.id },
+          include: {
+            items: true,
+            pagos: {
+              include: {
+                transaccion: {
+                  include: {
+                    pagos: true
+                  }
+                }
+              },
+              orderBy: {
+                fecha: 'desc'
+              }
+            },
+            notas: {
+              orderBy: {
+                fecha: 'desc'
+              }
+            }
+          }
+        });
+        
+        // Retornar servicio actualizado y productos afectados
+        return { 
+          servicio: servicioActualizado, 
+          productosAfectados,
+          transaccion: servicioCompleto.pagos?.[0]?.transaccion || null // ✅ Incluir transacción para evento Socket.IO
+        };
+      }
+      
       // Retornar servicio y productos afectados para emitir eventos después
-      return { servicio: servicioCompleto, productosAfectados };
+      return { 
+        servicio: servicioCompleto, 
+        productosAfectados,
+        transaccion: servicioCompleto.pagos?.[0]?.transaccion || null // ✅ Incluir transacción para evento Socket.IO
+      };
     });
     
     // 📡 Emitir eventos de inventario actualizado DESPUÉS de la transacción
@@ -838,6 +978,65 @@ const createServicio = async (req, res) => {
         });
       });
       console.log(`📡 Emitidos ${resultado.productosAfectados.length} eventos de inventario actualizado`);
+    }
+    
+    // 📡 Emitir evento Socket.IO para actualizar TransactionTable cuando hay pago inicial
+    if (req.io && resultado.transaccion) {
+      try {
+        // Obtener transacción completa con todas las relaciones
+        const transaccionCompleta = await prisma.transaccion.findUnique({
+          where: { id: resultado.transaccion.id },
+          include: {
+            pagos: true,
+            items: true,
+            servicioTecnico: {
+              select: {
+                id: true,
+                numeroServicio: true,
+                clienteNombre: true,
+                dispositivoMarca: true,
+                dispositivoModelo: true
+              }
+            }
+          }
+        });
+        
+        if (transaccionCompleta) {
+          // Convertir para el frontend
+          const transaccionParaSocket = {
+            ...transaccionCompleta,
+            totalBs: parseFloat(transaccionCompleta.totalBs),
+            totalUsd: parseFloat(transaccionCompleta.totalUsd),
+            tasaCambioUsada: parseFloat(transaccionCompleta.tasaCambioUsada),
+            servicioTecnicoId: transaccionCompleta.servicioTecnicoId,
+            pagos: transaccionCompleta.pagos.map(p => ({
+              ...p,
+              monto: parseFloat(p.monto)
+            }))
+          };
+          
+          req.io.emit('nueva_transaccion', {
+            transaccion: transaccionParaSocket,
+            usuario: req.user?.nombre || req.user?.email,
+            timestamp: new Date().toISOString(),
+            tipo: 'servicio_tecnico',
+            servicioId: resultado.servicio.id,
+            numeroServicio: resultado.servicio.numeroServicio
+          });
+          
+          // También emitir transaction-added para compatibilidad
+          req.io.emit('transaction-added', {
+            transaccion: transaccionParaSocket,
+            usuario: req.user?.nombre || req.user?.email,
+            timestamp: new Date().toISOString()
+          });
+          
+          console.log(`📡 [createServicio] Evento nueva_transaccion emitido para transacción ${transaccionCompleta.id}`);
+        }
+      } catch (error) {
+        console.error('❌ [createServicio] Error emitiendo evento de transacción:', error);
+        // No fallar la creación del servicio por un error en el evento
+      }
     }
     
     // Extraer solo el servicio del resultado para compatibilidad con el resto del código
@@ -885,12 +1084,26 @@ const createServicio = async (req, res) => {
     // 🆕 Generar HTML del ticket interno (uso interno en tienda)
     const htmlTicketInterno = generarHTMLTicketInterno(servicioFinal);
 
+    // ✅ Asegurar que totalPagado y saldoPendiente estén en la respuesta
+    const servicioParaRespuesta = {
+      ...servicioFinal,
+      // ✅ Convertir Decimal de Prisma a número y asegurar valores correctos
+      totalEstimado: parseFloat(servicioFinal.totalEstimado) || 0,
+      totalPagado: parseFloat(servicioFinal.totalPagado) || 0,
+      saldoPendiente: parseFloat(servicioFinal.saldoPendiente) || 0,
+      // ✅ Convertir pagos para incluir monto como número
+      pagos: servicioFinal.pagos?.map(pago => ({
+        ...pago,
+        monto: parseFloat(pago.monto) || 0
+      })) || []
+    };
+
     // 🆕 Enviar respuesta con datos adicionales para impresión y WhatsApp
     res.status(201).json({
       success: true,
       message: 'Servicio creado exitosamente',
       data: {
-        ...servicioFinal,
+        ...servicioParaRespuesta,
         tokenUnico,
         linkSeguimiento,
         // Datos para impresión térmica

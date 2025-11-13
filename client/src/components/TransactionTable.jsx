@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/authStore'; //  AGREGAR ESTA LÍNEA
 
 
 
-const TransactionTable = () => {
+const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
   const { cajaActual, transacciones, eliminarTransaccion, cargarCajaActual } = useTransactionTable();
   const { socket, usuario } = useAuthStore();
 
@@ -20,7 +20,7 @@ const TransactionTable = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = itemsPerPageProp || 6;
 
   // Estados para modales
   const [showDetailModal, setShowDetailModal] = useState(false);

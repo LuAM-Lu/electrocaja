@@ -137,8 +137,21 @@ const useCajaStore = create((set, get) => ({
           tipo: (t.tipo || '').toLowerCase() // Normalizar a minúsculas para que coincida con el frontend
         }));
 
+        // ✅ NORMALIZAR CAMPOS DE MONTOS INICIALES (camelCase y snake_case)
+        const cajaNormalizada = {
+          ...caja,
+          // Mantener ambos formatos para compatibilidad
+          monto_inicial_bs: parseFloat(caja.montoInicialBs || caja.monto_inicial_bs) || 0,
+          monto_inicial_usd: parseFloat(caja.montoInicialUsd || caja.monto_inicial_usd) || 0,
+          monto_inicial_pago_movil: parseFloat(caja.montoInicialPagoMovil || caja.monto_inicial_pago_movil) || 0,
+          // También mantener camelCase para compatibilidad
+          montoInicialBs: parseFloat(caja.montoInicialBs || caja.monto_inicial_bs) || 0,
+          montoInicialUsd: parseFloat(caja.montoInicialUsd || caja.monto_inicial_usd) || 0,
+          montoInicialPagoMovil: parseFloat(caja.montoInicialPagoMovil || caja.monto_inicial_pago_movil) || 0
+        };
+
         set({
-          cajaActual: caja,
+          cajaActual: cajaNormalizada,
           transacciones: transaccionesNormalizadas,
           loading: false,
           error: null
@@ -264,14 +277,18 @@ abrirCaja: async (montoInicialBs, montoInicialUsd, montoInicialPagoMovil) => {
     });
 
 
-    // Actualizar estado local
+    // Actualizar estado local - Normalizar campos para compatibilidad
     const nuevaCaja = {
       id: data.id,
       fecha_apertura: new Date(data.fecha).toLocaleDateString('es-VE'),
       hora_apertura: data.horaApertura,
+      // Mantener ambos formatos para compatibilidad
       monto_inicial_bs: parseFloat(data.montoInicialBs) || 0,
       monto_inicial_usd: parseFloat(data.montoInicialUsd) || 0,
       monto_inicial_pago_movil: parseFloat(data.montoInicialPagoMovil) || 0,
+      montoInicialBs: parseFloat(data.montoInicialBs) || 0,
+      montoInicialUsd: parseFloat(data.montoInicialUsd) || 0,
+      montoInicialPagoMovil: parseFloat(data.montoInicialPagoMovil) || 0,
       total_ingresos_bs: 0,
       total_egresos_bs: 0,
       total_ingresos_usd: 0,

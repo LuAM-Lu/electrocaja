@@ -45,7 +45,7 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
   const totalPagadoBs = totalPagado * tasa;
   const saldoPendienteBs = saldoPendiente * tasa;
 
-  // Formatear números venezolanos
+  // Formatear números venezolanos (DEBE IR ANTES de usarlo)
   const formatearVenezolano = (valor) => {
     if (!valor && valor !== 0) return '0,00';
     const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
@@ -54,6 +54,37 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
       maximumFractionDigits: 2
     });
   };
+
+  // 🆕 Obtener métodos de pago del pago inicial (si existe)
+  let metodosPago = '';
+  if (servicio.pagos && servicio.pagos.length > 0) {
+    // Buscar el pago inicial
+    const pagoInicial = servicio.pagos.find(p => p.tipo === 'PAGO_INICIAL');
+    if (pagoInicial && Array.isArray(pagoInicial.pagos)) {
+      const nombresMetodos = {
+        'efectivo_bs': 'Efectivo Bs',
+        'efectivo_usd': 'Efectivo USD',
+        'pago_movil': 'Pago Móvil',
+        'transferencia': 'Transferencia',
+        'zelle': 'Zelle',
+        'binance': 'Binance',
+        'tarjeta': 'Tarjeta'
+      };
+
+      metodosPago = pagoInicial.pagos.map(p => {
+        const metodo = p.metodo || '';
+        const monto = parseFloat(p.monto || 0);
+        const moneda = p.moneda || 'bs';
+
+        // Mostrar monto en la moneda original del método de pago
+        if (moneda === 'usd') {
+          return `${nombresMetodos[metodo] || metodo}: $${monto.toFixed(2)} USD`;
+        } else {
+          return `${nombresMetodos[metodo] || metodo}: ${formatearVenezolano(monto)} Bs`;
+        }
+      }).join('<br>');
+    }
+  }
 
   return `
     <!DOCTYPE html>
@@ -308,8 +339,14 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
             <div class="center normal" style="color: #000;">Total Estimado: ${formatearVenezolano(totalEstimadoBs)} Bs</div>
             ${totalPagado > 0 ? `
                 <div class="center normal" style="color: #000;">Pago Inicial: ${formatearVenezolano(totalPagadoBs)} Bs</div>
+                ${metodosPago ? `
+                    <div class="separator" style="margin: 4px 0; border-top: 1px dashed #000;"></div>
+                    <div class="subtitle bold center" style="color: #000; margin-top: 4px;">Métodos de Pago:</div>
+                    <div class="normal center" style="color: #000; margin: 4px 0;">${metodosPago}</div>
+                ` : ''}
             ` : ''}
             ${saldoPendiente > 0 ? `
+                <div class="separator" style="margin: 4px 0; border-top: 1px dashed #000;"></div>
                 <div class="center normal" style="color: #000;">Saldo Pendiente: ${formatearVenezolano(saldoPendienteBs)} Bs</div>
             ` : ''}
             <div class="separator" style="margin: 4px 0; border-top: 1px dashed #000;"></div>

@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useCajaStore } from '../../../store/cajaStore';
-import { imprimirTicketServicio } from '../../../utils/printUtils.js';
 import { api } from '../../../config/api';
+import { imprimirTicketServicio } from '../../../utils/imprimirTicketServicio';
 import toast from '../../../utils/toast.jsx';
 import { delay } from '../../../utils/saleProcessingHelpers';
 import { PROCESSING_CONFIG } from '../../../constants/processingConstants';
@@ -41,15 +41,19 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
   }, [opcionesProcesamiento, onOpcionesCambio]);
 
   // Ejecutar acciones cuando se crea el servicio
-  useEffect(() => {
-    if (servicioCreado && !ejecutandoAcciones) {
-      ejecutarAcciones();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicioCreado?.id]);
+  const ejecutarAcciones = React.useCallback(async () => {
+    console.log('🔄 [PasoConfirmacion] ejecutarAcciones llamado', {
+      servicioCreado: !!servicioCreado,
+      servicioId: servicioCreado?.id,
+      ejecutandoAcciones,
+      imprimirSeleccionado: opcionesFinales.imprimir,
+      whatsappSeleccionado: opcionesFinales.enviarWhatsapp
+    });
 
-  const ejecutarAcciones = async () => {
-    if (!servicioCreado || ejecutandoAcciones) return;
+    if (!servicioCreado || ejecutandoAcciones) {
+      console.log('⚠️ [PasoConfirmacion] Saliendo de ejecutarAcciones (sin servicio o ya ejecutando)');
+      return;
+    }
     
     setEjecutandoAcciones(true);
     const accionesEjecutadas = [];
@@ -57,27 +61,48 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
     try {
       // 1. Imprimir si está seleccionado
       if (opcionesFinales.imprimir) {
+        console.log('🖨️ [PasoConfirmacion] Iniciando proceso de impresión');
         try {
+          console.log('⏳ [PasoConfirmacion] Esperando delay inicial...');
           await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION - 500);
+
           if (procesandoModalRef?.current) {
+            console.log('📊 [PasoConfirmacion] Avanzando paso a "imprimir" en modal procesando');
             procesandoModalRef.current.avanzarPaso('imprimir');
           }
-          
+
+          // ✅ ABRIR VENTANA ANTES DE CUALQUIER AWAIT (igual que IngresoModal.jsx)
+          let ventanaImpresion = null;
+          try {
+            console.log('🪟 [PasoConfirmacion] Abriendo ventana de impresión...');
+            ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+            if (!ventanaImpresion) {
+              console.warn('⚠️ No se pudo abrir la ventana de impresión. El navegador puede estar bloqueando ventanas emergentes.');
+            } else {
+              console.log('✅ [PasoConfirmacion] Ventana de impresión abierta correctamente');
+            }
+          } catch (error) {
+            console.warn('⚠️ Error al abrir ventana de impresión:', error);
+          }
+
+          console.log('⏳ [PasoConfirmacion] Esperando delay antes de imprimir...');
           await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION);
-          
-          await imprimirTicketServicio(
-            servicioCreado,
-            { nombre: servicioCreado.usuarioCreador || 'Sistema' },
-            servicioCreado.linkSeguimiento,
-            servicioCreado.qrCode
-          );
+
+          // Pasar la ventana pre-abierta a la función de impresión (igual que IngresoModal.jsx)
+          console.log('🖨️ [PasoConfirmacion] Llamando imprimirTicketServicio con servicio:', servicioCreado?.id);
+          await imprimirTicketServicio(servicioCreado, { ventanaPreAbierta: ventanaImpresion });
+
+          console.log('✅ [PasoConfirmacion] imprimirTicketServicio completado');
           accionesEjecutadas.push('imprimir');
         } catch (error) {
-          console.error('Error imprimiendo:', error);
+          console.error('❌ [PasoConfirmacion] Error imprimiendo:', error);
+          console.error('Stack trace:', error.stack);
           if (procesandoModalRef?.current) {
             procesandoModalRef.current.avanzarPaso('imprimir');
           }
         }
+      } else {
+        console.log('ℹ️ [PasoConfirmacion] Opción de impresión NO seleccionada');
       }
 
       // 2. Enviar WhatsApp si está seleccionado
@@ -124,7 +149,20 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
     } finally {
       setEjecutandoAcciones(false);
     }
-  };
+  }, [servicioCreado, ejecutandoAcciones, opcionesFinales, procesandoModalRef, onAccionesCompletadas]);
+
+  // Disparar ejecutarAcciones cuando se crea el servicio
+  useEffect(() => {
+    console.log('🔍 [PasoConfirmacion] useEffect servicioCreado cambió', {
+      servicioId: servicioCreado?.id,
+      ejecutandoAcciones
+    });
+
+    if (servicioCreado?.id && !ejecutandoAcciones) {
+      console.log('✅ [PasoConfirmacion] Llamando ejecutarAcciones');
+      ejecutarAcciones();
+    }
+  }, [servicioCreado?.id, ejecutarAcciones, ejecutandoAcciones]);
 
   const toggleOpcion = (opcion) => {
     setOpcionesProcesamiento(prev => ({
@@ -487,43 +525,99 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
 
                   {datos.pagoInicial && (
                     <>
-                      <div className="flex justify-between items-center pt-1.5 border-t border-gray-700/50">
-                        <span className="text-gray-400 text-xs font-medium">Monto pagado:</span>
-                        <div className="text-right">
-                          <span className="text-green-400 font-semibold text-xs">
-                            {(datos.pagoInicial.monto * tasaCambio || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
-                          </span>
-                          <div className="text-[10px] text-green-300/70">
-                            ${datos.pagoInicial.monto?.toFixed(2) || '0.00'} USD
-                          </div>
-                        </div>
-                      </div>
-
-                      {datos.modalidadPago === 'ABONO' && total > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400 text-xs font-medium">Saldo pendiente:</span>
-                          <div className="text-right">
-                            <span className="text-orange-400 font-semibold text-xs">
-                              {((total - (datos.pagoInicial.monto || 0)) * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
-                            </span>
-                            <div className="text-xs text-orange-300/70">
-                              ${(total - (datos.pagoInicial.monto || 0)).toFixed(2)} USD
+                      {(() => {
+                        // Calcular monto pagado desde los pagos si monto no está disponible o es 0
+                        let montoPagadoUsd = datos.pagoInicial.monto || 0;
+                        let montoPagadoBs = (montoPagadoUsd * tasaCambio) || 0;
+                        
+                        // Si el monto es 0 pero hay pagos, calcular desde los pagos
+                        if (montoPagadoUsd === 0 && datos.pagoInicial.pagos && datos.pagoInicial.pagos.length > 0) {
+                          const metodoMonedaMap = {
+                            'efectivo_bs': 'bs',
+                            'efectivo_usd': 'usd',
+                            'pago_movil': 'bs',
+                            'transferencia': 'bs',
+                            'zelle': 'usd',
+                            'binance': 'usd',
+                            'tarjeta': 'bs'
+                          };
+                          
+                          let totalBsCalculado = 0;
+                          let totalUsdCalculado = 0;
+                          
+                          datos.pagoInicial.pagos.forEach(pago => {
+                            const monto = parseFloat(pago.monto) || 0;
+                            const moneda = pago.moneda || metodoMonedaMap[pago.metodo] || 'bs';
+                            
+                            if (moneda === 'bs') {
+                              totalBsCalculado += monto;
+                            } else {
+                              totalUsdCalculado += monto;
+                            }
+                          });
+                          
+                          montoPagadoBs = totalBsCalculado + (totalUsdCalculado * tasaCambio);
+                          montoPagadoUsd = (totalBsCalculado / tasaCambio) + totalUsdCalculado;
+                        }
+                        
+                        return (
+                          <>
+                            <div className="flex justify-between items-center pt-1.5 border-t border-gray-700/50">
+                              <span className="text-gray-400 text-xs font-medium">Monto pagado:</span>
+                              <div className="text-right">
+                                <span className="text-green-400 font-semibold text-xs">
+                                  {montoPagadoBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                                </span>
+                                <div className="text-[10px] text-green-300/70">
+                                  ${montoPagadoUsd.toFixed(2)} USD
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      )}
+
+                            {datos.modalidadPago === 'ABONO' && total > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-400 text-xs font-medium">Saldo pendiente:</span>
+                                <div className="text-right">
+                                  <span className="text-orange-400 font-semibold text-xs">
+                                    {((total - montoPagadoUsd) * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                                  </span>
+                                  <div className="text-xs text-orange-300/70">
+                                    ${(total - montoPagadoUsd).toFixed(2)} USD
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
 
                       {datos.pagoInicial.pagos && datos.pagoInicial.pagos.length > 0 && (
                         <div className="mt-1.5 pt-1.5 border-t border-gray-700/50">
                           <div className="text-gray-400 text-[10px] mb-0.5 font-medium">Métodos de pago:</div>
                           <div className="flex flex-wrap gap-1">
                             {datos.pagoInicial.pagos.map((pago, index) => {
-                              const montoBs = pago.moneda === 'bs' 
-                                ? parseFloat(pago.monto) 
-                                : parseFloat(pago.monto) * tasaCambio;
-                              const montoUsd = pago.moneda === 'usd' 
-                                ? parseFloat(pago.monto) 
-                                : parseFloat(pago.monto) / tasaCambio;
+                              // Determinar moneda si no viene explícitamente
+                              let moneda = pago.moneda;
+                              if (!moneda) {
+                                const metodoMonedaMap = {
+                                  'efectivo_bs': 'bs',
+                                  'efectivo_usd': 'usd',
+                                  'pago_movil': 'bs',
+                                  'transferencia': 'bs',
+                                  'zelle': 'usd',
+                                  'binance': 'usd',
+                                  'tarjeta': 'bs'
+                                };
+                                moneda = metodoMonedaMap[pago.metodo] || 'bs';
+                              }
+                              
+                              const monto = parseFloat(pago.monto) || 0;
+                              const montoBs = moneda === 'bs' 
+                                ? monto 
+                                : monto * tasaCambio;
+                              const montoUsd = moneda === 'usd' 
+                                ? monto 
+                                : monto / tasaCambio;
                               
                               const metodoLabel = pago.metodo === 'efectivo_bs' ? 'Efectivo Bs' :
                                 pago.metodo === 'efectivo_usd' ? 'Efectivo USD' :
@@ -536,7 +630,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                               return (
                                 <span key={index} className="text-[10px] bg-gray-700/50 px-1.5 py-0.5 rounded border border-gray-600/50">
                                   {metodoLabel}: {montoBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
-                                  {pago.moneda === 'usd' && ` ($${montoUsd.toFixed(2)})`}
+                                  {moneda === 'usd' && ` ($${montoUsd.toFixed(2)})`}
                                 </span>
                               );
                             })}

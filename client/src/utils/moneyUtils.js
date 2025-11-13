@@ -145,14 +145,47 @@ export const calculatePaymentTotals = (pagos, tasaCambio) => {
     throw new Error('Tasa de cambio inválida');
   }
 
+  // Mapeo de métodos de pago a monedas (fallback si no viene moneda explícita)
+  const metodoMonedaMap = {
+    'efectivo_bs': 'bs',
+    'efectivo_usd': 'usd',
+    'pago_movil': 'bs',
+    'transferencia': 'bs',
+    'zelle': 'usd',
+    'binance': 'usd',
+    'tarjeta': 'bs'
+  };
+
   let totalBs = 0;
   let totalUsd = 0;
 
   pagos.forEach(pago => {
     const monto = parseMoney(pago.monto);
-    if (pago.moneda === 'bs') {
+    
+    // Determinar moneda: usar explícita o determinar desde método de pago
+    let moneda = pago.moneda;
+    if (!moneda) {
+      // Si el método contiene "_bs" o "bs", es bolívares
+      if (pago.metodo && (pago.metodo.includes('_bs') || pago.metodo.includes('bs'))) {
+        moneda = 'bs';
+      }
+      // Si el método contiene "_usd" o "usd", es dólares
+      else if (pago.metodo && (pago.metodo.includes('_usd') || pago.metodo.includes('usd'))) {
+        moneda = 'usd';
+      }
+      // Usar mapeo directo si existe
+      else if (metodoMonedaMap[pago.metodo]) {
+        moneda = metodoMonedaMap[pago.metodo];
+      }
+      // Por defecto, asumir bolívares
+      else {
+        moneda = 'bs';
+      }
+    }
+    
+    if (moneda === 'bs') {
       totalBs = addMoney(totalBs, monto);
-    } else if (pago.moneda === 'usd') {
+    } else if (moneda === 'usd') {
       totalUsd = addMoney(totalUsd, monto);
     }
   });
