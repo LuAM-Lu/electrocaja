@@ -20,6 +20,7 @@ const ServiciosDashboard = () => {
   const { switchToMain, getTransitionClass } = useDashboardStore();
   const { usuario } = useAuthStore();
   const { servicios, loading, cambiarEstado, eliminarServicio, cargarServicios, obtenerServicio } = useServiciosStore();
+  const { cajaActual } = useCajaStore();
   
   // Estados para modales de floating actions
   const [showNewServiceModal, setShowNewServiceModal] = useState(false);
@@ -232,17 +233,8 @@ const ServiciosDashboard = () => {
 
  //  MANEJAR CREACIÓN DE NUEVA ORDEN DE SERVICIO
  const handleNewService = () => {
-   // Validar que hay una caja abierta
-   const cajaActual = useCajaStore.getState().cajaActual;
-
-   if (!cajaActual) {
-     toast.error('Debes abrir una caja antes de crear una orden de servicio', {
-       duration: 4000,
-       position: 'top-center'
-     });
-     return;
-   }
-
+   // ✅ YA NO SE VALIDA QUE LA CAJA ESTÉ ABIERTA
+   // Permitir crear órdenes incluso con caja cerrada (limitando opciones de pago)
    setShowNewServiceModal(true);
  };
 
@@ -514,6 +506,7 @@ const ServiciosDashboard = () => {
          onClose={() => setShowNewServiceModal(false)}
          onServicioCreado={handleServicioCreado}
          modoEdicion={false}
+         cajaAbierta={!!cajaActual}
        />
      )}
 

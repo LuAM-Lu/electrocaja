@@ -33,6 +33,9 @@ class CronService {
     // Job 4: Heartbeat de verificación cada 30 minutos
     this.scheduleHealthCheck();
 
+    // Job 5: Actualización automática de tasa de cambio cada 1 hora
+    this.scheduleTasaCambioUpdate();
+
     this.isInitialized = true;
     console.log(`✅ [CronService] ${this.jobs.size} tareas programadas activas`);
   }
@@ -303,6 +306,90 @@ class CronService {
   }
 
   /**
+   * 💱 JOB: Actualización automática de tasa BCV cada 1 hora
+   * Obtiene la tasa oficial del BCV y la actualiza en el sistema
+   * Se ejecuta cada hora en el minuto 0
+   */
+  scheduleTasaCambioUpdate() {
+    const jobName = 'tasa-cambio-update';
+
+    // Ejecutar inmediatamente al iniciar (si han pasado >55 minutos desde la última actualización)
+    this._updateTasaCambio();
+
+    // Cron: '0 * * * *' = cada hora en el minuto 0
+    const job = cron.schedule('0 * * * *', async () => {
+      await this._updateTasaCambio();
+    }, {
+      scheduled: true,
+      timezone: "America/Caracas"
+    });
+
+    this.jobs.set(jobName, job);
+    console.log(`✅ [CronService] Job "${jobName}" programado (cada 1 hora)`);
+  }
+
+  /**
+   * 💱 HELPER: Actualizar tasa de cambio BCV
+   */
+  async _updateTasaCambio() {
+    try {
+      console.log('💱 [CronService] Actualizando tasa de cambio del BCV...');
+
+      const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const nuevaTasa = data.promedio;
+
+      if (!nuevaTasa || nuevaTasa <= 0) {
+        throw new Error('Tasa inválida recibida del API');
+      }
+
+      // Actualizar estado global
+      const tasaAnterior = global.estadoApp.tasa_bcv.valor;
+      const tasaCambio = Math.abs(nuevaTasa - tasaAnterior);
+      const porcentajeCambio = tasaAnterior > 0 ? ((tasaCambio / tasaAnterior) * 100) : 0;
+
+      global.estadoApp.tasa_bcv = {
+        valor: nuevaTasa,
+        modo: 'AUTO',
+        admin: 'CRON_AUTO',
+        timestamp: new Date().toISOString()
+      };
+
+      // Solo loggear y notificar si hay cambio significativo (>0.01 Bs)
+      if (tasaCambio >= 0.01) {
+        console.log(`✅ [CronService] Tasa BCV actualizada: $${tasaAnterior.toFixed(2)} → $${nuevaTasa.toFixed(2)} (${porcentajeCambio >= 0.01 ? porcentajeCambio.toFixed(2) + '%' : '<0.01%'})`);
+
+        // Emitir evento Socket.IO a todos los clientes conectados
+        if (global.io) {
+          global.io.emit('tasa_auto_updated', {
+            tasa: nuevaTasa,
+            admin: 'Sistema (Auto)',
+            timestamp: new Date().toISOString()
+          });
+          console.log('📡 [CronService] Actualización de tasa enviada a todos los clientes via Socket.IO');
+        }
+      } else {
+        console.log(`ℹ️ [CronService] Tasa BCV sin cambios: $${nuevaTasa.toFixed(2)}`);
+      }
+
+      return { success: true, tasa: nuevaTasa };
+
+    } catch (error) {
+      console.error('❌ [CronService] Error actualizando tasa BCV:', error.message);
+
+      // Marcar como ERROR si falla
+      global.estadoApp.tasa_bcv.modo = 'ERROR';
+
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * 🛑 DETENER TODOS LOS CRON JOBS
    */
   stopAll() {
@@ -384,6 +471,16 @@ class CronService {
           return result;
         } catch (error) {
           console.error('❌ [CronService] Error en health check manual:', error);
+          throw error;
+        }
+
+      case 'tasa-cambio-update':
+        try {
+          const resultado = await this._updateTasaCambio();
+          console.log('✅ [CronService] Actualización manual de tasa completada:', resultado);
+          return resultado;
+        } catch (error) {
+          console.error('❌ [CronService] Error en actualización manual de tasa:', error);
           throw error;
         }
 

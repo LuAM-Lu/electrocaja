@@ -567,7 +567,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                 <div className="mt-6 text-center">
                   <p className="text-xs text-gray-400 font-medium flex items-center justify-center gap-1">
                     <Copyright className="h-3 w-3" />
-                    Sades V1.0
+                    Sades V1.0157
                   </p>
                 </div>
               </div>

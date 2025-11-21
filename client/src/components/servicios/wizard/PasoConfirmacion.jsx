@@ -14,7 +14,7 @@ import toast from '../../../utils/toast.jsx';
 import { delay } from '../../../utils/saleProcessingHelpers';
 import { PROCESSING_CONFIG } from '../../../constants/processingConstants';
 
-export default function PasoConfirmacion({ datos, onActualizar, loading, servicioCreado, onAccionesCompletadas, onOpcionesCambio, procesandoModalRef, opcionesProcesamiento: opcionesProcesamientoProp }) {
+export default function PasoConfirmacion({ datos, onActualizar, loading, servicioCreado, onAccionesCompletadas, onOpcionesCambio, procesandoModalRef, opcionesProcesamiento: opcionesProcesamientoProp, ventanasImpresionPreAbiertas }) {
   const { tasaCambio } = useCajaStore();
   const [opcionesProcesamiento, setOpcionesProcesamiento] = useState({
     enviarWhatsapp: false,
@@ -62,6 +62,45 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
       // 1. Imprimir si está seleccionado
       if (opcionesFinales.imprimir) {
         console.log('🖨️ [PasoConfirmacion] Iniciando proceso de impresión');
+
+        // ✅ USAR VENTANAS PRE-ABIERTAS (desde el click del usuario) o abrir nuevas si no están disponibles
+        let ventanaImpresionCliente = ventanasImpresionPreAbiertas?.cliente || null;
+        let ventanaImpresionInterno = ventanasImpresionPreAbiertas?.interno || null;
+
+        // Si no hay ventanas pre-abiertas, intentar abrirlas aquí (fallback)
+        if (!ventanaImpresionCliente || !ventanaImpresionInterno) {
+          console.log('⚠️ [PasoConfirmacion] No hay ventanas pre-abiertas, intentando abrir nuevas (pueden ser bloqueadas)...');
+          try {
+            if (!ventanaImpresionCliente) {
+              console.log('🪟 [PasoConfirmacion] Abriendo ventana para ticket del cliente...');
+              ventanaImpresionCliente = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+              if (!ventanaImpresionCliente) {
+                console.warn('⚠️ No se pudo abrir la ventana para ticket del cliente.');
+              } else {
+                console.log('✅ [PasoConfirmacion] Ventana de ticket del cliente abierta');
+              }
+            } else {
+              console.log('✅ [PasoConfirmacion] Usando ventana pre-abierta para ticket del cliente');
+            }
+
+            if (!ventanaImpresionInterno) {
+              console.log('🪟 [PasoConfirmacion] Abriendo ventana para ticket interno...');
+              ventanaImpresionInterno = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+              if (!ventanaImpresionInterno) {
+                console.warn('⚠️ No se pudo abrir la ventana para ticket interno.');
+              } else {
+                console.log('✅ [PasoConfirmacion] Ventana de ticket interno abierta');
+              }
+            } else {
+              console.log('✅ [PasoConfirmacion] Usando ventana pre-abierta para ticket interno');
+            }
+          } catch (error) {
+            console.warn('⚠️ Error al abrir ventanas de impresión:', error);
+          }
+        } else {
+          console.log('✅ [PasoConfirmacion] Usando ambas ventanas pre-abiertas desde el click del usuario');
+        }
+
         try {
           console.log('⏳ [PasoConfirmacion] Esperando delay inicial...');
           await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION - 500);
@@ -71,32 +110,39 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
             procesandoModalRef.current.avanzarPaso('imprimir');
           }
 
-          // ✅ ABRIR VENTANA ANTES DE CUALQUIER AWAIT (igual que IngresoModal.jsx)
-          let ventanaImpresion = null;
-          try {
-            console.log('🪟 [PasoConfirmacion] Abriendo ventana de impresión...');
-            ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
-            if (!ventanaImpresion) {
-              console.warn('⚠️ No se pudo abrir la ventana de impresión. El navegador puede estar bloqueando ventanas emergentes.');
-            } else {
-              console.log('✅ [PasoConfirmacion] Ventana de impresión abierta correctamente');
-            }
-          } catch (error) {
-            console.warn('⚠️ Error al abrir ventana de impresión:', error);
-          }
-
           console.log('⏳ [PasoConfirmacion] Esperando delay antes de imprimir...');
           await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION);
 
-          // Pasar la ventana pre-abierta a la función de impresión (igual que IngresoModal.jsx)
-          console.log('🖨️ [PasoConfirmacion] Llamando imprimirTicketServicio con servicio:', servicioCreado?.id);
-          await imprimirTicketServicio(servicioCreado, { ventanaPreAbierta: ventanaImpresion });
+          // Imprimir ticket del cliente
+          console.log('🖨️ [PasoConfirmacion] Imprimiendo ticket del cliente...');
+          await imprimirTicketServicio(servicioCreado, {
+            ventanaPreAbierta: ventanaImpresionCliente,
+            tipo: 'cliente'
+          });
 
-          console.log('✅ [PasoConfirmacion] imprimirTicketServicio completado');
+          // Imprimir ticket interno
+          console.log('🖨️ [PasoConfirmacion] Imprimiendo ticket interno...');
+          await imprimirTicketServicio(servicioCreado, {
+            ventanaPreAbierta: ventanaImpresionInterno,
+            tipo: 'interno'
+          });
+
+          console.log('✅ [PasoConfirmacion] Ambos tickets impresos correctamente');
           accionesEjecutadas.push('imprimir');
         } catch (error) {
           console.error('❌ [PasoConfirmacion] Error imprimiendo:', error);
           console.error('Stack trace:', error.stack);
+          // Cerrar ventanas si hubo error
+          try {
+            if (ventanaImpresionCliente && !ventanaImpresionCliente.closed) {
+              ventanaImpresionCliente.close();
+            }
+            if (ventanaImpresionInterno && !ventanaImpresionInterno.closed) {
+              ventanaImpresionInterno.close();
+            }
+          } catch (e) {
+            console.warn('Error cerrando ventanas:', e);
+          }
           if (procesandoModalRef?.current) {
             procesandoModalRef.current.avanzarPaso('imprimir');
           }

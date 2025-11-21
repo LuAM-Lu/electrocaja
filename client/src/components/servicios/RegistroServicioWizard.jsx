@@ -85,7 +85,8 @@ export default function RegistroServicioWizard({
   //  NUEVAS PROPS PARA MODO EDICIÓN
   modoEdicion = false,
   servicioAEditar = null,
-  onServicioActualizado = null
+  onServicioActualizado = null,
+  cajaAbierta = false
 }) {
   // Store de servicios
   const { crearServicio, actualizarServicio } = useServiciosStore();
@@ -111,6 +112,7 @@ export default function RegistroServicioWizard({
   const [showProcesandoModal, setShowProcesandoModal] = useState(false);
   const procesandoModalRef = useRef(null);
   const [opcionesProcesamientoParaModal, setOpcionesProcesamientoParaModal] = useState(null);
+  const [ventanasImpresion, setVentanasImpresion] = useState({ cliente: null, interno: null });
 
   // Estados del wizard con datos pre-cargados si es modo edición
   const [datosServicio, setDatosServicio] = useState(() => {
@@ -537,8 +539,32 @@ export default function RegistroServicioWizard({
       }
     }
 
+    // ✅ ABRIR VENTANAS DE IMPRESIÓN INMEDIATAMENTE (respuesta directa al click del usuario)
+    // Esto previene el bloqueo de popups del navegador
+    let ventanaCliente = null;
+    let ventanaInterno = null;
+
+    if (!modoEdicion && opcionesProcesamiento.imprimir) {
+      try {
+        console.log('🪟 [RegistroServicioWizard] Abriendo ventanas de impresión en respuesta al click...');
+        ventanaCliente = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+        ventanaInterno = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+
+        if (!ventanaCliente || !ventanaInterno) {
+          console.warn('⚠️ No se pudieron abrir todas las ventanas de impresión.');
+        } else {
+          console.log('✅ [RegistroServicioWizard] Ambas ventanas abiertas correctamente');
+        }
+
+        // Guardar ventanas en estado para pasarlas a PasoConfirmacion
+        setVentanasImpresion({ cliente: ventanaCliente, interno: ventanaInterno });
+      } catch (error) {
+        console.warn('⚠️ Error abriendo ventanas de impresión:', error);
+      }
+    }
+
     setLoading(true);
-    
+
     // ✅ ABRIR MODAL DE PROCESAMIENTO (solo en modo creación)
     if (!modoEdicion) {
       const opcionesProcesamientoCapturadas = { ...opcionesProcesamiento };
@@ -948,6 +974,8 @@ export default function RegistroServicioWizard({
                 }}
                 errores={erroresPaso}
                 loading={loading}
+                cajaAbierta={cajaAbierta}
+                modoEdicion={modoEdicion}
               />
             </div>
           )}
@@ -1045,6 +1073,7 @@ export default function RegistroServicioWizard({
             onOpcionesCambio={setOpcionesProcesamiento}
             procesandoModalRef={procesandoModalRef}
             opcionesProcesamiento={opcionesProcesamientoParaModal || opcionesProcesamiento}
+            ventanasImpresionPreAbiertas={ventanasImpresion}
           />
         </div>
       )}

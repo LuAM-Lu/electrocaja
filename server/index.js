@@ -90,8 +90,11 @@ server.listen(port, '0.0.0.0', async () => {
     cronService.initialize();
     const status = cronService.getStatus();
     console.log(`✅ ${status.totalJobs} cron jobs activos`);
+    console.log('   - Auto-cierre de cajas: 2:00 AM diario');
+    console.log('   - Verificación de cajas antiguas: cada 6 horas');
     console.log('   - Limpieza de reservas expiradas: cada 1 hora');
     console.log('   - Health check del sistema: cada 30 minutos');
+    console.log('   - Actualización tasa BCV: cada 1 hora');
     console.log('==============================================');
   } catch (error) {
     console.error('❌ Error inicializando cron jobs:', error.message);

@@ -382,10 +382,14 @@ const createServicio = async (req, res) => {
       }
     });
 
-    if (!cajaActual) {
+    // ✅ VALIDACIÓN MODIFICADA: Solo requerir caja abierta si hay operaciones financieras
+    // Si la modalidad de pago es PAGO_POSTERIOR, no se requiere caja abierta
+    const requiereCajaAbierta = modalidadPago !== 'PAGO_POSTERIOR';
+
+    if (!cajaActual && requiereCajaAbierta) {
       return res.status(400).json({
         success: false,
-        message: 'No hay caja abierta. Debes abrir una caja para registrar servicios'
+        message: 'No hay caja abierta. Debes abrir una caja para registrar pagos'
       });
     }
 
@@ -569,7 +573,8 @@ const createServicio = async (req, res) => {
           totalPagado,
           saldoPendiente,
           creadoPorId: usuarioId,
-          cajaIngresoId: cajaActual.id,
+          // ✅ cajaIngresoId solo si hay caja abierta (null si no hay caja)
+          cajaIngresoId: cajaActual ? cajaActual.id : null,
           // 🆕 Agregar token único y link de seguimiento
           tokenUnico,
           linkSeguimiento
@@ -699,6 +704,11 @@ const createServicio = async (req, res) => {
         : parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
       
       if (pagoInicial && (modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO')) {
+        // ✅ Validar que hay caja abierta para operaciones financieras
+        if (!cajaActual) {
+          throw new Error('No hay caja abierta para registrar el pago');
+        }
+
         const totalBs = parseFloat(pagoInicial.totalBs || 0);
         const totalUsd = parseFloat(pagoInicial.totalUsd || pagoInicial.totalUsdEquivalent || 0);
 

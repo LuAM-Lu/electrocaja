@@ -19,12 +19,13 @@ import {
 } from '../../../utils/moneyUtils';
 import toast from 'react-hot-toast';
 
-export default function PasoModalidadPago({ datos, onActualizar, errores }) {
+export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAbierta = true, modoEdicion = false }) {
   const { tasaCambio } = useCajaStore();
   const { socket } = useAuthStore();
 
   const [modalidadPago, setModalidadPago] = useState(
-    datos.modalidadPago || 'PAGO_POSTERIOR'
+    // Si la caja está cerrada y no es modo edición, forzar PAGO_POSTERIOR
+    (!cajaAbierta && !modoEdicion) ? 'PAGO_POSTERIOR' : (datos.modalidadPago || 'PAGO_POSTERIOR')
   );
 
   const [pagos, setPagos] = useState(datos.pagoInicial?.pagos || []);
@@ -164,6 +165,11 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
   }, [modalidadPago, pagos, vueltos, descuento, totalEstimado, tasaCambio, calcularTotales]);
 
   const handleModalidadChange = (nuevaModalidad) => {
+    // Si la caja está cerrada y no es modo edición, no permitir cambiar de PAGO_POSTERIOR
+    if (!cajaAbierta && !modoEdicion) {
+      return;
+    }
+
     setModalidadPago(nuevaModalidad);
 
     // Reset pagos si cambia a PAGO_POSTERIOR
@@ -218,13 +224,49 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
 
       {/* Opciones de Modalidad */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
-          <CreditCard className="h-5 w-5 text-green-400" />
-          Selecciona la Modalidad de Pago
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-green-400" />
+            Selecciona la Modalidad de Pago
+          </h3>
+          {!cajaAbierta && !modoEdicion && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-900/30 border border-red-700 rounded-full">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-semibold text-red-300">Caja Cerrada</span>
+            </div>
+          )}
+        </div>
 
-        {/* Opción 1: Pago Total Adelantado */}
-        <button
+        {/* Mostrar solo "Pago Posterior" si caja está cerrada y no es modo edición */}
+        {!cajaAbierta && !modoEdicion ? (
+          <div className="bg-orange-900/20 border-2 border-orange-700 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-orange-500/20 border border-orange-600">
+                <Clock className="h-5 w-5 text-orange-300" />
+              </div>
+              <div>
+                <div className="font-semibold text-base text-orange-100">
+                  Pago al Finalizar Servicio
+                </div>
+                <div className="text-xs text-orange-300/80">
+                  No se cobra ahora, se cobrará al entregar • No se registra ingreso hasta la entrega
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 p-3 bg-red-900/20 border border-red-700/50 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-red-200">
+                <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                <span>
+                  <strong>Caja cerrada:</strong> No se pueden realizar operaciones financieras.
+                  Solo se permite recibir órdenes con pago posterior.
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Opción 1: Pago Total Adelantado */}
+            <button
           type="button"
           onClick={() => handleModalidadChange('TOTAL_ADELANTADO')}
           className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
@@ -360,6 +402,8 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
             </div>
           </div>
         </button>
+          </>
+        )}
       </div>
 
       {/* Panel de Pagos (solo si es TOTAL_ADELANTADO o ABONO) */}
