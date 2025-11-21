@@ -70,9 +70,10 @@ export default function VistaPublicaServicio() {
       try {
         setLoading(true);
         const response = await api.get(`/servicios/publico/${token}`);
-        
+
         if (response.data.success) {
           setServicio(response.data.data);
+
           // 🆕 Usar tasa del backend si está disponible
           if (response.data.data.tasaCambio) {
             setTasaCambioBackend(parseFloat(response.data.data.tasaCambio));
@@ -164,7 +165,7 @@ export default function VistaPublicaServicio() {
   // Función para renderizar contenido con iconos
   const renderizarContenidoConIconos = (texto) => {
     if (!texto) return <i className="text-gray-500">Sin mensaje</i>;
-    
+
     const iconMap = {
       '[ICON:PAYMENT]': { Icon: CreditCard, color: 'text-emerald-400' },
       '[ICON:CASH]': { Icon: Banknote, color: 'text-green-400' },
@@ -180,19 +181,25 @@ export default function VistaPublicaServicio() {
       '[ICON:CHECK]': { Icon: CheckCircle, color: 'text-emerald-400' },
       '[ICON:PACKAGE]': { Icon: PackageCheck, color: 'text-gray-400' }
     };
-    
+
     const partes = texto.split(/(\[ICON:\w+\])/g);
-    
-    return partes.map((parte, i) => {
-      if (parte.startsWith('[ICON:')) {
-        const iconInfo = iconMap[parte];
-        if (iconInfo) {
-          const { Icon, color } = iconInfo;
-          return <Icon key={i} size={16} className={`inline-block mr-1.5 ${color} align-middle`} />;
-        }
-      }
-      return <span key={i}>{parte}</span>;
-    });
+
+    return (
+      <>
+        {partes.map((parte, i) => {
+          if (parte.startsWith('[ICON:')) {
+            const iconInfo = iconMap[parte];
+            if (iconInfo) {
+              const { Icon, color } = iconInfo;
+              return <Icon key={i} size={16} className={`inline-block mr-1.5 ${color} align-middle`} />;
+            }
+            // Si el icono no se encuentra en el mapa, no mostrar nada
+            return null;
+          }
+          return <span key={i}>{parte}</span>;
+        })}
+      </>
+    );
   };
 
   // Función para obtener configuración de estado por código
@@ -698,10 +705,10 @@ export default function VistaPublicaServicio() {
                     // Crear un mapa de grupos por grupoId
                     const gruposPorId = new Map();
                     const notasSinGrupo = [];
-                    
+
                     notas.forEach((nota) => {
                       const grupoId = nota.grupoId;
-                      
+
                       // Si tiene grupoId, agregarlo al grupo correspondiente
                       if (grupoId) {
                         if (!gruposPorId.has(grupoId)) {
@@ -713,7 +720,7 @@ export default function VistaPublicaServicio() {
                         notasSinGrupo.push(nota);
                       }
                     });
-                    
+
                     // Ordenar notas dentro de cada grupo: texto primero, luego imágenes
                     gruposPorId.forEach((notasGrupo) => {
                       notasGrupo.sort((a, b) => {
@@ -774,27 +781,43 @@ export default function VistaPublicaServicio() {
                   <div className="space-y-3">
                         {notasAgrupadas.map((item, idx) => {
                           if (item.tipo === 'grupo') {
-                            // Renderizar grupo: puede ser texto + imágenes o solo imágenes
-                            const primeraNota = item.notas[0];
-                            const tipoPrimeraNota = (primeraNota.tipo?.toLowerCase() || '');
-                            const contenidoPrimeraNota = primeraNota.contenido || primeraNota.mensaje || primeraNota.texto || '';
-                            
-                            // Determinar si el grupo tiene texto o solo imágenes
-                            const tieneTexto = tipoPrimeraNota === 'texto' && contenidoPrimeraNota.trim();
-                            
-                            // Separar texto e imágenes (igual que ModalVerServicio.jsx)
-                            const notaTexto = tieneTexto ? primeraNota : null;
-                            const imagenesNotas = tieneTexto ? item.notas.slice(1) : item.notas;
-                            
+                            // Renderizar grupo: texto + imágenes o solo imágenes
+                            // ✅ Buscar nota de texto usando .find() como en ModalHistoriaServicio.jsx
+                            const notaTexto = item.notas.find(n => (n.tipo?.toLowerCase() || '') === 'texto');
+                            const imagenesNotas = item.notas.filter(n => (n.tipo?.toLowerCase() || '') === 'imagen');
+
+                            // Si no hay texto, usar la primera nota como referencia
+                            const primeraNota = notaTexto || item.notas[0];
+
                             const contenidoNota = notaTexto ? (notaTexto.contenido || notaTexto.mensaje || notaTexto.texto || '') : '';
                             const fechaNota = primeraNota.fecha || primeraNota.createdAt || primeraNota.updatedAt;
-                            const tipoNota = tieneTexto ? (notaTexto.tipo?.toLowerCase() || '') : '';
-                            
-                            // Recopilar todas las imágenes del grupo (igual que ModalVerServicio.jsx)
-                            const imagenes = imagenesNotas
-                              .map(n => n.archivoUrl)
-                              .filter(Boolean);
-                            
+                            const tipoNota = notaTexto ? (notaTexto.tipo?.toLowerCase() || '') : '';
+
+                            // ✅ MEJOR PRÁCTICA: Mantener objetos completos de notas con imágenes
+                            // Filtrar solo las que tienen imagen válida
+                            const imagenes = imagenesNotas.filter(n => n.imagen || n.archivoUrl);
+
+                            // 🐛 DEBUG: Log para verificar imágenes en grupos
+                            console.log(`📸 GRUPO ${idx} - Análisis de imágenes:`, {
+                              grupoId: primeraNota.grupoId,
+                              totalNotasEnGrupo: item.notas.length,
+                              imagenesNotas: imagenesNotas.length,
+                              imagenesFiltradas: imagenes.length,
+                              urls: imagenes.map(img => ({
+                                id: img.id,
+                                imagen: img.imagen,
+                                archivoUrl: img.archivoUrl,
+                                nombreArchivo: img.nombreArchivo,
+                                url_final: img.imagen || img.archivoUrl
+                              })),
+                              todasLasNotas: item.notas.map(n => ({
+                                id: n.id,
+                                tipo: n.tipo,
+                                imagen: n.imagen,
+                                archivoUrl: n.archivoUrl
+                              }))
+                            });
+
                             return (
                               <div key={`grupo-${idx}`} className={`${obtenerEstiloNota(primeraNota)} rounded-lg sm:rounded-xl p-3 sm:p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-gray-300 text-xs mb-2 sm:mb-3">
@@ -808,57 +831,71 @@ export default function VistaPublicaServicio() {
                                     )}
                                   </div>
                                 </div>
-                                
+
                                 {/* Mostrar texto solo si existe */}
-                                {contenidoNota && (
+                                {/* ✅ Si es cambio_estado CON ambos campos (estadoAnterior Y estadoNuevo), no mostrar contenido (se muestra visualmente abajo) */}
+                                {/* ✅ Si es cambio_estado SIN ambos campos completos, SÍ mostrar contenido (es texto normal) */}
+                                {contenidoNota && (tipoNota !== 'cambio_estado' || !primeraNota.estadoAnterior || !primeraNota.estadoNuevo) && (
                                   <div className="text-xs sm:text-sm text-gray-100 leading-relaxed mb-2 sm:mb-3 font-medium break-words">
-                                    {tipoNota !== 'cambio_estado' && renderizarContenidoConIconos(contenidoNota)}
+                                    {renderizarContenidoConIconos(contenidoNota)}
                                   </div>
                                 )}
-                                
-                                {/* Imágenes agrupadas (igual que ModalVerServicio.jsx) */}
+
+                                {/* Imágenes agrupadas */}
                                 {imagenes.length > 0 && (
                                   <div className="flex flex-wrap gap-2">
-                                    {imagenes.map((imagen, imgIdx) => {
-                                      if (!imagen) return null;
-                                      const nombreArchivo = obtenerNombreArchivo(imagen);
+                                    {imagenes.map((imgNota, imgIdx) => {
+                                      const imagenUrl = imgNota.imagen || imgNota.archivoUrl;
+
+                                      // 🐛 DEBUG: Log para cada imagen individual
+                                      console.log(`🖼️ GRUPO ${idx} - IMAGEN ${imgIdx}:`, {
+                                        id: imgNota.id,
+                                        imagenUrl,
+                                        imagen: imgNota.imagen,
+                                        archivoUrl: imgNota.archivoUrl,
+                                        nombreArchivo: imgNota.nombreArchivo,
+                                        tieneUrl: !!imagenUrl
+                                      });
+
+                                      if (!imagenUrl) {
+                                        console.warn(`⚠️ GRUPO ${idx} - IMAGEN ${imgIdx}: NO TIENE URL`);
+                                        return null;
+                                      }
+
                                       return (
-                                        <React.Fragment key={imgIdx}>
-                                          {/* Vista Desktop: Miniaturas */}
-                                          <div 
-                                            className="hidden sm:block relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
-                                            style={{ width: '80px', height: '80px' }}
-                                            onClick={() => setImagenExpandida(imagen)}
-                                          >
-                                            <div className="w-full h-full bg-gray-800">
-                                              <img
-                                                src={imagen}
-                                                alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-                                                loading="lazy"
-                                              />
-                                            </div>
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
-                                              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5 sm:p-2">
-                                                  <Camera size={12} className="sm:w-3 sm:h-3 text-white" />
-                                                </div>
+                                        <div
+                                          key={imgNota.id || imgIdx}
+                                          className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
+                                          style={{ width: '80px', height: '80px' }}
+                                          onClick={() => {
+                                            console.log(`🔍 EXPANDIR IMAGEN GRUPO ${idx} - ${imgIdx}:`, imagenUrl);
+                                            setImagenExpandida(imagenUrl);
+                                          }}
+                                        >
+                                          <div className="w-full h-full bg-gray-800">
+                                            <img
+                                              src={imagenUrl}
+                                              alt={imgNota.nombreArchivo || `Evidencia ${idx + 1}-${imgIdx + 1}`}
+                                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                                              loading="lazy"
+                                              onLoad={() => {
+                                                console.log(`✅ GRUPO ${idx} - IMAGEN ${imgIdx} CARGADA:`, imagenUrl);
+                                              }}
+                                              onError={(e) => {
+                                                console.error(`❌ GRUPO ${idx} - ERROR CARGANDO IMAGEN ${imgIdx}:`, imagenUrl);
+                                                e.target.style.display = 'none';
+                                                e.target.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>';
+                                              }}
+                                            />
+                                          </div>
+                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
+                                                <Camera size={12} className="text-white" />
                                               </div>
                                             </div>
                                           </div>
-                                          
-                                          {/* Vista Mobile: Nombre clickeable */}
-                                          <button
-                                            onClick={() => setImagenExpandida(imagen)}
-                                            className="sm:hidden w-full text-left px-3 py-2 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg transition-all duration-200 flex items-center gap-2 group"
-                                          >
-                                            <Camera size={16} className="text-blue-400 flex-shrink-0" />
-                                            <span className="text-gray-200 text-sm font-medium truncate flex-1">
-                                              {nombreArchivo}
-                                            </span>
-                                            <span className="text-gray-400 text-xs">Ver</span>
-                                          </button>
-                                        </React.Fragment>
+                                        </div>
                                       );
                                     })}
                                   </div>
@@ -872,16 +909,44 @@ export default function VistaPublicaServicio() {
                       const fechaNota = nota.fecha || nota.createdAt || nota.updatedAt;
                             const tipoNota = (nota.tipo?.toLowerCase() || '');
                       
-                      const imagenes = tipoNota === 'imagen' && nota.archivoUrl 
-                        ? [nota.archivoUrl]
-                        : Array.isArray(nota.imagenes) 
-                          ? nota.imagenes 
-                          : (nota.archivoUrl && tipoNota !== 'audio' ? [nota.archivoUrl] : []);
-                      
-                      const audioUrl = tipoNota === 'audio' 
+                      // ✅ MEJOR PRÁCTICA: Extraer URLs de imágenes de manera consistente
+                      let imagenes = [];
+                      if (tipoNota === 'imagen' && (nota.imagen || nota.archivoUrl)) {
+                        imagenes = [nota.imagen || nota.archivoUrl];
+                      } else if (Array.isArray(nota.imagenes) && nota.imagenes.length > 0) {
+                        imagenes = nota.imagenes;
+                      } else if ((nota.imagen || nota.archivoUrl) && tipoNota !== 'audio') {
+                        imagenes = [nota.imagen || nota.archivoUrl];
+                      }
+
+                      // 🐛 DEBUG: Log detallado para verificar imágenes individuales
+                      console.log(`📷 NOTA INDIVIDUAL ${idx}:`, {
+                        id: nota.id,
+                        tipo: tipoNota,
+                        grupoId: nota.grupoId,
+                        totalImagenes: imagenes.length,
+                        urls: imagenes,
+                        nota_completa: {
+                          imagen: nota.imagen,
+                          archivoUrl: nota.archivoUrl,
+                          imagenes: nota.imagenes,
+                          nombreArchivo: nota.nombreArchivo,
+                          contenido: nota.contenido?.substring(0, 30)
+                        }
+                      });
+
+                      const audioUrl = tipoNota === 'audio'
                         ? (nota.archivoUrl || nota.audio)
                         : null;
-                      
+
+                      // ✅ Si es una nota de cambio_estado sin los campos necesarios, no renderizarla
+                      if (tipoNota === 'cambio_estado' && (!nota.estadoAnterior || !nota.estadoNuevo)) {
+                        // Si tampoco tiene contenido ni imágenes ni audio, no mostrar nada
+                        if (!contenidoNota && imagenes.length === 0 && !audioUrl) {
+                          return null;
+                        }
+                      }
+
                       return (
                         <div key={idx} className={`${obtenerEstiloNota(nota)} rounded-lg sm:rounded-xl p-3 sm:p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-gray-300 text-xs mb-2 sm:mb-3">
@@ -901,12 +966,16 @@ export default function VistaPublicaServicio() {
                               )}
                             </div>
                           </div>
-                          <div className="text-xs sm:text-sm text-gray-100 leading-relaxed mb-2 sm:mb-3 font-medium break-words">
-                            {/* Ocultar texto si es cambio de estado (ya se muestra visualmente con badges) */}
-                            {tipoNota !== 'cambio_estado' && renderizarContenidoConIconos(contenidoNota)}
-                          </div>
-                          
-                          {/* Renderizar cambio de estado visualmente */}
+                          {/* Mostrar contenido solo si existe */}
+                          {/* ✅ Si es cambio_estado CON ambos campos (estadoAnterior Y estadoNuevo), no mostrar contenido (se muestra visualmente abajo) */}
+                          {/* ✅ Si es cambio_estado SIN ambos campos completos, SÍ mostrar contenido (es texto normal) */}
+                          {contenidoNota && (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) && (
+                            <div className="text-xs sm:text-sm text-gray-100 leading-relaxed mb-2 sm:mb-3 font-medium break-words">
+                              {renderizarContenidoConIconos(contenidoNota)}
+                            </div>
+                          )}
+
+                          {/* Renderizar cambio de estado visualmente (solo si tiene estadoAnterior/estadoNuevo) */}
                           {renderizarCambioEstado(nota)}
                           
                           {audioUrl && (
@@ -925,44 +994,54 @@ export default function VistaPublicaServicio() {
                           {imagenes.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                               {imagenes.map((imagen, imgIdx) => {
-                                const nombreArchivo = obtenerNombreArchivo(imagen);
+                                // 🐛 DEBUG: Log para cada imagen que se va a renderizar
+                                console.log(`🖼️ INDIVIDUAL ${idx} - IMAGEN ${imgIdx}:`, {
+                                  url: imagen,
+                                  tipo: typeof imagen,
+                                  longitud: imagen?.length,
+                                  esValida: !!imagen
+                                });
+
+                                // Validar que la imagen sea válida
+                                if (!imagen) {
+                                  console.warn(`⚠️ INDIVIDUAL ${idx} - IMAGEN ${imgIdx}: NO TIENE URL`);
+                                  return null;
+                                }
+
                                 return (
-                                  <React.Fragment key={imgIdx}>
-                                    {/* Vista Desktop: Miniaturas */}
-                                    <div 
-                                      className="hidden sm:block relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
-                                      style={{ width: '80px', height: '80px' }}
-                                      onClick={() => setImagenExpandida(imagen)}
-                                    >
-                                      <div className="w-full h-full bg-gray-800">
-                                        <img
-                                          src={imagen}
-                                          alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
-                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-                                          loading="lazy"
-                                        />
-                                      </div>
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5 sm:p-2">
-                                            <Camera size={12} className="sm:w-3 sm:h-3 text-white" />
-                                          </div>
+                                  <div
+                                    key={imgIdx}
+                                    className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
+                                    style={{ width: '80px', height: '80px' }}
+                                    onClick={() => {
+                                      console.log(`🔍 EXPANDIR IMAGEN INDIVIDUAL ${idx} - ${imgIdx}:`, imagen);
+                                      setImagenExpandida(imagen);
+                                    }}
+                                  >
+                                    <div className="w-full h-full bg-gray-800">
+                                      <img
+                                        src={imagen}
+                                        alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                                        loading="lazy"
+                                        onLoad={() => {
+                                          console.log(`✅ INDIVIDUAL ${idx} - IMAGEN ${imgIdx} CARGADA:`, imagen);
+                                        }}
+                                        onError={(e) => {
+                                          console.error(`❌ INDIVIDUAL ${idx} - ERROR CARGANDO IMAGEN ${imgIdx}:`, imagen);
+                                          e.target.style.display = 'none';
+                                          e.target.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs">Error</div>';
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
+                                          <Camera size={12} className="text-white" />
                                         </div>
                                       </div>
                                     </div>
-                                    
-                                    {/* Vista Mobile: Nombre clickeable */}
-                                    <button
-                                      onClick={() => setImagenExpandida(imagen)}
-                                      className="sm:hidden w-full text-left px-3 py-2 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg transition-all duration-200 flex items-center gap-2 group"
-                                    >
-                                      <Camera size={16} className="text-blue-400 flex-shrink-0" />
-                                      <span className="text-gray-200 text-sm font-medium truncate flex-1">
-                                        {nombreArchivo}
-                                      </span>
-                                      <span className="text-gray-400 text-xs">Ver</span>
-                                    </button>
-                                  </React.Fragment>
+                                  </div>
                                 );
                               })}
                             </div>

@@ -1033,7 +1033,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                         // ✅ Función para renderizar contenido con iconos de Lucide
                         const renderizarContenidoConIconos = (texto) => {
                           if (!texto) return <i className="text-gray-500">Sin mensaje</i>;
-                          
+
                           // Mapeo de iconos
                           const iconMap = {
                             '[ICON:PAYMENT]': { Icon: CreditCard, color: 'text-emerald-400' },
@@ -1051,20 +1051,26 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                             '[ICON:PACKAGE]': { Icon: PackageCheck, color: 'text-gray-400' },
                             '[ICON:FLAG]': { Icon: Flag, color: 'text-blue-400' }
                           };
-                          
+
                           // Dividir el texto por marcadores de iconos
                           const partes = texto.split(/(\[ICON:\w+\])/g);
-                          
-                          return partes.map((parte, i) => {
-                            if (parte.startsWith('[ICON:')) {
-                              const iconInfo = iconMap[parte];
-                              if (iconInfo) {
-                                const { Icon, color } = iconInfo;
-                                return <Icon key={i} size={16} className={`inline-block mr-1.5 ${color} align-middle`} />;
-                              }
-                            }
-                            return <span key={i}>{parte}</span>;
-                          });
+
+                          return (
+                            <>
+                              {partes.map((parte, i) => {
+                                if (parte.startsWith('[ICON:')) {
+                                  const iconInfo = iconMap[parte];
+                                  if (iconInfo) {
+                                    const { Icon, color } = iconInfo;
+                                    return <Icon key={i} size={16} className={`inline-block mr-1.5 ${color} align-middle`} />;
+                                  }
+                                  // Si el icono no se encuentra en el mapa, no mostrar nada
+                                  return null;
+                                }
+                                return <span key={i}>{parte}</span>;
+                              })}
+                            </>
+                          );
                         };
                         
                         // ✅ Determinar estilo premium según tipo de nota
@@ -1163,10 +1169,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                       // Crear un mapa de grupos por grupoId
                       const gruposPorId = new Map();
                       const notasSinGrupo = [];
-                      
+
                       notas.forEach((nota) => {
                         const grupoId = nota.grupoId;
-                        
+
                         // Si tiene grupoId, agregarlo al grupo correspondiente
                         if (grupoId) {
                           if (!gruposPorId.has(grupoId)) {
@@ -1210,7 +1216,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                           const tipo = (n.tipo?.toLowerCase() || '');
                           return tipo === 'imagen';
                         });
-                        
+
                         if (notasGrupo.length > 1 || (tieneTexto && tieneImagenes)) {
                           notasAgrupadas.push({ tipo: 'grupo', notas: notasGrupo });
                         } else {
@@ -1237,25 +1243,21 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                       
                       return notasAgrupadas.map((item, idx) => {
                         if (item.tipo === 'grupo') {
-                          // Renderizar grupo: puede ser texto + imágenes o solo imágenes
-                          const primeraNota = item.notas[0];
-                          const tipoPrimeraNota = (primeraNota.tipo?.toLowerCase() || '');
-                          const contenidoPrimeraNota = primeraNota.contenido || primeraNota.mensaje || primeraNota.texto || '';
-                          
-                          // Determinar si el grupo tiene texto o solo imágenes
-                          const tieneTexto = tipoPrimeraNota === 'texto' && contenidoPrimeraNota.trim();
-                          
-                          // Separar texto e imágenes
-                          const notaTexto = tieneTexto ? primeraNota : null;
-                          const imagenesNotas = tieneTexto ? item.notas.slice(1) : item.notas;
-                          
+                          // Renderizar grupo: texto + imágenes o solo imágenes
+                          // ✅ Buscar nota de texto usando .find() como en ModalHistoriaServicio.jsx
+                          const notaTexto = item.notas.find(n => (n.tipo?.toLowerCase() || '') === 'texto');
+                          const imagenesNotas = item.notas.filter(n => (n.tipo?.toLowerCase() || '') === 'imagen');
+
+                          // Si no hay texto, usar la primera nota como referencia
+                          const primeraNota = notaTexto || item.notas[0];
+
                           const contenidoNota = notaTexto ? (notaTexto.contenido || notaTexto.mensaje || notaTexto.texto || '') : '';
                           const fechaNota = primeraNota.fecha || primeraNota.createdAt || primeraNota.updatedAt;
-                          const tipoNota = tieneTexto ? (notaTexto.tipo?.toLowerCase() || '') : '';
-                          
+                          const tipoNota = notaTexto ? (notaTexto.tipo?.toLowerCase() || '') : '';
+
                           // Recopilar todas las imágenes del grupo
                           const imagenes = imagenesNotas
-                            .map(n => n.archivoUrl)
+                            .map(n => n.imagen || n.archivoUrl)
                             .filter(Boolean);
                         
                         return (
@@ -1322,19 +1324,27 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                           const contenidoNota = nota.contenido || nota.mensaje || nota.texto || '';
                           const fechaNota = nota.fecha || nota.createdAt || nota.updatedAt;
                           const tipoNota = (nota.tipo?.toLowerCase() || '');
-                          
+
                           // Detectar imágenes
-                          const imagenes = tipoNota === 'imagen' && nota.archivoUrl 
-                            ? [nota.archivoUrl]
-                            : Array.isArray(nota.imagenes) 
-                              ? nota.imagenes 
-                              : (nota.archivoUrl && tipoNota !== 'audio' ? [nota.archivoUrl] : []);
-                          
+                          const imagenes = tipoNota === 'imagen' && (nota.imagen || nota.archivoUrl)
+                            ? [nota.imagen || nota.archivoUrl]
+                            : Array.isArray(nota.imagenes)
+                              ? nota.imagenes
+                              : ((nota.imagen || nota.archivoUrl) && tipoNota !== 'audio' ? [nota.imagen || nota.archivoUrl] : []);
+
                           // Detectar audio
-                          const audioUrl = tipoNota === 'audio' 
+                          const audioUrl = tipoNota === 'audio'
                             ? (nota.archivoUrl || nota.audio)
                             : null;
-                          
+
+                          // ✅ Si es una nota de cambio_estado sin los campos necesarios, no renderizarla
+                          if (tipoNota === 'cambio_estado' && (!nota.estadoAnterior || !nota.estadoNuevo)) {
+                            // Si tampoco tiene contenido ni imágenes ni audio, no mostrar nada
+                            if (!contenidoNota && imagenes.length === 0 && !audioUrl) {
+                              return null;
+                            }
+                          }
+
                           return (
                             <div key={idx} className={`${obtenerEstiloNota(nota)} rounded-xl p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
                             <div className="flex items-center justify-between text-gray-300 text-xs mb-3">
@@ -1360,12 +1370,16 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                                 )}
                               </div>
                             </div>
-                            <div className="text-gray-100 text-sm leading-relaxed mb-3 font-medium">
-                              {/* Ocultar texto si es cambio de estado (ya se muestra visualmente con badges) */}
-                              {tipoNota !== 'cambio_estado' && renderizarContenidoConIconos(contenidoNota)}
-                            </div>
-                            
-                            {/* Renderizar cambio de estado visualmente */}
+                            {/* Mostrar contenido solo si existe */}
+                            {/* ✅ Si es cambio_estado CON ambos campos (estadoAnterior Y estadoNuevo), no mostrar contenido (se muestra visualmente abajo) */}
+                            {/* ✅ Si es cambio_estado SIN ambos campos completos, SÍ mostrar contenido (es texto normal) */}
+                            {contenidoNota && (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) && (
+                              <div className="text-gray-100 text-sm leading-relaxed mb-3 font-medium">
+                                {renderizarContenidoConIconos(contenidoNota)}
+                              </div>
+                            )}
+
+                            {/* Renderizar cambio de estado visualmente (solo si tiene estadoAnterior/estadoNuevo) */}
                               {renderizarCambioEstado(nota)}
                             
                             {/* Reproductor de audio */}

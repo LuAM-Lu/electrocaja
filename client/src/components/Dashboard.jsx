@@ -127,29 +127,44 @@ const Dashboard = ({ emitirEvento }) => {
  const { solicitudesPendientes, loading: loadingSolicitudes } = useDescuentoRequests();
  const [solicitudActual, setSolicitudActual] = useState(null);
  const [showDescuentoAprobacionModal, setShowDescuentoAprobacionModal] = useState(false);
- 
+ const procesandoSolicitudRef = React.useRef(false);
+
  // Mostrar modal de aprobación cuando hay solicitudes pendientes (solo admins)
  useEffect(() => {
-   if (usuario?.rol === 'admin' && solicitudesPendientes.length > 0 && !showDescuentoAprobacionModal) {
-     // Mostrar la primera solicitud pendiente
-     setSolicitudActual(solicitudesPendientes[0]);
-     setShowDescuentoAprobacionModal(true);
+   if (usuario?.rol === 'admin' && solicitudesPendientes.length > 0 && !showDescuentoAprobacionModal && !procesandoSolicitudRef.current) {
+     // Mostrar la primera solicitud pendiente solo si no es la que acabamos de procesar
+     const siguienteSolicitud = solicitudesPendientes[0];
+     if (!solicitudActual || solicitudActual.id !== siguienteSolicitud.id) {
+       setSolicitudActual(siguienteSolicitud);
+       setShowDescuentoAprobacionModal(true);
+     }
    }
  }, [solicitudesPendientes, usuario?.rol, showDescuentoAprobacionModal]);
- 
+
  const handleSolicitudAprobada = (solicitud) => {
-   // Recargar solicitudes pendientes
-   // El hook ya maneja la actualización automática vía Socket.IO
+   // Marcar que estamos procesando una solicitud para evitar que se vuelva a abrir el modal inmediatamente
+   procesandoSolicitudRef.current = true;
    setSolicitudActual(null);
    setShowDescuentoAprobacionModal(false);
+
+   // Después de un breve delay, permitir que se abra el modal con la siguiente solicitud
+   setTimeout(() => {
+     procesandoSolicitudRef.current = false;
+   }, 500);
  };
- 
+
  const handleSolicitudRechazada = (solicitud) => {
-   // Recargar solicitudes pendientes
+   // Marcar que estamos procesando una solicitud para evitar que se vuelva a abrir el modal inmediatamente
+   procesandoSolicitudRef.current = true;
    setSolicitudActual(null);
    setShowDescuentoAprobacionModal(false);
+
+   // Después de un breve delay, permitir que se abra el modal con la siguiente solicitud
+   setTimeout(() => {
+     procesandoSolicitudRef.current = false;
+   }, 500);
  };
- 
+
  const handleCerrarAprobacionModal = () => {
    setSolicitudActual(null);
    setShowDescuentoAprobacionModal(false);

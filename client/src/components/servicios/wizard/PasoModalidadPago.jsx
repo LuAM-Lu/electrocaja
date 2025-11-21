@@ -397,14 +397,14 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
             </div>
           )}
 
-          <PagosPanel
-            pagos={pagos}
-            vueltos={vueltos}
-            onPagosChange={handlePagosChange}
-            totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
+            <PagosPanel
+              pagos={pagos}
+              vueltos={vueltos}
+              onPagosChange={handlePagosChange}
+              totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
               ? roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento) // ✅ Aplicar descuento
               : roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento)} // ✅ Para ABONO, permitir pagar hasta el total
-            tasaCambio={tasaCambio}
+              tasaCambio={tasaCambio}
             title={modalidadPago === 'TOTAL_ADELANTADO' ? "Métodos de Pago" : "Métodos de Pago del Abono"}
             descuento={descuento}
             onDescuentoChange={() => setShowDescuentoModal(true)}
@@ -426,8 +426,8 @@ export default function PasoModalidadPago({ datos, onActualizar, errores }) {
               setSolicitudDescuentoId(null);
               toast.success('Descuento eliminado');
             }}
-            onValidationChange={handleValidationChange}
-          />
+              onValidationChange={handleValidationChange}
+            />
         </div>
       )}
 

@@ -43,6 +43,12 @@ const generarMensajeCliente = (servicio, linkSeguimiento, tasaCambio = 37.50) =>
     });
   };
 
+  // Formatear montos en formato dual (Bs + USD)
+  const formatearDual = (valorBs) => {
+    const valorUsd = valorBs / tasa;
+    return `${formatearBs(valorBs)} Bs ($${valorUsd.toFixed(2)})`;
+  };
+
   let mensaje = `🔧 *ORDEN DE SERVICIO TÉCNICO*\n\n`;
   mensaje += `*Número de Orden:* ${servicio.numeroServicio}\n`;
   mensaje += `*Fecha:* ${new Date().toLocaleDateString('es-VE')}\n\n`;
@@ -76,39 +82,39 @@ const generarMensajeCliente = (servicio, linkSeguimiento, tasaCambio = 37.50) =>
       const precioUnitario = parseFloat(item.precioUnitario || item.precio_unitario || 0);
       const subtotal = parseFloat(item.subtotal || cantidad * precioUnitario);
       const subtotalBs = subtotal * tasa;
-      
+
       mensaje += `${index + 1}. ${item.descripcion}\n`;
       mensaje += `   Cantidad: ${cantidad}\n`;
-      mensaje += `   Precio Unit: ${formatearBs(precioUnitario * tasa)} Bs\n`;
-      mensaje += `   Subtotal: ${formatearBs(subtotalBs)} Bs\n`;
-      
+      mensaje += `   Precio Unit: ${formatearDual(precioUnitario * tasa)}\n`;
+      mensaje += `   Subtotal: ${formatearDual(subtotalBs)}\n`;
+
       if (item.esPersonalizado) {
         mensaje += `   (Item personalizado)\n`;
       }
       mensaje += `\n`;
     });
   }
-  
+
   mensaje += `*INFORMACIÓN FINANCIERA:*\n`;
-  mensaje += `Total Estimado: ${formatearBs(totalEstimadoBs)} Bs\n`;
+  mensaje += `Total Estimado: ${formatearDual(totalEstimadoBs)}\n`;
   if (totalPagado > 0) {
-    mensaje += `Pago Inicial: ${formatearBs(totalPagadoBs)} Bs\n`;
+    mensaje += `Pago Inicial: ${formatearDual(totalPagadoBs)}\n`;
   }
   if (saldoPendiente > 0) {
-    mensaje += `Saldo Pendiente: ${formatearBs(saldoPendienteBs)} Bs\n`;
+    mensaje += `Saldo Pendiente: ${formatearDual(saldoPendienteBs)}\n`;
   }
   mensaje += `Tasa de Cambio: ${formatearBs(tasa)} Bs/USD\n`;
   mensaje += `\n`;
-  
+
   mensaje += `*FECHA ESTIMADA DE ENTREGA:*\n${fechaEntrega}\n\n`;
-  
-  mensaje += `*CONTRATO DE ACEPTACIÓN:*\n`;
-  mensaje += `Al recibir este mensaje, usted acepta:\n`;
-  mensaje += `✓ Que el dispositivo será reparado según los problemas reportados\n`;
-  mensaje += `✓ Que el costo estimado es de ${formatearBs(totalEstimadoBs)} Bs\n`;
-  mensaje += `✓ Que debe retirar el dispositivo en la fecha estimada\n`;
-  mensaje += `✓ Que cualquier cambio en el diagnóstico será comunicado\n`;
-  mensaje += `✓ Que debe presentar este ticket al retirar\n\n`;
+
+  mensaje += `*IMPORTANTE - TÉRMINOS Y CONDICIONES:*\n`;
+  mensaje += `✓ El dispositivo será reparado según los problemas reportados\n`;
+  mensaje += `✓ El costo estimado es de ${formatearDual(totalEstimadoBs)}\n`;
+  mensaje += `✓ Cualquier cambio en el diagnóstico será comunicado\n`;
+  mensaje += `✓ Debe presentar este ticket al retirar\n`;
+  mensaje += `✓ Todos los precios están anclados a la tasa BCV oficial del dólar\n`;
+  mensaje += `⚠️ NO nos hacemos responsables por equipos listos para entregar dejados más de 10 días\n\n`;
   
   if (linkSeguimiento) {
     mensaje += `*SEGUIMIENTO EN LÍNEA:*\n`;
@@ -336,6 +342,12 @@ const generarMensajeAbono = (servicio, pagoData, linkSeguimiento, tasaCambio = 3
     });
   };
 
+  // Formatear montos en formato dual (Bs + USD)
+  const formatearDual = (valorBs) => {
+    const valorUsd = valorBs / tasa;
+    return `${formatearBs(valorBs)} Bs ($${valorUsd.toFixed(2)})`;
+  };
+
   // 🆕 Calcular monto del abono en ambas monedas para mostrar correctamente
   let montoAbonoBs = 0;
   let montoAbonoUsd = 0;
@@ -380,11 +392,11 @@ const generarMensajeAbono = (servicio, pagoData, linkSeguimiento, tasaCambio = 3
   let mensaje = `💰 *COMPROBANTE DE ABONO*\n\n`;
   mensaje += `*Orden:* #${servicio.numeroServicio}\n`;
   mensaje += `*Fecha:* ${new Date().toLocaleDateString('es-VE')}\n\n`;
-  
+
   mensaje += `*RESUMEN FINANCIERO:*\n`;
-  mensaje += `Total Estimado: ${formatearBs(totalEstimadoBs)} Bs\n`;
-  mensaje += `Total Pagado: ${formatearBs(totalPagadoBs)} Bs\n\n`;
-  
+  mensaje += `Total Estimado: ${formatearDual(totalEstimadoBs)}\n`;
+  mensaje += `Total Pagado: ${formatearDual(totalPagadoBs)}\n\n`;
+
   mensaje += `*ABONO REGISTRADO:*\n`;
   // 🆕 Mostrar abono en la moneda correspondiente
   if (montoAbonoUsd > 0 && montoAbonoBs > 0) {
@@ -394,13 +406,13 @@ const generarMensajeAbono = (servicio, pagoData, linkSeguimiento, tasaCambio = 3
   } else {
     mensaje += `${formatearBs(montoAbonoBs)} Bs\n\n`;
   }
-  
+
   mensaje += `*MÉTODOS DE PAGO:*\n`;
   mensaje += `${metodosPago}\n\n`;
-  
+
   mensaje += `*SALDO PENDIENTE:*\n`;
-  mensaje += `${formatearBs(saldoPendienteBs)} Bs\n\n`;
-  
+  mensaje += `${formatearDual(saldoPendienteBs)}\n\n`;
+
   mensaje += `Tasa de Cambio: ${formatearBs(tasa)} Bs/USD\n\n`;
   
   if (linkSeguimiento) {
@@ -504,19 +516,25 @@ const generarMensajeListoRetiro = (servicio, linkSeguimiento, tasaCambio = 37.50
     });
   };
 
+  // Formatear montos en formato dual (Bs + USD)
+  const formatearDual = (valorBs) => {
+    const valorUsd = valorBs / tasa;
+    return `${formatearBs(valorBs)} Bs ($${valorUsd.toFixed(2)})`;
+  };
+
   let mensaje = `✅ *¡TU EQUIPO ESTÁ LISTO PARA RETIRAR!*\n\n`;
   mensaje += `*Orden:* #${servicio.numeroServicio}\n`;
   mensaje += `*Dispositivo:* ${servicio.dispositivoMarca} ${servicio.dispositivoModelo}\n\n`;
   
   mensaje += `*ESTADO FINANCIERO:*\n`;
-  mensaje += `Total Estimado: ${formatearBs(totalEstimadoBs)} Bs\n`;
-  mensaje += `Total Pagado: ${formatearBs(totalPagadoBs)} Bs\n`;
-  
+  mensaje += `Total Estimado: ${formatearDual(totalEstimadoBs)}\n`;
+  mensaje += `Total Pagado: ${formatearDual(totalPagadoBs)}\n`;
+
   if (saldoPendienteBs > 0) {
-    mensaje += `*Saldo Pendiente: ${formatearBs(saldoPendienteBs)} Bs*\n`;
+    mensaje += `*Saldo Pendiente: ${formatearDual(saldoPendienteBs)}*\n`;
     mensaje += `\n⚠️ *IMPORTANTE:* Debes cancelar el saldo pendiente antes de retirar tu equipo.\n`;
   } else {
-    mensaje += `✅ *Saldo Pendiente: ${formatearBs(saldoPendienteBs)} Bs*\n`;
+    mensaje += `✅ *Saldo Pendiente: ${formatearDual(saldoPendienteBs)}*\n`;
     mensaje += `\n✅ *¡Tu equipo está completamente pagado y listo para retirar!*\n`;
   }
   

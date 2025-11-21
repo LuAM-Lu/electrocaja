@@ -510,20 +510,11 @@ agregarTransaccion: async (transaccion) => {
       }
     }, 300);
 
-    // 8. EMITIR EVENTO SOCKET.IO PARA SINCRONIZACIÓN
-      if (typeof globalEmitirEvento === 'function') {
-        globalEmitirEvento('nueva_transaccion', {
-          transaccion: nuevaTransaccion,
-          usuario: estado.usuario?.nombre || 'Usuario',
-          timestamp: new Date().toISOString()
-        });
-        console.log(' Evento nueva_transaccion emitido');
-      } else {
-        console.log(' globalEmitirEvento no está disponible para nueva transacción');
-      }
+    // 8. SOCKET.IO - El backend se encarga de emitir eventos después de crear la transacción
+    // No es necesario emitir desde el frontend para evitar errores cuando socket no está conectado
 
-// 9. MOSTRAR CONFIRMACIÓN
-toast.success(`${tipoOriginal === 'ingreso' ? 'Ingreso' : 'Egreso'} registrado correctamente`);
+    // 9. MOSTRAR CONFIRMACIÓN
+    toast.success(`${tipoOriginal === 'ingreso' ? 'Ingreso' : 'Egreso'} registrado correctamente`);
 
 return nuevaTransaccion;
 
@@ -586,20 +577,10 @@ eliminarTransaccion: async (transaccionId) => {
       }
     }, 300);
 
-      // 5. EMITIR EVENTO SOCKET.IO PARA SINCRONIZACIÓN
-      if (typeof globalEmitirEvento === 'function') {
-        globalEmitirEvento('transaccion_eliminada', {
-          transaccionId: transaccionId,
-          transaccion: transaccionAEliminar,
-          usuario: estado.usuario?.nombre || 'Usuario',
-          timestamp: new Date().toISOString()
-        });
-        console.log(' Evento transaccion_eliminada emitido');
-      } else {
-        console.log(' globalEmitirEvento no está disponible para eliminación');
-      }
+    // 5. SOCKET.IO - El backend se encarga de emitir eventos después de eliminar la transacción
+    // No es necesario emitir desde el frontend para evitar errores cuando socket no está conectado
 
-      // 6. MOSTRAR CONFIRMACIÓN
+    // 6. MOSTRAR CONFIRMACIÓN
       toast.success(`${transaccionAEliminar.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} eliminado correctamente`);
 
       return transaccionAEliminar;

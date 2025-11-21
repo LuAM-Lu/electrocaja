@@ -295,41 +295,51 @@ const VistaPreviaModal = ({ presupuestoData, tasaCambio, onClose }) => {
                   <h1 className="text-2xl font-bold mb-2">ELECTRO SHOP MORANDIN C.A.</h1>
                   <p className="text-sm opacity-90">RIF: J-405903333 | Especialistas en Tecnologia</p>
                   <p className="text-sm opacity-90">Carrera 5ta, frente a la plaza Miranda | WhatsApp: +58 2572511282</p>
-                  <p className="text-xs opacity-75 mt-1">electroshopgre@gmail.com | @electroshopgre</p>
+                  <p className="text-xs opacity-75 mt-1">electroshopgre@gmail.com | @electroshopgre | www.electroshopve.com</p>
                 </div>
               </div>
             </div>
 
-            {/* TÍTULO DEL PRESUPUESTO */}
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mx-6 mt-6 rounded-r-lg">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-900">PRESUPUESTO {presupuestoData.numero}</h2>
-                <div className="text-right text-sm text-gray-600">
-                  <p>Fecha: {fechaActual}</p>
-                  <p>Hora: {horaActual}</p>
-                  <p>Tasa: {formatearVenezolano(tasaCambio)} Bs/$</p>
+            {/* FILA COMBINADA: TÍTULO DEL PRESUPUESTO + INFORMACIÓN DEL CLIENTE (MÁS COMPACTA) */}
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mx-6 mt-6 rounded-r-lg">
+              <div className="grid grid-cols-2 gap-4">
+
+                {/* LADO IZQUIERDO: TÍTULO DEL PRESUPUESTO */}
+                <div className="border-r border-gray-300 pr-4">
+                  <h2 className="text-lg font-bold text-gray-900">PRESUPUESTO</h2>
+                  <p className="text-xl font-bold text-gray-900 mt-0.5">{presupuestoData.numero}</p>
+                  <div className="text-xs text-gray-600 mt-2 space-y-0.5">
+                    <p>{fechaActual} | {horaActual}</p>
+                    <p>Tasa: {formatearVenezolano(tasaCambio)} Bs/$</p>
+                  </div>
                 </div>
+
+                {/* LADO DERECHO: INFORMACIÓN DEL CLIENTE (MÁS COMPACTA) */}
+                <div className="pl-2">
+                  {presupuestoData.cliente ? (
+                    <>
+                      <h3 className="text-sm font-bold text-blue-900 mb-1">CLIENTE</h3>
+                      <div className="space-y-0.5 text-gray-700">
+                        <p className="font-semibold text-sm">{presupuestoData.cliente.nombre}</p>
+                        {(presupuestoData.cliente.cedula_rif || presupuestoData.cliente.telefono) && (
+                          <p className="text-xs">
+                            {presupuestoData.cliente.cedula_rif && `CI/RIF: ${presupuestoData.cliente.cedula_rif}`}
+                            {presupuestoData.cliente.cedula_rif && presupuestoData.cliente.telefono && ' | '}
+                            {presupuestoData.cliente.telefono && `Tel: ${presupuestoData.cliente.telefono}`}
+                          </p>
+                        )}
+                        {presupuestoData.cliente.email && (
+                          <p className="text-xs truncate">{presupuestoData.cliente.email}</p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-gray-500 italic">Sin cliente asignado</div>
+                  )}
+                </div>
+
               </div>
             </div>
-
-            {/* INFORMACIÓN DEL CLIENTE */}
-            {presupuestoData.cliente && (
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mx-6 mt-4 rounded-r-lg">
-                <h3 className="text-lg font-bold text-blue-900 mb-3">CLIENTE</h3>
-                <div className="space-y-1 text-gray-700">
-                  <p><span className="font-semibold">Nombre:</span> {presupuestoData.cliente.nombre}</p>
-                  {presupuestoData.cliente.cedula_rif && (
-                    <p><span className="font-semibold">CI/RIF:</span> {presupuestoData.cliente.cedula_rif}</p>
-                  )}
-                  {presupuestoData.cliente.telefono && (
-                    <p><span className="font-semibold">Teléfono:</span> {presupuestoData.cliente.telefono}</p>
-                  )}
-                  {presupuestoData.cliente.email && (
-                    <p><span className="font-semibold">Email:</span> {presupuestoData.cliente.email}</p>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* TABLA DE PRODUCTOS */}
             <div className="mx-6 mt-6">
@@ -345,20 +355,20 @@ const VistaPreviaModal = ({ presupuestoData, tasaCambio, onClose }) => {
               </div>
               <div className="border border-gray-200 rounded-b-lg overflow-hidden">
                 {presupuestoData.items.map((item, index) => (
-                  <div 
+                  <div
                     key={index}
-                    className={`grid grid-cols-7 gap-2 p-3 text-sm border-b border-gray-100 last:border-b-0 ${
+                    className={`grid grid-cols-7 gap-2 p-3 text-sm border-b border-gray-100 last:border-b-0 text-slate-900 ${
                       index % 2 === 0 ? 'bg-white' : 'bg-blue-50'
                     }`}
                   >
-                    <div className="font-medium">{index + 1}</div>
-                    <div>{item.cantidad}</div>
-                    <div className="col-span-2">{item.descripcion}</div>
-                    <div className="text-right">{item.precio_unitario.toFixed(2)}</div>
-                    <div className="text-right font-semibold">
+                    <div className="font-medium text-slate-900">{index + 1}</div>
+                    <div className="text-slate-900">{item.cantidad}</div>
+                    <div className="col-span-2 text-slate-900">{item.descripcion}</div>
+                    <div className="text-right text-slate-900">{item.precio_unitario.toFixed(2)}</div>
+                    <div className="text-right font-semibold text-slate-900">
                       ${(item.cantidad * item.precio_unitario).toFixed(2)}
                     </div>
-                    <div className="text-right font-semibold">
+                    <div className="text-right font-semibold text-slate-900">
                       {formatearVenezolano(item.cantidad * item.precio_unitario * tasaCambio)} Bs
                     </div>
                   </div>
@@ -366,58 +376,65 @@ const VistaPreviaModal = ({ presupuestoData, tasaCambio, onClose }) => {
               </div>
             </div>
 
-            {/* SECCIÓN DE TOTALES */}
+            {/* FILA COMBINADA: RESUMEN FINANCIERO + OBSERVACIONES (MÁS COMPACTA) */}
             <div className="mx-6 mt-6">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-r-lg p-4">
-                <h3 className="text-lg font-bold text-blue-900 mb-4">RESUMEN FINANCIERO</h3>
-                <div className="space-y-2 text-gray-700">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span className="font-semibold">{formatearVenezolano(totales.subtotal * tasaCambio)} Bs</span>
-                  </div>
-                  {totales.descuentoGlobal > 0 && (
-                    <div className="flex justify-between text-red-600">
-                      <span>Descuento ({totales.tipoDescuento === 'porcentaje' ? totales.descuentoGlobal + '%' : 'fijo'}):</span>
-                      <span className="font-semibold">-{formatearVenezolano(totales.descuentoBs)} Bs</span>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-r-lg p-3">
+                <div className={`grid ${presupuestoData.observaciones && presupuestoData.observaciones.length > 0 ? 'grid-cols-2 gap-4' : 'grid-cols-1'}`}>
+
+                  {/* LADO IZQUIERDO: OBSERVACIONES (si existen) */}
+                  {presupuestoData.observaciones && presupuestoData.observaciones.length > 0 && (
+                    <div className="border-r border-gray-300 pr-4">
+                      <h3 className="text-base font-bold text-blue-900 mb-2">OBSERVACIONES</h3>
+                      <ul className="space-y-1 text-gray-700 text-xs">
+                        {presupuestoData.observaciones.map((obs, index) => (
+                          <li key={index} className="flex items-start">
+                            <span className="mr-1.5">•</span>
+                            <span className="leading-tight">{obs}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
-                  <div className="flex justify-between">
-                    <span>Base Imponible:</span>
-                    <span className="font-semibold">{formatearVenezolano(totales.baseImponible * tasaCambio)} Bs</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>IVA ({totales.impuesto}%):</span>
-                    <span className="font-semibold">{formatearVenezolano(totales.ivaBs)} Bs</span>
-                  </div>
-                  <div className="border-t border-blue-300 pt-2 mt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-blue-900">TOTAL:</span>
-                      <span className="text-xl font-bold text-blue-900">
-                        {formatearVenezolano(totales.totalBs)} Bs
-                      </span>
+
+                  {/* LADO DERECHO: RESUMEN FINANCIERO */}
+                  <div className={presupuestoData.observaciones && presupuestoData.observaciones.length > 0 ? 'pl-2' : ''}>
+                    <h3 className="text-base font-bold text-blue-900 mb-2">RESUMEN FINANCIERO</h3>
+                    <div className="space-y-1 text-gray-700 text-sm">
+                      <div className="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span className="font-semibold">{formatearVenezolano(totales.subtotal * tasaCambio)} Bs</span>
+                      </div>
+                      {totales.descuentoGlobal > 0 && (
+                        <div className="flex justify-between text-red-600">
+                          <span className="text-xs">Descuento ({totales.tipoDescuento === 'porcentaje' ? totales.descuentoGlobal + '%' : 'fijo'}):</span>
+                          <span className="font-semibold text-xs">-{formatearVenezolano(totales.descuentoBs)} Bs</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>Base Imponible:</span>
+                        <span className="font-semibold">{formatearVenezolano(totales.baseImponible * tasaCambio)} Bs</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>IVA ({totales.impuesto}%):</span>
+                        <span className="font-semibold">{formatearVenezolano(totales.ivaBs)} Bs</span>
+                      </div>
+                      <div className="border-t border-blue-300 pt-1.5 mt-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-base font-bold text-blue-900">TOTAL:</span>
+                          <span className="text-lg font-bold text-blue-900">
+                            {formatearVenezolano(totales.totalBs)} Bs
+                          </span>
+                        </div>
+                        <div className="text-right text-xs text-gray-600 mt-0.5">
+                          En USD: ${totales.totalUsd.toFixed(2)}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right text-sm text-gray-600 mt-1">
-                      En USD: ${totales.totalUsd.toFixed(2)}
-                    </div>
                   </div>
+
                 </div>
               </div>
             </div>
-
-            {/* OBSERVACIONES */}
-            {presupuestoData.observaciones && presupuestoData.observaciones.length > 0 && (
-              <div className="mx-6 mt-6 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4">
-                <h3 className="text-lg font-bold text-blue-900 mb-3">OBSERVACIONES IMPORTANTES</h3>
-                <ul className="space-y-2 text-gray-700">
-                  {presupuestoData.observaciones.map((obs, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="mr-2">•</span>
-                      <span>{obs}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
 
             {/* FOOTER */}
             <div className="mx-6 mt-6 pb-6 border-t border-gray-200 pt-4">

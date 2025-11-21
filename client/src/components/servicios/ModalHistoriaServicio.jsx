@@ -543,7 +543,7 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
         archivoUrl: dataURL,
         fecha: new Date().toISOString(),
         tecnico: tecnicoAsignado,
-        publica: false // Por defecto no es pública
+        publica: false // ✅ Por defecto privada (se puede cambiar con el botón Eye/EyeOff antes de guardar)
       };
       
       setNotasNuevas(prev => [...prev, nuevaNota]);
@@ -576,12 +576,12 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
           texto: nota.trim(),
           fecha: new Date().toISOString(),
           tecnico: tecnicoAsignado,
-          publica: false,
+          publica: false, // ✅ Por defecto privada (se puede cambiar con el botón Eye/EyeOff antes de guardar)
           grupoId: grupoId // Agregar grupoId para agrupar con las imágenes
         };
         setNotasNuevas(prev => [...prev, notaTexto]);
       }
-      
+
       // Crear una nota por cada imagen adjunta (sin texto duplicado)
       imagenesAdjuntas.forEach((imagen) => {
         const nuevaNota = {
@@ -595,10 +595,9 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
           nombreArchivo: imagen.nombreArchivo,
           fecha: new Date().toISOString(),
           tecnico: tecnicoAsignado,
-          publica: false,
+          publica: false, // ✅ Por defecto privada (se puede cambiar con el botón Eye/EyeOff antes de guardar)
           grupoId: grupoId // Mismo grupoId para agrupar con la nota de texto
         };
-        
         setNotasNuevas(prev => [...prev, nuevaNota]);
       });
       
@@ -617,9 +616,9 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
       texto: nota.trim(),
       fecha: new Date().toISOString(),
       tecnico: tecnicoAsignado,
-        publica: false
+        publica: false // ✅ Por defecto privada (se puede cambiar con el botón Eye/EyeOff antes de guardar)
     };
-    
+
     setNotasNuevas(prev => [...prev, nuevaNota]);
     setNota('');
     toast.success('Nota agregada (pendiente de guardar)');
@@ -734,9 +733,26 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
 
   // Cambiar visibilidad de nota nueva (draft)
   const handleToggleVisibilidadNotaNueva = (id) => {
-    setNotasNuevas(prev => prev.map(n => 
-      n.id === id ? { ...n, publica: !n.publica } : n
-    ));
+    setNotasNuevas(prev => {
+      // Encontrar la nota que se está modificando
+      const notaModificada = prev.find(n => n.id === id);
+      if (!notaModificada) return prev;
+
+      const nuevaVisibilidad = !notaModificada.publica;
+      const grupoId = notaModificada.grupoId;
+
+      // Si la nota tiene grupoId, cambiar la visibilidad de TODAS las notas del grupo
+      if (grupoId) {
+        return prev.map(n =>
+          n.grupoId === grupoId ? { ...n, publica: nuevaVisibilidad } : n
+        );
+      }
+
+      // Si no tiene grupoId, solo cambiar esa nota
+      return prev.map(n =>
+        n.id === id ? { ...n, publica: nuevaVisibilidad } : n
+      );
+    });
   };
 
   // Cambiar visibilidad de nota existente (backend)
@@ -746,21 +762,42 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
       if (!nota) return;
 
       const nuevaVisibilidad = !nota.publica;
-      
-      // Actualizar en el backend
-      await api.patch(`/servicios/${servicio.id}/notas/${notaId}/visibilidad`, {
-        publica: nuevaVisibilidad
-      });
+      const grupoId = nota.grupoId;
 
-      // Actualizar en el estado local
-      setNotasBackend(prev => prev.map(n => 
-        n.id === notaId ? { ...n, publica: nuevaVisibilidad } : n
-      ));
+      // Si la nota tiene grupoId, actualizar TODAS las notas del grupo
+      if (grupoId) {
+        const notasDelGrupo = notasBackend.filter(n => n.grupoId === grupoId);
 
-      toast.success(nuevaVisibilidad ? 'Nota marcada como pública' : 'Nota marcada como privada');
+        // Actualizar cada nota del grupo en el backend
+        await Promise.all(
+          notasDelGrupo.map(n =>
+            api.patch(`/servicios/${servicio.id}/notas/${n.id}/visibilidad`, {
+              publica: nuevaVisibilidad
+            })
+          )
+        );
+
+        // Actualizar en el estado local todas las notas del grupo
+        setNotasBackend(prev => prev.map(n =>
+          n.grupoId === grupoId ? { ...n, publica: nuevaVisibilidad } : n
+        ));
+
+        toast.success(nuevaVisibilidad ? 'Grupo marcado como público' : 'Grupo marcado como privado');
+      } else {
+        // Sin grupoId, solo actualizar esa nota
+        await api.patch(`/servicios/${servicio.id}/notas/${notaId}/visibilidad`, {
+          publica: nuevaVisibilidad
+        });
+
+        setNotasBackend(prev => prev.map(n =>
+          n.id === notaId ? { ...n, publica: nuevaVisibilidad } : n
+        ));
+
+        toast.success(nuevaVisibilidad ? 'Nota marcada como pública' : 'Nota marcada como privada');
+      }
     } catch (error) {
       console.error('Error actualizando visibilidad:', error);
-      toast.error('Error al actualizar visibilidad de la nota');
+      toast.error('Error al actualizar visibilidad');
     }
   };
 
@@ -987,11 +1024,12 @@ export default function ModalEditarServicio({ servicio: servicioInicial, onClose
             const contenido = notaNueva.texto || notaNueva.contenido || '';
             // Priorizar archivoUrl, luego imagen, luego audio
             const archivoUrl = notaNueva.archivoUrl || notaNueva.imagen || notaNueva.audio || null;
-            
+
+            // ✅ Respetar el estado de visibilidad configurado por el usuario (botón Eye/EyeOff)
             const datosNota = {
               tipo: tipoBackend,
               contenido: contenido,
-              publica: notaNueva.publica || false
+              publica: notaNueva.publica !== undefined ? notaNueva.publica : false
             };
             
             // Agregar grupoId si existe (para agrupar notas relacionadas)

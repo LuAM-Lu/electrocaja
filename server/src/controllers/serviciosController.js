@@ -2417,28 +2417,8 @@ const agregarNota = async (req, res) => {
     // El contenido puede estar vacío si es solo una imagen o audio
     const contenidoFinal = contenido || (archivoUrl ? 'Archivo adjunto' : '');
 
-    // Verificar si es una nota técnica (TEXTO, IMAGEN o AUDIO)
-    const esNotaTecnica = ['TEXTO', 'IMAGEN', 'AUDIO'].includes(tipo);
-    
-    // Determinar si debe ser pública
-    let debeSerPublica = publica === true || publica === 'true';
-    
-    // Si es una nota técnica, verificar si es la primera del servicio
-    if (esNotaTecnica) {
-      const notasExistentes = await prisma.servicioTecnicoNota.findMany({
-        where: {
-          servicioId: parseInt(id),
-          tipo: {
-            in: ['TEXTO', 'IMAGEN', 'AUDIO']
-          }
-        }
-      });
-      
-      // Si es la primera nota técnica, siempre debe ser pública
-      if (notasExistentes.length === 0) {
-        debeSerPublica = true;
-      }
-    }
+    // Determinar si debe ser pública (respetar el valor del frontend)
+    const debeSerPublica = publica === true || publica === 'true';
 
     const nota = await prisma.servicioTecnicoNota.create({
       data: {
@@ -2537,6 +2517,42 @@ const actualizarVisibilidadNota = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error actualizando visibilidad de nota',
+      error: error.message
+    });
+  }
+};
+
+// ===================================
+// 📸 PUBLICAR TODAS LAS IMÁGENES DE UN SERVICIO (TEMPORAL)
+// ===================================
+const publicarImagenesServicio = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Actualizar todas las notas de tipo IMAGEN del servicio para que sean públicas
+    const resultado = await prisma.servicioTecnicoNota.updateMany({
+      where: {
+        servicioId: parseInt(id),
+        tipo: { in: ['IMAGEN', 'AUDIO'] } // Incluir también audios
+      },
+      data: {
+        publica: true
+      }
+    });
+
+    console.log(`✅ Marcadas ${resultado.count} imágenes/audios como públicas para servicio ${id}`);
+
+    res.json({
+      success: true,
+      message: `${resultado.count} imágenes/audios marcadas como públicas`,
+      data: { count: resultado.count }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en publicarImagenesServicio:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error publicando imágenes',
       error: error.message
     });
   }
@@ -3313,6 +3329,7 @@ module.exports = {
   agregarNota,
   eliminarNota,
   actualizarVisibilidadNota,
+  publicarImagenesServicio,
   regenerarTicketServicio,
   getTecnicos,
   getTecnicosConfig,

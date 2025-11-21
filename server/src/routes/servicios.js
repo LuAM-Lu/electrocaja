@@ -75,6 +75,9 @@ router.delete('/:id/notas/:notaId', serviciosController.eliminarNota);
 // PATCH /api/servicios/:id/notas/:notaId/visibilidad - Actualizar visibilidad de nota
 router.patch('/:id/notas/:notaId/visibilidad', serviciosController.actualizarVisibilidadNota);
 
+// 🔧 TEMPORAL: Marcar todas las imágenes como públicas
+router.patch('/:id/notas/imagenes/publicar', serviciosController.publicarImagenesServicio);
+
 // POST /api/servicios/:id/entregar - Finalizar entrega del dispositivo
 router.post('/:id/entregar', serviciosController.finalizarEntrega);
 

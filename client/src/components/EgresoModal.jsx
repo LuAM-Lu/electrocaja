@@ -557,7 +557,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
        monto: '',
        banco: '',
        referencia: ''
-     }], emitirEvento);
+     }]);
 
      toast.success('Egreso registrado correctamente');
      onClose();

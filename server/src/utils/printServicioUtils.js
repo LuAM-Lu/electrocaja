@@ -55,6 +55,12 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
     });
   };
 
+  // Formatear montos en formato dual (Bs + USD) para tickets
+  const formatearDual = (valorBs) => {
+    const valorUsd = valorBs / tasa;
+    return `${formatearVenezolano(valorBs)} Bs <span style="font-size: 8px; color: #000;">($${valorUsd.toFixed(2)})</span>`;
+  };
+
   // 🆕 Obtener métodos de pago del pago inicial (si existe)
   let metodosPago = '';
   if (servicio.pagos && servicio.pagos.length > 0) {
@@ -326,7 +332,7 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
                     ${item.descripcion}
                 </div>
                 <div style="width: 30%; text-align: right; font-weight: 700; color: #000;">
-                    ${formatearVenezolano(subtotalBs)} Bs
+                    ${formatearDual(subtotalBs)}
                 </div>
             </div>
         `;
@@ -336,9 +342,9 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
         
         <!-- TOTALES -->
         <div class="total-section" style="color: #000;">
-            <div class="center normal" style="color: #000;">Total Estimado: ${formatearVenezolano(totalEstimadoBs)} Bs</div>
+            <div class="center normal" style="color: #000;">Total Estimado: ${formatearDual(totalEstimadoBs)}</div>
             ${totalPagado > 0 ? `
-                <div class="center normal" style="color: #000;">Pago Inicial: ${formatearVenezolano(totalPagadoBs)} Bs</div>
+                <div class="center normal" style="color: #000;">Pago Inicial: ${formatearDual(totalPagadoBs)}</div>
                 ${metodosPago ? `
                     <div class="separator" style="margin: 4px 0; border-top: 1px dashed #000;"></div>
                     <div class="subtitle bold center" style="color: #000; margin-top: 4px;">Métodos de Pago:</div>
@@ -347,7 +353,7 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
             ` : ''}
             ${saldoPendiente > 0 ? `
                 <div class="separator" style="margin: 4px 0; border-top: 1px dashed #000;"></div>
-                <div class="center normal" style="color: #000;">Saldo Pendiente: ${formatearVenezolano(saldoPendienteBs)} Bs</div>
+                <div class="center normal" style="color: #000;">Saldo Pendiente: ${formatearDual(saldoPendienteBs)}</div>
             ` : ''}
             <div class="separator" style="margin: 4px 0; border-top: 1px dashed #000;"></div>
             <div class="center normal" style="font-size: 8px; margin-top: 4px; color: #000;">
@@ -523,6 +529,12 @@ const generarHTMLTicketAbono = (servicio, pagoData, linkSeguimiento, qrBase64 = 
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
+  };
+
+  // Formatear montos en formato dual (Bs + USD) para tickets
+  const formatearDual = (valorBs) => {
+    const valorUsd = valorBs / tasa;
+    return `${formatearVenezolano(valorBs)} Bs <span style="font-size: 8px; color: #000;">($${valorUsd.toFixed(2)})</span>`;
   };
 
   // Formatear métodos de pago respetando la moneda original
@@ -730,15 +742,15 @@ const generarHTMLTicketAbono = (servicio, pagoData, linkSeguimiento, qrBase64 = 
         
         <!-- INFORMACIÓN FINANCIERA -->
         <div class="subtitle bold" style="color: #000;">RESUMEN FINANCIERO:</div>
-        
+
         <div class="info-line" style="color: #000;">
             <span>Total Estimado:</span>
-            <span style="float: right; font-weight: 600;">${formatearVenezolano(totalEstimadoBs)} Bs</span>
+            <span style="float: right; font-weight: 600;">${formatearDual(totalEstimadoBs)}</span>
         </div>
-        
+
         <div class="info-line" style="color: #000;">
             <span>Total Pagado:</span>
-            <span style="float: right; font-weight: 600;">${formatearVenezolano(totalPagadoBs)} Bs</span>
+            <span style="float: right; font-weight: 600;">${formatearDual(totalPagadoBs)}</span>
         </div>
         
         <div class="separator"></div>
@@ -763,9 +775,9 @@ const generarHTMLTicketAbono = (servicio, pagoData, linkSeguimiento, qrBase64 = 
         <!-- SALDO PENDIENTE -->
         <div class="info-line" style="color: #000; font-weight: 600;">
             <span>Saldo Pendiente:</span>
-            <span style="float: right; font-size: 13px; font-weight: 700;">${formatearVenezolano(saldoPendienteBs)} Bs</span>
+            <span style="float: right; font-size: 13px; font-weight: 700;">${formatearDual(saldoPendienteBs)}</span>
         </div>
-        
+
         <div class="normal center" style="color: #000; margin-top: 4px;">
             Tasa: ${formatearVenezolano(tasa)} Bs/USD
         </div>

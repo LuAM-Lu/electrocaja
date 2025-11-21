@@ -128,12 +128,38 @@ export const generarPDFPresupuesto = async (presupuestoData, tasaCambio) => {
    doc.setFillColor(37, 99, 235); // Azul medio (blue-600)
    doc.rect(0, 0, pageWidth, 38, 'F');
    
-   doc.setFillColor(59, 130, 246); // Azul (blue-500)
-   doc.rect(0, 0, pageWidth, 35, 'F');
-   
+   // DEGRADADO AZUL (from-blue-800 via-blue-600 to-blue-500)
+   // Simular degradado con múltiples rectángulos
+   const headerHeight = 35;
+   const gradientSteps = 50;
+   const stepWidth = pageWidth / gradientSteps;
+
+   // Colores del degradado: blue-800 (30, 64, 175) -> blue-600 (37, 99, 235) -> blue-500 (59, 130, 246)
+   for (let i = 0; i < gradientSteps; i++) {
+     let r, g, b;
+     const ratio = i / gradientSteps;
+
+     if (ratio < 0.5) {
+       // Transición blue-800 a blue-600
+       const localRatio = ratio * 2;
+       r = 30 + (37 - 30) * localRatio;
+       g = 64 + (99 - 64) * localRatio;
+       b = 175 + (235 - 175) * localRatio;
+     } else {
+       // Transición blue-600 a blue-500
+       const localRatio = (ratio - 0.5) * 2;
+       r = 37 + (59 - 37) * localRatio;
+       g = 99 + (130 - 99) * localRatio;
+       b = 235 + (246 - 235) * localRatio;
+     }
+
+     doc.setFillColor(Math.round(r), Math.round(g), Math.round(b));
+     doc.rect(i * stepWidth, 0, stepWidth, headerHeight, 'F');
+   }
+
    // Línea azul claro elegante (arriba)
    doc.setFillColor(147, 197, 253); // Azul claro (blue-300)
-   doc.rect(0, 0, pageWidth, 2, 'F');
+   doc.rect(0, 0, pageWidth, 1, 'F');
    
    // Logo de alta calidad - más grande (igual a vista previa)
    if (logoData) {
@@ -158,96 +184,88 @@ export const generarPDFPresupuesto = async (presupuestoData, tasaCambio) => {
    
    doc.setFontSize(8);
    doc.setGState(doc.GState({opacity: 0.75}));
-   const emailText = doc.splitTextToSize('electroshopgre@gmail.com | @electroshopgre', pageWidth - (logoData ? 60 : 30));
+   const emailText = doc.splitTextToSize('electroshopgre@gmail.com | @electroshopgre | www.electroshopve.com', pageWidth - (logoData ? 60 : 30));
    doc.text(emailText, logoData ? 40 : 15, 35);
 
    let yPos = 55;
-   
-   // TÍTULO PREMIUM DEL PRESUPUESTO - IGUAL A VISTA PREVIA
+
+   // FILA COMBINADA: TÍTULO DEL PRESUPUESTO + INFORMACIÓN DEL CLIENTE (MÁS COMPACTA)
+   const alturaFilaCombinada = presupuestoData.cliente ? 30 : 20;
+
+   // Fondo azul claro para toda la fila
    doc.setFillColor(239, 246, 255); // Azul muy claro (blue-50)
-   doc.rect(15, yPos, pageWidth - 30, 20, 'F');
-   
+   doc.rect(15, yPos, pageWidth - 30, alturaFilaCombinada, 'F');
+
    // Línea lateral azul (borde izquierdo)
    doc.setFillColor(59, 130, 246); // Azul (blue-500)
-   doc.rect(15, yPos, 4, 20, 'F');
-   
+   doc.rect(15, yPos, 4, alturaFilaCombinada, 'F');
+
+   // LADO IZQUIERDO: TÍTULO DEL PRESUPUESTO
+   const mitadPagina = pageWidth / 2;
+
    doc.setTextColor(15, 23, 42); // Gris oscuro
    doc.setFont('helvetica', 'bold');
-   doc.setFontSize(20);
-   const tituloPresupuesto = doc.splitTextToSize(`PRESUPUESTO ${presupuestoData.numero}`, pageWidth - 80);
-   doc.text(tituloPresupuesto, 25, yPos + 12);
-   
-   // Fecha, hora y tasa de cambio (alineado a la derecha)
-   doc.setFontSize(9);
+   doc.setFontSize(14);
+   doc.text(`PRESUPUESTO`, 25, yPos + 8);
+   doc.setFontSize(16);
+   doc.text(presupuestoData.numero, 25, yPos + 14);
+
+   // Fecha, hora y tasa debajo del número
+   doc.setFontSize(7);
    doc.setFont('helvetica', 'normal');
    doc.setTextColor(71, 85, 105);
-   doc.text(`Fecha: ${fechaActual}`, pageWidth - 15, yPos + 6, { align: 'right', maxWidth: 80 });
-   doc.text(`Hora: ${horaActual}`, pageWidth - 15, yPos + 11, { align: 'right', maxWidth: 80 });
-   const tasaText = doc.splitTextToSize(`Tasa: ${formatearVenezolano(tasaCambio)} Bs/$`, 80);
-   doc.text(tasaText, pageWidth - 15, yPos + 16, { align: 'right' });
-   
-   yPos += 28;
+   doc.text(`${fechaActual} | ${horaActual}`, 25, yPos + 20);
+   doc.text(`Tasa: ${formatearVenezolano(tasaCambio)} Bs/$`, 25, yPos + 24);
 
-   // INFORMACIÓN DEL CLIENTE - IGUAL A VISTA PREVIA
+   // LADO DERECHO: INFORMACIÓN DEL CLIENTE (MÁS COMPACTA)
    if (presupuestoData.cliente) {
-     doc.setFillColor(239, 246, 255); // Azul muy claro (blue-50)
-     doc.rect(15, yPos, pageWidth - 30, 30, 'F');
-     
-     // Borde lateral azul
-     doc.setFillColor(59, 130, 246); // Azul (blue-500)
-     doc.rect(15, yPos, 4, 30, 'F');
-     
+     // Línea divisoria vertical
+     doc.setDrawColor(203, 213, 225);
+     doc.setLineWidth(0.5);
+     doc.line(mitadPagina, yPos + 2, mitadPagina, yPos + alturaFilaCombinada - 2);
+
      doc.setTextColor(30, 64, 175); // Azul oscuro
      doc.setFont('helvetica', 'bold');
-     doc.setFontSize(13);
-     doc.text('CLIENTE', 25, yPos + 10);
-     
+     doc.setFontSize(9);
+     doc.text('CLIENTE', mitadPagina + 5, yPos + 6);
+
      doc.setTextColor(51, 65, 85); // Gris oscuro
      doc.setFont('helvetica', 'normal');
-     doc.setFontSize(10);
-     
-     let clienteY = yPos + 18;
+     doc.setFontSize(8);
+
+     let clienteY = yPos + 11;
+     const anchoCliente = pageWidth - mitadPagina - 20;
+
+     // Nombre del cliente
      doc.setFont('helvetica', 'bold');
-     doc.text('Nombre:', 25, clienteY);
+     const nombreCliente = doc.splitTextToSize(presupuestoData.cliente.nombre || '', anchoCliente);
+     doc.text(nombreCliente, mitadPagina + 5, clienteY);
+     clienteY += nombreCliente.length > 1 ? nombreCliente.length * 3 : 3.5;
+
      doc.setFont('helvetica', 'normal');
-     const nombreCliente = doc.splitTextToSize(presupuestoData.cliente.nombre || '', pageWidth - 70);
-     doc.text(nombreCliente, 50, clienteY);
-     clienteY += nombreCliente.length > 1 ? nombreCliente.length * 5 : 6;
-     
+
+     // CI/RIF y Teléfono en la misma línea para ahorrar espacio
+     let infoLine = '';
      if (presupuestoData.cliente.cedula_rif) {
-       doc.setFont('helvetica', 'bold');
-       doc.text('CI/RIF:', 25, clienteY);
-       doc.setFont('helvetica', 'normal');
-       doc.text(presupuestoData.cliente.cedula_rif, 50, clienteY);
-       clienteY += 6;
+       infoLine = `CI/RIF: ${presupuestoData.cliente.cedula_rif}`;
      }
-     
      if (presupuestoData.cliente.telefono) {
-       doc.setFont('helvetica', 'bold');
-       doc.text('Teléfono:', 25, clienteY);
-       doc.setFont('helvetica', 'normal');
-       doc.text(presupuestoData.cliente.telefono, 50, clienteY);
-       clienteY += 6;
+       infoLine += (infoLine ? ' | ' : '') + `Tel: ${presupuestoData.cliente.telefono}`;
      }
-     
-     if (presupuestoData.cliente.email) {
-       doc.setFont('helvetica', 'bold');
-       doc.text('Email:', 25, clienteY);
-       doc.setFont('helvetica', 'normal');
-       const emailCliente = doc.splitTextToSize(presupuestoData.cliente.email || '', pageWidth - 70);
-       doc.text(emailCliente, 50, clienteY);
-       clienteY += emailCliente.length > 1 ? emailCliente.length * 5 : 6;
+     if (infoLine) {
+       const infoText = doc.splitTextToSize(infoLine, anchoCliente);
+       doc.text(infoText, mitadPagina + 5, clienteY);
+       clienteY += infoText.length * 3;
      }
-     
-     // Ajustar altura del bloque de cliente según contenido
-     const alturaCliente = Math.max(30, clienteY - yPos + 5);
-     doc.setFillColor(239, 246, 255);
-     doc.rect(15, yPos, pageWidth - 30, alturaCliente, 'F');
-     doc.setFillColor(59, 130, 246);
-     doc.rect(15, yPos, 4, alturaCliente, 'F');
-     
-     yPos += Math.max(38, alturaCliente + 5);
+
+     // Email (solo si hay espacio)
+     if (presupuestoData.cliente.email && clienteY < yPos + alturaFilaCombinada - 3) {
+       const emailCliente = doc.splitTextToSize(presupuestoData.cliente.email || '', anchoCliente);
+       doc.text(emailCliente, mitadPagina + 5, clienteY);
+     }
    }
+
+   yPos += alturaFilaCombinada + 5;
 
    // TABLA DE PRODUCTOS - IGUAL A VISTA PREVIA (sin P.Unit Bs)
    let tableY = yPos;
@@ -282,8 +300,8 @@ export const generarPDFPresupuesto = async (presupuestoData, tasaCambio) => {
 
    tableY += 12;
 
-   // Filas de productos con alternancia - IGUAL A VISTA PREVIA
-   doc.setTextColor(51, 65, 85);
+   // Filas de productos con alternancia - AZUL OSCURO CASI NEGRO
+   doc.setTextColor(15, 23, 42); // Azul oscuro casi negro (slate-900)
    doc.setFont('helvetica', 'normal');
    doc.setFontSize(9);
 
@@ -323,8 +341,8 @@ export const generarPDFPresupuesto = async (presupuestoData, tasaCambio) => {
      doc.setDrawColor(229, 231, 235); // Gris claro
      doc.setLineWidth(0.2);
      doc.line(15, tableY + 10, pageWidth - 15, tableY + 10);
-     
-     doc.setTextColor(51, 65, 85);
+
+     doc.setTextColor(15, 23, 42); // Azul oscuro casi negro (slate-900)
      doc.setFont('helvetica', 'bold');
      doc.text((index + 1).toString(), cols.num, tableY + 7);
      doc.setFont('helvetica', 'normal');
@@ -364,138 +382,121 @@ export const generarPDFPresupuesto = async (presupuestoData, tasaCambio) => {
    doc.setLineWidth(1);
    doc.line(15, tableY, pageWidth - 15, tableY);
 
-   // SECCIÓN DE TOTALES - IGUAL A VISTA PREVIA
-   yPos = tableY + 15;
-   const totalBoxHeight = 50;
-   
+   // FILA COMBINADA: RESUMEN FINANCIERO + OBSERVACIONES (MÁS COMPACTA)
+   yPos = tableY + 10;
+   const totalBoxHeight = 40;
+   const tieneObservaciones = presupuestoData.observaciones && presupuestoData.observaciones.length > 0;
+
    // Fondo con gradiente azul simulado
    doc.setFillColor(239, 246, 255); // Azul muy claro (blue-50)
    doc.rect(15, yPos, pageWidth - 30, totalBoxHeight, 'F');
-   
+
    doc.setFillColor(219, 234, 254); // Azul claro (blue-100)
-   doc.rect(15, yPos, pageWidth - 30, 10, 'F');
-   
+   doc.rect(15, yPos, pageWidth - 30, 8, 'F');
+
    // Borde azul elegante
    doc.setDrawColor(59, 130, 246); // Azul (blue-500)
    doc.setLineWidth(1.5);
    doc.rect(15, yPos, pageWidth - 30, totalBoxHeight);
-   
+
    // Línea lateral azul premium
    doc.setFillColor(37, 99, 235); // Azul medio (blue-600)
    doc.rect(15, yPos, 4, totalBoxHeight, 'F');
-   
-   doc.setTextColor(30, 64, 175); // Azul oscuro
-   doc.setFont('helvetica', 'bold');
-   doc.setFontSize(13);
-   doc.text('RESUMEN FINANCIERO', 25, yPos + 8);
-   
-   doc.setTextColor(51, 65, 85);
-   doc.setFont('helvetica', 'normal');
-   doc.setFontSize(10);
-   
-   // Verificar si los totales caben en la página actual
+
+   // Verificar si cabe en la página actual
    if (yPos + totalBoxHeight > pageHeight - 30) {
      doc.addPage();
      yPos = 20;
-     
-     // Redibujar fondo de totales en nueva página
+
+     // Redibujar fondo en nueva página
      doc.setFillColor(239, 246, 255);
      doc.rect(15, yPos, pageWidth - 30, totalBoxHeight, 'F');
      doc.setFillColor(219, 234, 254);
-     doc.rect(15, yPos, pageWidth - 30, 10, 'F');
+     doc.rect(15, yPos, pageWidth - 30, 8, 'F');
      doc.setDrawColor(59, 130, 246);
      doc.setLineWidth(1.5);
      doc.rect(15, yPos, pageWidth - 30, totalBoxHeight);
      doc.setFillColor(37, 99, 235);
      doc.rect(15, yPos, 4, totalBoxHeight, 'F');
    }
-   
-   let totalY = yPos + 18;
-   doc.text(`Subtotal:`, 25, totalY);
-   doc.setFont('helvetica', 'bold');
-   const subtotalText = doc.splitTextToSize(`${formatearVenezolano(totales.subtotal * tasaCambio)} Bs`, 30);
-   doc.text(subtotalText, pageWidth - 20, totalY, { align: 'right' });
-   
-   if (totales.descuentoGlobal > 0) {
-     totalY += 7;
-     doc.setFont('helvetica', 'normal');
-     doc.setTextColor(220, 38, 38); // Rojo
-     const descuentoLabel = doc.splitTextToSize(`Descuento (${totales.tipoDescuento === 'porcentaje' ? totales.descuentoGlobal + '%' : 'fijo'}):`, pageWidth - 100);
-     doc.text(descuentoLabel, 25, totalY);
-     doc.setFont('helvetica', 'bold');
-     const descuentoText = doc.splitTextToSize(`-${formatearVenezolano(totales.descuentoBs)} Bs`, 30);
-     doc.text(descuentoText, pageWidth - 20, totalY, { align: 'right' });
-     doc.setTextColor(51, 65, 85);
-   }
-   
-   totalY += 7;
-   doc.setFont('helvetica', 'normal');
-   doc.text(`Base Imponible:`, 25, totalY);
-   doc.setFont('helvetica', 'bold');
-   const baseText = doc.splitTextToSize(`${formatearVenezolano(totales.baseImponible * tasaCambio)} Bs`, 30);
-   doc.text(baseText, pageWidth - 20, totalY, { align: 'right' });
-   
-   totalY += 7;
-   doc.setFont('helvetica', 'normal');
-   doc.text(`IVA (${totales.impuesto}%):`, 25, totalY);
-   doc.setFont('helvetica', 'bold');
-   const ivaText = doc.splitTextToSize(`${formatearVenezolano(totales.ivaBs)} Bs`, 30);
-   doc.text(ivaText, pageWidth - 20, totalY, { align: 'right' });
-   
-   // Total final destacado en azul
-   totalY += 10;
-   doc.setDrawColor(59, 130, 246); // Azul
-   doc.setLineWidth(0.5);
-   doc.line(25, totalY - 2, pageWidth - 25, totalY - 2);
-   
-   doc.setFont('helvetica', 'bold');
-   doc.setFontSize(14);
-   doc.setTextColor(30, 64, 175); // Azul oscuro
-   doc.text(`TOTAL:`, 25, totalY + 5);
-   doc.setFontSize(15);
-   const totalText = doc.splitTextToSize(`${formatearVenezolano(totales.totalBs)} Bs`, 35);
-   doc.text(totalText, pageWidth - 20, totalY + 5, { align: 'right' });
-   
-   totalY += 8;
-   doc.setFontSize(9);
-   doc.setFont('helvetica', 'normal');
-   doc.setTextColor(75, 85, 99);
-   doc.text(`En USD: $${totales.totalUsd.toFixed(2)}`, pageWidth - 20, totalY, { align: 'right', maxWidth: 30 });
 
-   // OBSERVACIONES CON DISEÑO AZUL PREMIUM
-   if (presupuestoData.observaciones && presupuestoData.observaciones.length > 0) {
-     yPos += totalBoxHeight + 15;
-     
-     if (yPos > pageHeight - 60) {
-       doc.addPage();
-       yPos = 20;
-     }
-     
-     const obsHeight = 8 + (presupuestoData.observaciones.length * 5);
-     doc.setFillColor(239, 246, 255); // Azul muy claro
-     doc.rect(15, yPos, pageWidth - 30, obsHeight, 'F');
-     
-     doc.setFillColor(59, 130, 246); // Azul
-     doc.rect(15, yPos, 3, obsHeight, 'F');
-     
-     doc.setTextColor(30, 64, 175); // Azul oscuro
-     doc.setFont('helvetica', 'bold'); // Fuente moderna y redonda
-     doc.setFontSize(11); // Más grande
-     doc.text('OBSERVACIONES IMPORTANTES', 25, yPos + 7);
-     
-     doc.setTextColor(51, 65, 85); // Gris oscuro
-     doc.setFont('helvetica', 'normal'); // Fuente moderna y redonda
-     doc.setFontSize(9); // Más grande
-     
+   const mitadPaginaTotales = tieneObservaciones ? pageWidth / 2 : pageWidth;
+
+   // LADO IZQUIERDO: OBSERVACIONES (si existen)
+   if (tieneObservaciones) {
+     doc.setTextColor(30, 64, 175);
+     doc.setFont('helvetica', 'bold');
+     doc.setFontSize(10);
+     doc.text('OBSERVACIONES', 25, yPos + 6);
+
+     doc.setTextColor(51, 65, 85);
+     doc.setFont('helvetica', 'normal');
+     doc.setFontSize(7);
+
+     let obsY = yPos + 11;
+     const anchoObs = mitadPaginaTotales - 30;
+
      presupuestoData.observaciones.forEach((obs, index) => {
-       const obsText = doc.splitTextToSize(`• ${obs}`, pageWidth - 50);
-       doc.text(obsText, 25, yPos + 13 + (index * 6));
-       // Ajustar altura si el texto es multilínea
-       if (obsText.length > 1) {
-         yPos += (obsText.length - 1) * 5;
+       if (obsY < yPos + totalBoxHeight - 4) {
+         const obsText = doc.splitTextToSize(`• ${obs}`, anchoObs);
+         doc.text(obsText, 25, obsY);
+         obsY += obsText.length * 3.5;
        }
      });
+
+     // Línea divisoria vertical
+     doc.setDrawColor(203, 213, 225);
+     doc.setLineWidth(0.5);
+     doc.line(mitadPaginaTotales, yPos + 2, mitadPaginaTotales, yPos + totalBoxHeight - 2);
    }
+
+   // LADO DERECHO: RESUMEN FINANCIERO
+   const xPosResumen = tieneObservaciones ? mitadPaginaTotales + 5 : 25;
+   const anchoTotales = tieneObservaciones ? pageWidth - mitadPaginaTotales - 30 : pageWidth - 50;
+
+   doc.setTextColor(30, 64, 175); // Azul oscuro
+   doc.setFont('helvetica', 'bold');
+   doc.setFontSize(10);
+   doc.text('RESUMEN FINANCIERO', xPosResumen + anchoTotales - 30, yPos + 6, { align: 'right' });
+
+   doc.setTextColor(51, 65, 85);
+   doc.setFont('helvetica', 'normal');
+   doc.setFontSize(8);
+
+   let totalY = yPos + 12;
+   const xPosRight = xPosResumen + anchoTotales - 30;
+
+   doc.text(`Subtotal: ${formatearVenezolano(totales.subtotal * tasaCambio)} Bs`, xPosRight, totalY, { align: 'right' });
+
+   if (totales.descuentoGlobal > 0) {
+     totalY += 5;
+     doc.setTextColor(220, 38, 38);
+     doc.text(`Descuento (${totales.tipoDescuento === 'porcentaje' ? totales.descuentoGlobal + '%' : 'fijo'}): -${formatearVenezolano(totales.descuentoBs)} Bs`, xPosRight, totalY, { align: 'right' });
+     doc.setTextColor(51, 65, 85);
+   }
+
+   totalY += 5;
+   doc.text(`Base Imponible: ${formatearVenezolano(totales.baseImponible * tasaCambio)} Bs`, xPosRight, totalY, { align: 'right' });
+
+   totalY += 5;
+   doc.text(`IVA (${totales.impuesto}%): ${formatearVenezolano(totales.ivaBs)} Bs`, xPosRight, totalY, { align: 'right' });
+
+   // Total final destacado
+   totalY += 7;
+   doc.setDrawColor(59, 130, 246);
+   doc.setLineWidth(0.5);
+   doc.line(xPosResumen, totalY - 2, xPosResumen + anchoTotales - 5, totalY - 2);
+
+   doc.setFont('helvetica', 'bold');
+   doc.setFontSize(11);
+   doc.setTextColor(30, 64, 175);
+   doc.text(`TOTAL: ${formatearVenezolano(totales.totalBs)} Bs`, xPosRight, totalY + 4, { align: 'right' });
+
+   totalY += 6;
+   doc.setFontSize(7);
+   doc.setFont('helvetica', 'normal');
+   doc.setTextColor(75, 85, 99);
+   doc.text(`En USD: $${totales.totalUsd.toFixed(2)}`, xPosRight, totalY, { align: 'right' });
 
    // FOOTER ELEGANTE Y COMPACTO
    const footerY = pageHeight - 20;

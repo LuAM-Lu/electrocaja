@@ -1315,26 +1315,29 @@ const crearTransaccion = async (req, res) => {
       }))
     };
 
-    // 📡 Notificar via Socket.IO
-    if (req.io) {
-      // Emitir evento nueva_transaccion (para servicios técnicos y transacciones normales)
-      req.io.emit('nueva_transaccion', {
-        transaccion: transaccionConvertida,
-        usuario: req.user?.nombre || req.user?.email,
-        timestamp: new Date().toISOString()
-      });
-      
-      // También emitir transaction-added para compatibilidad con listeners antiguos
-      req.io.broadcast.emit('transaction-added', {
-        transaccion: transaccionConvertida,
-        usuario: req.user?.nombre || req.user?.email,
-        timestamp: new Date().toISOString()
-      });
-      
-      console.log('📡 Notificaciones Socket.IO enviadas - nueva transacción');
-    }
-
+    // ✅ Enviar respuesta exitosa PRIMERO (antes de Socket.IO)
     sendSuccess(res, transaccionConvertida, 'Transacción creada correctamente');
+
+    // 📡 Notificar via Socket.IO (sin afectar la respuesta HTTP)
+    try {
+      if (req.io) {
+        req.io.emit('nueva_transaccion', {
+          transaccion: transaccionConvertida,
+          usuario: req.user?.nombre || req.user?.email,
+          timestamp: new Date().toISOString()
+        });
+
+        req.io.emit('transaction-added', {
+          transaccion: transaccionConvertida,
+          usuario: req.user?.nombre || req.user?.email,
+          timestamp: new Date().toISOString()
+        });
+
+        console.log('📡 Notificaciones Socket.IO enviadas - nueva transacción');
+      }
+    } catch (socketError) {
+      console.error('⚠️ Error emitiendo evento Socket.IO (no afecta transacción):', socketError.message);
+    }
 
   } catch (error) {
     console.error('❌ Error creando transacción:', error);
