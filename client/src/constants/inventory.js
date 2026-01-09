@@ -6,7 +6,7 @@
 // Valores por defecto del formulario
 export const FORM_DEFAULTS = {
   MARGIN_PERCENTAGE: 30,
-  MIN_STOCK: 5,
+  MIN_STOCK: 1,
   MAX_STOCK: 100,
   DISCOUNT_MAX: 0,
   PRICE_QUALITY: 0.85,
@@ -58,7 +58,7 @@ export const CATEGORIES = {
     'Smartwatch',
     'Hogar Inteligente'
   ],
-  
+
   // Audio & Video
   AUDIO_VIDEO: [
     'Audífonos',
@@ -69,7 +69,7 @@ export const CATEGORIES = {
     'Proyectores',
     'Streaming & Cámaras'
   ],
-  
+
   // Gaming
   GAMING: [
     'Gaming',
@@ -79,7 +79,7 @@ export const CATEGORIES = {
     'Controles & Joysticks',
     'Merchandising Gaming'
   ],
-  
+
   // Accesorios
   ACCESSORIES: [
     'Accesorios',
@@ -89,7 +89,7 @@ export const CATEGORIES = {
     'Discos Duros y SSD',
     'Fundas & Protectores'
   ],
-  
+
   // Networking
   NETWORKING: [
     'Routers y Modems',
@@ -97,7 +97,7 @@ export const CATEGORIES = {
     'Switches',
     'Antenas WiFi'
   ],
-  
+
   // Electrobar
   ELECTROBAR: [
     'Bebidas',
@@ -105,7 +105,7 @@ export const CATEGORIES = {
     'Golosinas',
     'Otros Consumibles'
   ],
-  
+
   // Servicios
   SERVICES: [
     'Reparaciones',

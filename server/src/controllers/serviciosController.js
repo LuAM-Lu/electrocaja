@@ -7,12 +7,12 @@ const stockService = require('../services/stockService');
 // Función auxiliar para validar y parsear fechas de manera segura
 const parsearFechaSegura = (fecha) => {
   if (!fecha) return null;
-  
+
   // Si ya es un objeto Date válido
   if (fecha instanceof Date && !isNaN(fecha.getTime())) {
     return fecha;
   }
-  
+
   // Si es un string, intentar parsear
   if (typeof fecha === 'string') {
     // Si viene en formato YYYY-MM-DD (sin hora), agregar hora para evitar problemas de zona horaria
@@ -20,21 +20,21 @@ const parsearFechaSegura = (fecha) => {
       // Crear fecha en UTC para evitar problemas de zona horaria
       const [year, month, day] = fecha.split('-').map(Number);
       const fechaParseada = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-      
+
       if (!isNaN(fechaParseada.getTime())) {
         return fechaParseada;
       }
     }
-    
+
     // Intentar parsear como string ISO o cualquier otro formato
     const fechaParseada = new Date(fecha);
-    
+
     // Verificar si la fecha es válida
     if (!isNaN(fechaParseada.getTime())) {
       return fechaParseada;
     }
   }
-  
+
   // Si es un número (timestamp), crear Date desde timestamp
   if (typeof fecha === 'number') {
     const fechaParseada = new Date(fecha);
@@ -42,7 +42,7 @@ const parsearFechaSegura = (fecha) => {
       return fechaParseada;
     }
   }
-  
+
   return null;
 };
 
@@ -252,7 +252,7 @@ const createServicio = async (req, res) => {
     console.log('📥 [Backend] Datos recibidos en createServicio:', JSON.stringify(req.body, null, 2));
     console.log('📥 [Backend] Items recibidos:', req.body.items?.length || 0, 'items');
     console.log('📥 [Backend] Sesión ID:', req.body.sesionId);
-    
+
     const {
       cliente,
       dispositivo,
@@ -262,7 +262,7 @@ const createServicio = async (req, res) => {
       pagoInicial,
       sesionId // 🆕 Sesión ID para liberar reservas antes de descontar stock
     } = req.body;
-    
+
     // 🔍 DEBUG: Verificar datos desestructurados
     console.log('📥 [Backend] Items desestructurados:', items?.length || 0, 'items');
 
@@ -356,14 +356,14 @@ const createServicio = async (req, res) => {
     // Permitir servicios sin items (solo diagnóstico)
     // Si hay items, validar que sean válidos
     if (items && items.length > 0) {
-      const itemsInvalidos = items.filter(item => 
-        !item.descripcion || 
-        !item.cantidad || 
-        item.cantidad <= 0 || 
-        !item.precio_unitario || 
+      const itemsInvalidos = items.filter(item =>
+        !item.descripcion ||
+        !item.cantidad ||
+        item.cantidad <= 0 ||
+        !item.precio_unitario ||
         item.precio_unitario < 0
       );
-      
+
       if (itemsInvalidos.length > 0) {
         return res.status(400).json({
           success: false,
@@ -415,7 +415,7 @@ const createServicio = async (req, res) => {
 
     const consecutivo = ultimoServicio ? ultimoServicio.consecutivoDelDia + 1 : 1;
     let numeroServicio = `S${fechaStr}${consecutivo.toString().padStart(3, '0')}`;
-    
+
     // Verificar que el número no exista (por si acaso hay alguna condición de carrera)
     let intentos = 0;
     while (intentos < 10) {
@@ -423,17 +423,17 @@ const createServicio = async (req, res) => {
         where: { numeroServicio },
         select: { id: true }
       });
-      
+
       if (!existe) {
         break; // El número es único, podemos usarlo
       }
-      
+
       // Si existe, incrementar el consecutivo y generar uno nuevo
       const nuevoConsecutivo = consecutivo + intentos + 1;
       numeroServicio = `S${fechaStr}${nuevoConsecutivo.toString().padStart(3, '0')}`;
       intentos++;
     }
-    
+
     if (intentos >= 10) {
       // Si después de 10 intentos no encontramos uno único, usar timestamp
       const timestamp = Date.now().toString().slice(-6);
@@ -443,11 +443,11 @@ const createServicio = async (req, res) => {
     // Calcular totales con precisión (si hay items)
     const totalEstimado = items && items.length > 0
       ? parseFloat(
-          items.reduce((sum, item) =>
-            sum + (parseFloat(item.cantidad) * parseFloat(item.precio_unitario || item.precioUnitario)),
-            0
-          ).toFixed(2)
-        )
+        items.reduce((sum, item) =>
+          sum + (parseFloat(item.cantidad) * parseFloat(item.precio_unitario || item.precioUnitario)),
+          0
+        ).toFixed(2)
+      )
       : 0;
 
     let totalPagado = 0;
@@ -487,12 +487,12 @@ const createServicio = async (req, res) => {
 
     // 🆕 Generar token único y link de seguimiento ANTES de crear el servicio
     const tokenUnico = generarTokenUnico(numeroServicio, cliente.cedula_rif);
-    
+
     // Obtener URL base del frontend desde variables de entorno o request
-    const frontendBaseUrl = process.env.FRONTEND_URL || 
-      process.env.CLIENT_URL || 
+    const frontendBaseUrl = process.env.FRONTEND_URL ||
+      process.env.CLIENT_URL ||
       (req.headers.origin ? req.headers.origin.replace(/\/$/, '') : 'https://localhost:5173');
-    
+
     const linkSeguimiento = generarLinkSeguimiento(tokenUnico, frontendBaseUrl);
 
     // 🆕 0. Si hay sesionId, liberar reservas ANTES de iniciar la transacción principal
@@ -555,17 +555,17 @@ const createServicio = async (req, res) => {
           observaciones: diagnostico.observaciones || null,
           fechaEntregaEstimada: (() => {
             // Intentar parsear fecha de diferentes campos posibles
-            const fechaOriginal = diagnostico.fechaEstimadaEntrega || 
-              diagnostico.fechaEstimada || 
+            const fechaOriginal = diagnostico.fechaEstimadaEntrega ||
+              diagnostico.fechaEstimada ||
               diagnostico.fechaEntrega;
-            
+
             const fechaParseada = parsearFechaSegura(fechaOriginal);
-            
+
             // Si no se pudo parsear, usar mañana por defecto
             if (!fechaParseada && fechaOriginal) {
               console.warn(`⚠️ Fecha inválida recibida: "${fechaOriginal}". Usando fecha por defecto (mañana)`);
             }
-            
+
             return fechaParseada || new Date(Date.now() + 24 * 60 * 60 * 1000);
           })(),
           modalidadPago,
@@ -583,13 +583,13 @@ const createServicio = async (req, res) => {
 
       // 2. Crear items y descontar stock
       const productosAfectados = []; // Para emitir eventos después de la transacción
-      
+
       console.log(`📦 [Backend] Procesando ${items.length} items para servicio ${numeroServicio}`);
-      
+
       if (items.length === 0) {
         console.log(`ℹ️ [Backend] Servicio sin items (solo diagnóstico) - saltando procesamiento de productos`);
       }
-      
+
       for (const item of items) {
         const cantidad = parseInt(item.cantidad);
         const precioUnitario = parseFloat(item.precio_unitario || item.precioUnitario);
@@ -618,9 +618,9 @@ const createServicio = async (req, res) => {
 
         // 3. Descontar stock si tiene producto vinculado (solo productos físicos)
         const productoId = item.productoId || item.producto_id;
-        
+
         console.log(`🔍 [Servicio] Verificando productoId: ${productoId} para item: ${item.descripcion}`);
-        
+
         if (productoId) {
           const producto = await tx.product.findUnique({
             where: { id: productoId }
@@ -628,7 +628,7 @@ const createServicio = async (req, res) => {
 
           if (producto) {
             console.log(`✅ [Servicio] Producto encontrado: ${producto.descripcion}, tipo: ${producto.tipo}, stock actual: ${producto.stock}`);
-            
+
             // ✅ Validar que no sea un servicio (los servicios no tienen stock físico)
             if (producto.tipo === 'SERVICIO') {
               console.log(`⏭️ [Servicio] Saltando descuento de stock para servicio: ${producto.descripcion}`);
@@ -658,7 +658,7 @@ const createServicio = async (req, res) => {
                 stock: { decrement: cantidad }
               }
             });
-            
+
             console.log(`✅ [Servicio] Stock descontado exitosamente para ${producto.descripcion}`);
 
             // Obtener el stock actualizado para el movimiento
@@ -680,7 +680,7 @@ const createServicio = async (req, res) => {
                 usuarioId
               }
             });
-            
+
             // Guardar información para emitir evento después de la transacción
             productosAfectados.push({
               id: producto.id,
@@ -702,7 +702,7 @@ const createServicio = async (req, res) => {
       const tasaCambio = pagoInicial && pagoInicial.tasaCambio
         ? parseFloat(pagoInicial.tasaCambio)
         : parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
-      
+
       if (pagoInicial && (modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO')) {
         // ✅ Validar que hay caja abierta para operaciones financieras
         if (!cajaActual) {
@@ -746,7 +746,7 @@ const createServicio = async (req, res) => {
               'binance': 'usd',
               'tarjeta': 'bs'
             };
-            
+
             // Si el método contiene "_bs" o "bs", es bolívares
             if (pago.metodo && (pago.metodo.includes('_bs') || pago.metodo.includes('bs'))) {
               moneda = 'bs';
@@ -764,12 +764,12 @@ const createServicio = async (req, res) => {
               moneda = 'bs';
             }
           }
-          
+
           // Normalizar monto (convertir formato venezolano "13,00" a "13.00")
-          const montoNormalizado = typeof pago.monto === 'string' 
+          const montoNormalizado = typeof pago.monto === 'string'
             ? parseFloat(pago.monto.replace(',', '.'))
             : parseFloat(pago.monto);
-          
+
           await tx.pago.create({
             data: {
               transaccionId: transaccion.id,
@@ -819,7 +819,7 @@ const createServicio = async (req, res) => {
 
       // 5. Crear nota de recepción o pago inicial
       let contenidoNota = `Dispositivo recibido. ${diagnostico.observaciones || ''}`.trim();
-      
+
       // Si hay pago inicial, agregar información detallada del pago
       if (pagoInicial && (modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO')) {
         const metodoMonedaMap = {
@@ -835,16 +835,16 @@ const createServicio = async (req, res) => {
         const detallePagos = pagoInicial.pagos.map(pago => {
           const metodoInfo = metodoMonedaMap[pago.metodo] || { label: pago.metodo, moneda: 'bs', icon: '[ICON:PAYMENT]' };
           const monto = parseFloat(pago.monto);
-          
+
           // ✅ Mostrar solo la moneda del método de pago, sin conversiones
           let detalle = `${metodoInfo.icon} ${metodoInfo.label}: `;
-          
+
           if (metodoInfo.moneda === 'usd') {
             detalle += `$${monto.toFixed(2)} USD`;
           } else {
             detalle += `${monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.`;
           }
-          
+
           if (pago.banco) {
             detalle += ` - ${pago.banco}`;
           }
@@ -855,17 +855,17 @@ const createServicio = async (req, res) => {
         }).join(' | ');
 
         const tipoPagoTexto = modalidadPago === 'TOTAL_ADELANTADO' ? 'Pago Total' : 'Abono Inicial';
-        const saldoRestante = modalidadPago === 'ABONO' 
-          ? (totalEstimado - totalPagado) 
+        const saldoRestante = modalidadPago === 'ABONO'
+          ? (totalEstimado - totalPagado)
           : 0;
 
         // ✅ Formato del mensaje: mostrar solo USD (sin conversiones visuales)
         contenidoNota += `\n\n[ICON:PAYMENT] ${tipoPagoTexto} registrado: ${totalPagado.toFixed(2)} USD. Métodos: ${detallePagos}.`;
-        
+
         if (saldoRestante > 0) {
           contenidoNota += ` Saldo pendiente: ${saldoRestante.toFixed(2)} USD.`;
         }
-        
+
         contenidoNota += ` Tasa: ${tasaCambio.toFixed(2)} Bs/$`;
       }
 
@@ -905,7 +905,7 @@ const createServicio = async (req, res) => {
           }
         }
       });
-      
+
       // ✅ Asegurar que totalPagado y saldoPendiente estén correctamente calculados
       // Calcular totalPagado desde los pagos si no está disponible
       let totalPagadoCalculado = parseFloat(servicioCompleto.totalPagado) || 0;
@@ -914,14 +914,14 @@ const createServicio = async (req, res) => {
           return acc + (parseFloat(pago.monto) || 0);
         }, 0);
       }
-      
+
       // Calcular saldoPendiente
       const totalEstimadoCalculado = parseFloat(servicioCompleto.totalEstimado) || 0;
       const saldoPendienteCalculado = Math.max(0, totalEstimadoCalculado - totalPagadoCalculado);
-      
+
       // Actualizar servicio con valores calculados si es necesario
-      if (totalPagadoCalculado !== parseFloat(servicioCompleto.totalPagado) || 
-          saldoPendienteCalculado !== parseFloat(servicioCompleto.saldoPendiente)) {
+      if (totalPagadoCalculado !== parseFloat(servicioCompleto.totalPagado) ||
+        saldoPendienteCalculado !== parseFloat(servicioCompleto.saldoPendiente)) {
         await tx.servicioTecnico.update({
           where: { id: servicio.id },
           data: {
@@ -929,7 +929,7 @@ const createServicio = async (req, res) => {
             saldoPendiente: saldoPendienteCalculado
           }
         });
-        
+
         // Recargar servicio actualizado
         const servicioActualizado = await tx.servicioTecnico.findUnique({
           where: { id: servicio.id },
@@ -954,23 +954,23 @@ const createServicio = async (req, res) => {
             }
           }
         });
-        
+
         // Retornar servicio actualizado y productos afectados
-        return { 
-          servicio: servicioActualizado, 
+        return {
+          servicio: servicioActualizado,
           productosAfectados,
           transaccion: servicioCompleto.pagos?.[0]?.transaccion || null // ✅ Incluir transacción para evento Socket.IO
         };
       }
-      
+
       // Retornar servicio y productos afectados para emitir eventos después
-      return { 
-        servicio: servicioCompleto, 
+      return {
+        servicio: servicioCompleto,
         productosAfectados,
         transaccion: servicioCompleto.pagos?.[0]?.transaccion || null // ✅ Incluir transacción para evento Socket.IO
       };
     });
-    
+
     // 📡 Emitir eventos de inventario actualizado DESPUÉS de la transacción
     if (req.io && resultado.productosAfectados && resultado.productosAfectados.length > 0) {
       resultado.productosAfectados.forEach(producto => {
@@ -989,7 +989,7 @@ const createServicio = async (req, res) => {
       });
       console.log(`📡 Emitidos ${resultado.productosAfectados.length} eventos de inventario actualizado`);
     }
-    
+
     // 📡 Emitir evento Socket.IO para actualizar TransactionTable cuando hay pago inicial
     if (req.io && resultado.transaccion) {
       try {
@@ -1010,7 +1010,7 @@ const createServicio = async (req, res) => {
             }
           }
         });
-        
+
         if (transaccionCompleta) {
           // Convertir para el frontend
           const transaccionParaSocket = {
@@ -1024,7 +1024,7 @@ const createServicio = async (req, res) => {
               monto: parseFloat(p.monto)
             }))
           };
-          
+
           req.io.emit('nueva_transaccion', {
             transaccion: transaccionParaSocket,
             usuario: req.user?.nombre || req.user?.email,
@@ -1033,14 +1033,14 @@ const createServicio = async (req, res) => {
             servicioId: resultado.servicio.id,
             numeroServicio: resultado.servicio.numeroServicio
           });
-          
+
           // También emitir transaction-added para compatibilidad
           req.io.emit('transaction-added', {
             transaccion: transaccionParaSocket,
             usuario: req.user?.nombre || req.user?.email,
             timestamp: new Date().toISOString()
           });
-          
+
           console.log(`📡 [createServicio] Evento nueva_transaccion emitido para transacción ${transaccionCompleta.id}`);
         }
       } catch (error) {
@@ -1048,7 +1048,7 @@ const createServicio = async (req, res) => {
         // No fallar la creación del servicio por un error en el evento
       }
     }
-    
+
     // Extraer solo el servicio del resultado para compatibilidad con el resto del código
     const servicioFinal = resultado.servicio;
 
@@ -1136,7 +1136,7 @@ const createServicio = async (req, res) => {
             qrBase64, // Enviar QR como imagen si está disponible
             tasaCambio // 🆕 Pasar tasa de cambio
           );
-          
+
           if (resultadoWhatsAppCliente.success) {
             // Actualizar flag de WhatsApp enviado
             await prisma.servicioTecnico.update({
@@ -1158,7 +1158,7 @@ const createServicio = async (req, res) => {
             tecnicoData.tecnicoConfig.telefono,
             tasaCambio // 🆕 Pasar tasa de cambio
           );
-          
+
           if (resultadoWhatsAppTecnico.success) {
           } else {
             console.error('❌ Error enviando WhatsApp al técnico:', resultadoWhatsAppTecnico.message);
@@ -1176,13 +1176,13 @@ const createServicio = async (req, res) => {
     console.error('❌ Stack trace:', error.stack);
     console.error('❌ Datos recibidos:', JSON.stringify(req.body, null, 2));
     console.error('❌ Usuario:', req.user);
-    
+
     // Si es un error de Prisma, dar más detalles
     if (error.code) {
       console.error('❌ Código de error:', error.code);
       console.error('❌ Meta:', error.meta);
     }
-    
+
     res.status(500).json({
       success: false,
       message: 'Error creando servicio',
@@ -1279,16 +1279,16 @@ const updateServicio = async (req, res) => {
                 // Los servicios no tienen stock que devolver
                 continue;
               }
-              
+
               const stockAnterior = productoAntiguo.stock;
-              
+
               await tx.product.update({
                 where: { id: itemAntiguo.productoId },
                 data: {
                   stock: { increment: itemAntiguo.cantidad }
                 }
               });
-              
+
               // Obtener stock actualizado después del increment
               const productoActualizado = await tx.product.findUnique({
                 where: { id: itemAntiguo.productoId },
@@ -1308,7 +1308,7 @@ const updateServicio = async (req, res) => {
                   usuarioId
                 }
               });
-              
+
               // Guardar información para emitir evento después de la transacción
               productosDevueltos.push({
                 id: productoAntiguo.id,
@@ -1327,13 +1327,13 @@ const updateServicio = async (req, res) => {
 
         // Crear nuevos items y descontar stock
         let nuevoTotal = 0;
-        
+
         for (const item of items) {
           const cantidad = parseInt(item.cantidad);
           const precioUnitario = parseFloat(item.precio_unitario || item.precioUnitario);
           const subtotal = parseFloat((cantidad * precioUnitario).toFixed(2));
           nuevoTotal += subtotal;
-          
+
           const productoId = item.productoId || item.producto_id || null;
 
           await tx.servicioTecnicoItem.create({
@@ -1361,21 +1361,21 @@ const updateServicio = async (req, res) => {
                 // Los servicios no se descuentan del inventario
                 continue;
               }
-              
+
               // Validar que hay suficiente stock disponible
               if (producto.stock < cantidad) {
                 throw new Error(`Stock insuficiente para ${producto.descripcion || producto.nombre}. Disponible: ${producto.stock}, Requerido: ${cantidad}`);
               }
 
               const stockAnterior = producto.stock;
-              
+
               await tx.product.update({
                 where: { id: productoId },
                 data: {
                   stock: { decrement: cantidad }
                 }
               });
-              
+
               // Obtener el stock actualizado después del decrement
               const productoActualizado = await tx.product.findUnique({
                 where: { id: productoId },
@@ -1395,7 +1395,7 @@ const updateServicio = async (req, res) => {
                   usuarioId
                 }
               });
-              
+
               // Guardar información para emitir evento después de la transacción
               productosAfectados.push({
                 id: producto.id,
@@ -1409,30 +1409,30 @@ const updateServicio = async (req, res) => {
 
         // Actualizar totales
         updateData.totalEstimado = parseFloat(nuevoTotal.toFixed(2));
-        
+
         // ✅ Convertir valores Decimal de Prisma a números
         const saldoPendienteActual = parseFloat(servicioActual.saldoPendiente) || 0;
         const totalEstimadoActual = parseFloat(servicioActual.totalEstimado) || 0;
-        
+
         const diferencia = updateData.totalEstimado - totalEstimadoActual;
         updateData.saldoPendiente = parseFloat((saldoPendienteActual + diferencia).toFixed(2));
 
         // Crear nota de modificación con icono y detalles
         const diferenciaTotal = updateData.totalEstimado - totalEstimadoActual;
-        const diferenciaTexto = diferenciaTotal > 0 
+        const diferenciaTexto = diferenciaTotal > 0
           ? `aumentó en $${Math.abs(diferenciaTotal).toFixed(2)}`
           : diferenciaTotal < 0
             ? `disminuyó en $${Math.abs(diferenciaTotal).toFixed(2)}`
             : 'se mantiene igual';
-        
+
         // Detalles de items modificados (comparar por descripción y cantidad)
         const itemsAntiguos = servicioActual.items || [];
         const itemsNuevos = items || [];
-        
+
         // Comparar cantidades de items
         const cantidadItemsAntiguos = itemsAntiguos.length;
         const cantidadItemsNuevos = itemsNuevos.length;
-        
+
         let detalleItems = '';
         if (cantidadItemsNuevos !== cantidadItemsAntiguos) {
           if (cantidadItemsNuevos > cantidadItemsAntiguos) {
@@ -1441,18 +1441,18 @@ const updateServicio = async (req, res) => {
             detalleItems += ` Items eliminados: ${cantidadItemsAntiguos - cantidadItemsNuevos}.`;
           }
         }
-        
+
         // Listar items nuevos agregados (los que no estaban antes)
         const descripcionesAntiguas = itemsAntiguos.map(i => (i.descripcion || '').toLowerCase().trim());
         const itemsAgregados = itemsNuevos.filter(nuevo => {
           const descNuevo = (nuevo.descripcion || '').toLowerCase().trim();
           return !descripcionesAntiguas.includes(descNuevo);
         });
-        
+
         if (itemsAgregados.length > 0 && itemsAgregados.length <= 3) {
           detalleItems += ` Nuevos: ${itemsAgregados.map(i => `${i.descripcion} (${i.cantidad})`).join(', ')}.`;
         }
-        
+
         const notaModificacion = await tx.servicioTecnicoNota.create({
           data: {
             servicioId: parseInt(id),
@@ -1461,7 +1461,7 @@ const updateServicio = async (req, res) => {
             tecnico: req.user?.nombre || req.user?.email || 'Sistema'
           }
         });
-        
+
         // ✅ Guardar referencia de la nota para emitir después de la transacción
         notaModificacionCreada = notaModificacion;
       }
@@ -1478,7 +1478,7 @@ const updateServicio = async (req, res) => {
           }
         }
       });
-      
+
       return {
         servicio: servicioActualizado,
         notaModificacion: notaModificacionCreada,
@@ -1511,7 +1511,7 @@ const updateServicio = async (req, res) => {
     } else {
       console.log(`⚠️ [UpdateServicio] No se emitieron eventos de stock devuelto. req.io: ${!!req.io}, productosDevueltos: ${resultado.productosDevueltos?.length || 0}`);
     }
-    
+
     // Emitir eventos para productos afectados (stock descontado)
     if (req.io && resultado.productosAfectados && resultado.productosAfectados.length > 0) {
       console.log(`📡 [UpdateServicio] Emitiendo ${resultado.productosAfectados.length} eventos de stock descontado`);
@@ -1556,7 +1556,7 @@ const updateServicio = async (req, res) => {
         usuario: req.user?.nombre || req.user?.email || 'Sistema',
         timestamp: new Date().toISOString()
       });
-      
+
     }
 
     res.json({
@@ -1633,10 +1633,10 @@ const cambiarEstado = async (req, res) => {
         'LISTO_RETIRO': '[ICON:CHECK]',
         'ENTREGADO': '[ICON:PACKAGE]'
       };
-      
+
       const iconEstado = estadoIconMap[estado] || '[ICON:FLAG]';
       const contenidoNota = nota || `Estado cambiado de ${servicioActual.estado} a ${estado}`;
-      
+
       await tx.servicioTecnicoNota.create({
         data: {
           servicioId: parseInt(id),
@@ -1656,16 +1656,16 @@ const cambiarEstado = async (req, res) => {
     // 🆕 Si el estado cambió a LISTO_RETIRO, enviar WhatsApp al cliente
     let whatsappEnviado = false;
     let mensajeWhatsApp = null;
-    
+
     if (estado === 'LISTO_RETIRO') {
-      
+
       if (resultado.clienteTelefono) {
         // Enviar WhatsApp de forma síncrona para poder retornar el resultado
         try {
-          
+
           // Obtener tasa de cambio actual
           const tasaCambio = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
-          
+
           // Obtener servicio completo con todos los datos
           let servicioCompleto = await prisma.servicioTecnico.findUnique({
             where: { id: parseInt(id) },
@@ -1685,14 +1685,14 @@ const cambiarEstado = async (req, res) => {
                 servicioCompleto.numeroServicio,
                 servicioCompleto.id.toString()
               );
-              
-              const frontendBaseUrl = process.env.FRONTEND_URL || 
-                (process.env.NODE_ENV === 'production' 
-                  ? 'https://192.168.1.153:5173' 
+
+              const frontendBaseUrl = process.env.FRONTEND_URL ||
+                (process.env.NODE_ENV === 'production'
+                  ? 'https://sades.electroshopve.com'
                   : 'https://localhost:5173');
-              
+
               const linkSeguimiento = generarLinkSeguimiento(tokenUnico, frontendBaseUrl);
-              
+
               // Actualizar servicio con token y link
               servicioCompleto = await prisma.servicioTecnico.update({
                 where: { id: parseInt(id) },
@@ -1705,7 +1705,7 @@ const cambiarEstado = async (req, res) => {
                   pagos: true
                 }
               });
-              
+
             }
 
             const resultadoWhatsApp = await enviarWhatsAppListoRetiro(
@@ -1713,7 +1713,7 @@ const cambiarEstado = async (req, res) => {
               servicioCompleto.linkSeguimiento,
               tasaCambio
             );
-            
+
             if (resultadoWhatsApp.success) {
               whatsappEnviado = true;
               mensajeWhatsApp = 'WhatsApp enviado exitosamente al cliente';
@@ -1762,7 +1762,7 @@ const cambiarEstado = async (req, res) => {
           usuario: req.user?.nombre || req.user?.email,
           timestamp: new Date().toISOString()
         });
-        
+
       }
     }
 
@@ -1849,7 +1849,7 @@ const registrarPago = async (req, res) => {
 
     pagos.forEach(pago => {
       const monto = parseFloat(pago.monto);
-      
+
       // ✅ Determinar moneda: usar la explícita o determinar por método
       let moneda = pago.moneda;
       if (!moneda) {
@@ -1870,7 +1870,7 @@ const registrarPago = async (req, res) => {
           moneda = 'bs';
         }
       }
-      
+
       if (moneda === 'bs') {
         totalBs += monto;
         montoPago += monto / tasa;
@@ -1887,7 +1887,7 @@ const registrarPago = async (req, res) => {
     // Determinar si es abono o pago final
     const esPagoFinal = servicio.estado === 'LISTO_RETIRO' || servicio.estado === 'Listo para Retiro';
     const esAbonoReal = esAbono === true || (!esPagoFinal && montoPago < parseFloat(servicio.saldoPendiente) - 0.01);
-    
+
     // Validar que no exceda saldo pendiente (con margen de 0.01 por redondeo)
     // Para abonos, permitir pagos parciales
     if (!esAbonoReal && montoPago > parseFloat(servicio.saldoPendiente) + 0.01) {
@@ -1896,7 +1896,7 @@ const registrarPago = async (req, res) => {
         message: `El monto ($${montoPago.toFixed(2)}) excede el saldo pendiente ($${parseFloat(servicio.saldoPendiente).toFixed(2)})`
       });
     }
-    
+
     // Validar monto mínimo para abonos
     if (esAbonoReal && montoPago <= 0) {
       return res.status(400).json({
@@ -1922,28 +1922,28 @@ const registrarPago = async (req, res) => {
 
       // Generar código de venta único (evitar duplicados) - Formato corto
       const tipoPagoCodigo = esAbonoReal ? 'A' : 'F';
-      
+
       // ✅ Acortar número de servicio: S20251109001 → S1109001 (eliminar año completo)
-      const numeroServicioCorto = servicio.numeroServicio.startsWith('S') 
+      const numeroServicioCorto = servicio.numeroServicio.startsWith('S')
         ? 'S' + servicio.numeroServicio.slice(5) // Eliminar "S2025" y dejar el resto
         : servicio.numeroServicio;
-      
+
       let codigoVenta = `${numeroServicioCorto}-${tipoPagoCodigo}`;
       let intentos = 0;
-      
+
       // Si el código ya existe, agregar un número secuencial corto (A1, A2, F1, F2, etc.)
       while (intentos < 10) {
         const existe = await tx.transaccion.findUnique({
           where: { codigoVenta }
         });
         if (!existe) break;
-        
+
         // Usar número secuencial corto en lugar de timestamp largo
         const numeroSecuencial = intentos + 1;
         codigoVenta = `${numeroServicioCorto}-${tipoPagoCodigo}${numeroSecuencial}`;
         intentos++;
       }
-      
+
       // Si aún hay conflicto después de 10 intentos, usar timestamp corto (últimos 6 dígitos)
       if (intentos >= 10) {
         const timestampCorto = Date.now().toString().slice(-6);
@@ -1951,10 +1951,10 @@ const registrarPago = async (req, res) => {
       }
 
       // Crear transacción
-      const categoriaTransaccion = esAbonoReal 
+      const categoriaTransaccion = esAbonoReal
         ? 'Servicio Técnico - Abono'
         : 'Servicio Técnico - Pago Final';
-      
+
       const transaccion = await tx.transaccion.create({
         data: {
           cajaId: cajaActual.id,
@@ -1990,7 +1990,7 @@ const registrarPago = async (req, res) => {
             'binance': 'usd',
             'tarjeta': 'bs'
           };
-          
+
           // Si el método contiene "_bs" o "bs", es bolívares
           if (pago.metodo && (pago.metodo.includes('_bs') || pago.metodo.includes('bs'))) {
             moneda = 'bs';
@@ -2008,12 +2008,12 @@ const registrarPago = async (req, res) => {
             moneda = 'bs';
           }
         }
-        
+
         // Normalizar monto (convertir formato venezolano "13,00" a "13.00")
-        const montoNormalizado = typeof pago.monto === 'string' 
+        const montoNormalizado = typeof pago.monto === 'string'
           ? parseFloat(pago.monto.replace(',', '.'))
           : parseFloat(pago.monto);
-        
+
         await tx.pago.create({
           data: {
             transaccionId: transaccion.id,
@@ -2033,9 +2033,9 @@ const registrarPago = async (req, res) => {
         tasaCambioUsada: tasa // ✅ Guardar tasa de cambio en cada pago
       })) : [];
       const vueltosJson = Array.isArray(vueltos) ? vueltos : [];
-      
+
       const tipoPago = esAbonoReal ? 'PAGO_ABONO' : 'PAGO_FINAL';
-      
+
       await tx.servicioTecnicoPago.create({
         data: {
           servicioId: servicio.id,
@@ -2051,13 +2051,13 @@ const registrarPago = async (req, res) => {
 
       // Actualizar servicio
       const nuevoSaldo = parseFloat((parseFloat(servicio.saldoPendiente) - montoPago).toFixed(2));
-      
+
       // Solo actualizar estado a ENTREGADO si es pago final y saldo es 0
       const updateData = {
         totalPagado: { increment: montoPago },
         saldoPendiente: Math.max(0, nuevoSaldo)
       };
-      
+
       // 🆕 NO marcar automáticamente como ENTREGADO - dejar que el usuario confirme desde el modal
       // El estado se marcará como ENTREGADO cuando se confirme la entrega desde ModalConfirmarEntrega
       // Solo guardar la caja de entrega si es pago final y no hay saldo pendiente
@@ -2065,7 +2065,7 @@ const registrarPago = async (req, res) => {
         updateData.cajaEntregaId = cajaActual.id;
         // NO actualizar estado aquí - se hará en finalizarEntrega
       }
-      
+
       const servicioActualizado = await tx.servicioTecnico.update({
         where: { id: parseInt(id) },
         data: updateData,
@@ -2130,16 +2130,16 @@ const registrarPago = async (req, res) => {
       const detallePagos = pagos.map(pago => {
         const metodoInfo = metodoMonedaMap[pago.metodo] || { label: pago.metodo, moneda: 'bs', icon: '[ICON:PAYMENT]' };
         const monto = parseFloat(pago.monto);
-        
+
         // ✅ Mostrar solo la moneda del método de pago, sin conversiones
         let detalle = `${metodoInfo.icon} ${metodoInfo.label}: `;
-        
+
         if (metodoInfo.moneda === 'usd') {
           detalle += `$${monto.toFixed(2)} USD`;
         } else {
           detalle += `${monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.`;
         }
-        
+
         if (pago.banco) {
           detalle += ` - ${pago.banco}`;
         }
@@ -2153,7 +2153,7 @@ const registrarPago = async (req, res) => {
       const mensajeNota = esAbonoReal
         ? `[ICON:PAYMENT] Abono registrado: ${montoPago.toFixed(2)} USD. Métodos: ${detallePagos}. Saldo restante: ${Math.max(0, nuevoSaldo).toFixed(2)} USD. Tasa: ${tasa.toFixed(2)} Bs/$`
         : `[ICON:PAYMENT] Pago final registrado: ${montoPago.toFixed(2)} USD. Métodos: ${detallePagos}. Saldo restante: ${Math.max(0, nuevoSaldo).toFixed(2)} USD. Tasa: ${tasa.toFixed(2)} Bs/$`;
-      
+
       const notaPagoCreada = await tx.servicioTecnicoNota.create({
         data: {
           servicioId: servicio.id,
@@ -2175,7 +2175,7 @@ const registrarPago = async (req, res) => {
     // 🆕 Si es abono, generar ticket y WhatsApp automáticamente
     let ticketAbonoHTML = null;
     let qrAbonoBase64 = null;
-    
+
     if (resultado.esAbono) {
       try {
         // Obtener servicio completo con todos los datos actualizados
@@ -2227,7 +2227,7 @@ const registrarPago = async (req, res) => {
                 qrAbonoBase64, // Enviar QR como imagen si está disponible
                 tasaCambioAbono
               );
-              
+
               if (resultadoWhatsAppAbono.success) {
               } else {
                 console.error('❌ Error enviando WhatsApp de abono:', resultadoWhatsAppAbono.message);
@@ -2266,7 +2266,7 @@ const registrarPago = async (req, res) => {
         usuario: req.user?.nombre || req.user?.email,
         timestamp: new Date().toISOString()
       });
-      
+
     }
 
     // 📡 Emitir evento Socket.IO para actualizar TransactionTable en tiempo real
@@ -2301,7 +2301,7 @@ const registrarPago = async (req, res) => {
         servicioId: servicio.id,
         numeroServicio: servicio.numeroServicio
       });
-      
+
     }
 
     res.json({
@@ -2321,7 +2321,7 @@ const registrarPago = async (req, res) => {
     console.error('Request body:', JSON.stringify(req.body, null, 2));
     console.error('User ID:', req.user?.userId || req.user?.id);
     console.error('Service ID:', req.params.id);
-    
+
     res.status(500).json({
       success: false,
       message: error.message || 'Error registrando pago',
@@ -2465,7 +2465,7 @@ const agregarNota = async (req, res) => {
         usuario: req.user?.nombre || req.user?.email,
         timestamp: new Date().toISOString()
       });
-      
+
     }
 
     res.status(201).json({
@@ -2692,7 +2692,7 @@ const deleteServicio = async (req, res) => {
               id: { in: transaccionIds }
             }
           });
-          
+
         }
       }
 
@@ -3000,7 +3000,7 @@ const regenerarTicketServicio = async (req, res) => {
         }
       });
       numeroReimpresion = servicioActualizado.reimpresiones || 0;
-      
+
       // Actualizar el objeto servicio con el nuevo número de reimpresiones para que se refleje en el ticket
       servicio.reimpresiones = numeroReimpresion;
     }
@@ -3090,7 +3090,7 @@ const finalizarEntrega = async (req, res) => {
           cajaEntregaId = cajaActual.id;
         }
       }
-      
+
       // Actualizar estado a ENTREGADO
       const servicio = await tx.servicioTecnico.update({
         where: { id: parseInt(id) },
@@ -3131,7 +3131,7 @@ const finalizarEntrega = async (req, res) => {
 
     // Enviar WhatsApp de entrega
     const tasaCambio = parseFloat(global.estadoApp?.tasa_bcv?.valor || 38.20);
-    
+
     setImmediate(async () => {
       try {
         if (resultado.clienteTelefono) {
@@ -3140,7 +3140,7 @@ const finalizarEntrega = async (req, res) => {
             datosRetiro,
             tasaCambio
           );
-          
+
           if (resultadoWhatsApp.success) {
           } else {
             console.error('❌ Error enviando WhatsApp de entrega:', resultadoWhatsApp.message);

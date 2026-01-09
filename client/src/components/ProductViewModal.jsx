@@ -226,8 +226,8 @@ const ProductViewModal = ({ isOpen, onClose, product, tasaCambio, openedFrom, on
                     alt={product.descripcion}
                     className="w-full max-h-full object-contain bg-gray-50 rounded-lg sm:rounded-xl shadow-lg border border-blue-100"
                     onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
+                      if (e.target) e.target.style.display = 'none';
+                      if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                     }}
                   />
                 ) : (

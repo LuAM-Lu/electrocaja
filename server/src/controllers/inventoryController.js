@@ -8,13 +8,13 @@ const { processImage, deleteOldImage } = require('../middleware/upload');
 // ===================================
 const getProducts = async (req, res) => {
   try {
-    const { 
-      search = '', 
-      categoria = '', 
-      tipo = '', 
+    const {
+      search = '',
+      categoria = '',
+      tipo = '',
       activo = 'true',
-      page = 1, 
-      limit = 50 
+      page = 1,
+      limit = 50
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -83,24 +83,24 @@ const createProduct = async (req, res) => {
     console.log('🔍 DEBUG createProduct - req.body:', req.body);
 
     const {
-        descripcion,
-        tipo = 'PRODUCTO',
-        codigoBarras,
-        codigoInterno,
-        categoria,
-        precioCosto,
-        precioVenta,
-        margenPorcentaje,
-        stock,
-        stockMinimo,
-        stockMaximo,
-        ubicacionFisica,
-        imagenUrl,
-        proveedor,
-        telefonoProveedor,
-        proveedorFacturaIva,
-        observaciones
-      } = req.body;
+      descripcion,
+      tipo = 'PRODUCTO',
+      codigoBarras,
+      codigoInterno,
+      categoria,
+      precioCosto,
+      precioVenta,
+      margenPorcentaje,
+      stock,
+      stockMinimo,
+      stockMaximo,
+      ubicacionFisica,
+      imagenUrl,
+      proveedor,
+      telefonoProveedor,
+      proveedorFacturaIva,
+      observaciones
+    } = req.body;
 
     const usuarioId = req.user.userId;
 
@@ -112,92 +112,92 @@ const createProduct = async (req, res) => {
       });
     }
 
-  // 🔧 VALIDAR CÓDIGOS DUPLICADOS (SOLO PRODUCTOS ACTIVOS)
-const codigosDuplicados = [];
+    // 🔧 VALIDAR CÓDIGOS DUPLICADOS (SOLO PRODUCTOS ACTIVOS)
+    const codigosDuplicados = [];
 
-if (codigoBarras) {
-  const existeCodigoBarras = await prisma.product.findFirst({
-    where: {
-      codigoBarras: codigoBarras,
-      activo: true  // ✅ Solo verificar productos activos
-    },
-    select: { id: true, descripcion: true, codigoBarras: true }
-  });
-    console.log(`🔍 DEBUG - Código: ${codigoBarras}, Encontrado activo: ${existeCodigoBarras ? 'SÍ' : 'NO'}`);
-  if (existeCodigoBarras) {
-    codigosDuplicados.push(`Código de barras "${codigoBarras}" ya existe en producto activo: ${existeCodigoBarras.descripcion}`);
-  }
-}
+    if (codigoBarras) {
+      const existeCodigoBarras = await prisma.product.findFirst({
+        where: {
+          codigoBarras: codigoBarras,
+          activo: true  // ✅ Solo verificar productos activos
+        },
+        select: { id: true, descripcion: true, codigoBarras: true }
+      });
+      console.log(`🔍 DEBUG - Código: ${codigoBarras}, Encontrado activo: ${existeCodigoBarras ? 'SÍ' : 'NO'}`);
+      if (existeCodigoBarras) {
+        codigosDuplicados.push(`Código de barras "${codigoBarras}" ya existe en producto activo: ${existeCodigoBarras.descripcion}`);
+      }
+    }
 
-if (codigoInterno) {
-  const existeCodigoInterno = await prisma.product.findFirst({
-    where: {
-      codigoInterno: codigoInterno,
-      activo: true  // ✅ Solo verificar productos activos
-    },
-    select: { id: true, descripcion: true, codigoInterno: true }
-  });
-  
-  if (existeCodigoInterno) {
-    codigosDuplicados.push(`Código interno "${codigoInterno}" ya existe en producto activo: ${existeCodigoInterno.descripcion}`);
-  }
-}
+    if (codigoInterno) {
+      const existeCodigoInterno = await prisma.product.findFirst({
+        where: {
+          codigoInterno: codigoInterno,
+          activo: true  // ✅ Solo verificar productos activos
+        },
+        select: { id: true, descripcion: true, codigoInterno: true }
+      });
 
-if (codigosDuplicados.length > 0) {
-  return res.status(400).json({
-    success: false,
-    message: 'Códigos duplicados encontrados',
-    errors: codigosDuplicados
-  });
-}
+      if (existeCodigoInterno) {
+        codigosDuplicados.push(`Código interno "${codigoInterno}" ya existe en producto activo: ${existeCodigoInterno.descripcion}`);
+      }
+    }
+
+    if (codigosDuplicados.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Códigos duplicados encontrados',
+        errors: codigosDuplicados
+      });
+    }
 
     // Calcular margen si no se proporciona
-    const calculatedMargen = margenPorcentaje || 
+    const calculatedMargen = margenPorcentaje ||
       ((parseFloat(precioVenta) - parseFloat(precioCosto)) / parseFloat(precioCosto)) * 100;
 
     // Crear producto
-// Crear producto
-const product = await prisma.product.create({
-  data: {
-    descripcion,
-    tipo,
-    codigoBarras,
-    codigoInterno,
-    categoria,
-    precioCosto: parseFloat(precioCosto),
-    precioVenta: parseFloat(precioVenta),
-    margenPorcentaje: parseFloat(calculatedMargen),
-    // ✅ OPCIÓN A: Stock 999 para servicios (disponibilidad ilimitada)
-    stock: tipo === 'SERVICIO' ? 999 : parseInt(stock),
-    stockReservado: 0,
-    // ✅ OPCIÓN A: Stock disponible 999 para servicios
-    stockDisponible: tipo === 'SERVICIO' ? 999 : parseInt(stock),
-    stockMinimo: parseInt(stockMinimo),
-    stockMaximo: parseInt(stockMaximo),
-    ubicacionFisica,
-    imagenUrl: typeof imagenUrl === 'object' && imagenUrl !== null 
-  ? (imagenUrl.isTemporary ? '' : (imagenUrl.url || ''))
-  : imagenUrl,
-    proveedor,
-    telefonoProveedor,
-    proveedorFacturaIva: req.body.proveedor_factura_iva || false,
-    observaciones,
-    creadoPor: {
-      connect: {
-        id: usuarioId
+    // Crear producto
+    const product = await prisma.product.create({
+      data: {
+        descripcion,
+        tipo,
+        codigoBarras,
+        codigoInterno,
+        categoria,
+        precioCosto: parseFloat(precioCosto),
+        precioVenta: parseFloat(precioVenta),
+        margenPorcentaje: parseFloat(calculatedMargen),
+        // ✅ OPCIÓN A: Stock 999 para servicios (disponibilidad ilimitada)
+        stock: tipo === 'SERVICIO' ? 999 : parseInt(stock),
+        stockReservado: 0,
+        // ✅ OPCIÓN A: Stock disponible 999 para servicios
+        stockDisponible: tipo === 'SERVICIO' ? 999 : parseInt(stock),
+        stockMinimo: parseInt(stockMinimo),
+        stockMaximo: parseInt(stockMaximo),
+        ubicacionFisica,
+        imagenUrl: typeof imagenUrl === 'object' && imagenUrl !== null
+          ? (imagenUrl.isTemporary ? '' : (imagenUrl.url || ''))
+          : imagenUrl,
+        proveedor,
+        telefonoProveedor,
+        proveedorFacturaIva: req.body.proveedor_factura_iva || false,
+        observaciones,
+        creadoPor: {
+          connect: {
+            id: usuarioId
+          }
+        }
+      },
+      include: {
+        creadoPor: {
+          select: { id: true, nombre: true }
+        }
       }
-    }
-  },
-  include: {
-    creadoPor: {
-      select: { id: true, nombre: true }
-    }
-  }
-});
+    });
 
     // Registrar movimiento de stock inicial si hay stock (solo para productos, no servicios)
-if (tipo !== 'SERVICIO' && parseInt(stock) > 0) {
-  await prisma.stockMovement.create({
+    if (tipo !== 'SERVICIO' && parseInt(stock) > 0) {
+      await prisma.stockMovement.create({
         data: {
           productoId: product.id,
           tipo: 'ENTRADA',
@@ -211,30 +211,30 @@ if (tipo !== 'SERVICIO' && parseInt(stock) > 0) {
       });
     }
 
-    
+
 
     // 🔄 MANEJAR IMAGEN TEMPORAL - MOVER A DEFINITIVO
-if (typeof req.body.imagenUrl === 'object' && req.body.imagenUrl?.isTemporary) {
-  try {
-    const { tempFilename, finalName } = req.body.imagenUrl.tempData;
-    
-    // Procesar imagen desde temp a products
-    const imagePaths = await processImage(
-      path.join(__dirname, '../../uploads/temp', tempFilename),
-      finalName
-    );
-    
-    // Actualizar la URL en la base de datos
-    await prisma.product.update({
-      where: { id: product.id },
-      data: { imagenUrl: `/uploads/products/thumbnails/${finalName}` }
-    });
-    
-    console.log('✅ Imagen movida y URL actualizada:', finalName);
-  } catch (error) {
-    console.warn('⚠️ Error moviendo imagen:', error.message);
-  }
-}
+    if (typeof req.body.imagenUrl === 'object' && req.body.imagenUrl?.isTemporary) {
+      try {
+        const { tempFilename, finalName } = req.body.imagenUrl.tempData;
+
+        // Procesar imagen desde temp a products
+        const imagePaths = await processImage(
+          path.join(__dirname, '../../uploads/temp', tempFilename),
+          finalName
+        );
+
+        // Actualizar la URL en la base de datos
+        await prisma.product.update({
+          where: { id: product.id },
+          data: { imagenUrl: `/uploads/products/thumbnails/${finalName}` }
+        });
+
+        console.log('✅ Imagen movida y URL actualizada:', finalName);
+      } catch (error) {
+        console.warn('⚠️ Error moviendo imagen:', error.message);
+      }
+    }
 
     // 📡 Emitir evento Socket.IO para sincronizar inventario
     if (req.io) {
@@ -247,11 +247,11 @@ if (typeof req.body.imagenUrl === 'object' && req.body.imagenUrl?.isTemporary) {
       console.log('📡 Evento inventario_actualizado emitido (CREAR)');
     }
 
-res.status(201).json({
-  success: true,
-  message: 'Producto creado correctamente',
-  data: product
-});
+    res.status(201).json({
+      success: true,
+      message: 'Producto creado correctamente',
+      data: product
+    });
 
   } catch (error) {
     console.error('Error en createProduct:', error);
@@ -312,9 +312,9 @@ const updateProduct = async (req, res) => {
     // 🔧 FILTRAR CAMPOS PERMITIDOS SEGÚN EL TIPO
     const allowedFields = [
       'descripcion', 'tipo', 'codigoBarras', 'codigoInterno', 'categoria',
-      'precioCosto', 'precioVenta', 'margenPorcentaje', 
-      'stockMinimo', 'stockMaximo', 'ubicacionFisica', 'imagenUrl', 
-      'imagenThumbnail', 'proveedor', 'telefonoProveedor', 
+      'precioCosto', 'precioVenta', 'margenPorcentaje',
+      'stockMinimo', 'stockMaximo', 'ubicacionFisica', 'imagenUrl',
+      'imagenThumbnail', 'proveedor', 'telefonoProveedor',
       'proveedorFacturaIva', 'observaciones', 'activo'
     ];
 
@@ -461,95 +461,95 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-// 🔍 VERIFICACIÓN EXHAUSTIVA para HARD DELETE seguro
-const motivo = req.body.motivo || 'ELIMINACION_MANUAL';
+    // 🔍 VERIFICACIÓN EXHAUSTIVA para HARD DELETE seguro
+    const motivo = req.body.motivo || 'ELIMINACION_MANUAL';
 
-const verificarRelaciones = await Promise.all([
-  prisma.transactionItem.count({ where: { productoId: parseInt(id) } }),
-  prisma.stockMovement.count({ where: { productoId: parseInt(id) } }),
-  prisma.pendingSaleItem.count({ where: { productoId: parseInt(id) } }),
-  prisma.productChange.count({ where: { productoId: parseInt(id) } })
-]);
+    const verificarRelaciones = await Promise.all([
+      prisma.transactionItem.count({ where: { productoId: parseInt(id) } }),
+      prisma.stockMovement.count({ where: { productoId: parseInt(id) } }),
+      prisma.pendingSaleItem.count({ where: { productoId: parseInt(id) } }),
+      prisma.productChange.count({ where: { productoId: parseInt(id) } })
+    ]);
 
-const [transacciones, movimientos, ventasEspera, cambios] = verificarRelaciones;
-const tieneRelaciones = transacciones > 0 || movimientos > 0 || ventasEspera > 0 || cambios > 0;
+    const [transacciones, movimientos, ventasEspera, cambios] = verificarRelaciones;
+    const tieneRelaciones = transacciones > 0 || movimientos > 0 || ventasEspera > 0 || cambios > 0;
 
-console.log(`🔍 Verificación para producto ${id}:`, {
-  transacciones, movimientos, ventasEspera, cambios, tieneRelaciones, motivo
-});
+    console.log(`🔍 Verificación para producto ${id}:`, {
+      transacciones, movimientos, ventasEspera, cambios, tieneRelaciones, motivo
+    });
 
-let deletedProduct;
-let tipoEliminacion;
+    let deletedProduct;
+    let tipoEliminacion;
 
-if (motivo === 'ERROR_REGISTRO' && !tieneRelaciones) {
-  // 🔥 HARD DELETE - Liberar códigos de barras
-  deletedProduct = await prisma.product.delete({
-    where: { id: parseInt(id) }
-  });
-  tipoEliminacion = 'HARD_DELETE';
-  console.log(`🔥 HARD DELETE: ${product.descripcion} - Códigos liberados`);
-  
-} else {
-  // 🔒 SOFT DELETE - Mantener historial
-  deletedProduct = await prisma.product.update({
-    where: { id: parseInt(id) },
-    data: {
-      activo: false,
-      motivoInactivacion: motivo,
-      fechaInactivacion: new Date(),
-      fechaActualizacion: new Date()
+    if (motivo === 'ERROR_REGISTRO' && !tieneRelaciones) {
+      // 🔥 HARD DELETE - Liberar códigos de barras
+      deletedProduct = await prisma.product.delete({
+        where: { id: parseInt(id) }
+      });
+      tipoEliminacion = 'HARD_DELETE';
+      console.log(`🔥 HARD DELETE: ${product.descripcion} - Códigos liberados`);
+
+    } else {
+      // 🔒 SOFT DELETE - Mantener historial
+      deletedProduct = await prisma.product.update({
+        where: { id: parseInt(id) },
+        data: {
+          activo: false,
+          motivoInactivacion: motivo,
+          fechaInactivacion: new Date(),
+          fechaActualizacion: new Date()
+        }
+      });
+      tipoEliminacion = 'SOFT_DELETE';
+      console.log(`🔒 SOFT DELETE: ${product.descripcion} - Historial preservado`);
     }
-  });
-  tipoEliminacion = 'SOFT_DELETE';
-  console.log(`🔒 SOFT DELETE: ${product.descripcion} - Historial preservado`);
-}
 
     // 🔥 HARD DELETE - Liberar códigos de barras
-if (motivo === 'ERROR_REGISTRO' && !tieneRelaciones) {
-  deletedProduct = await prisma.$transaction(async (tx) => {
-    // Primero eliminar registros de auditoría
-    await tx.productChange.deleteMany({
-      where: { productoId: parseInt(id) }
-    });
-    
-    // Luego eliminar el producto
-    return await tx.product.delete({
-      where: { id: parseInt(id) }
-    });
-  });
-  tipoEliminacion = 'HARD_DELETE';
-  console.log(`🔥 HARD DELETE: ${product.descripcion} - Códigos liberados`);
-  
-} else {
-  // 🔒 SOFT DELETE - Mantener historial
-  deletedProduct = await prisma.$transaction(async (tx) => {
-    // Primero registrar el cambio de auditoría
-    await tx.productChange.create({
-      data: {
-        productoId: parseInt(id),
-        campo: 'activo',
-        valorAnterior: 'true',
-        valorNuevo: 'false',
-        usuarioId,
-        ipAddress: req.ip,
-        motivo: motivo || 'Eliminación de producto'
-      }
-    });
-    
-    // Luego hacer soft delete del producto
-    return await tx.product.update({
-      where: { id: parseInt(id) },
-      data: {
-        activo: false,
-        motivoInactivacion: motivo,
-        fechaInactivacion: new Date(),
-        fechaActualizacion: new Date()
-      }
-    });
-  });
-  tipoEliminacion = 'SOFT_DELETE';
-  console.log(`🔒 SOFT DELETE: ${product.descripcion} - Historial preservado`);
-}
+    if (motivo === 'ERROR_REGISTRO' && !tieneRelaciones) {
+      deletedProduct = await prisma.$transaction(async (tx) => {
+        // Primero eliminar registros de auditoría
+        await tx.productChange.deleteMany({
+          where: { productoId: parseInt(id) }
+        });
+
+        // Luego eliminar el producto
+        return await tx.product.delete({
+          where: { id: parseInt(id) }
+        });
+      });
+      tipoEliminacion = 'HARD_DELETE';
+      console.log(`🔥 HARD DELETE: ${product.descripcion} - Códigos liberados`);
+
+    } else {
+      // 🔒 SOFT DELETE - Mantener historial
+      deletedProduct = await prisma.$transaction(async (tx) => {
+        // Primero registrar el cambio de auditoría
+        await tx.productChange.create({
+          data: {
+            productoId: parseInt(id),
+            campo: 'activo',
+            valorAnterior: 'true',
+            valorNuevo: 'false',
+            usuarioId,
+            ipAddress: req.ip,
+            motivo: motivo || 'Eliminación de producto'
+          }
+        });
+
+        // Luego hacer soft delete del producto
+        return await tx.product.update({
+          where: { id: parseInt(id) },
+          data: {
+            activo: false,
+            motivoInactivacion: motivo,
+            fechaInactivacion: new Date(),
+            fechaActualizacion: new Date()
+          }
+        });
+      });
+      tipoEliminacion = 'SOFT_DELETE';
+      console.log(`🔒 SOFT DELETE: ${product.descripcion} - Historial preservado`);
+    }
 
     // 📡 Emitir evento Socket.IO para sincronizar inventario
     if (req.io) {
@@ -819,10 +819,10 @@ const getInventoryStats = async (req, res) => {
     ] = await Promise.all([
       // Total de productos
       prisma.product.count(),
-      
+
       // Productos activos
       prisma.product.count({ where: { activo: true } }),
-      
+
       // Productos con stock bajo
       prisma.product.count({
         where: {
@@ -830,7 +830,7 @@ const getInventoryStats = async (req, res) => {
           stock: { lte: prisma.product.fields.stockMinimo }
         }
       }),
-      
+
       // Productos sin stock
       prisma.product.count({
         where: {
@@ -838,7 +838,7 @@ const getInventoryStats = async (req, res) => {
           stock: 0
         }
       }),
-      
+
       // Valor total del inventario
       prisma.product.aggregate({
         where: { activo: true },
@@ -846,7 +846,7 @@ const getInventoryStats = async (req, res) => {
           stock: true
         }
       }),
-      
+
       // Movimientos recientes
       prisma.stockMovement.findMany({
         include: {
@@ -905,15 +905,15 @@ const uploadProductImage = async (req, res) => {
       // 🆕 MODO TEMPORAL - Solo mover a /temp/
       const tempDir = path.join(__dirname, '../../uploads/temp');
       const tempFinalPath = path.join(tempDir, filename);
-      
+
       // Asegurar que existe la carpeta temp
       await fs.mkdir(tempDir, { recursive: true });
-      
+
       // Mover archivo a temp
       await fs.rename(tempPath, tempFinalPath);
-      
+
       console.log('📁 Imagen temporal guardada:', filename);
-      
+
       res.json({
         success: true,
         message: 'Imagen temporal subida correctamente',
@@ -923,7 +923,7 @@ const uploadProductImage = async (req, res) => {
           productCode: req.body.productCode || ''
         }
       });
-      
+
     } else {
       // 🔄 MODO DEFINITIVO - Procesar normalmente
       const imagePaths = await processImage(tempPath, filename);
@@ -1044,21 +1044,21 @@ const moveTempToProducts = async (tempFilename, productCode) => {
   try {
     const tempPath = path.join(__dirname, '../../uploads/temp', tempFilename);
     const finalFilename = `${productCode}_${Date.now()}.${tempFilename.split('.').pop()}`;
-    
+
     // Procesar imagen desde temp
     const imagePaths = await processImage(tempPath, finalFilename);
-    
+
     // Eliminar archivo temporal
-    await fs.unlink(tempPath).catch(() => {});
-    
+    await fs.unlink(tempPath).catch(() => { });
+
     console.log('✅ Imagen movida de temp a products:', finalFilename);
-    
+
     return {
       filename: finalFilename,
       originalPath: imagePaths.original,
       thumbnailPath: imagePaths.thumbnail
     };
-    
+
   } catch (error) {
     console.error('Error moviendo imagen:', error);
     throw error;
@@ -1088,7 +1088,7 @@ console.log('Funciones disponibles:', {
 const moveTempImage = async (req, res) => {
   try {
     const { tempFilename, productCode } = req.body;
-    
+
     if (!tempFilename) {
       return res.status(400).json({
         success: false,
@@ -1097,7 +1097,7 @@ const moveTempImage = async (req, res) => {
     }
 
     const tempPath = path.join(__dirname, '../../uploads/temp', tempFilename);
-    
+
     // Verificar que existe el archivo temporal
     try {
       await fs.access(tempPath);
@@ -1143,6 +1143,82 @@ const moveTempImage = async (req, res) => {
   }
 };
 
+// ===================================
+// 💰 AJUSTE MASIVO DE PRECIOS
+// ===================================
+const ajusteMasivo = async (req, res) => {
+  try {
+    const { ajustes } = req.body;
+
+    if (!ajustes || !Array.isArray(ajustes) || ajustes.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se recibieron datos de ajuste válidos'
+      });
+    }
+
+    console.log(`💰 Procesando ajuste masivo de ${ajustes.length} productos...`);
+
+    let actualizados = 0;
+    let errores = 0;
+    const detalles = [];
+
+    for (const ajuste of ajustes) {
+      try {
+        const updateData = {
+          precio: ajuste.precio,
+          updatedAt: new Date()
+        };
+
+        // Si se especifica porcentaje de ganancia, guardarlo
+        if (ajuste.porcentaje_ganancia !== null && ajuste.porcentaje_ganancia !== undefined) {
+          updateData.porcentaje_ganancia = ajuste.porcentaje_ganancia;
+        }
+
+        await prisma.product.update({
+          where: { id: ajuste.id },
+          data: updateData
+        });
+
+        actualizados++;
+        detalles.push({ id: ajuste.id, status: 'ok', precio: ajuste.precio });
+
+      } catch (error) {
+        console.error(`Error actualizando producto ${ajuste.id}:`, error.message);
+        errores++;
+        detalles.push({ id: ajuste.id, status: 'error', error: error.message });
+      }
+    }
+
+    console.log(`✅ Ajuste masivo completado: ${actualizados} actualizados, ${errores} errores`);
+
+    // Emitir evento de socket si está disponible
+    if (req.io) {
+      req.io.emit('inventario_actualizado', {
+        operacion: 'AJUSTE_MASIVO',
+        cantidad: actualizados,
+        usuario: req.user?.nombre || 'Sistema'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Ajuste masivo completado: ${actualizados} productos actualizados`,
+      actualizados,
+      errores,
+      detalles: errores > 0 ? detalles.filter(d => d.status === 'error') : []
+    });
+
+  } catch (error) {
+    console.error('❌ Error en ajuste masivo:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al procesar ajuste masivo',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getProducts,
   createProduct,
@@ -1154,5 +1230,6 @@ module.exports = {
   getInventoryStats,
   uploadProductImage,
   deleteProductImage,
-  moveTempImage
+  moveTempImage,
+  ajusteMasivo
 };

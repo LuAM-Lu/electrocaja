@@ -1,15 +1,15 @@
 // components/presupuesto/ExportActions.jsx - SOLO CONFIGURACIÓN 
 import React, { useState } from 'react';
-import { 
+import {
   FileText, Mail, Download,
-  CheckCircle, Eye, AlertTriangle, Check, 
+  CheckCircle, Eye, AlertTriangle, Check,
   ChevronDown, Wifi, WifiOff, X
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import toast from '../../utils/toast.jsx';
 import { calcularTotales } from '../../utils/presupuestoUtils';
 
-const ExportActions = ({ 
+const ExportActions = ({
   presupuestoData,
   onConfigChange,
   isEnabled = true,
@@ -32,18 +32,18 @@ const ExportActions = ({
       [type]: !exportConfig[type]
     };
     setExportConfig(newConfig);
-    
+
     // Notificar al componente padre
     onConfigChange && onConfigChange(newConfig);
-    
+
     // ✅ ELIMINADO: Toast de feedback innecesario
   };
 
   //  Validaciones
-  const isEmailValid = presupuestoData.cliente?.email && 
+  const isEmailValid = presupuestoData.cliente?.email &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(presupuestoData.cliente.email);
 
-  const isPhoneValid = presupuestoData.cliente?.telefono && 
+  const isPhoneValid = presupuestoData.cliente?.telefono &&
     presupuestoData.cliente.telefono.replace(/[^0-9]/g, '').length >= 10;
 
   //  Configuración de estilos
@@ -91,15 +91,15 @@ const ExportActions = ({
 
   return (
     <div className="space-y-6">
-      
+
       {/*  CARDS DE CONFIGURACIÓN - SOLO TOGGLES */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        
+
         {Object.entries(exportConfig).map(([type, isActive]) => {
           const config = getCardStyle(type, isActive);
           const IconComponent = config.icon;
-          
-          const hasWarning = 
+
+          const hasWarning =
             (type === 'whatsapp' && !isPhoneValid) ||
             (type === 'whatsappSimple' && !isPhoneValid) ||
             (type === 'email' && !isEmailValid);
@@ -109,26 +109,23 @@ const ExportActions = ({
               key={type}
               onClick={() => handleToggle(type)}
               disabled={!isEnabled}
-              className={`p-4 rounded-xl border-2 transition-all duration-300 transform hover:scale-105 cursor-pointer hover:shadow-lg ${
-                isActive ? config.activeBg : config.inactiveBg
-              } ${hasWarning ? 'ring-2 ring-yellow-300' : ''} ${
-                !isEnabled ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              className={`p-4 rounded-xl border-2 transition-all duration-300 transform hover:scale-105 cursor-pointer hover:shadow-lg ${isActive ? config.activeBg : config.inactiveBg
+                } ${hasWarning ? 'ring-2 ring-yellow-300' : ''} ${!isEnabled ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
             >
               <div className="text-center">
                 {/* Icono con gradiente */}
-                <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-gradient-to-r ${
-                  isActive ? config.activeColor : config.inactiveColor
-                } relative`}>
+                <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-gradient-to-r ${isActive ? config.activeColor : config.inactiveColor
+                  } relative`}>
                   <IconComponent className="h-6 w-6 text-white" />
-                  
+
                   {/* Badge de estado activo */}
                   {isActive && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-lg">
                       <Check className="h-3 w-3 text-green-600" />
                     </div>
                   )}
-                  
+
                   {/* Badge de advertencia */}
                   {hasWarning && (
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
@@ -136,54 +133,51 @@ const ExportActions = ({
                     </div>
                   )}
                 </div>
-                
+
                 {/* Título */}
-                <h3 className={`font-semibold mb-1 ${
-                  isActive ? 'text-gray-900' : 'text-gray-600'
-                }`}>
+                <h3 className={`font-semibold mb-1 ${isActive ? 'text-gray-900' : 'text-gray-600'
+                  }`}>
                   {config.label}
                 </h3>
-                
+
                 {/* Descripción */}
-                <p className={`text-sm ${
-                  isActive ? 'text-gray-700' : 'text-gray-500'
-                }`}>
+                <p className={`text-sm ${isActive ? 'text-gray-700' : 'text-gray-500'
+                  }`}>
                   {config.description}
                 </p>
-                
+
                 {/* Estados especiales */}
                 {type === 'whatsapp' && !isPhoneValid && (
                   <div className="mt-2">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                       Sin teléfono
+                      Sin teléfono
                     </span>
                   </div>
                 )}
-                
+
                 {type === 'whatsappSimple' && !isPhoneValid && (
                   <div className="mt-2">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                       Sin teléfono
+                      Sin teléfono
                     </span>
                   </div>
                 )}
-                
+
                 {type === 'email' && !isEmailValid && (
                   <div className="mt-2">
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
-                       Sin email
+                      Sin email
                     </span>
                   </div>
                 )}
-                
+
                 {isActive && (
                   <div className="mt-2">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      type === 'pdf' ? 'bg-red-100 text-red-700' :
-                      type === 'whatsapp' ? 'bg-green-100 text-green-700' :
-                      type === 'whatsappSimple' ? 'bg-emerald-100 text-emerald-700' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${type === 'pdf' ? 'bg-red-100 text-red-700' :
+                        type === 'whatsapp' ? 'bg-green-100 text-green-700' :
+                          type === 'whatsappSimple' ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-blue-100 text-blue-700'
+                      }`}>
                       <Check className="h-3 w-3 mr-1" />
                       SELECCIONADO
                     </span>
@@ -196,7 +190,7 @@ const ExportActions = ({
       </div>
 
       {/*  RESUMEN DE CONFIGURACIÓN - ELIMINADO POR REDUNDANCIA */}
-      
+
       {/*  BOTÓN PARA ABRIR VISTA PREVIA MODAL */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
         <button
@@ -223,13 +217,13 @@ const ExportActions = ({
 //  MODAL DE VISTA PREVIA CON DISEÑO SIMILAR AL PDF
 const VistaPreviaModal = ({ presupuestoData, tasaCambio, onClose }) => {
   const totales = calcularTotales(presupuestoData, tasaCambio);
-  
+
   const fechaActual = new Date(presupuestoData.fecha || new Date()).toLocaleDateString('es-ES', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
   });
-  
+
   const horaActual = new Date().toLocaleTimeString('es-ES', {
     hour: '2-digit',
     minute: '2-digit'
@@ -285,11 +279,11 @@ const VistaPreviaModal = ({ presupuestoData, tasaCambio, onClose }) => {
             <div className="bg-gradient-to-r from-blue-800 via-blue-600 to-blue-500 relative">
               <div className="bg-blue-300 h-1"></div>
               <div className="p-6 flex items-start gap-4">
-                <img 
-                  src="/android-chrome-512x5129.png" 
-                  alt="Logo" 
+                <img
+                  src="/android-chrome-512x5129.png"
+                  alt="Logo"
                   className="w-20 h-20 rounded-lg shadow-lg"
-                  onError={(e) => { e.target.style.display = 'none'; }}
+                  onError={(e) => { if (e.target) e.target.style.display = 'none'; }}
                 />
                 <div className="flex-1 text-white">
                   <h1 className="text-2xl font-bold mb-2">ELECTRO SHOP MORANDIN C.A.</h1>
@@ -357,9 +351,8 @@ const VistaPreviaModal = ({ presupuestoData, tasaCambio, onClose }) => {
                 {presupuestoData.items.map((item, index) => (
                   <div
                     key={index}
-                    className={`grid grid-cols-7 gap-2 p-3 text-sm border-b border-gray-100 last:border-b-0 text-slate-900 ${
-                      index % 2 === 0 ? 'bg-white' : 'bg-blue-50'
-                    }`}
+                    className={`grid grid-cols-7 gap-2 p-3 text-sm border-b border-gray-100 last:border-b-0 text-slate-900 ${index % 2 === 0 ? 'bg-white' : 'bg-blue-50'
+                      }`}
                   >
                     <div className="font-medium text-slate-900">{index + 1}</div>
                     <div className="text-slate-900">{item.cantidad}</div>

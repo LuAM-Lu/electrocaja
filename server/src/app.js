@@ -77,18 +77,18 @@ const actualizarTasaInicial = async () => {
   try {
     console.log('🔄 Actualizando tasa BCV al iniciar servidor...');
     const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
-    
+
     if (response.ok) {
       const data = await response.json();
       const nuevaTasa = data.promedio;
-      
+
       global.estadoApp.tasa_bcv = {
         valor: nuevaTasa,
         modo: 'AUTO',
         admin: 'SISTEMA',
         timestamp: new Date().toISOString()
       };
-      
+
       console.log(`✅ Tasa BCV actualizada al iniciar: $${nuevaTasa.toFixed(2)}`);
     } else {
       console.log('⚠️ No se pudo obtener tasa BCV - Conexión fallida');
@@ -107,7 +107,7 @@ actualizarTasaInicial();
 io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
-    
+
     if (!token) {
       console.log('⚠️ Socket sin token, permitiendo conexión local');
       return next();
@@ -115,11 +115,11 @@ io.use(async (socket, next) => {
 
     // Verificar JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     socket.userId = decoded.userId || decoded.id;
     socket.userEmail = decoded.email;
     socket.userName = decoded.nombre || decoded.name;
-    
+
     next();
   } catch (error) {
     console.log('⚠️ Socket con token inválido, permitiendo conexión local');
@@ -132,28 +132,28 @@ app.use(morgan('combined'));
 
 // 🔧 CORS CONFIGURATION PRINCIPAL - USANDO .ENV
 const localIP = process.env.LOCAL_IP || '192.168.1.11';
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
   : [
-      // Localhost variants
-      'https://localhost:5174',
-      'https://localhost:5173', 
-      'http://localhost:5173',
-      'https://localhost:3000',
-      'http://localhost:3000',
-      // 127.0.0.1 variants
-      'https://127.0.0.1:5174',
-      'https://127.0.0.1:5173',
-      'http://127.0.0.1:5173',
-      'https://127.0.0.1:3000',
-      'http://127.0.0.1:3000',
-      // Dynamic local IP variants
-      `https://${localIP}:5174`,
-      `https://${localIP}:5173`,
-      `https://${localIP}:3000`,
-      `http://${localIP}:5173`,
-      `http://${localIP}:3000`
-    ];
+    // Localhost variants
+    'https://localhost:5174',
+    'https://localhost:5173',
+    'http://localhost:5173',
+    'https://localhost:3000',
+    'http://localhost:3000',
+    // 127.0.0.1 variants
+    'https://127.0.0.1:5174',
+    'https://127.0.0.1:5173',
+    'http://127.0.0.1:5173',
+    'https://127.0.0.1:3000',
+    'http://127.0.0.1:3000',
+    // Dynamic local IP variants
+    `https://${localIP}:5174`,
+    `https://${localIP}:5173`,
+    `https://${localIP}:3000`,
+    `http://${localIP}:5173`,
+    `http://${localIP}:3000`
+  ];
 
 console.log('🔧 CORS - Orígenes permitidos:', allowedOrigins);
 
@@ -164,7 +164,7 @@ const corsOptions = {
       console.log('🌐 Request sin origin permitido');
       return callback(null, true);
     }
-    
+
     if (allowedOrigins.includes(origin)) {
       console.log('✅ CORS permitido para origen:', origin);
       callback(null, true);
@@ -206,22 +206,22 @@ app.options('*', cors(corsOptions));
 // 🔧 MIDDLEWARE ADICIONAL PARA HEADERS MANUALES (BACKUP)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  
+
   if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
     res.header('Access-Control-Allow-Origin', origin || '*');
   }
-  
+
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
   res.header('Access-Control-Max-Age', '86400'); // 24 horas
-  
+
   // Manejar preflight requests
   if (req.method === 'OPTIONS') {
     console.log('🔧 Preflight request para:', req.path);
     return res.sendStatus(200);
   }
-  
+
   next();
 });
 // Agregar después de los otros middlewares:
@@ -279,7 +279,7 @@ app.get('/api/sessions/debug', (req, res) => {
   const sesiones = Array.from(global.estadoApp.usuarios_conectados.values());
   const sesionesPorUsuario = Object.fromEntries(global.estadoApp.sesiones_por_usuario);
   const sesionesApi = Object.fromEntries(global.estadoApp.sesiones_api);
-  
+
   res.json({
     success: true,
     data: {
@@ -304,19 +304,100 @@ app.get('/api/tasa-bcv/estado', (req, res) => {
   });
 });
 
+// 💱 Endpoint para obtener TODAS las tasas (BCV, Paralelo, Euro, USDT)
+app.get('/api/tasas', async (req, res) => {
+  try {
+    // Obtener BCV y Paralelo de DolarAPI
+    const dolarApiRes = await fetch('https://ve.dolarapi.com/v1/dolares');
+    let bcv = null;
+    let paralelo = null;
+
+    if (dolarApiRes.ok) {
+      const data = await dolarApiRes.json();
+      const bcvData = data.find(t => t.fuente === 'oficial');
+      const paraleloData = data.find(t => t.fuente === 'paralelo');
+      bcv = bcvData?.promedio || null;
+      paralelo = paraleloData?.promedio || null;
+    }
+
+    // Obtener USDT de Binance P2P (sin CORS desde el servidor)
+    let usdt = null;
+    try {
+      const usdtRes = await fetch('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset: 'USDT',
+          fiat: 'VES',
+          tradeType: 'SELL',
+          page: 1,
+          rows: 5
+        })
+      });
+
+      if (usdtRes.ok) {
+        const usdtData = await usdtRes.json();
+        // Promediar los primeros 5 anuncios para tasa más estable
+        if (usdtData?.data?.length > 0) {
+          const precios = usdtData.data.map(ad => parseFloat(ad.adv?.price || 0)).filter(p => p > 0);
+          usdt = precios.length > 0 ? precios.reduce((a, b) => a + b, 0) / precios.length : null;
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ Error obteniendo USDT de Binance:', e.message);
+    }
+
+    // Calcular Euro aproximado
+    const euro = bcv ? bcv * 1.17 : null;
+
+    // Calcular promedio (solo tasas disponibles)
+    const tasasDisponibles = [bcv, paralelo, usdt].filter(t => t !== null && t > 0);
+    const promedio = tasasDisponibles.length > 0
+      ? tasasDisponibles.reduce((a, b) => a + b, 0) / tasasDisponibles.length
+      : null;
+
+    // Calcular brecha porcentual (USDT vs BCV como prioridad, PAR como fallback)
+    const brechaUsdt = bcv && usdt ? ((usdt - bcv) / bcv * 100) : null;
+    const brechaPar = bcv && paralelo ? ((paralelo - bcv) / bcv * 100) : null;
+    // Brecha principal: USDT primero, PAR como fallback
+    const brecha = brechaUsdt !== null ? brechaUsdt : brechaPar;
+
+    res.json({
+      success: true,
+      data: {
+        bcv,
+        paralelo,
+        euro,
+        usdt: usdt ? parseFloat(usdt.toFixed(2)) : null,
+        promedio: promedio ? parseFloat(promedio.toFixed(2)) : null,
+        brecha: brecha ? parseFloat(brecha.toFixed(1)) : null,
+        brechaUsdt: brechaUsdt ? parseFloat(brechaUsdt.toFixed(1)) : null,
+        brechaPar: brechaPar ? parseFloat(brechaPar.toFixed(1)) : null
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error en /api/tasas:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Error obteniendo tasas'
+    });
+  }
+});
+
 // 🔥 INICIALIZAR WHATSAPP SERVICE AUTOMÁTICAMENTE
 const whatsappService = require('./services/whatsappService');
 
 // 🚀 FUNCIÓN DE INICIALIZACIÓN AUTOMÁTICA
 async function inicializarServicios() {
   console.log('🔄 Inicializando servicios del servidor...');
-  
+
   try {
     // 📱 INICIALIZAR WHATSAPP AUTOMÁTICAMENTE
     console.log('📱 Iniciando WhatsApp Service...');
     await whatsappService.inicializar();
     console.log('✅ WhatsApp Service operativo');
-    
+
     // 📊 MOSTRAR ESTADO DE LA SESIÓN
     const estado = whatsappService.getEstado();
     if (estado.conectado) {
@@ -326,7 +407,7 @@ async function inicializarServicios() {
     } else {
       console.log('⏳ WhatsApp inicializando...');
     }
-    
+
   } catch (error) {
     console.error('❌ Error inicializando WhatsApp:', error.message);
     console.log('⚠️ El servidor continuará funcionando sin WhatsApp');
@@ -361,17 +442,17 @@ io.on('connection', (socket) => {
   // 🆕 Evento: Usuario se conecta (desde login)
   socket.on('user-connected', (data) => {
     const { user, timestamp } = data;
-    
+
     console.log(`✅ Usuario conectándose: ${user.nombre} (ID: ${user.id})`);
-    
+
     // 🚨 VERIFICAR SESIÓN ÚNICA
     const sesionExistente = global.estadoApp.sesiones_por_usuario.get(user.id);
-    
+
     if (sesionExistente && sesionExistente !== socket.id) {
       console.log(`⚠️ SESIÓN DUPLICADA detectada para ${user.nombre}`);
       console.log(`   - Sesión anterior: ${sesionExistente}`);
       console.log(`   - Nueva sesión: ${socket.id}`);
-      
+
       // Forzar logout de la sesión anterior
       console.log(`🚫 Enviando force_logout a sesión: ${sesionExistente}`);
       io.to(sesionExistente).emit('force_logout', {
@@ -379,7 +460,7 @@ io.on('connection', (socket) => {
       });
       // Limpiar datos de la sesión anterior
       global.estadoApp.usuarios_conectados.delete(sesionExistente);
-      
+
       // Notificar desconexión de la sesión anterior
       socket.broadcast.emit('user-disconnected', {
         userId: user.id,
@@ -388,7 +469,7 @@ io.on('connection', (socket) => {
         reason: 'force_logout'
       });
     }
-    
+
     // Registrar nueva sesión
     global.estadoApp.sesiones_por_usuario.set(user.id, socket.id);
     global.estadoApp.usuarios_conectados.set(socket.id, {
@@ -466,24 +547,24 @@ io.on('connection', (socket) => {
   // 🆕 EVENTO: BLOQUEAR USUARIOS (CIERRE DE CAJA)
   socket.on('bloquear_usuarios', (data) => {
     const { motivo, usuario_cerrando, timestamp } = data;
-    
+
     console.log('🔒 ===== BLOQUEANDO USUARIOS =====');
     console.log('🔒 Socket que envía:', socket.id);
     console.log('🔒 Motivo:', motivo);
     console.log('🔒 Usuario cerrando:', usuario_cerrando);
     console.log('🔒 Timestamp:', timestamp);
     console.log('🔒 Total usuarios conectados:', global.estadoApp.usuarios_conectados.size);
-    
+
     // Listar todos los usuarios conectados
     const usuariosConectados = Array.from(global.estadoApp.usuarios_conectados.values());
     console.log('🔒 Usuarios:', usuariosConectados.map(u => `${u.nombre} (${u.socket_id})`));
-    
+
     // Actualizar estado global
     global.estadoApp.usuarios_bloqueados = true;
     global.estadoApp.motivo_bloqueo = motivo;
     global.estadoApp.usuario_cerrando = usuario_cerrando;
     global.estadoApp.timestamp_bloqueo = timestamp;
-    
+
     // ⚡ EMITIR BROADCAST INSTANTÁNEO a TODOS los usuarios
     console.log('🔒⚡ Emitiendo BLOQUEO INSTANTÁNEO a todos...');
 
@@ -499,26 +580,26 @@ io.on('connection', (socket) => {
   // 🆕 EVENTO: BLOQUEAR USUARIOS POR DIFERENCIAS (CEO)
   socket.on('bloquear_usuarios_diferencia', (data) => {
     const { mensaje, diferencias, usuario_cerrando, timestamp } = data;
-    
+
     console.log('🚨 ===== BLOQUEO POR DIFERENCIAS =====');
     console.log('🚨 Mensaje:', mensaje);
     console.log('🚨 Diferencias:', diferencias);
     console.log('🚨 Usuario cerrando:', usuario_cerrando);
     console.log('🚨 Timestamp:', timestamp);
-    
+
     // Actualizar estado global
     global.estadoApp.usuarios_bloqueados = true;
     global.estadoApp.motivo_bloqueo = mensaje;
     global.estadoApp.usuario_cerrando = usuario_cerrando;
     global.estadoApp.timestamp_bloqueo = timestamp;
     global.estadoApp.diferencias_pendientes = diferencias;
-    
+
     // ⚡ EMITIR BROADCAST INSTANTÁNEO por diferencias
     const payloadDiferencia = { mensaje, diferencias, usuario_cerrando, timestamp, priority: 'critical' };
 
     // ⚡ USAR volatile() para máxima velocidad
     io.volatile.emit('bloquear_usuarios_diferencia', payloadDiferencia);
-    
+
     console.log(`🚨 Usuarios bloqueados por diferencias: ${global.estadoApp.usuarios_conectados.size} usuarios afectados`);
     console.log('🚨 ===================================');
   });
@@ -526,24 +607,24 @@ io.on('connection', (socket) => {
   // 🆕 EVENTO: DESBLOQUEAR USUARIOS
   socket.on('desbloquear_usuarios', (data) => {
     const { motivo, timestamp } = data;
-    
+
     console.log('🔓 ===== DESBLOQUEANDO USUARIOS =====');
     console.log('🔓 Motivo:', motivo);
     console.log('🔓 Timestamp:', timestamp);
-    
+
     // Limpiar estado global
     global.estadoApp.usuarios_bloqueados = false;
     global.estadoApp.motivo_bloqueo = '';
     global.estadoApp.usuario_cerrando = '';
     global.estadoApp.timestamp_bloqueo = null;
     global.estadoApp.diferencias_pendientes = null;
-    
+
     // Emitir a TODOS los usuarios conectados
     io.emit('desbloquear_usuarios', {
       motivo,
       timestamp
     });
-    
+
     console.log(`🔓 Usuarios desbloqueados: ${global.estadoApp.usuarios_conectados.size} usuarios liberados`);
     console.log('🔓 ===================================');
   });
@@ -564,21 +645,21 @@ io.on('connection', (socket) => {
   // 🔧 EVENTO: Usuario se está desconectando (logout manual)
   socket.on('user-disconnecting', (data) => {
     const { userId, userName, timestamp } = data;
-    
+
     console.log(`👋 LOGOUT MANUAL recibido de: ${userName}`);
     console.log(`   - Socket ID: ${socket.id}`);
     console.log(`   - User ID: ${userId}`);
-    
+
     // Buscar y eliminar la sesión
     const usuarioData = global.estadoApp.usuarios_conectados.get(socket.id);
-    
+
     if (usuarioData) {
       console.log(`🧹 Eliminando sesión de ${userName}`);
-      
+
       // Eliminar de ambos mapas
       global.estadoApp.usuarios_conectados.delete(socket.id);
       global.estadoApp.sesiones_por_usuario.delete(userId);
-      
+
       // Notificar a TODOS los otros usuarios
       socket.broadcast.emit('user-disconnected', {
         userId,
@@ -586,15 +667,15 @@ io.on('connection', (socket) => {
         timestamp,
         reason: 'manual-logout'
       });
-       // 🔧 AGREGAR ESTA LÍNEA AQUÍ:
-    io.emit('usuarios_conectados_actualizado', {
-      total: global.estadoApp.usuarios_conectados.size,
-      usuarios: Array.from(global.estadoApp.usuarios_conectados.values()).map(u => `${u.nombre} (${u.rol})`)
-    });
-      
+      // 🔧 AGREGAR ESTA LÍNEA AQUÍ:
+      io.emit('usuarios_conectados_actualizado', {
+        total: global.estadoApp.usuarios_conectados.size,
+        usuarios: Array.from(global.estadoApp.usuarios_conectados.values()).map(u => `${u.nombre} (${u.rol})`)
+      });
+
       console.log(`✅ Sesión de ${userName} eliminada correctamente`);
       console.log(`👥 Sesiones activas restantes: ${global.estadoApp.usuarios_conectados.size}`);
-      
+
       // Confirmar al cliente
       socket.emit('logout-confirmed', {
         message: 'Logout procesado correctamente en el servidor',
@@ -608,7 +689,7 @@ io.on('connection', (socket) => {
   // Eventos legacy del sistema anterior
   socket.on('user_login', (userData) => {
     console.log(`✅ Usuario conectado via evento legacy: ${userData.nombre}`);
-    
+
     global.estadoApp.usuarios_conectados.set(socket.id, {
       ...userData,
       socket_id: socket.id,
@@ -624,7 +705,7 @@ io.on('connection', (socket) => {
     });
 
     io.emit('usuarios_updated', Array.from(global.estadoApp.usuarios_conectados.values()));
-    
+
     socket.emit('sync_complete', {
       mensaje: 'Conectado exitosamente al servidor',
       usuarios_conectados: Array.from(global.estadoApp.usuarios_conectados.values()),
@@ -632,40 +713,40 @@ io.on('connection', (socket) => {
     });
   });
 
-              // 🆕 EVENTOS DE CAJA - APERTURA Y CIERRE
-              socket.on('caja_abierta', (data) => {
-                console.log('📦 ===== CAJA ABIERTA =====');
-                console.log('📦 Usuario:', data.usuario);
-                console.log('📦 Caja ID:', data.caja?.id);
-                console.log('📦 Timestamp:', data.timestamp);
-                
-                // Emitir a TODOS los usuarios conectados
-                io.emit('caja_abierta', {
-                  usuario: data.usuario,
-                  caja: data.caja, // 🔧 INCLUIR DATOS COMPLETOS DE LA CAJA
-                  timestamp: data.timestamp || new Date().toISOString()
-                });
-                
-                console.log(`📦 Evento caja_abierta enviado a ${global.estadoApp.usuarios_conectados.size} usuarios`);
-                console.log('📦 ===========================');
-              });
+  // 🆕 EVENTOS DE CAJA - APERTURA Y CIERRE
+  socket.on('caja_abierta', (data) => {
+    console.log('📦 ===== CAJA ABIERTA =====');
+    console.log('📦 Usuario:', data.usuario);
+    console.log('📦 Caja ID:', data.caja?.id);
+    console.log('📦 Timestamp:', data.timestamp);
 
-              socket.on('caja_cerrada', (data) => {
-                console.log('🔒 ===== CAJA CERRADA =====');
-                console.log('🔒 Usuario:', data.usuario);
-                console.log('🔒 Caja ID:', data.caja?.id);
-                console.log('🔒 Timestamp:', data.timestamp);
-                
-                // Emitir a TODOS los usuarios conectados
-                io.emit('caja_cerrada', {
-                  usuario: data.usuario,
-                  caja: data.caja, // 🔧 INCLUIR DATOS COMPLETOS DE LA CAJA
-                  timestamp: data.timestamp || new Date().toISOString()
-                });
-                
-                console.log(`🔒 Evento caja_cerrada enviado a ${global.estadoApp.usuarios_conectados.size} usuarios`);
-                console.log('🔒 ===========================');
-              });
+    // Emitir a TODOS los usuarios conectados
+    io.emit('caja_abierta', {
+      usuario: data.usuario,
+      caja: data.caja, // 🔧 INCLUIR DATOS COMPLETOS DE LA CAJA
+      timestamp: data.timestamp || new Date().toISOString()
+    });
+
+    console.log(`📦 Evento caja_abierta enviado a ${global.estadoApp.usuarios_conectados.size} usuarios`);
+    console.log('📦 ===========================');
+  });
+
+  socket.on('caja_cerrada', (data) => {
+    console.log('🔒 ===== CAJA CERRADA =====');
+    console.log('🔒 Usuario:', data.usuario);
+    console.log('🔒 Caja ID:', data.caja?.id);
+    console.log('🔒 Timestamp:', data.timestamp);
+
+    // Emitir a TODOS los usuarios conectados
+    io.emit('caja_cerrada', {
+      usuario: data.usuario,
+      caja: data.caja, // 🔧 INCLUIR DATOS COMPLETOS DE LA CAJA
+      timestamp: data.timestamp || new Date().toISOString()
+    });
+
+    console.log(`🔒 Evento caja_cerrada enviado a ${global.estadoApp.usuarios_conectados.size} usuarios`);
+    console.log('🔒 ===========================');
+  });
 
 
   // Eventos de caja
@@ -674,34 +755,34 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('caja_updated', data);
   });
 
-// 🆕 EVENTO: Tasa BCV automática actualizada (refresh)
-socket.on('tasa_auto_updated', (data) => {
-  const { tasa, admin, timestamp } = data;
-  
-  console.log('🔄 ===== TASA AUTO ACTUALIZADA =====');
-  console.log('🔄 Nueva tasa:', tasa);
-  console.log('🔄 Admin que refrescó:', admin);
-  console.log('🔄 Timestamp:', timestamp);
-  
-  // Actualizar estado global del servidor
-  global.estadoApp.tasa_bcv = {
-    valor: tasa,
-    modo: 'AUTO',
-    admin: admin,
-    timestamp: timestamp
-  };
-  
-  // Emitir a TODOS los usuarios conectados (incluyendo el que la refrescó)
-  io.emit('tasa_auto_updated', {
-    tasa,
-    admin,
-    timestamp
+  // 🆕 EVENTO: Tasa BCV automática actualizada (refresh)
+  socket.on('tasa_auto_updated', (data) => {
+    const { tasa, admin, timestamp } = data;
+
+    console.log('🔄 ===== TASA AUTO ACTUALIZADA =====');
+    console.log('🔄 Nueva tasa:', tasa);
+    console.log('🔄 Admin que refrescó:', admin);
+    console.log('🔄 Timestamp:', timestamp);
+
+    // Actualizar estado global del servidor
+    global.estadoApp.tasa_bcv = {
+      valor: tasa,
+      modo: 'AUTO',
+      admin: admin,
+      timestamp: timestamp
+    };
+
+    // Emitir a TODOS los usuarios conectados (incluyendo el que la refrescó)
+    io.emit('tasa_auto_updated', {
+      tasa,
+      admin,
+      timestamp
+    });
+
+    console.log(`🔄 Tasa AUTO enviada a ${global.estadoApp.usuarios_conectados.size} usuarios`);
+    console.log('🔄 Estado servidor actualizado:', global.estadoApp.tasa_bcv);
+    console.log('🔄 ===================================');
   });
-  
-  console.log(`🔄 Tasa AUTO enviada a ${global.estadoApp.usuarios_conectados.size} usuarios`);
-  console.log('🔄 Estado servidor actualizado:', global.estadoApp.tasa_bcv);
-  console.log('🔄 ===================================');
-});
 
   socket.on('nueva_transaccion', (data) => {
     console.log(`💰 Nueva transacción via Socket.IO de ${data.usuario}: ${data.transaccion?.tipo}`);
@@ -724,34 +805,34 @@ socket.on('tasa_auto_updated', (data) => {
     socket.broadcast.emit('arqueo_actualizado', arqueoData);
   });
 
-// 🆕 EVENTO: Tasa BCV manual actualizada
-socket.on('tasa_manual_updated', (data) => {
-  const { tasa, admin, timestamp } = data;
-  
-  console.log('💱 ===== TASA MANUAL ACTUALIZADA =====');
-  console.log('💱 Nueva tasa:', tasa);
-  console.log('💱 Admin que cambió:', admin);
-  console.log('💱 Timestamp:', timestamp);
-  
-  // Actualizar estado global del servidor
-  global.estadoApp.tasa_bcv = {
-    valor: tasa,
-    modo: 'MANUAL',
-    admin: admin,
-    timestamp: timestamp
-  };
-  
-  // Emitir a TODOS los usuarios conectados (incluyendo el que la cambió)
-  io.emit('tasa_manual_updated', {
-    tasa,
-    admin,
-    timestamp
+  // 🆕 EVENTO: Tasa BCV manual actualizada
+  socket.on('tasa_manual_updated', (data) => {
+    const { tasa, admin, timestamp } = data;
+
+    console.log('💱 ===== TASA MANUAL ACTUALIZADA =====');
+    console.log('💱 Nueva tasa:', tasa);
+    console.log('💱 Admin que cambió:', admin);
+    console.log('💱 Timestamp:', timestamp);
+
+    // Actualizar estado global del servidor
+    global.estadoApp.tasa_bcv = {
+      valor: tasa,
+      modo: 'MANUAL',
+      admin: admin,
+      timestamp: timestamp
+    };
+
+    // Emitir a TODOS los usuarios conectados (incluyendo el que la cambió)
+    io.emit('tasa_manual_updated', {
+      tasa,
+      admin,
+      timestamp
+    });
+
+    console.log(`💱 Tasa manual enviada a ${global.estadoApp.usuarios_conectados.size} usuarios`);
+    console.log('💱 Estado servidor actualizado:', global.estadoApp.tasa_bcv);
+    console.log('💱 ===================================');
   });
-  
-  console.log(`💱 Tasa manual enviada a ${global.estadoApp.usuarios_conectados.size} usuarios`);
-  console.log('💱 Estado servidor actualizado:', global.estadoApp.tasa_bcv);
-  console.log('💱 ===================================');
-});
 
   // Actividad del usuario
   socket.on('user_activity', (data) => {
@@ -768,11 +849,11 @@ socket.on('tasa_manual_updated', (data) => {
   // 🔧 DESCONEXIÓN MEJORADA
   socket.on('disconnect', (reason) => {
     console.log(`❌ Socket desconectado: ${socket.id} (${reason})`);
-    
+
     const usuario = global.estadoApp.usuarios_conectados.get(socket.id);
     if (usuario) {
       console.log(`👋 Limpiando sesión por desconexión: ${usuario.nombre}`);
-      
+
       // Limpiar mapeos
       global.estadoApp.usuarios_conectados.delete(socket.id);
       if (usuario.id) {
@@ -781,7 +862,7 @@ socket.on('tasa_manual_updated', (data) => {
 
       // 🆕 LIBERAR RESERVAS INMEDIATAMENTE AL DESCONECTAR
       liberarReservasPorDesconexion(usuario.email, reason);
-      
+
       // Solo notificar si NO fue un logout manual previo
       if (reason !== 'client namespace disconnect') {
         socket.broadcast.emit('user-disconnected', {
@@ -792,10 +873,10 @@ socket.on('tasa_manual_updated', (data) => {
         });
       }
       // 🔧 AGREGAR ESTA LÍNEA AQUÍ:
-    io.emit('usuarios_conectados_actualizado', {
-      total: global.estadoApp.usuarios_conectados.size,
-      usuarios: Array.from(global.estadoApp.usuarios_conectados.values()).map(u => `${u.nombre} (${u.rol})`)
-    });
+      io.emit('usuarios_conectados_actualizado', {
+        total: global.estadoApp.usuarios_conectados.size,
+        usuarios: Array.from(global.estadoApp.usuarios_conectados.values()).map(u => `${u.nombre} (${u.rol})`)
+      });
       console.log(`👥 Sesiones activas tras desconexión: ${global.estadoApp.usuarios_conectados.size}`);
     }
   });
@@ -812,7 +893,7 @@ const liberarReservasPorDesconexion = async (userEmail, reason) => {
     console.log(`🔓 ===== LIBERACIÓN POR DESCONEXIÓN =====`);
     console.log(`📱 Usuario: ${userEmail}`);
     console.log(`🔌 Motivo: ${reason}`);
-    
+
     // Buscar reservas activas de sesiones (NO ventas en espera)
     const reservasUsuario = await prisma.stockMovement.findMany({
       where: {
@@ -827,14 +908,14 @@ const liberarReservasPorDesconexion = async (userEmail, reason) => {
         }
       }
     });
-    
+
     if (reservasUsuario.length === 0) {
       console.log('✅ No hay reservas de sesión para liberar');
       return;
     }
-    
+
     console.log(`🔓 Liberando ${reservasUsuario.length} reservas inmediatamente...`);
-    
+
     // ✅ CORRECCIÓN: No usar transaccionId inválido
     await prisma.stockMovement.updateMany({
       where: {
@@ -845,9 +926,9 @@ const liberarReservasPorDesconexion = async (userEmail, reason) => {
         observaciones: `LIBERADA POR DESCONEXIÓN: ${reason} - ${new Date().toISOString()} - PROCESADA`
       }
     });
-    
+
     console.log(`✅ ${reservasUsuario.length} reservas liberadas por desconexión`);
-    
+
     // 📡 NOTIFICAR A OTROS USUARIOS QUE HAY STOCK DISPONIBLE
     io.emit('stock_liberado_desconexion', {
       usuario: userEmail,
@@ -856,9 +937,9 @@ const liberarReservasPorDesconexion = async (userEmail, reason) => {
       motivo: reason,
       timestamp: new Date().toISOString()
     });
-    
+
     console.log(`📡 Notificación enviada: stock disponible por desconexión`);
-    
+
   } catch (error) {
     console.error('❌ Error liberando reservas por desconexión:', error);
   }
@@ -868,45 +949,45 @@ const liberarReservasPorDesconexion = async (userEmail, reason) => {
 setInterval(() => {
   const ahora = Date.now();
   const diezMinutosAtras = ahora - (10 * 60 * 1000);
-  
+
   let sesionesLimpiadas = 0;
-  
+
   // Limpiar sesiones Socket.IO inactivas
   for (const [socketId, usuario] of global.estadoApp.usuarios_conectados.entries()) {
     const ultimaActividad = new Date(usuario.ultima_actividad).getTime();
-    
+
     if (ultimaActividad < diezMinutosAtras) {
       console.log(`🧹 Limpiando sesión Socket.IO inactiva: ${usuario.nombre}`);
-      
+
       global.estadoApp.usuarios_conectados.delete(socketId);
       if (usuario.id) {
         global.estadoApp.sesiones_por_usuario.delete(usuario.id);
       }
-      
+
       io.emit('user-disconnected', {
         userId: usuario.id,
         userName: usuario.nombre,
         timestamp: new Date().toISOString(),
         reason: 'inactivity'
       });
-      
+
       sesionesLimpiadas++;
     }
   }
-  
+
   // Limpiar sesiones API inactivas (30 minutos)
   const treintaMinutosAtras = ahora - (30 * 60 * 1000);
-  
+
   for (const [email, sesion] of global.estadoApp.sesiones_api.entries()) {
     const ultimaActividad = new Date(sesion.timestamp).getTime();
-    
+
     if (ultimaActividad < treintaMinutosAtras) {
       console.log(`🧹 Limpiando sesión API inactiva: ${sesion.usuario}`);
       global.estadoApp.sesiones_api.delete(email);
       sesionesLimpiadas++;
     }
   }
-  
+
   if (sesionesLimpiadas > 0) {
     console.log(`🧹 Sesiones limpiadas por inactividad: ${sesionesLimpiadas}`);
     console.log(`👥 Sesiones activas restantes: Socket.IO=${global.estadoApp.usuarios_conectados.size}, API=${global.estadoApp.sesiones_api.size}`);
@@ -931,21 +1012,21 @@ const programarAutoCierre = () => {
   const ahora = new Date();
   const proximoAutoCierre = new Date();
   proximoAutoCierre.setHours(23, 55, 0, 0); // 11:55 PM
-  
+
   // Si ya pasó la hora de hoy, programar para mañana
   if (ahora > proximoAutoCierre) {
     proximoAutoCierre.setDate(proximoAutoCierre.getDate() + 1);
   }
-  
+
   const tiempoHastaAutoCierre = proximoAutoCierre.getTime() - ahora.getTime();
-  
+
   console.log(`⏰ Auto-cierre programado para: ${proximoAutoCierre.toLocaleString('es-VE')}`);
   console.log(`⏱️ Tiempo restante: ${Math.round(tiempoHastaAutoCierre / 1000 / 60)} minutos`);
-  
+
   setTimeout(async () => {
     console.log('🕚 Ejecutando auto-cierre programado...');
     await AutoCierreService.ejecutarAutoCierre();
-    
+
     // Programar el siguiente auto-cierre (mañana)
     programarAutoCierre();
   }, tiempoHastaAutoCierre);
@@ -958,7 +1039,7 @@ programarAutoCierre();
 setInterval(async () => {
   try {
     console.log('🧹 Ejecutando limpieza automática de reservas...');
-    
+
     // Buscar reservas expiradas (más de 2 horas)
     const fechaLimite = new Date();
     fechaLimite.setHours(fechaLimite.getHours() - 2);
@@ -975,7 +1056,7 @@ setInterval(async () => {
 
     if (reservasExpiradas.length > 0) {
       console.log(`🧹 Encontradas ${reservasExpiradas.length} reservas expiradas, limpiando...`);
-      
+
       // Marcar como procesadas
       // ✅ CORRECCIÓN: No usar transaccionId inválido
       await prisma.stockMovement.updateMany({
@@ -1009,10 +1090,10 @@ setInterval(async () => {
 setInterval(async () => {
   try {
     console.log('🚨 Ejecutando limpieza AFK para modales de venta...');
-    
+
     const ahora = new Date();
     const veinteMinutosAtras = new Date(ahora.getTime() - (20 * 60 * 1000));
-    
+
     // Buscar reservas de sesiones activas > 20 min (excluyendo ventas en espera)
     // 💓 RESPETA HEARTBEAT: Solo elimina reservas SIN actividad reciente
     const reservasVentasAFK = await require('./config/database').stockMovement.findMany({
@@ -1041,10 +1122,10 @@ setInterval(async () => {
         }
       }
     });
-    
+
     if (reservasVentasAFK.length > 0) {
       console.log(`🚨 Modal AFK detectado: ${reservasVentasAFK.length} reservas > 20 min`);
-      
+
       // Agrupar por usuario
       const usuariosAFK = new Map();
       reservasVentasAFK.forEach(reserva => {
@@ -1056,18 +1137,18 @@ setInterval(async () => {
         }
         usuariosAFK.get(reserva.usuario.email).reservas.push(reserva);
       });
-      
+
       // Cerrar modales y liberar reservas
       for (const [email, info] of usuariosAFK) {
         console.log(`🚨 Cerrando modal AFK: ${info.usuario.nombre} (${info.reservas.length} reservas)`);
-        
+
         // Buscar socket del usuario
         const usuarioSocket = Array.from(global.estadoApp.usuarios_conectados.entries())
           .find(([_, usuario]) => usuario.email === email);
-        
+
         if (usuarioSocket) {
           const [socketId] = usuarioSocket;
-          
+
           // Cerrar modal vía Socket.IO
           io.to(socketId).emit('cerrar_modal_venta_afk', {
             message: '⏰ Modal de venta cerrado por inactividad (20 min)\n🔓 Stock liberado automáticamente',
@@ -1076,21 +1157,21 @@ setInterval(async () => {
             timestamp: new Date().toISOString()
           });
         }
-        
+
         // ✅ CORRECCIÓN: No usar transaccionId inválido, solo marcar como procesada
-          await prisma.stockMovement.updateMany({
-            where: {
-              id: {
-                in: info.reservas.map(r => r.id)
-              }
-            },
-            data: {
-              // ✅ NO USAR transaccionId que no existe
-              observaciones: `${new Date().toISOString()} - LIBERADA POR MODAL AFK 20MIN - PROCESADA`
+        await prisma.stockMovement.updateMany({
+          where: {
+            id: {
+              in: info.reservas.map(r => r.id)
             }
-          });
+          },
+          data: {
+            // ✅ NO USAR transaccionId que no existe
+            observaciones: `${new Date().toISOString()} - LIBERADA POR MODAL AFK 20MIN - PROCESADA`
+          }
+        });
       }
-      
+
       console.log(`✅ Modales AFK cerrados: ${usuariosAFK.size} usuarios`);
     }
   } catch (error) {
@@ -1101,7 +1182,7 @@ setInterval(async () => {
 // Manejo de errores global
 app.use((error, req, res, next) => {
   console.error('❌ Error global del servidor:', error);
-  
+
   // Si es un error de CORS
   if (error.message.includes('CORS')) {
     return res.status(403).json({
@@ -1110,7 +1191,7 @@ app.use((error, req, res, next) => {
       timestamp: new Date().toISOString()
     });
   }
-  
+
   res.status(500).json({
     success: false,
     message: 'Error interno del servidor',

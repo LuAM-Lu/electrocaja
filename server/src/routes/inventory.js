@@ -14,7 +14,8 @@ const {
   getInventoryStats,
   uploadProductImage,
   deleteProductImage,
-  moveTempImage
+  moveTempImage,
+  ajusteMasivo
 } = require('../controllers/inventoryController');
 
 // ===================================
@@ -79,6 +80,13 @@ router.post('/products/:id/adjust-stock', verifyToken, adjustStock);
 router.post('/move-temp-image', verifyToken, moveTempImage);
 
 // ===================================
+// 💰 AJUSTE MASIVO DE PRECIOS
+// ===================================
+// Ajuste masivo de precios (Solo Admin)
+// POST /api/inventory/ajuste-masivo
+router.post('/ajuste-masivo', verifyToken, ajusteMasivo);
+
+// ===================================
 // 🔍 RUTAS DE VALIDACIÓN (PARA FORMULARIOS)
 // ===================================
 
@@ -109,7 +117,7 @@ router.get('/validate-codes', verifyToken, async (req, res) => {
     if (existingProduct) {
       const duplicateField = existingProduct.codigoBarras === codigoBarras ? 'codigoBarras' : 'codigoInterno';
       const duplicateValue = existingProduct.codigoBarras === codigoBarras ? codigoBarras : codigoInterno;
-      
+
       return res.json({
         success: false,
         isDuplicate: true,
@@ -310,12 +318,12 @@ router.delete('/products/:id/image', verifyToken, deleteProductImage);
 // Log de todas las operaciones de inventario
 router.use((req, res, next) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     console.log(`[INVENTORY] ${req.method} ${req.path} - ${res.statusCode} - ${duration}ms - User: ${req.user?.email || 'Unknown'}`);
   });
-  
+
   next();
 });
 

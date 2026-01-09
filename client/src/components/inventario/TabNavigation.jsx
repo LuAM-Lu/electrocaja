@@ -1,52 +1,52 @@
 // components/inventario/TabNavigation.jsx
 import React from 'react';
-import { FileText, DollarSign, Package, Upload, Phone, Activity, CheckCircle, AlertTriangle, Building2, BarChart3 } from 'lucide-react';
+import { FileText, DollarSign, Package, Upload, Phone, Activity, CheckCircle, AlertTriangle, Building2, BarChart3, Wrench, Coffee } from 'lucide-react';
 
-const TabNavigation = ({ 
-  activeTab, 
-  setActiveTab, 
-  formData, 
+const TabNavigation = ({
+  activeTab,
+  setActiveTab,
+  formData,
   editingItem = null,
   className = ""
 }) => {
-  
-const tabs = [
-  { 
-    id: 'basico', 
-    label: 'Básico', 
-    icon: FileText, 
-    required: true,
-    shortLabel: 'Básico'
-  },
-  { 
-    id: 'proveedor', 
-    label: 'Proveedor', 
-    icon: Building2, 
-    required: formData?.tipo !== 'servicio',
-    shortLabel: 'Proveedor'
-  },
-  { 
-    id: 'precios', 
-    label: 'Precios', 
-    icon: DollarSign, 
-    required: true,
-    shortLabel: 'Precios'
-  },
-  { 
-    id: 'stock', 
-    label: 'Stock', 
-    icon: Package, 
-    required: formData?.tipo !== 'servicio',
-    shortLabel: 'Stock'
-  },
-  { 
-    id: 'multimedia', 
-    label: 'Imagen', 
-    icon: Upload, 
-    required: false,
-    shortLabel: 'Imagen'
-  }
-];
+
+  const tabs = [
+    {
+      id: 'basico',
+      label: 'Básico',
+      icon: FileText,
+      required: true,
+      shortLabel: 'Básico'
+    },
+    {
+      id: 'proveedor',
+      label: 'Proveedor',
+      icon: Building2,
+      required: formData?.tipo !== 'servicio',
+      shortLabel: 'Proveedor'
+    },
+    {
+      id: 'precios',
+      label: 'Precios',
+      icon: DollarSign,
+      required: true,
+      shortLabel: 'Precios'
+    },
+    {
+      id: 'stock',
+      label: 'Stock',
+      icon: Package,
+      required: formData?.tipo !== 'servicio',
+      shortLabel: 'Stock'
+    },
+    {
+      id: 'multimedia',
+      label: 'Imagen',
+      icon: Upload,
+      required: false,
+      shortLabel: 'Imagen'
+    }
+  ];
 
   // Evaluar completitud de cada tab
   const getTabStatus = (tab) => {
@@ -56,25 +56,25 @@ const tabs = [
       case 'basico':
         const hasBasicInfo = formData.descripcion?.trim() && formData.codigo_barras?.trim();
         return hasBasicInfo ? 'complete' : 'incomplete';
-        
+
       case 'precios':
-        const hasPrices = formData.precio_costo && formData.precio_venta && 
-                         parseFloat(formData.precio_costo) > 0 && parseFloat(formData.precio_venta) > 0;
+        const hasPrices = formData.precio_costo && formData.precio_venta &&
+          parseFloat(formData.precio_costo) > 0 && parseFloat(formData.precio_venta) > 0;
         const validPrices = hasPrices && parseFloat(formData.precio_venta) > parseFloat(formData.precio_costo);
         return validPrices ? 'complete' : hasPrices ? 'warning' : 'incomplete';
-        
+
       case 'stock':
         if (formData.tipo === 'servicio') return 'not_applicable';
         const hasStock = formData.stock !== undefined && formData.stock !== '' && parseInt(formData.stock) >= 0;
         return hasStock ? 'complete' : 'incomplete';
-        
+
       case 'multimedia':
         return formData.imagen_url ? 'complete' : 'optional';
-        
+
       case 'proveedor':
         if (formData.tipo === 'servicio') return 'not_applicable';
         return formData.proveedor ? 'complete' : 'optional';
-        
+
       default:
         return 'optional';
     }
@@ -83,9 +83,9 @@ const tabs = [
   // Obtener estilo según el estado
   const getTabStyle = (tab, isActive) => {
     const status = getTabStatus(tab);
-    
+
     const baseStyle = "flex items-center justify-center space-x-1 px-1 sm:px-2 py-2 text-xs font-medium rounded-t-lg transition-all duration-200 relative group min-w-0";
-    
+
     if (isActive) {
       switch (status) {
         case 'complete':
@@ -118,7 +118,7 @@ const tabs = [
   // Obtener indicador de estado
   const getStatusIndicator = (tab) => {
     const status = getTabStatus(tab);
-    
+
     switch (status) {
       case 'complete':
         return <CheckCircle className="h-3 w-3 text-green-500" />;
@@ -142,22 +142,22 @@ const tabs = [
   // Obtener tooltip descriptivo
   const getTooltip = (tab) => {
     const status = getTabStatus(tab);
-    
+
     switch (tab.id) {
       case 'basico':
         return status === 'complete' ? 'Información básica completa' : 'Faltan: descripción o código';
       case 'precios':
-        return status === 'complete' ? 'Precios configurados correctamente' : 
-               status === 'warning' ? 'Precio de venta debe ser mayor al costo' :
-               'Faltan: precios de costo o venta';
+        return status === 'complete' ? 'Precios configurados correctamente' :
+          status === 'warning' ? 'Precio de venta debe ser mayor al costo' :
+            'Faltan: precios de costo o venta';
       case 'stock':
         return formData?.tipo === 'servicio' ? 'Los servicios no manejan stock' :
-               status === 'complete' ? 'Stock configurado' : 'Falta configurar stock';
+          status === 'complete' ? 'Stock configurado' : 'Falta configurar stock';
       case 'multimedia':
         return status === 'complete' ? 'Imagen agregada' : 'Imagen opcional';
       case 'proveedor':
         return formData?.tipo === 'servicio' ? 'Los servicios no requieren proveedor' :
-               status === 'complete' ? 'Proveedor asignado' : 'Proveedor opcional';
+          status === 'complete' ? 'Proveedor asignado' : 'Proveedor opcional';
       default:
         return `Sección ${tab.label}`;
     }
@@ -171,10 +171,10 @@ const tabs = [
       }
       return tab.required;
     });
-    
+
     const completedTabs = requiredTabs.filter(tab => getTabStatus(tab) === 'complete');
     const progress = (completedTabs.length / requiredTabs.length) * 100;
-    
+
     return {
       completed: completedTabs.length,
       total: requiredTabs.length,
@@ -186,7 +186,7 @@ const tabs = [
 
   return (
     <div className={`border-b border-white/30 mb-6 ${className}`}>
-      
+
       {/* Barra de progreso */}
       <div className="mb-4 px-1">
         <div className="flex items-center justify-between mb-2">
@@ -198,39 +198,38 @@ const tabs = [
           </span>
         </div>
         <div className="w-full bg-gray-200/50 backdrop-blur-sm rounded-full h-2 border border-gray-300/30">
-          <div 
-            className={`h-2 rounded-full transition-all duration-500 ${
-              progress.percentage === 100 ? 'bg-green-500' :
+          <div
+            className={`h-2 rounded-full transition-all duration-500 ${progress.percentage === 100 ? 'bg-green-500' :
               progress.percentage >= 50 ? 'bg-blue-500' :
-              'bg-orange-500'
-            }`}
+                'bg-orange-500'
+              }`}
             style={{ width: `${progress.percentage}%` }}
           ></div>
         </div>
       </div>
 
       {/* Navegación de tabs */}
-<nav className="grid grid-cols-5 gap-1">
-  {tabs.map((tab) => {
-    const Icon = tab.icon;
-    const isActive = activeTab === tab.id;
-    const status = getTabStatus(tab);
-    const isDisabled = status === 'not_applicable' && !isActive;
-    
-    return (
-      <button
-        key={tab.id}
-        onClick={() => !isDisabled && setActiveTab(tab.id)}
-        disabled={isDisabled}
-        className={`${getTabStyle(tab, isActive)} justify-center min-w-0`}
-        title={getTooltip(tab)}
-      >
+      <nav className="grid grid-cols-5 gap-1">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          const status = getTabStatus(tab);
+          const isDisabled = status === 'not_applicable' && !isActive;
+
+          return (
+            <button
+              key={tab.id}
+              onClick={() => !isDisabled && setActiveTab(tab.id)}
+              disabled={isDisabled}
+              className={`${getTabStyle(tab, isActive)} justify-center min-w-0`}
+              title={getTooltip(tab)}
+            >
               <Icon className="h-3 w-3 flex-shrink-0" />
-              
+
               {/* Texto adaptativo */}
               <span className="hidden md:inline">{tab.label}</span>
               <span className="md:hidden">{tab.shortLabel}</span>
-              
+
               {/* Indicador de estado */}
               <div className="ml-1">
                 {getStatusIndicator(tab)}
@@ -241,66 +240,57 @@ const tabs = [
                 <div className="bg-black text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap shadow-lg">
                   {getTooltip(tab)}
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-black"></div>
-               </div>
-             </div>
-           </button>
-         );
-       })}
-     </nav>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </nav>
 
-     {/* Indicadores adicionales */}
-     <div className="flex items-center justify-between mt-3 px-1">
-       
-       {/* Estado general */}
-       <div className="flex items-center space-x-2">
-         {progress.percentage === 100 ? (
-           <div className="flex items-center space-x-1 text-xs text-green-600">
-             <CheckCircle className="h-3 w-3" />
-             <span className="font-medium">Formulario completo</span>
-           </div>
-         ) : progress.percentage >= 50 ? (
-           <div className="flex items-center space-x-1 text-xs text-blue-600">
-             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-             <span className="font-medium">En progreso</span>
-           </div>
-         ) : (
-           <div className="flex items-center space-x-1 text-xs text-orange-600">
-             <AlertTriangle className="h-3 w-3" />
-             <span className="font-medium">Campos requeridos pendientes</span>
-           </div>
-         )}
-       </div>
+      {/* Indicadores adicionales */}
+      <div className="flex items-center justify-between mt-3 px-1">
 
-       {/* Tipo de item */}
-       <div className="flex items-center space-x-2">
-         <span className="text-xs text-gray-500">Tipo:</span>
-         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-           formData?.tipo === 'producto' ? 'bg-blue-100 text-blue-700' :
-           formData?.tipo === 'servicio' ? 'bg-green-100 text-green-700' :
-           formData?.tipo === 'electrobar' ? 'bg-orange-100 text-orange-700' :
-           'bg-gray-100 text-gray-700'
-         }`}>
-           {formData?.tipo ? (
-             formData.tipo === 'producto' ? ' Producto' :
-             formData.tipo === 'servicio' ? ' Servicio' :
-             formData.tipo === 'electrobar' ? ' Electrobar' :
-             formData.tipo
-           ) : 'No definido'}
-         </span>
-       </div>
-     </div>
+        {/* Estado general */}
+        <div className="flex items-center space-x-2">
+          {progress.percentage === 100 ? (
+            <div className="flex items-center space-x-1 text-xs text-green-600">
+              <CheckCircle className="h-3 w-3" />
+              <span className="font-medium">Formulario completo</span>
+            </div>
+          ) : progress.percentage >= 50 ? (
+            <div className="flex items-center space-x-1 text-xs text-blue-600">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="font-medium">En progreso</span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-1 text-xs text-orange-600">
+              <AlertTriangle className="h-3 w-3" />
+              <span className="font-medium">Campos requeridos pendientes</span>
+            </div>
+          )}
+        </div>
 
-     {/* Atajos de teclado (solo mostrar en desktop) */}
-     <div className="hidden lg:block mt-2 px-1">
-       <div className="flex items-center space-x-4 text-xs text-gray-400">
-         <span> Atajos:</span>
-         <span><kbd className="px-1 bg-gray-100 rounded">Tab</kbd> Siguiente campo</span>
-         <span><kbd className="px-1 bg-gray-100 rounded">Ctrl+S</kbd> Guardar</span>
-         <span><kbd className="px-1 bg-gray-100 rounded">Esc</kbd> Cerrar</span>
-       </div>
-     </div>
-   </div>
- );
+        {/* Tipo de item */}
+        <div className="flex items-center space-x-2">
+          <span className="text-xs text-gray-500">Tipo:</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${formData?.tipo === 'producto' ? 'bg-blue-100 text-blue-700' :
+            formData?.tipo === 'servicio' ? 'bg-green-100 text-green-700' :
+              formData?.tipo === 'electrobar' ? 'bg-orange-100 text-orange-700' :
+                'bg-gray-100 text-gray-700'
+            }`}>
+            {formData?.tipo ? (
+              formData.tipo === 'producto' ? <><Package className="h-3 w-3" /> Producto</> :
+                formData.tipo === 'servicio' ? <><Wrench className="h-3 w-3" /> Servicio</> :
+                  formData.tipo === 'electrobar' ? <><Coffee className="h-3 w-3" /> Electrobar</> :
+                    formData.tipo
+            ) : 'No definido'}
+          </span>
+        </div>
+      </div>
+
+
+    </div>
+  );
 };
 
 export default TabNavigation;
