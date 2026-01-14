@@ -918,7 +918,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                             </div>
                           </th>
 
-                          <th className="w-[22%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          <th className="w-[25%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
                             <div className="flex items-center justify-center gap-1">
                               <Package className="h-3 w-3" />
                               <span>Descripción</span>
@@ -932,13 +932,13 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                             </div>
                           </th>
 
-                          <th className="w-[7%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          <th className="w-[4%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
                             <div className="flex items-center justify-center">
                               <Tag className="h-3 w-3" />
                             </div>
                           </th>
 
-                          <th className="w-[10%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          <th className="w-[11%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
                             <div className="flex items-center justify-center gap-1">
                               <DollarSign className="h-3 w-3" />
                               <span>Precio</span>
@@ -1012,7 +1012,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                               )}
                             </td>
 
-                            {/* Descripción */}
+                            {/* Descripción + Código Interno */}
                             <td className="px-1 py-2">
                               <div
                                 className="font-medium text-gray-900 text-xs truncate cursor-help"
@@ -1020,8 +1020,14 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                               >
                                 {item.descripcion}
                               </div>
-                              <div className="text-[10px] text-gray-500 truncate">
-                                {item.categoria || ''}
+                              <div className="flex items-center gap-1 text-[10px] text-gray-500 truncate">
+                                {item.codigo_interno && (
+                                  <span className="font-mono text-indigo-600" title={`Cód. Int: ${item.codigo_interno}`}>
+                                    {item.codigo_interno}
+                                  </span>
+                                )}
+                                {item.categoria && item.codigo_interno && <span>·</span>}
+                                {item.categoria && <span>{item.categoria}</span>}
                               </div>
                             </td>
 
@@ -1051,11 +1057,16 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                               </span>
                             </td>
 
-                            {/* Precio */}
+                            {/* Precio Venta + Costo */}
                             <td className="px-1 py-2 text-center">
                               <div className="font-bold text-gray-900 text-xs">
                                 ${item.precio.toFixed(0)}
                               </div>
+                              {item.precio_costo && (
+                                <div className="text-[10px] text-gray-500">
+                                  C: ${parseFloat(item.precio_costo || 0).toFixed(0)}
+                                </div>
+                              )}
                             </td>
 
                             {/* Stock */}
