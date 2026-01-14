@@ -902,90 +902,79 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                     <span> Desliza para ver más columnas </span>
                   </div>
 
-                  <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 shadow-lg overflow-x-auto">
-                    <table className="w-full min-w-[900px]">
+                  <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+                    <table className="w-full table-fixed">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                         <tr>
-                          <th className="w-[8%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center">
                               <Hash className="h-3 w-3" />
-                              <span>ID</span>
                             </div>
                           </th>
 
-                          <th className="w-[8%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center">
                               <Image className="h-3 w-3" />
-                              <span>Img</span>
                             </div>
                           </th>
 
-                          <th className="w-[25%] px-3 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[22%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center gap-1">
                               <Package className="h-3 w-3" />
                               <span>Descripción</span>
                             </div>
                           </th>
 
-                          <th className="w-[12%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[12%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center gap-1">
                               <BarChart3 className="h-3 w-3" />
                               <span>Código</span>
                             </div>
                           </th>
 
-                          {/* Tipo con icono */}
-                          <th className="w-[8%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[7%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center">
                               <Tag className="h-3 w-3" />
-                              <span>Tipo</span>
                             </div>
                           </th>
 
-                          <th className="w-[10%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[10%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center gap-1">
                               <DollarSign className="h-3 w-3" />
                               <span>Precio</span>
                             </div>
                           </th>
 
-                          {/* Stock con icono */}
-                          <th className="w-[6%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[7%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center">
                               <Boxes className="h-3 w-3" />
-                              <span>Stock</span>
                             </div>
                           </th>
 
-                          {/* Ubicación con icono */}
-                          <th className="w-[10%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[8%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center gap-1">
                               <MapPin className="h-3 w-3" />
-                              <span>Ubicación</span>
+                              <span className="hidden lg:inline">Ubic.</span>
                             </div>
                           </th>
 
-                          {/* Proveedor con icono */}
-                          <th className="w-[10%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[8%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center gap-1">
                               <Store className="h-3 w-3" />
-                              <span>Proveedor</span>
+                              <span className="hidden lg:inline">Prov.</span>
                             </div>
                           </th>
 
-                          {/* Estado con icono */}
-                          <th className="w-[8%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[6%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                            <div className="flex items-center justify-center">
                               <Circle className="h-3 w-3" />
-                              <span>Estado</span>
                             </div>
                           </th>
 
-                          {/* Acciones con icono - Destacado */}
-                          <th className="w-[12%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider bg-gray-100/80">
-                            <div className="flex items-center justify-center space-x-1">
+                          <th className="w-[10%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase bg-gray-100/80">
+                            <div className="flex items-center justify-center gap-1">
                               <Settings className="h-3 w-3" />
-                              <span>Acciones</span>
+                              <span className="hidden sm:inline">Acc.</span>
                             </div>
                           </th>
                         </tr>
@@ -999,219 +988,147 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                             onClick={() => handleViewItem(item)}
                           >
                             {/* ID - Compacto */}
-                            <td className="px-2 py-3 text-center w-[8%]">
-                              <div className="text-xs font-mono text-gray-400 truncate flex items-center justify-center" title={`#${item.id}`}>
-                                <Hash className="h-3 w-3 mr-1 text-gray-300" />
+                            <td className="px-1 py-2 text-center">
+                              <div className="text-[10px] font-mono text-gray-400 truncate" title={`#${item.id}`}>
                                 {item.id}
                               </div>
                             </td>
 
                             {/* Imagen - Más pequeña */}
-                            <td className="px-2 py-3 text-center w-[8%]">
+                            <td className="px-1 py-2 text-center">
                               {item.imagen_url ? (
                                 <img
                                   src={getImageUrl(item.imagen_url)}
                                   alt={item.descripcion}
-                                  className="w-10 h-10 object-cover rounded-lg border border-gray-200 shadow-sm mx-auto"
+                                  className="w-8 h-8 object-cover rounded border border-gray-200 mx-auto"
                                   onError={(e) => {
                                     if (e.target) e.target.style.display = 'none';
-                                    if (e.target?.nextSibling) e.target.nextSibling.style.display = 'flex';
                                   }}
                                 />
                               ) : (
-                                <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg border border-gray-200 flex items-center justify-center mx-auto text-gray-500">
+                                <div className="w-8 h-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mx-auto text-gray-400">
                                   {getIconoTipo(item.tipo)}
                                 </div>
                               )}
                             </td>
 
-                            {/* Descripción - Expandida con tooltip */}
-                            <td className="px-3 py-3 w-[25%]">
-                              <div className="space-y-1">
-                                <div
-                                  className="font-medium text-gray-900 text-sm truncate cursor-help"
-                                  title={item.descripcion}
-                                >
-                                  {item.descripcion}
-                                </div>
-                                <div className="flex items-center space-x-2 text-xs">
-                                  {item.categoria && (
-                                    <span className="text-gray-500 truncate flex items-center" title={item.categoria}>
-                                      <Folder className="h-3 w-3 mr-1" />
-                                      {item.categoria}
-                                    </span>
-                                  )}
-                                  {item.codigo_interno && (
-                                    <span className="text-gray-400 font-mono truncate" title={item.codigo_interno}>
-                                      {item.codigo_interno}
-                                    </span>
-                                  )}
-                                </div>
+                            {/* Descripción */}
+                            <td className="px-1 py-2">
+                              <div
+                                className="font-medium text-gray-900 text-xs truncate cursor-help"
+                                title={item.descripcion}
+                              >
+                                {item.descripcion}
+                              </div>
+                              <div className="text-[10px] text-gray-500 truncate">
+                                {item.categoria || ''}
                               </div>
                             </td>
 
-                            {/* Código de Barras - Estilo suave */}
-                            <td className="px-2 py-3 text-center w-[12%]">
-                              {item.codigo_barras ? (
-                                <div
-                                  className="font-mono text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded-md cursor-help inline-block"
-                                  title={item.codigo_barras}
-                                >
-                                  {item.codigo_barras}
-                                </div>
-                              ) : (
-                                <span className="text-gray-400 text-xs">Sin código</span>
-                              )}
+                            {/* Código de Barras */}
+                            <td className="px-1 py-2 text-center">
+                              <div
+                                className="font-mono text-[10px] text-gray-600 truncate cursor-help"
+                                title={item.codigo_barras}
+                              >
+                                {item.codigo_barras || '-'}
+                              </div>
                             </td>
 
-                            {/* Tipo - Compacto */}
-                            <td className="px-2 py-3 text-center w-[8%]">
+                            {/* Tipo - Solo icono */}
+                            <td className="px-1 py-2 text-center">
                               <span
-                                className={`inline-flex items-center px-1 py-1 text-xs font-medium rounded-full border ${getColorTipo(item.tipo)}`}
+                                className={`inline-flex items-center justify-center w-6 h-6 text-[10px] font-medium rounded-full ${getColorTipo(item.tipo)}`}
                                 title={item.tipo === 'producto' ? 'Producto' : item.tipo === 'servicio' ? 'Servicio' : 'Electrobar'}
                               >
                                 {item.tipo === 'producto' ? (
-                                  <>
-                                    <ShoppingCart className="h-3 w-3 mr-1" />
-                                    Prod
-                                  </>
+                                  <ShoppingCart className="h-3 w-3" />
                                 ) : item.tipo === 'servicio' ? (
-                                  <>
-                                    <Wrench className="h-3 w-3 mr-1" />
-                                    Serv
-                                  </>
+                                  <Wrench className="h-3 w-3" />
                                 ) : (
-                                  <>
-                                    <Coffee className="h-3 w-3 mr-1" />
-                                    Elec
-                                  </>
+                                  <Coffee className="h-3 w-3" />
                                 )}
                               </span>
                             </td>
 
-                            {/* Precio - Compacto */}
-                            <td className="px-2 py-3 text-center w-[10%]">
-                              <div className="space-y-1">
-                                <div className="font-bold text-gray-900 text-sm flex items-center justify-center">
-                                  <DollarSign className="h-3 w-3" />
-                                  {item.precio.toFixed(1)}
-                                </div>
-                                {item.precio_costo && (
-                                  <div className="text-xs text-gray-500 flex items-center justify-center">
-                                    <DollarSign className="h-2 w-2" />
-                                    {parseFloat(item.precio_costo || 0).toFixed(1)}
-                                  </div>
-                                )}
+                            {/* Precio */}
+                            <td className="px-1 py-2 text-center">
+                              <div className="font-bold text-gray-900 text-xs">
+                                ${item.precio.toFixed(0)}
                               </div>
                             </td>
 
-                            {/* Stock - Compacto */}
-                            <td className="px-2 py-3 text-center w-[8%]">
+                            {/* Stock */}
+                            <td className="px-1 py-2 text-center">
                               {item.tipo === 'servicio' ? (
-                                <span className="text-gray-400 text-xs">N/A</span>
+                                <span className="text-gray-400 text-[10px]">-</span>
                               ) : (
-                                <div className="space-y-1">
-                                  <span className={`inline-flex items-center px-1 py-1 text-xs font-medium rounded-full ${item.stock === 0 ? 'bg-red-100 text-red-700' :
-                                    (item.stock_minimo && item.stock <= item.stock_minimo) ? 'bg-orange-100 text-orange-700' :
-                                      'bg-green-100 text-green-700'
-                                    }`}>
-                                    {item.stock}
-                                    {item.stock === 0 && <XCircle className="h-3 w-3 ml-1" />}
-                                    {item.stock_minimo && item.stock <= item.stock_minimo && item.stock > 0 && <AlertTriangle className="h-3 w-3 ml-1" />}
-                                  </span>
-                                  {item.stock_minimo && (
-                                    <div className="text-xs text-gray-400">
-                                      {item.stock_minimo}
-                                    </div>
-                                  )}
-                                </div>
+                                <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded ${item.stock === 0 ? 'bg-red-100 text-red-700' :
+                                  (item.stock_minimo && item.stock <= item.stock_minimo) ? 'bg-orange-100 text-orange-700' :
+                                    'bg-green-100 text-green-700'
+                                  }`}>
+                                  {item.stock}
+                                </span>
                               )}
                             </td>
 
                             {/* Ubicación */}
-                            <td className="px-2 py-3 text-center w-[10%]">
-                              {item.ubicacion_fisica ? (
-                                <div
-                                  className="text-[10px] text-gray-700 bg-gray-100 px-2 py-1 rounded-md inline-block cursor-help"
-                                  title={item.ubicacion_fisica}
-                                >
-                                  {item.ubicacion_fisica}
-                                </div>
+                            <td className="px-1 py-2 text-center">
+                              <div
+                                className="text-[10px] text-gray-600 truncate cursor-help"
+                                title={item.ubicacion_fisica}
+                              >
+                                {item.ubicacion_fisica || '-'}
+                              </div>
+                            </td>
+
+                            {/* Proveedor */}
+                            <td className="px-1 py-2 text-center">
+                              <div
+                                className="text-[10px] text-gray-600 truncate cursor-help"
+                                title={item.proveedor}
+                              >
+                                {item.proveedor || '-'}
+                              </div>
+                            </td>
+
+                            {/* Estado */}
+                            <td className="px-1 py-2 text-center">
+                              {item.activo !== false ? (
+                                <CheckCircle className="h-4 w-4 text-green-500 mx-auto" />
                               ) : (
-                                <span className="text-gray-400 text-xs">-</span>
+                                <XCircle className="h-4 w-4 text-red-500 mx-auto" />
                               )}
                             </td>
 
-                            {/* Proveedor - Truncado */}
-                            <td className="px-2 py-3 text-center w-[10%]">
-                              {item.proveedor ? (
-                                <div className="space-y-1">
-                                  <div
-                                    className="text-sm font-medium text-gray-900 truncate cursor-help"
-                                    title={item.proveedor}
-                                  >
-                                    {item.proveedor}
-                                  </div>
-                                  {item.telefono_proveedor && (
-                                    <div
-                                      className="text-xs text-gray-500 truncate cursor-help flex items-center justify-center"
-                                      title={item.telefono_proveedor}
-                                    >
-                                      <Phone className="h-3 w-3 mr-1" />
-                                      {item.telefono_proveedor}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-gray-400 text-xs">Sin prov.</span>
-                              )}
-                            </td>
-
-                            {/* Estado - Compacto */}
-                            <td className="px-2 py-3 text-center w-[8%]">
-                              <span className={`inline-flex items-center px-1 py-1 text-xs font-medium rounded-full ${item.activo !== false
-                                ? 'bg-green-100 text-green-700 border border-green-200'
-                                : 'bg-red-100 text-red-700 border border-red-200'
-                                }`}>
-                                {item.activo !== false ? (
-                                  <CheckCircle className="h-3 w-3" />
-                                ) : (
-                                  <XCircle className="h-3 w-3" />
-                                )}
-                              </span>
-                            </td>
-
-                            {/* Acciones - Destacada con fondo */}
-                            <td className="px-2 py-3 text-center w-[12%] bg-gray-50" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex justify-center space-x-1">
-                                {/* Ver - Todos los roles */}
+                            {/* Acciones */}
+                            <td className="px-1 py-2 text-center bg-gray-50" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-center gap-0.5">
                                 <button
                                   onClick={() => handleViewItem(item)}
-                                  className="text-blue-600 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded-lg transition-all"
-                                  title="Ver producto"
+                                  className="text-blue-600 hover:text-blue-700 p-1 hover:bg-blue-100 rounded transition-all"
+                                  title="Ver"
                                 >
-                                  <Eye className="h-4 w-4" />
+                                  <Eye className="h-3.5 w-3.5" />
                                 </button>
 
-                                {/* Editar - Solo Admin */}
                                 {usuario?.rol === 'admin' && (
                                   <button
                                     onClick={() => handleEditItem(item)}
-                                    className="text-indigo-600 hover:text-indigo-700 p-1.5 hover:bg-indigo-50 rounded-lg transition-all"
-                                    title="Editar producto"
+                                    className="text-indigo-600 hover:text-indigo-700 p-1 hover:bg-indigo-100 rounded transition-all"
+                                    title="Editar"
                                   >
-                                    <Edit2 className="h-4 w-4" />
+                                    <Edit2 className="h-3.5 w-3.5" />
                                   </button>
                                 )}
 
-                                {/* Borrar - Solo Admin */}
                                 {usuario?.rol === 'admin' && (
                                   <button
                                     onClick={() => handleDeleteItem(item)}
-                                    className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
-                                    title="Eliminar producto"
+                                    className="text-red-600 hover:text-red-700 p-1 hover:bg-red-100 rounded transition-all"
+                                    title="Eliminar"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 )}
                               </div>
