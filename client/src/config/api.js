@@ -3,22 +3,22 @@ import axios from 'axios';
 
 //  DETECCIÓN AUTOMÁTICA DE IP/HOST
 const getBaseURL = () => {
-  // Usar variable de entorno si está disponible
+  // 1. Prioridad: Variable de entorno (útil para Docker o Vercel)
   const envApiUrl = import.meta.env.VITE_API_URL;
-  if (envApiUrl) {
-    return `${envApiUrl}/api`;
-  }
+  if (envApiUrl) return `${envApiUrl}/api`;
 
-  // Fallback: detectar automáticamente basado en hostname
   const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
 
-  // Para localhost, usar localhost
+  // 2. Si estás en tu PC (Localhost)
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `https://localhost:3001/api`;
+    // Aquí sí usamos el puerto de tu backend local
+    return `http://localhost:3000/api`;
   }
 
-  // Para red local, usar la misma IP del frontend con puerto 3001
-  return `https://${hostname}:3001/api`;
+  // 3. PRODUCCIÓN (Nginx en el VPS)
+  // No usamos puerto 3001. Nginx recibe en 443 y pasa a 3000 interno.
+  return `${protocol}//${hostname}/api`;
 };
 
 //  CONFIGURACIÓN PRINCIPAL
