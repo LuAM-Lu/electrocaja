@@ -103,7 +103,7 @@ export const useSocketEvents = () => {
           fontWeight: '600'
         }
       });
-      
+
       // Información adicional si está disponible
       if (data.admin_user) {
         toast.error(`👮‍♂️ Desconectado por: ${data.admin_user}`, {
@@ -116,7 +116,7 @@ export const useSocketEvents = () => {
           }
         });
       }
-      
+
       // Forzar logout después de mostrar el mensaje
       setTimeout(() => {
         logout();
@@ -144,14 +144,17 @@ export const useSocketEvents = () => {
         updateCajaStatus(data.caja);
       }
     };
-    
+
     const handleCajaCerrada = (data) => {
       console.log('🔒 Caja cerrada:', data);
 
       // ✅ OBTENER USUARIO ACTUAL DEL STORE (no del closure)
       const { usuario: usuarioActual } = useAuthStore.getState();
 
-      // Evitar duplicado si el usuario actual cerró la caja
+      // 🔇 NO MOSTRAR TOAST - El modal de cierre ya tiene su propia UI de progreso
+      // Para otros usuarios, el estado de caja se actualiza silenciosamente
+      // El toast era redundante y confuso con la pantalla de cierre
+      /*
       if (usuarioActual?.nombre === data.usuario) return;
       toast.success(`🔒 Caja cerrada por ${data.usuario}`, {
         duration: 4000,
@@ -161,6 +164,7 @@ export const useSocketEvents = () => {
           color: '#1E40AF'
         }
       });
+      */
 
       // 🔧 ACTUALIZAR ESTADO DE CAJA EN LUGAR DE RECARGAR
       if (updateCajaStatus && data.caja) {
@@ -200,35 +204,35 @@ export const useSocketEvents = () => {
       }
     };
 
-                // En useSocketEvents.js, función handleUsuariosActualizados:
-            const handleUsuariosActualizados = (data) => {
-              if (data.usuarios && Array.isArray(data.usuarios)) {
-                const usuariosFormateados = data.usuarios.map((userStr, index) => {
-                  // 🔧 REGEX MEJORADO
-                  const match = userStr.match(/^(.+?)\s+\((.+)\)$/);
-                  if (match) {
-                    return {
-                      id: `user_${index}_${match[1].replace(/\s+/g, '_')}`,
-                      nombre: match[1].trim(),
-                      rol: match[2],
-                      sucursal: 'Principal',
-                      ultima_actividad: new Date().toISOString()
-                    };
-                  }
-                  
-                  return {
-                    id: `user_${index}_${userStr.replace(/\s+/g, '_')}`,
-                    nombre: userStr || 'Usuario Desconocido',
-                    rol: 'usuario',
-                    sucursal: 'Principal',
-                    ultima_actividad: new Date().toISOString()
-                  };
-                });
-                
-                // ACTUALIZAR EL STORE
-                useAuthStore.setState({ usuariosConectados: usuariosFormateados });
-              }
+    // En useSocketEvents.js, función handleUsuariosActualizados:
+    const handleUsuariosActualizados = (data) => {
+      if (data.usuarios && Array.isArray(data.usuarios)) {
+        const usuariosFormateados = data.usuarios.map((userStr, index) => {
+          // 🔧 REGEX MEJORADO
+          const match = userStr.match(/^(.+?)\s+\((.+)\)$/);
+          if (match) {
+            return {
+              id: `user_${index}_${match[1].replace(/\s+/g, '_')}`,
+              nombre: match[1].trim(),
+              rol: match[2],
+              sucursal: 'Principal',
+              ultima_actividad: new Date().toISOString()
             };
+          }
+
+          return {
+            id: `user_${index}_${userStr.replace(/\s+/g, '_')}`,
+            nombre: userStr || 'Usuario Desconocido',
+            rol: 'usuario',
+            sucursal: 'Principal',
+            ultima_actividad: new Date().toISOString()
+          };
+        });
+
+        // ACTUALIZAR EL STORE
+        useAuthStore.setState({ usuariosConectados: usuariosFormateados });
+      }
+    };
 
     const handleUsersUpdate = (data) => {
       // Aquí podrías actualizar la lista completa si es necesario
@@ -249,7 +253,7 @@ export const useSocketEvents = () => {
           cargarCajaActual(true); // forceRefresh = true
         }, 300);
       }
-      
+
       // También intentar agregar la transacción al store (fallback)
       if (addTransaction && transaction?.transaccion) {
         const { usuario } = useAuthStore.getState();
@@ -262,7 +266,7 @@ export const useSocketEvents = () => {
               fecha_hora: transaction.transaccion.fechaHora || transaction.transaccion.fecha_hora || new Date().toISOString()
             }
           };
-          
+
           addTransaction(transaccionMapeada);
           toast.success(`💰 ${transaction.usuario} registró una transacción`);
         } else {
@@ -280,15 +284,15 @@ export const useSocketEvents = () => {
           cargarCajaActual(true); // forceRefresh = true
         }, 300);
       }
-      
+
       // También intentar agregar la transacción al store si está disponible (fallback)
       if (addTransaction && data?.transaccion) {
         const { usuario } = useAuthStore.getState();
         // Agregar transacción de otros usuarios o si es servicio técnico (siempre actualizar)
-        const esTransaccionServicio = data.tipo === 'servicio_tecnico' || 
-                                      data.transaccion?.servicioTecnicoId ||
-                                      data.transaccion?.tipo === 'servicio_tecnico';
-        
+        const esTransaccionServicio = data.tipo === 'servicio_tecnico' ||
+          data.transaccion?.servicioTecnicoId ||
+          data.transaccion?.tipo === 'servicio_tecnico';
+
         if (data.usuario !== usuario?.nombre || esTransaccionServicio) {
           const transaccionMapeada = {
             transaccion: {
@@ -298,7 +302,7 @@ export const useSocketEvents = () => {
               fecha_hora: data.transaccion.fechaHora || data.transaccion.fecha_hora || new Date().toISOString()
             }
           };
-          
+
           addTransaction(transaccionMapeada);
           if (!esTransaccionServicio && data.usuario !== usuario?.nombre) {
             toast.success(`💰 ${data.usuario} registró una transacción`);
@@ -315,87 +319,87 @@ export const useSocketEvents = () => {
     };
 
     const handleError = (data) => {
-    console.error('❌ Error del servidor:', data);
-    toast.error(data.message || 'Error del servidor');
-  };
+      console.error('❌ Error del servidor:', data);
+      toast.error(data.message || 'Error del servidor');
+    };
 
-  // 🆕 HANDLERS PARA CAJAS PENDIENTES
-  const handleAutoCierreEjecutado = (data) => {
-    
-    const { cajas_afectadas, timestamp } = data;
-    
-    if (cajas_afectadas && cajas_afectadas.length > 0) {
-      // Mostrar notificación a todos los usuarios
-      toast.warning(`🕚 Auto-cierre ejecutado: ${cajas_afectadas.length} caja(s) pendiente(s) de conteo físico`, {
-        duration: 8000,
+    // 🆕 HANDLERS PARA CAJAS PENDIENTES
+    const handleAutoCierreEjecutado = (data) => {
+
+      const { cajas_afectadas, timestamp } = data;
+
+      if (cajas_afectadas && cajas_afectadas.length > 0) {
+        // Mostrar notificación a todos los usuarios
+        toast.warning(`🕚 Auto-cierre ejecutado: ${cajas_afectadas.length} caja(s) pendiente(s) de conteo físico`, {
+          duration: 8000,
+          style: {
+            background: '#FEF3C7',
+            border: '1px solid #F59E0B',
+            color: '#92400E'
+          }
+        });
+
+        // Si el usuario actual es responsable de alguna caja, notificar específicamente
+        const usuario = useAuthStore.getState().usuario;
+        if (usuario) {
+          const cajaUsuario = cajas_afectadas.find(caja =>
+            caja.usuarioResponsable === usuario.nombre
+          );
+
+          if (cajaUsuario) {
+            toast.error(`🚨 Tienes una caja pendiente de cierre del ${cajaUsuario.fechaApertura}`, {
+              duration: 10000,
+              style: {
+                background: '#FEE2E2',
+                border: '2px solid #EF4444',
+                color: '#991B1B',
+                fontSize: '14px',
+                fontWeight: '600'
+              }
+            });
+          }
+        }
+      }
+    };
+
+    const handleCajaPendienteResuelta = (data) => {
+      console.log('✅ Caja pendiente resuelta:', data);
+
+      const { resuelto_por, era_responsable } = data;
+
+      toast.success(`✅ Caja pendiente resuelta por ${resuelto_por}${era_responsable ? ' (responsable)' : ' (admin)'}`, {
+        duration: 5000,
         style: {
-          background: '#FEF3C7',
-          border: '1px solid #F59E0B',
-          color: '#92400E'
+          background: '#ECFDF5',
+          border: '1px solid #10B981',
+          color: '#065F46'
         }
       });
 
-      // Si el usuario actual es responsable de alguna caja, notificar específicamente
-      const usuario = useAuthStore.getState().usuario;
-      if (usuario) {
-        const cajaUsuario = cajas_afectadas.find(caja => 
-          caja.usuarioResponsable === usuario.nombre
-        );
-        
-        if (cajaUsuario) {
-          toast.error(`🚨 Tienes una caja pendiente de cierre del ${cajaUsuario.fechaApertura}`, {
-            duration: 10000,
-            style: {
-              background: '#FEE2E2',
-              border: '2px solid #EF4444',
-              color: '#991B1B',
-              fontSize: '14px',
-              fontWeight: '600'
-            }
-          });
+      // Limpiar estado de bloqueo si el usuario actual tenía caja pendiente
+      const { cajaPendienteCierre, limpiarCajaPendiente } = useAuthStore.getState();
+      if (cajaPendienteCierre) {
+        limpiarCajaPendiente();
+        console.log('🧹 Estado de caja pendiente limpiado por resolución');
+      }
+    };
+
+    const handleSistemaDesbloqueado = (data) => {
+      console.log('🔓 Sistema desbloqueado:', data);
+
+      toast.success(`🔓 ${data.motivo}`, {
+        duration: 4000,
+        style: {
+          background: '#ECFDF5',
+          border: '1px solid #10B981',
+          color: '#065F46'
         }
-      }
-    }
-  };
+      });
 
-  const handleCajaPendienteResuelta = (data) => {
-    console.log('✅ Caja pendiente resuelta:', data);
-    
-    const { resuelto_por, era_responsable } = data;
-    
-    toast.success(`✅ Caja pendiente resuelta por ${resuelto_por}${era_responsable ? ' (responsable)' : ' (admin)'}`, {
-      duration: 5000,
-      style: {
-        background: '#ECFDF5',
-        border: '1px solid #10B981',
-        color: '#065F46'
-      }
-    });
-
-    // Limpiar estado de bloqueo si el usuario actual tenía caja pendiente
-    const { cajaPendienteCierre, limpiarCajaPendiente } = useAuthStore.getState();
-    if (cajaPendienteCierre) {
+      // Asegurar que el estado local está limpio
+      const { limpiarCajaPendiente } = useAuthStore.getState();
       limpiarCajaPendiente();
-      console.log('🧹 Estado de caja pendiente limpiado por resolución');
-    }
-  };
-
-  const handleSistemaDesbloqueado = (data) => {
-    console.log('🔓 Sistema desbloqueado:', data);
-    
-    toast.success(`🔓 ${data.motivo}`, {
-      duration: 4000,
-      style: {
-        background: '#ECFDF5',
-        border: '1px solid #10B981',
-        color: '#065F46'
-      }
-    });
-
-    // Asegurar que el estado local está limpio
-    const { limpiarCajaPendiente } = useAuthStore.getState();
-    limpiarCajaPendiente();
-  };
+    };
 
     //     // 🔧 REGISTRAR TODOS LOS LISTENERS
     //     socket\.off\('bloquear_usuarios'\);\nsocket\.off\('bloquear_usuarios_diferencia'\);\nsocket\.off\('desbloquear_usuarios'\);\nsocket\.off\('force_logout'\);\nsocket\.off\('caja_abierta'\);\nsocket\.off\('caja_cerrada'\);\nsocket\.off\('user-connected'\);\nsocket\.off\('user-disconnected'\);\nsocket\.off\('users-update'\);\nsocket\.off\('caja-updated'\);\nsocket\.off\('transaction-added'\);\nsocket\.off\('transaction-deleted'\);\nsocket\.off\('error'\);\nsocket\.off\('venta_procesada'\);\nsocket\.off\('usuarios_conectados_actualizado'\);\nsocket\.off\('stock_reservado'\);\nsocket\.off\('stock_liberado'\);\nsocket\.off\('auto_cierre_ejecutado'\);\nsocket\.off\('caja_pendiente_resuelta'\);\nsocket\.off\('sistema_desbloqueado'\);\n\n//\ REGISTRAR\ TODOS\ LOS\ LISTENERS\nsocket\.on\('bloquear_usuarios',\ handleBloqueaUsuarios\);
@@ -435,12 +439,12 @@ export const useSocketEvents = () => {
     // Limpiar listeners anteriores antes de agregar nuevos
     socket.off('transaction-added');
     socket.off('transaction-deleted');
-    
+
     socket.on('transaction-added', handleTransactionAdded);
     socket.on('transaction-deleted', handleTransactionDeleted);
     // 🆕 ESCUCHAR evento nueva_transaccion del backend (para servicios técnicos)
     socket.on('nueva_transaccion', handleNuevaTransaccion);
-    
+
     socket.on('error', handleError);
 
     socket.on('venta_procesada', handleVentaProcesada);
@@ -448,7 +452,7 @@ export const useSocketEvents = () => {
     // 🆕 EVENTOS DE STOCK EN TIEMPO REAL
     socket.on('stock_reservado', handleStockReservado);
     socket.on('stock_liberado', handleStockLiberado);
-     // 🆕 LISTENERS PARA CAJAS PENDIENTES
+    // 🆕 LISTENERS PARA CAJAS PENDIENTES
     socket.on('auto_cierre_ejecutado', handleAutoCierreEjecutado);
     socket.on('caja_pendiente_resuelta', handleCajaPendienteResuelta);
     socket.on('sistema_desbloqueado', handleSistemaDesbloqueado);
@@ -481,149 +485,149 @@ export const useSocketEvents = () => {
     };
   }, [socket?.id]);
 
-// ✅ HANDLER PARA VENTA PROCESADA - OPTIMIZADO SIN REFRESH
-const handleVentaProcesada = (data) => {
-  console.log('🚀 VENTA PROCESADA RECIBIDA');
-  console.log('📊 Data recibida:', data);
+  // ✅ HANDLER PARA VENTA PROCESADA - OPTIMIZADO SIN REFRESH
+  const handleVentaProcesada = (data) => {
+    console.log('🚀 VENTA PROCESADA RECIBIDA');
+    console.log('📊 Data recibida:', data);
 
-  // ⚠️ VALIDACIÓN CRÍTICA: Verificar que data.venta existe
-  if (!data || !data.venta) {
-    console.error('❌ ERROR: data.venta es undefined o null');
-    console.error('   Data completo:', data);
-    return; // ⚠️ SALIR TEMPRANO para evitar errores
-  }
-
-  // ✅ HELPER: Función mejorada para detectar modal de procesamiento
-  const hayModalProcesando = () => {
-    // Verificar múltiples formas de detectar el modal
-    const porAtributo = document.querySelector('[data-procesando-modal="true"]');
-    const porClase = document.querySelector('.venta-procesando-modal');
-    // Verificar z-index alto como fallback
-    const modalesAltos = Array.from(document.querySelectorAll('[style*="z-index"]'))
-      .filter(el => {
-        const zIndex = parseInt(el.style.zIndex) || 0;
-        return zIndex >= 99999;
-      });
-    
-    return !!(porAtributo || porClase || modalesAltos.length > 0);
-  };
-
-  // ✅ HELPER: Comparación robusta de usuarios
-  const esDelMismoUsuario = (dataUsuario, usuarioActual) => {
-    if (!dataUsuario || !usuarioActual) return false;
-    
-    // Comparar por ID si está disponible
-    if (dataUsuario.id && usuarioActual.id) {
-      return dataUsuario.id === usuarioActual.id;
+    // ⚠️ VALIDACIÓN CRÍTICA: Verificar que data.venta existe
+    if (!data || !data.venta) {
+      console.error('❌ ERROR: data.venta es undefined o null');
+      console.error('   Data completo:', data);
+      return; // ⚠️ SALIR TEMPRANO para evitar errores
     }
-    
-    // Normalizar nombres para comparación (sin espacios, minúsculas)
-    const normalizar = (str) => str?.toLowerCase().trim().replace(/\s+/g, '');
-    const nombreData = typeof dataUsuario === 'string' ? dataUsuario : dataUsuario.nombre;
-    const nombreActual = usuarioActual.nombre;
-    
-    return normalizar(nombreData) === normalizar(nombreActual);
-  };
 
-  const { usuario } = useAuthStore.getState();
-  const esMismoUsuario = esDelMismoUsuario(data.usuario, usuario);
+    // ✅ HELPER: Función mejorada para detectar modal de procesamiento
+    const hayModalProcesando = () => {
+      // Verificar múltiples formas de detectar el modal
+      const porAtributo = document.querySelector('[data-procesando-modal="true"]');
+      const porClase = document.querySelector('.venta-procesando-modal');
+      // Verificar z-index alto como fallback
+      const modalesAltos = Array.from(document.querySelectorAll('[style*="z-index"]'))
+        .filter(el => {
+          const zIndex = parseInt(el.style.zIndex) || 0;
+          return zIndex >= 99999;
+        });
 
-  console.log('🔍 Debug:');
-  console.log('  - Usuario evento:', data.usuario);
-  console.log('  - Usuario actual:', usuario?.nombre);
-  console.log('  - Es mismo usuario?:', esMismoUsuario);
-  console.log('  - Tiene venta.id?:', !!data.venta.id);
-  console.log('  - Tiene venta.pagos?:', !!data.venta.pagos);
+      return !!(porAtributo || porClase || modalesAltos.length > 0);
+    };
 
-const cajaState = useCajaStore.getState();
+    // ✅ HELPER: Comparación robusta de usuarios
+    const esDelMismoUsuario = (dataUsuario, usuarioActual) => {
+      if (!dataUsuario || !usuarioActual) return false;
 
-// ✅ INTENTAR ACTUALIZAR TRANSACCIONES SIN RECARGAR TODO
-let funcionEjecutada = false;
-
-// Opción 1: Usar processVentaCompletada que está específicamente para ventas
-if (cajaState.processVentaCompletada && data.venta) {
-  cajaState.processVentaCompletada(data);
-  funcionEjecutada = true;
-}
-
-// Opción 2: Usar addTransaction + actualizar totales de caja (SIN recargar todo)
-else if (cajaState.addTransaction && data.venta) {
-
-  // 1. Agregar la transacción a la lista
-  const transaccionParaAgregar = {
-    transaccion: {
-      id: data.venta.id,
-      tipo: 'ingreso', // ✅ Usar minúsculas para consistencia con cajaStore
-      categoria: `Venta - ${data.venta.items?.length || 0} productos`,
-      totalBs: data.venta.totalBs,
-      totalUsd: data.venta.totalUsd,
-      fechaHora: data.venta.fechaHora || data.timestamp,
-      usuario: data.usuario,
-      clienteNombre: data.venta.clienteNombre,
-      codigoVenta: data.venta.codigoVenta,
-      metodoPagoPrincipal: data.venta.metodoPagoPrincipal || 'efectivo_bs',
-      // ✅ INCLUIR CAMPOS NECESARIOS PARA EVITAR UNDEFINED
-      pagos: data.venta.pagos || [],  // ⚠️ Array de pagos
-      items: data.venta.items || [],  // ⚠️ Array de items
-      observaciones: data.venta.observaciones || ''
-    }
-  };
-  cajaState.addTransaction(transaccionParaAgregar);
-
-  // 2. Actualizar totales de la caja (sin recargar todo) - SOLO SI el servidor los envía
-  const cajaActual = cajaState.cajaActual;
-  if (cajaActual && data.venta.totalesActualizados) {
-    useCajaStore.setState({
-      cajaActual: {
-        ...cajaActual,
-        total_ingresos_bs: data.venta.totalesActualizados.totalIngresosBs || cajaActual.total_ingresos_bs,
-        total_ingresos_usd: data.venta.totalesActualizados.totalIngresosUsd || cajaActual.total_ingresos_usd,
-        total_pago_movil: data.venta.totalesActualizados.totalPagoMovil || cajaActual.total_pago_movil
+      // Comparar por ID si está disponible
+      if (dataUsuario.id && usuarioActual.id) {
+        return dataUsuario.id === usuarioActual.id;
       }
-    });
-  }
 
-  funcionEjecutada = true;
-}
+      // Normalizar nombres para comparación (sin espacios, minúsculas)
+      const normalizar = (str) => str?.toLowerCase().trim().replace(/\s+/g, '');
+      const nombreData = typeof dataUsuario === 'string' ? dataUsuario : dataUsuario.nombre;
+      const nombreActual = usuarioActual.nombre;
 
-// Opción 3: Recargar solo transacciones de forma ligera (SIN initialize)
-else if (cajaState.cargarCajaActual) {
-  // ✅ PREVENIR QUE SE EJECUTE SI HAY UN MODAL DE PROCESAMIENTO ABIERTO
-  if (!hayModalProcesando()) {
-    // cargarCajaActual solo recarga transacciones, no toda la app
-    cajaState.cargarCajaActual();
-    funcionEjecutada = true;
-  } else {
-    console.log('⏸️ cargarCajaActual omitido - Modal de procesamiento activo');
-    // No ejecutar para evitar conflictos con el modal de procesamiento
-  }
-}
+      return normalizar(nombreData) === normalizar(nombreActual);
+    };
 
-else {
-  console.warn('⚠️ No se encontró función para actualizar transacciones - La UI se actualizará en el próximo refresh manual');
-  // NO hacer nada en lugar de recargar toda la app
-  // La próxima vez que el usuario interactúe, verá la nueva transacción
-}
+    const { usuario } = useAuthStore.getState();
+    const esMismoUsuario = esDelMismoUsuario(data.usuario, usuario);
 
-if (funcionEjecutada) {
-  console.log('✅ Transacción actualizada sin recargar página');
-} else {
-  console.warn('⚠️ No se pudo actualizar transacción - requiere refresh manual');
-}
+    console.log('🔍 Debug:');
+    console.log('  - Usuario evento:', data.usuario);
+    console.log('  - Usuario actual:', usuario?.nombre);
+    console.log('  - Es mismo usuario?:', esMismoUsuario);
+    console.log('  - Tiene venta.id?:', !!data.venta.id);
+    console.log('  - Tiene venta.pagos?:', !!data.venta.pagos);
 
-// Solo mostrar toast a OTROS usuarios
-if (!esMismoUsuario) {
-  toast.success(`🚀 ${data.usuario} procesó una venta`, {
-    duration: 4000,
-    icon: '✅'
-  });
-}
-};
+    const cajaState = useCajaStore.getState();
+
+    // ✅ INTENTAR ACTUALIZAR TRANSACCIONES SIN RECARGAR TODO
+    let funcionEjecutada = false;
+
+    // Opción 1: Usar processVentaCompletada que está específicamente para ventas
+    if (cajaState.processVentaCompletada && data.venta) {
+      cajaState.processVentaCompletada(data);
+      funcionEjecutada = true;
+    }
+
+    // Opción 2: Usar addTransaction + actualizar totales de caja (SIN recargar todo)
+    else if (cajaState.addTransaction && data.venta) {
+
+      // 1. Agregar la transacción a la lista
+      const transaccionParaAgregar = {
+        transaccion: {
+          id: data.venta.id,
+          tipo: 'ingreso', // ✅ Usar minúsculas para consistencia con cajaStore
+          categoria: `Venta - ${data.venta.items?.length || 0} productos`,
+          totalBs: data.venta.totalBs,
+          totalUsd: data.venta.totalUsd,
+          fechaHora: data.venta.fechaHora || data.timestamp,
+          usuario: data.usuario,
+          clienteNombre: data.venta.clienteNombre,
+          codigoVenta: data.venta.codigoVenta,
+          metodoPagoPrincipal: data.venta.metodoPagoPrincipal || 'efectivo_bs',
+          // ✅ INCLUIR CAMPOS NECESARIOS PARA EVITAR UNDEFINED
+          pagos: data.venta.pagos || [],  // ⚠️ Array de pagos
+          items: data.venta.items || [],  // ⚠️ Array de items
+          observaciones: data.venta.observaciones || ''
+        }
+      };
+      cajaState.addTransaction(transaccionParaAgregar);
+
+      // 2. Actualizar totales de la caja (sin recargar todo) - SOLO SI el servidor los envía
+      const cajaActual = cajaState.cajaActual;
+      if (cajaActual && data.venta.totalesActualizados) {
+        useCajaStore.setState({
+          cajaActual: {
+            ...cajaActual,
+            total_ingresos_bs: data.venta.totalesActualizados.totalIngresosBs || cajaActual.total_ingresos_bs,
+            total_ingresos_usd: data.venta.totalesActualizados.totalIngresosUsd || cajaActual.total_ingresos_usd,
+            total_pago_movil: data.venta.totalesActualizados.totalPagoMovil || cajaActual.total_pago_movil
+          }
+        });
+      }
+
+      funcionEjecutada = true;
+    }
+
+    // Opción 3: Recargar solo transacciones de forma ligera (SIN initialize)
+    else if (cajaState.cargarCajaActual) {
+      // ✅ PREVENIR QUE SE EJECUTE SI HAY UN MODAL DE PROCESAMIENTO ABIERTO
+      if (!hayModalProcesando()) {
+        // cargarCajaActual solo recarga transacciones, no toda la app
+        cajaState.cargarCajaActual();
+        funcionEjecutada = true;
+      } else {
+        console.log('⏸️ cargarCajaActual omitido - Modal de procesamiento activo');
+        // No ejecutar para evitar conflictos con el modal de procesamiento
+      }
+    }
+
+    else {
+      console.warn('⚠️ No se encontró función para actualizar transacciones - La UI se actualizará en el próximo refresh manual');
+      // NO hacer nada en lugar de recargar toda la app
+      // La próxima vez que el usuario interactúe, verá la nueva transacción
+    }
+
+    if (funcionEjecutada) {
+      console.log('✅ Transacción actualizada sin recargar página');
+    } else {
+      console.warn('⚠️ No se pudo actualizar transacción - requiere refresh manual');
+    }
+
+    // Solo mostrar toast a OTROS usuarios
+    if (!esMismoUsuario) {
+      toast.success(`🚀 ${data.usuario} procesó una venta`, {
+        duration: 4000,
+        icon: '✅'
+      });
+    }
+  };
 
   // 🔒 HANDLER PARA STOCK RESERVADO
   const handleStockReservado = async (data) => {
     console.log('📦 Stock reservado en tiempo real:', data);
-    
+
     // Actualizar inventario local si está disponible
     try {
       const { useInventarioStore } = await import('../store/inventarioStore');
@@ -634,22 +638,22 @@ if (!esMismoUsuario) {
     } catch (error) {
       console.log('Inventario store no disponible:', error);
     }
-    
+
     // Mostrar notificación SOLO para reservas de otros usuarios
     const { usuario: usuarioActual } = useAuthStore.getState();
     if (data.usuario !== usuarioActual?.nombre) {
       toast(`🔒 ${data.usuario} reservó stock de ${data.producto}\n📦 Disponible: ${data.stockDisponible}`, {
-      duration: 4000,
-      icon: '📦'
-    });
-}
+        duration: 4000,
+        icon: '📦'
+      });
+    }
   };
 
 
   // 🔓 HANDLER PARA STOCK LIBERADO  
   const handleStockLiberado = async (data) => {
     console.log('📦 Stock liberado en tiempo real:', data);
-    
+
     // Actualizar inventario local si está disponible
     try {
       const { useInventarioStore } = await import('../store/inventarioStore');
@@ -660,15 +664,15 @@ if (!esMismoUsuario) {
     } catch (error) {
       console.log('Inventario store no disponible:', error);
     }
-    
+
     // Mostrar notificación SOLO para liberaciones de otros usuarios
-      const { usuario: usuarioActual } = useAuthStore.getState();
-      if (data.usuario !== usuarioActual?.nombre) {
-        toast(`🔓 ${data.usuario} liberó stock de ${data.producto}\n📦 Disponible: ${data.stockDisponible}`, {
-            duration: 4000,
-            icon: '🔓'
-          });
-      }
+    const { usuario: usuarioActual } = useAuthStore.getState();
+    if (data.usuario !== usuarioActual?.nombre) {
+      toast(`🔓 ${data.usuario} liberó stock de ${data.producto}\n📦 Disponible: ${data.stockDisponible}`, {
+        duration: 4000,
+        icon: '🔓'
+      });
+    }
   };
 
   // 🎯 FUNCIÓN PARA EMITIR EVENTOS
@@ -691,9 +695,9 @@ if (!esMismoUsuario) {
   };
 
   // 🔌 CONECTAR SOCKET AL STORE
- 
-  
-  
+
+
+
 
   return {
     emitirEvento,

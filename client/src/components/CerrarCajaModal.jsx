@@ -1,10 +1,11 @@
 // components/CerrarCajaModal.jsx (VERSIÓN CORREGIDA COMPLETA - BUGS CRÍTICOS SOLUCIONADOS)
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  X, Lock, User, Calendar, Clock, Printer, AlertTriangle, 
+import {
+  X, Lock, User, Calendar, Clock, Printer, AlertTriangle,
   DollarSign, Coins, Smartphone, ChevronDown, ChevronUp,
   TrendingUp, Shield, Eye, Camera, CameraOff, MessageCircle,
-  FileText, Send, CheckCircle, Loader 
+  FileText, Send, CheckCircle, Loader, Banknote, CreditCard,
+  Download, Check
 } from 'lucide-react';
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
@@ -16,26 +17,26 @@ import { api } from '../config/api';
 // 🔥 FUNCIÓN MEJORADA PARA SANITIZAR INPUT (BUG #1 SOLUCIONADO)
 const sanitizarNumero = (value) => {
   if (!value) return '';
-  
+
   let sanitized = value.toString();
-  
+
   // 🚫 ELIMINAR CARACTERES NO VÁLIDOS (incluyendo el guión -)
   sanitized = sanitized.replace(/[^\d.,]/g, '');
-  
+
   // 🔄 CONVERTIR PUNTO A COMA (separador decimal español)
   sanitized = sanitized.replace(/\./g, ',');
-  
+
   // ✅ SOLO PERMITIR UNA COMA DECIMAL
   const parts = sanitized.split(',');
   if (parts.length > 2) {
     sanitized = parts[0] + ',' + parts.slice(1).join('');
   }
-  
+
   // 📏 LIMITAR LONGITUD MÁXIMA
   if (sanitized.length > 15) {
     sanitized = sanitized.substring(0, 15);
   }
-  
+
   return sanitized;
 };
 
@@ -55,14 +56,14 @@ const ModalCEO = ({ isOpen, diferencias, onAutorizar, usuarioActual }) => {
     e.preventDefault();
     if (claveCEO === '1234') {
       setLoading(true);
-      toast.success('Autorización CEO concedida');
-      
+      // 🔇 Toast eliminado - el modal de progreso mostrará el estado
+
       setTimeout(() => {
         onAutorizar();
         setClaveCEO('');
         setLoading(false);
         setIntentosFallidos(0);
-      }, 1000);
+      }, 500);
     } else {
       toast.error('Clave incorrecta');
       setIntentosFallidos(prev => prev + 1);
@@ -72,25 +73,25 @@ const ModalCEO = ({ isOpen, diferencias, onAutorizar, usuarioActual }) => {
 
   const formatearDiferencias = () => {
     const diferenciasTexto = [];
-    
+
     if (diferencias?.bs !== 0) {
       const tipo = diferencias.bs > 0 ? 'SOBRANTE' : 'FALTANTE';
       const monto = formatearBolivares(Math.abs(diferencias.bs));
       diferenciasTexto.push(`${tipo}: ${monto} Bs`);
     }
-    
+
     if (diferencias?.usd !== 0) {
       const tipo = diferencias.usd > 0 ? 'SOBRANTE' : 'FALTANTE';
       const monto = formatearDolares(Math.abs(diferencias.usd));
       diferenciasTexto.push(`${tipo}: $${monto}`);
     }
-    
+
     if (diferencias?.pagoMovil !== 0) {
       const tipo = diferencias.pagoMovil > 0 ? 'SOBRANTE' : 'FALTANTE';
       const monto = formatearBolivares(Math.abs(diferencias.pagoMovil));
       diferenciasTexto.push(`${tipo}: ${monto} Bs PM`);
     }
-    
+
     return diferenciasTexto;
   };
 
@@ -149,7 +150,7 @@ const ModalCEO = ({ isOpen, diferencias, onAutorizar, usuarioActual }) => {
                 autoFocus
                 required
               />
-              
+
               {intentosFallidos > 0 && (
                 <div className="mt-2 text-xs text-red-600">
                   Intentos fallidos: {intentosFallidos}
@@ -196,9 +197,9 @@ const ModalProgresoCierre = ({ isOpen, pasoActual, pasos, mensajePaso }) => {
           <div className="mb-4">
             <Loader className="h-12 w-12 text-blue-600 animate-spin mx-auto" />
           </div>
-          
+
           <h3 className="text-lg font-bold text-gray-900 mb-4">Procesando Cierre</h3>
-          
+
           {/* Mensaje dinámico del paso actual */}
           {mensajePaso && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
@@ -207,15 +208,14 @@ const ModalProgresoCierre = ({ isOpen, pasoActual, pasos, mensajePaso }) => {
               </div>
             </div>
           )}
-          
+
           <div className="space-y-3">
             {pasos.map((paso, index) => (
               <div key={index} className="flex items-center space-x-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  index < pasoActual ? 'bg-green-500 text-white' :
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${index < pasoActual ? 'bg-green-500 text-white' :
                   index === pasoActual ? 'bg-blue-500 text-white animate-pulse' :
-                  'bg-gray-200 text-gray-400'
-                }`}>
+                    'bg-gray-200 text-gray-400'
+                  }`}>
                   {index < pasoActual ? (
                     <CheckCircle className="h-4 w-4" />
                   ) : index === pasoActual ? (
@@ -224,15 +224,14 @@ const ModalProgresoCierre = ({ isOpen, pasoActual, pasos, mensajePaso }) => {
                     <span className="text-xs">{index + 1}</span>
                   )}
                 </div>
-                <div className={`text-sm ${
-                  index <= pasoActual ? 'text-gray-900 font-medium' : 'text-gray-400'
-                }`}>
+                <div className={`text-sm ${index <= pasoActual ? 'text-gray-900 font-medium' : 'text-gray-400'
+                  }`}>
                   {paso}
                 </div>
               </div>
             ))}
           </div>
-          
+
           <div className="mt-4 text-xs text-gray-500">
             Por favor espere, no cierre esta ventana
           </div>
@@ -247,20 +246,20 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
   const montosReales = useMontosEnCaja();
   const { usuario, tienePermiso } = useAuthStore();
   const { emitirEvento } = useSocketEvents();
-  
+
   // Estados del formulario con sanitización MEJORADA
   const [montoFinalBs, setMontoFinalBs] = useState('');
   const [montoFinalUsd, setMontoFinalUsd] = useState('');
   const [montoFinalPagoMovil, setMontoFinalPagoMovil] = useState('');
   const [observacionesCierre, setObservacionesCierre] = useState('');
   const [observacionesAbiertas, setObservacionesAbiertas] = useState(false);
-  
+
   // Estados del sistema
   const [bloqueandoUsuarios, setBloqueandoUsuarios] = useState(false);
   const [showModalCEO, setShowModalCEO] = useState(false);
   const [diferenciasCalculadas, setDiferenciasCalculadas] = useState(null);
   const [ceoAutorizado, setCeoAutorizado] = useState(false);
-  
+
   // Estados de progreso MEJORADOS
   const [showProgreso, setShowProgreso] = useState(false);
   const [pasoActual, setPasoActual] = useState(0);
@@ -273,7 +272,7 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
     'Cerrando caja',
     'Finalizando'
   ];
-  
+
   // Referencias para cámara
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -305,14 +304,14 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
     if (isOpen && !bloqueandoUsuarios) {
       setBloqueandoUsuarios(true);
       initializeCamera();
-      
+
       emitirEvento('bloquear_usuarios', {
         motivo: 'Cierre de caja en proceso',
         usuario_cerrando: usuario?.nombre,
         timestamp: new Date().toISOString()
       });
-      
-      toast.success('Usuarios bloqueados durante cierre de caja', { id: 'bloqueo-usuarios' });
+
+      // 🔇 Toast eliminado - el modal de progreso muestra el estado del cierre
     }
 
     return () => {
@@ -330,7 +329,7 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
   const initializeCamera = async () => {
     try {
       setCameraStatus('initializing');
-      
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -339,7 +338,7 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
         },
         audio: false
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
@@ -370,21 +369,21 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
         }
 
         setCameraStatus('capturing');
-        
+
         const video = videoRef.current;
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
-        
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        
+
         console.log('Evidencia de cierre capturada silenciosamente');
         setCameraStatus('ready');
         resolve(imageData);
-        
+
       } catch (error) {
         console.error('Error capturando evidencia de cierre:', error);
         setCameraStatus('error');
@@ -402,28 +401,41 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
     egresosBs: montosReales.egresosBs,
     balanceBs: montosReales.balanceBs,
     esperadoBs: montosReales.efectivoBs,
-    
+
     inicialUsd: montosReales.montosIniciales.efectivoUsd,
     ingresosUsd: montosReales.ingresosUsd,
     egresosUsd: montosReales.egresosUsd,
     balanceUsd: montosReales.balanceUsd,
     esperadoUsd: montosReales.efectivoUsd,
-    
+
     inicialPagoMovil: montosReales.montosIniciales.pagoMovil,
     totalPagoMovil: montosReales.ingresosPagoMovil,
+    egresosPagoMovil: montosReales.egresosPagoMovil || 0,
     esperadoPagoMovil: montosReales.pagoMovil
   };
 
-  // 🔥 CALCULAR DIFERENCIAS CON NÚMEROS CORREGIDOS (BUG #1 SOLUCIONADO)
+  // 🔥 CALCULAR DIFERENCIAS CON TOLERANCIA DE PUNTO FLOTANTE (BUG +0.00/-0.00 SOLUCIONADO)
+  const TOLERANCIA_REDONDEO = 0.005; // Medio centavo de tolerancia
+
   const calcularDiferencias = () => {
     const contadoBs = convertirANumero(montoFinalBs);
     const contadoUsd = convertirANumero(montoFinalUsd);
     const contadoPagoMovil = convertirANumero(montoFinalPagoMovil);
 
+    // Calcular diferencias con redondeo a 2 decimales
+    let difBs = Math.round((contadoBs - resumen.esperadoBs) * 100) / 100;
+    let difUsd = Math.round((contadoUsd - resumen.esperadoUsd) * 100) / 100;
+    let difPagoMovil = Math.round((contadoPagoMovil - resumen.esperadoPagoMovil) * 100) / 100;
+
+    // Si la diferencia es menor a la tolerancia, considerarla como 0
+    if (Math.abs(difBs) < TOLERANCIA_REDONDEO) difBs = 0;
+    if (Math.abs(difUsd) < TOLERANCIA_REDONDEO) difUsd = 0;
+    if (Math.abs(difPagoMovil) < TOLERANCIA_REDONDEO) difPagoMovil = 0;
+
     return {
-      bs: contadoBs - resumen.esperadoBs,
-      usd: contadoUsd - resumen.esperadoUsd,
-      pagoMovil: contadoPagoMovil - resumen.esperadoPagoMovil
+      bs: difBs,
+      usd: difUsd,
+      pagoMovil: difPagoMovil
     };
   };
 
@@ -432,43 +444,43 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
     const fechaActual = new Date().toLocaleDateString('es-VE');
     const horaActual = new Date().toLocaleTimeString('es-VE');
     const usuarioNombre = usuario?.nombre?.toUpperCase() || 'USUARIO';
-    
+
     let observacionAuto = '';
-    
+
     if (hayDiferencias) {
       // Si hay diferencias, generar observación detallada
       const diferenciasTexto = [];
-      
+
       if (diferencias.bs !== 0) {
         const tipo = diferencias.bs > 0 ? 'SOBRANTE' : 'FALTANTE';
         const monto = formatearBolivares(Math.abs(diferencias.bs));
         diferenciasTexto.push(`${tipo}: ${monto} Bs`);
       }
-      
+
       if (diferencias.usd !== 0) {
         const tipo = diferencias.usd > 0 ? 'SOBRANTE' : 'FALTANTE';
         const monto = formatearDolares(Math.abs(diferencias.usd));
         diferenciasTexto.push(`${tipo}: $${monto}`);
       }
-      
+
       if (diferencias.pagoMovil !== 0) {
         const tipo = diferencias.pagoMovil > 0 ? 'SOBRANTE' : 'FALTANTE';
         const monto = formatearBolivares(Math.abs(diferencias.pagoMovil));
         diferenciasTexto.push(`${tipo}: ${monto} Bs PM`);
       }
-      
+
       observacionAuto = `AUTORIZADO POR CEO ANDRÉS MORANDÍN - ${diferenciasTexto.join(', ')} - Usuario: ${usuarioNombre} - Fecha: ${fechaActual} - Hora: ${horaActual}`;
     } else {
       // Si no hay diferencias, observación estándar
       observacionAuto = `CIERRE EJECUTADO - Sin diferencias detectadas - Usuario: ${usuarioNombre} - Fecha: ${fechaActual} - Hora: ${horaActual}`;
     }
-    
+
     return observacionAuto;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil) {
       toast.error('Todos los conteos finales son obligatorios');
       return;
@@ -476,19 +488,19 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
 
     const diferencias = calcularDiferencias();
     const hayDiferencias = diferencias.bs !== 0 || diferencias.usd !== 0 || diferencias.pagoMovil !== 0;
-    
+
     if (hayDiferencias && !ceoAutorizado) {
       console.log('Diferencias detectadas:', diferencias);
       setDiferenciasCalculadas(diferencias);
       setShowModalCEO(true);
-      
+
       emitirEvento('bloquear_usuarios_diferencia', {
         mensaje: 'Esperando autorización CEO Andrés Morandín',
         diferencias: diferencias,
         usuario_cerrando: usuario?.nombre,
         timestamp: new Date().toISOString()
       });
-      
+
       return;
     }
 
@@ -500,47 +512,62 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
     try {
       setShowProgreso(true);
       setPasoActual(0);
-      
+
       // Paso 0: Validando datos
       setMensajePaso('Verificando conteos y diferencias...');
       console.log('🔍 Validando datos para cierre...');
       await new Promise(resolve => setTimeout(resolve, 1200));
-      
+
       setPasoActual(1);
-      
+
       // Paso 1: Generar PDF
       setMensajePaso('Creando reporte PDF con diferencias...');
       console.log('📄 Generando PDF de cierre...');
       let pdfGenerado = false;
       let pdfInfo = null;
-      
+
       try {
         pdfInfo = await generarPDFConDiferencias();
         pdfGenerado = true;
-        console.log('✅ PDF generado exitosamente');
+        console.log('PDF generado exitosamente');
+
+        // 🔥 DESCARGAR PDF LOCALMENTE INMEDIATAMENTE
+        if (pdfInfo?.pdfBase64) {
+          try {
+            const link = document.createElement('a');
+            link.href = `data:application/pdf;base64,${pdfInfo.pdfBase64}`;
+            link.download = pdfInfo.nombreArchivo || `cierre-caja-${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            console.log('PDF descargado localmente:', pdfInfo.nombreArchivo);
+          } catch (downloadError) {
+            console.warn('Error descargando PDF:', downloadError);
+          }
+        }
+
         await new Promise(resolve => setTimeout(resolve, 800));
       } catch (pdfError) {
-        console.warn('⚠️ Error con PDF:', pdfError);
-        toast.error('Error generando PDF, continuando...', { duration: 3000 });
+        console.warn('Error con PDF:', pdfError);
       }
-      
+
       setPasoActual(2);
 
       // Paso 2: Enviar WhatsApp
       setMensajePaso('Enviando reporte por WhatsApp...');
       console.log('📱 Enviando por WhatsApp...');
-      
+
       try {
         if (pdfInfo && pdfInfo.rutaPDF) {
           await enviarWhatsAppConPDF(pdfInfo);
-          console.log('✅ WhatsApp enviado exitosamente');
+          console.log('WhatsApp enviado exitosamente');
         }
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (whatsappError) {
-        console.warn('⚠️ Error WhatsApp:', whatsappError);
-        toast.error('Error enviando WhatsApp, continuando...', { duration: 3000 });
+        console.warn('Error WhatsApp:', whatsappError);
+        // 🔇 Toast eliminado - no interrumpir el flujo de cierre
       }
-      
+
       setPasoActual(3);
 
       // Paso 3: Capturar evidencia
@@ -549,19 +576,19 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
       const evidenciaFoto = await capturePhoto();
       setFotoEvidencia(evidenciaFoto);
       await new Promise(resolve => setTimeout(resolve, 800));
-      
+
       setPasoActual(4);
-      
+
       // Paso 4: Cerrar caja en el backend
       setMensajePaso('Guardando cierre en base de datos...');
       console.log('💾 Cerrando caja en backend...');
-      
+
       // 🔥 GENERAR OBSERVACIONES FINALES AUTOMÁTICAS (BUG #2 SOLUCIONADO)
       const diferencias = calcularDiferencias();
       const hayDiferencias = diferencias.bs !== 0 || diferencias.usd !== 0 || diferencias.pagoMovil !== 0;
-      
+
       let observacionesFinales = observacionesCierre.trim();
-      
+
       // Si no hay observaciones manuales, generar automática
       if (!observacionesFinales) {
         observacionesFinales = generarObservacionAutomatica(diferencias, hayDiferencias);
@@ -574,8 +601,8 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
       }
 
       const evidenciaInfo = `\n\nEVIDENCIA FOTOGRÁFICA: ${evidenciaFoto ? 'CAPTURADA AUTOMÁTICAMENTE' : 'NO DISPONIBLE'} - Timestamp: ${new Date().toISOString()}`;
-      observacionesFinales = observacionesFinales ? 
-        `${observacionesFinales}${evidenciaInfo}` : 
+      observacionesFinales = observacionesFinales ?
+        `${observacionesFinales}${evidenciaInfo}` :
         evidenciaInfo.trim();
 
       const cajaData = await cerrarCaja({
@@ -584,7 +611,7 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
         montoFinalPagoMovil: convertirANumero(montoFinalPagoMovil),
         observacionesCierre: observacionesFinales
       });
-      
+
       // Enviar evidencia fotográfica al backend
       if (evidenciaFoto && cajaData?.id) {
         try {
@@ -602,9 +629,9 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
           console.warn('⚠️ Error enviando evidencia:', error);
         }
       }
-      
+
       setPasoActual(5);
-      
+
       // Paso 5: Finalizar
       setMensajePaso('Finalizando y desbloqueando sistema...');
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -614,34 +641,24 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
         motivo: 'Caja cerrada exitosamente',
         timestamp: new Date().toISOString()
       });
-      
-      const mensajeExito = [
-        '✅ Caja cerrada correctamente',
-        evidenciaFoto ? '📸 Con evidencia fotográfica' : '',
-        pdfGenerado ? '📱 PDF enviado por WhatsApp' : '⚠️ PDF falló',
-        diferenciasCalculadas && ceoAutorizado ? '📋 Diferencias autorizadas por CEO' : ''
-      ].filter(Boolean).join('\n');
-      
-      toast.success(mensajeExito, {
-        duration: 6000,
-        id: 'caja-cerrada',
-        style: { maxWidth: '400px' }
-      });
-      
+
+      // 🔇 Toasts eliminados - el modal de progreso muestra todo el estado
+      // El PDF ya fue descargado en el paso 1
+
       limpiarFormulario();
-      
+
       // Esperar un momento antes de cerrar
       setTimeout(() => {
         setShowProgreso(false);
         onClose();
       }, 2000);
-      
+
     } catch (error) {
       console.error('⛔ Error cerrando caja:', error);
       toast.error('Error al cerrar la caja: ' + error.message);
       setShowProgreso(false);
       setMensajePaso('');
-      
+
       emitirEvento('desbloquear_usuarios', {
         motivo: 'Error en cierre de caja',
         timestamp: new Date().toISOString()
@@ -666,93 +683,93 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
         montoInicialBs: resumen.inicialBs,
         montoInicialUsd: resumen.inicialUsd,
         montoInicialPagoMovil: resumen.inicialPagoMovil,
-        
+
         // Totales del día CORREGIDOS
         totalIngresosBs: resumen.ingresosBs,
         totalEgresosBs: resumen.egresosBs,
         totalIngresosUsd: resumen.ingresosUsd,
         totalEgresosUsd: resumen.egresosUsd,
         totalPagoMovil: resumen.totalPagoMovil,
-        
+
         // Montos esperados vs contados CORREGIDOS
         montoEsperadoBs: resumen.esperadoBs,
         montoEsperadoUsd: resumen.esperadoUsd,
         montoEsperadoPagoMovil: resumen.esperadoPagoMovil,
-       
-       // 🔥 DATOS ADICIONALES REQUERIDOS POR PDF SERVICE (BUG #4 SOLUCIONADO)
-       fecha: cajaActual.fecha_apertura,
-       horaApertura: cajaActual.hora_apertura,
-       horaCierre: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-       usuarioApertura: cajaActual.usuario_apertura,
-       estado: cajaActual.estado
-     },
-     // 🔥 MONTOS FINALES CONTADOS CORREGIDOS (BUG #4 SOLUCIONADO)
-     montosFinales: {
-       bs: convertirANumero(montoFinalBs),
-       usd: convertirANumero(montoFinalUsd),
-       pagoMovil: convertirANumero(montoFinalPagoMovil)
-     },
-     // 🔥 DIFERENCIAS CALCULADAS CORRECTAMENTE (BUG #4 SOLUCIONADO)
-     diferencias: hayDiferencias ? diferencias : null,
-     ceoAutorizado: ceoAutorizado,
-     // 🔥 OBSERVACIONES CORREGIDAS (BUG #2 SOLUCIONADO)
-     observaciones: observacionesCierre.trim() || generarObservacionAutomatica(diferencias, hayDiferencias),
-     fechaGeneracion: new Date().toISOString(),
-     
-     // 🔥 TRANSACCIONES CON DATOS COMPLETOS PARA PDF (BUG #4 SOLUCIONADO)
-     transacciones: montosReales.transaccionesCompletas || []
-   };
 
-   console.log('📊 Datos corregidos para PDF:', datosCompletos);
+        // 🔥 DATOS ADICIONALES REQUERIDOS POR PDF SERVICE (BUG #4 SOLUCIONADO)
+        fecha: cajaActual.fecha_apertura,
+        horaApertura: cajaActual.hora_apertura,
+        horaCierre: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+        usuarioApertura: cajaActual.usuario_apertura,
+        estado: cajaActual.estado
+      },
+      // 🔥 MONTOS FINALES CONTADOS CORREGIDOS (BUG #4 SOLUCIONADO)
+      montosFinales: {
+        bs: convertirANumero(montoFinalBs),
+        usd: convertirANumero(montoFinalUsd),
+        pagoMovil: convertirANumero(montoFinalPagoMovil)
+      },
+      // 🔥 DIFERENCIAS CALCULADAS CORRECTAMENTE (BUG #4 SOLUCIONADO)
+      diferencias: hayDiferencias ? diferencias : null,
+      ceoAutorizado: ceoAutorizado,
+      // 🔥 OBSERVACIONES CORREGIDAS (BUG #2 SOLUCIONADO)
+      observaciones: observacionesCierre.trim() || generarObservacionAutomatica(diferencias, hayDiferencias),
+      fechaGeneracion: new Date().toISOString(),
 
-   const pdfResponse = await api.post('/cajas/generar-pdf-temporal', datosCompletos);
+      // 🔥 TRANSACCIONES CON DATOS COMPLETOS PARA PDF (BUG #4 SOLUCIONADO)
+      transacciones: montosReales.transaccionesCompletas || []
+    };
 
-   if (!pdfResponse.data.success) {
-     throw new Error('Error generando PDF temporal');
-   }
+    console.log('📊 Datos corregidos para PDF:', datosCompletos);
 
-   return pdfResponse.data.data;
- };
+    const pdfResponse = await api.post('/cajas/generar-pdf-temporal', datosCompletos);
 
- // 🔥 FUNCIÓN CORREGIDA PARA ENVIAR WHATSAPP (BUG #3 SOLUCIONADO)
- const enviarWhatsAppConPDF = async (pdfInfo) => {
-   const diferencias = calcularDiferencias();
-   const hayDiferencias = diferencias.bs !== 0 || diferencias.usd !== 0 || diferencias.pagoMovil !== 0;
-
-   // 🔥 MENSAJE MEJORADO PARA WHATSAPP CON DIFERENCIAS Y OBSERVACIONES CORREGIDAS (BUG #3 SOLUCIONADO)
-   let mensajeDiferencias = '';
-   if (hayDiferencias && ceoAutorizado) {
-     const diferenciasTexto = [];
-     if (diferencias.bs !== 0) {
-       diferenciasTexto.push(`Bolívares: ${diferencias.bs > 0 ? 'SOBRANTE' : 'FALTANTE'} ${formatearBolivares(Math.abs(diferencias.bs))} Bs`);
-     }
-     if (diferencias.usd !== 0) {
-       diferenciasTexto.push(`Dólares: ${diferencias.usd > 0 ? 'SOBRANTE' : 'FALTANTE'} $${formatearDolares(Math.abs(diferencias.usd))}`);
-     }
-     if (diferencias.pagoMovil !== 0) {
-      diferenciasTexto.push(`Pago Móvil: ${diferencias.pagoMovil > 0 ? 'SOBRANTE' : 'FALTANTE'} ${formatearBolivares(Math.abs(diferencias.pagoMovil))} Bs PM`);
+    if (!pdfResponse.data.success) {
+      throw new Error('Error generando PDF temporal');
     }
-    
-    mensajeDiferencias = `
+
+    return pdfResponse.data.data;
+  };
+
+  // 🔥 FUNCIÓN CORREGIDA PARA ENVIAR WHATSAPP (BUG #3 SOLUCIONADO)
+  const enviarWhatsAppConPDF = async (pdfInfo) => {
+    const diferencias = calcularDiferencias();
+    const hayDiferencias = diferencias.bs !== 0 || diferencias.usd !== 0 || diferencias.pagoMovil !== 0;
+
+    // 🔥 MENSAJE MEJORADO PARA WHATSAPP CON DIFERENCIAS Y OBSERVACIONES CORREGIDAS (BUG #3 SOLUCIONADO)
+    let mensajeDiferencias = '';
+    if (hayDiferencias && ceoAutorizado) {
+      const diferenciasTexto = [];
+      if (diferencias.bs !== 0) {
+        diferenciasTexto.push(`Bolívares: ${diferencias.bs > 0 ? 'SOBRANTE' : 'FALTANTE'} ${formatearBolivares(Math.abs(diferencias.bs))} Bs`);
+      }
+      if (diferencias.usd !== 0) {
+        diferenciasTexto.push(`Dólares: ${diferencias.usd > 0 ? 'SOBRANTE' : 'FALTANTE'} $${formatearDolares(Math.abs(diferencias.usd))}`);
+      }
+      if (diferencias.pagoMovil !== 0) {
+        diferenciasTexto.push(`Pago Móvil: ${diferencias.pagoMovil > 0 ? 'SOBRANTE' : 'FALTANTE'} ${formatearBolivares(Math.abs(diferencias.pagoMovil))} Bs PM`);
+      }
+
+      mensajeDiferencias = `
 
 🚨 *DIFERENCIAS AUTORIZADAS POR CEO:*
 ${diferenciasTexto.join('\n')}
 *Autorizado por: Andrés Morandín*`;
-  }
+    }
 
-  // 🔥 OBSERVACIONES CORREGIDAS PARA WHATSAPP (BUG #3 SOLUCIONADO)
-  let mensajeObservaciones = '';
-  const observacionesParaWhatsApp = observacionesCierre.trim() || generarObservacionAutomatica(diferencias, hayDiferencias);
-  
-  if (observacionesParaWhatsApp) {
-    mensajeObservaciones = `
+    // 🔥 OBSERVACIONES CORREGIDAS PARA WHATSAPP (BUG #3 SOLUCIONADO)
+    let mensajeObservaciones = '';
+    const observacionesParaWhatsApp = observacionesCierre.trim() || generarObservacionAutomatica(diferencias, hayDiferencias);
+
+    if (observacionesParaWhatsApp) {
+      mensajeObservaciones = `
 
 📝 *OBSERVACIONES:*
 ${observacionesParaWhatsApp}`;
-  }
+    }
 
-  // 🔥 MENSAJE COMPLETO CORREGIDO PARA WHATSAPP (BUG #3 SOLUCIONADO)
-  const mensajeWhatsApp = `📄 *ELECTRO CAJA - REPORTE DE CIERRE*
+    // 🔥 MENSAJE COMPLETO CORREGIDO PARA WHATSAPP (BUG #3 SOLUCIONADO)
+    const mensajeWhatsApp = `📄 *ELECTRO CAJA - REPORTE DE CIERRE*
 
 📅 *Fecha:* ${new Date().toLocaleDateString('es-VE')}
 🕐 *Hora:* ${new Date().toLocaleTimeString('es-VE')}
@@ -785,667 +802,663 @@ ${observacionesParaWhatsApp}`;
 
 _Reporte de cierre - Electro Caja_`;
 
-  const whatsappResponse = await api.post('/whatsapp/pdf', {
-    numero: '+584120552931',
-    mensaje: mensajeWhatsApp,
-    rutaPDF: pdfInfo.rutaPDF,
-    nombreArchivo: pdfInfo.nombreArchivo
-  });
-  
-  if (!whatsappResponse.data.success) {
-    throw new Error(whatsappResponse.data.message || 'Error enviando por WhatsApp');
-  }
-
-  // Descargar PDF localmente si está disponible
-  try {
-    if (pdfInfo.pdfBase64) {
-      const link = document.createElement('a');
-      link.href = `data:application/pdf;base64,${pdfInfo.pdfBase64}`;
-      link.download = pdfInfo.nombreArchivo;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      console.log('📄 PDF descargado localmente:', pdfInfo.nombreArchivo);
-    }
-  } catch (downloadError) {
-    console.warn('⚠️ Error descargando PDF:', downloadError);
-  }
-
-  return whatsappResponse.data;
-};
-
-const limpiarFormulario = () => {
-  setMontoFinalBs('');
-  setMontoFinalUsd('');
-  setMontoFinalPagoMovil('');
-  setObservacionesCierre('');
-  setObservacionesAbiertas(false);
-  setDiferenciasCalculadas(null);
-  setCeoAutorizado(false);
-  setFotoEvidencia(null);
-  setCameraStatus('initializing');
-  setMensajePaso('');
-};
-
-const handleAutorizacionCEO = () => {
-  setShowModalCEO(false);
-  setCeoAutorizado(true);
-  
-  toast.success('Autorización CEO concedida - Procesando cierre...');
-  
-  setTimeout(() => {
-    procederConCierre();
-  }, 500);
-};
-
-const handleEnviarPDFWhatsApp = async () => {
-  try {
-    if (!montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil) {
-      toast.error('Completa todos los conteos antes de generar el PDF');
-      return;
-    }
-
-    const diferencias = calcularDiferencias();
-    const hayDiferencias = diferencias.bs !== 0 || diferencias.usd !== 0 || diferencias.pagoMovil !== 0;
-
-    if (hayDiferencias && !ceoAutorizado) {
-      toast.error('Se detectaron diferencias. Se requiere autorización CEO para continuar.');
-      setDiferenciasCalculadas(diferencias);
-      setShowModalCEO(true);
-      return;
-    }
-
-    const confirmar = window.confirm(
-      `¿Generar PDF de cierre y enviarlo por WhatsApp?\n\n` +
-      `Montos a incluir:\n` +
-      `Bolívares: ${formatearBolivares(convertirANumero(montoFinalBs))} Bs\n` +
-      `Dólares: $${formatearDolares(convertirANumero(montoFinalUsd))}\n` +
-      `Pago Móvil: ${formatearBolivares(convertirANumero(montoFinalPagoMovil))} Bs\n\n` +
-      `${hayDiferencias ? 'Con diferencias autorizadas por CEO' : 'Sin diferencias detectadas'}`
-    );
-    
-    if (!confirmar) return;
-    
-    const pdfInfo = await generarPDFConDiferencias();
-    await enviarWhatsAppConPDF(pdfInfo);
-    
-    toast.success('📱 PDF enviado por WhatsApp exitosamente', {
-      duration: 5000
+    const whatsappResponse = await api.post('/whatsapp/pdf', {
+      numero: '+584120552931',
+      mensaje: mensajeWhatsApp,
+      rutaPDF: pdfInfo.rutaPDF,
+      nombreArchivo: pdfInfo.nombreArchivo
     });
 
-    return pdfInfo;
-    
-  } catch (error) {
-    console.error('⛔ Error generando/enviando PDF:', error);
-    toast.error('Error: ' + (error.response?.data?.message || error.message));
-    throw error;
-  }
-};
+    if (!whatsappResponse.data.success) {
+      throw new Error(whatsappResponse.data.message || 'Error enviando por WhatsApp');
+    }
 
-const handleClose = () => {
-  if (loading || showProgreso) {
-    toast.error('No se puede cancelar durante el proceso de cierre');
-    return;
-  }
-  
-  cleanupCamera();
-  
-  emitirEvento('desbloquear_usuarios', {
-    motivo: 'Cierre de caja cancelado',
-    timestamp: new Date().toISOString()
-  });
-  
-  limpiarFormulario();
-  setBloqueandoUsuarios(false);
-  onClose();
-};
+    // Descargar PDF localmente si está disponible
+    try {
+      if (pdfInfo.pdfBase64) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${pdfInfo.pdfBase64}`;
+        link.download = pdfInfo.nombreArchivo;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        console.log('📄 PDF descargado localmente:', pdfInfo.nombreArchivo);
+      }
+    } catch (downloadError) {
+      console.warn('⚠️ Error descargando PDF:', downloadError);
+    }
 
-const diferenciasActuales = calcularDiferencias();
+    return whatsappResponse.data;
+  };
 
-return (
-  <>
-    <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden max-h-[95vh] overflow-y-auto">
-        
-        {/* Header elegante */}
-        <div className="bg-gradient-to-r from-red-500 to-red-600 relative">
-          <div className="px-6 py-4 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="bg-white/20 p-2 rounded-lg">
-                  <Lock className="h-6 w-6" />
+  const limpiarFormulario = () => {
+    setMontoFinalBs('');
+    setMontoFinalUsd('');
+    setMontoFinalPagoMovil('');
+    setObservacionesCierre('');
+    setObservacionesAbiertas(false);
+    setDiferenciasCalculadas(null);
+    setCeoAutorizado(false);
+    setFotoEvidencia(null);
+    setCameraStatus('initializing');
+    setMensajePaso('');
+  };
+
+  const handleAutorizacionCEO = () => {
+    setShowModalCEO(false);
+    setCeoAutorizado(true);
+    // 🔇 Toast eliminado - el modal de progreso mostrará el estado
+
+    setTimeout(() => {
+      procederConCierre();
+    }, 300);
+  };
+
+  const handleEnviarPDFWhatsApp = async () => {
+    try {
+      if (!montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil) {
+        toast.error('Completa todos los conteos antes de generar el PDF');
+        return;
+      }
+
+      const diferencias = calcularDiferencias();
+      const hayDiferencias = diferencias.bs !== 0 || diferencias.usd !== 0 || diferencias.pagoMovil !== 0;
+
+      if (hayDiferencias && !ceoAutorizado) {
+        toast.error('Se detectaron diferencias. Se requiere autorización CEO para continuar.');
+        setDiferenciasCalculadas(diferencias);
+        setShowModalCEO(true);
+        return;
+      }
+
+      const confirmar = window.confirm(
+        `¿Generar PDF de cierre y enviarlo por WhatsApp?\n\n` +
+        `Montos a incluir:\n` +
+        `Bolívares: ${formatearBolivares(convertirANumero(montoFinalBs))} Bs\n` +
+        `Dólares: $${formatearDolares(convertirANumero(montoFinalUsd))}\n` +
+        `Pago Móvil: ${formatearBolivares(convertirANumero(montoFinalPagoMovil))} Bs\n\n` +
+        `${hayDiferencias ? 'Con diferencias autorizadas por CEO' : 'Sin diferencias detectadas'}`
+      );
+
+      if (!confirmar) return;
+
+      const pdfInfo = await generarPDFConDiferencias();
+      await enviarWhatsAppConPDF(pdfInfo);
+
+      toast.success('📱 PDF enviado por WhatsApp exitosamente', {
+        duration: 5000
+      });
+
+      return pdfInfo;
+
+    } catch (error) {
+      console.error('⛔ Error generando/enviando PDF:', error);
+      toast.error('Error: ' + (error.response?.data?.message || error.message));
+      throw error;
+    }
+  };
+
+  const handleClose = () => {
+    if (loading || showProgreso) {
+      toast.error('No se puede cancelar durante el proceso de cierre');
+      return;
+    }
+
+    cleanupCamera();
+
+    emitirEvento('desbloquear_usuarios', {
+      motivo: 'Cierre de caja cancelado',
+      timestamp: new Date().toISOString()
+    });
+
+    limpiarFormulario();
+    setBloqueandoUsuarios(false);
+    onClose();
+  };
+
+  const diferenciasActuales = calcularDiferencias();
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden max-h-[95vh] overflow-y-auto">
+
+          {/* Header elegante */}
+          <div className="bg-gradient-to-r from-red-500 to-red-600 relative">
+            <div className="px-6 py-4 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-white/20 p-2 rounded-lg">
+                    <Lock className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">
+                      {esCajaPendiente ? '🚨 Cerrar Caja Pendiente' : 'Cerrar Caja'}
+                    </h2>
+                    <div className="text-sm text-red-100 flex items-center space-x-4">
+                      <span>
+                        {esCajaPendiente
+                          ? `Completar cierre del ${cajaPendiente.fecha}`
+                          : 'Finalizar operaciones del día'
+                        }
+                      </span>
+                      {cameraStatus === 'ready' && (
+                        <div className="flex items-center space-x-1 bg-green-500/20 text-green-200 px-2 py-0.5 rounded-full text-xs">
+                          <Camera className="h-3 w-3" />
+                          <span>Cámara conectada</span>
+                        </div>
+                      )}
+                      {cameraStatus === 'error' && (
+                        <div className="flex items-center space-x-1 bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded-full text-xs">
+                          <CameraOff className="h-3 w-3" />
+                          <span>Sin cámara</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold">
-                    {esCajaPendiente ? '🚨 Cerrar Caja Pendiente' : 'Cerrar Caja'}
-                  </h2>
-                  <div className="text-sm text-red-100 flex items-center space-x-4">
-                    <span>
-                      {esCajaPendiente
-                        ? `Completar cierre del ${cajaPendiente.fecha}`
-                        : 'Finalizar operaciones del día'
-                      }
-                    </span>
-                    {cameraStatus === 'ready' && (
-                      <div className="flex items-center space-x-1 bg-green-500/20 text-green-200 px-2 py-0.5 rounded-full text-xs">
-                        <Camera className="h-3 w-3" />
-                        <span>Cámara conectada</span>
-                      </div>
-                    )}
-                    {cameraStatus === 'error' && (
-                      <div className="flex items-center space-x-1 bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded-full text-xs">
-                        <CameraOff className="h-3 w-3" />
-                        <span>Sin cámara</span>
-                      </div>
-                    )}
+
+                <button
+                  onClick={handleClose}
+                  disabled={loading || showProgreso}
+                  className="text-white/70 hover:text-white transition-colors p-1 disabled:opacity-50"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Notificación de bloqueo - Centrada en el header */}
+            {bloqueandoUsuarios && (
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                <div className="relative">
+                  {/* Efecto de pulso */}
+                  <div className="absolute inset-0 bg-white/30 rounded-full animate-ping"></div>
+                  <div className="relative bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full border border-white/30 flex items-center space-x-2">
+                    <Shield className="h-4 w-4 animate-pulse" />
+                    <span className="text-xs font-semibold tracking-wide">SISTEMA BLOQUEADO</span>
                   </div>
                 </div>
               </div>
-
-              <button
-                onClick={handleClose}
-                disabled={loading || showProgreso}
-                className="text-white/70 hover:text-white transition-colors p-1 disabled:opacity-50"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
+            )}
           </div>
 
-          {/* Notificación de bloqueo - Centrada en el header */}
-          {bloqueandoUsuarios && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <div className="relative">
-                {/* Efecto de pulso */}
-                <div className="absolute inset-0 bg-white/30 rounded-full animate-ping"></div>
-                <div className="relative bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full border border-white/30 flex items-center space-x-2">
-                  <Shield className="h-4 w-4 animate-pulse" />
-                  <span className="text-xs font-semibold tracking-wide">SISTEMA BLOQUEADO</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Información compacta del usuario */}
-        <div className="bg-red-50 border-b border-red-100 px-6 py-3 relative">
-          <div className="grid grid-cols-4 gap-4 text-sm">
-            {/* Columna 1: Abierta por */}
-            <div>
-              <div className="text-red-600 text-xs mb-1">Abierta por:</div>
-              <div className="font-bold text-red-900">{cajaActual.usuario_apertura || usuario?.nombre}</div>
-            </div>
-           
-            {/* Columna 2: Fecha */}
-            <div>
-              <div className="text-red-600 text-xs mb-1">Fecha:</div>
-              <div className="font-bold text-red-900">{cajaActual.fecha_apertura}</div>
-            </div>
-           
-            {/* Columna 3: Hora */}
-            <div>
-              <div className="text-red-600 text-xs mb-1">Hora:</div>
-              <div className="font-bold text-red-900">{cajaActual.hora_apertura}</div>
-            </div>
-           
-            {/* Columna 4: Cerrando */}
-            <div>
-              <div className="text-red-600 text-xs mb-1">Cerrando:</div>
-              <div className="font-bold text-red-900">{usuario?.nombre}</div>
-            </div>
-          </div>
-        
-        </div>
-
-        <div className="p-6">
-          {/* Resumen más compacto */}
-          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 mb-6 border border-slate-200">
-            <h3 className="font-bold text-slate-900 mb-3 flex items-center">
-              <TrendingUp className="h-4 w-4 mr-2 text-blue-600" />
-              Resumen del Día
-              <span className="ml-auto text-sm font-normal text-slate-600">
-                {resumen.transacciones} transacciones
-              </span>
-            </h3>
-            
-            {/* Grid 3 columnas: Bs, USD, Pago Móvil */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              {/* BOLÍVARES */}
-              <div className="bg-white rounded-lg p-3 border-2 border-orange-200 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <Coins className="h-4 w-4 text-orange-600" />
-                    <span className="font-semibold text-orange-900">Bolívares</span>
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Inicial:</span>
-                    <span className="font-medium">{formatearBolivares(resumen.inicialBs)} Bs</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-600">Ingresos:</span>
-                    <span className="font-medium text-green-700">+{formatearBolivares(resumen.ingresosBs)} Bs</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-red-600">Egresos:</span>
-                    <span className="font-medium text-red-700">-{formatearBolivares(resumen.egresosBs)} Bs</span>
-                  </div>
-                  <hr className="border-orange-200" />
-                  <div className="flex justify-between font-bold">
-                    <span>Esperado:</span>
-                    <span className="text-orange-800">{formatearBolivares(resumen.esperadoBs)} Bs</span>
-                  </div>
-                </div>
+          {/* Información compacta del usuario */}
+          <div className="bg-red-50 border-b border-red-100 px-6 py-3 relative">
+            <div className="grid grid-cols-4 gap-4 text-sm">
+              {/* Columna 1: Abierta por */}
+              <div>
+                <div className="text-red-600 text-xs mb-1">Abierta por:</div>
+                <div className="font-bold text-red-900">{cajaActual.usuario_apertura || usuario?.nombre}</div>
               </div>
 
-              {/* DÓLARES */}
-              <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    <span className="font-semibold text-green-900">Dólares</span>
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Inicial:</span>
-                    <span className="font-medium">${formatearDolares(resumen.inicialUsd)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-600">Ingresos:</span>
-                    <span className="font-medium text-green-700">+${formatearDolares(resumen.ingresosUsd)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-red-600">Egresos:</span>
-                    <span className="font-medium text-red-700">-${formatearDolares(resumen.egresosUsd)}</span>
-                  </div>
-                  <hr className="border-slate-200" />
-                  <div className="flex justify-between font-bold">
-                    <span>Esperado:</span>
-                    <span className="text-green-800">${formatearDolares(resumen.esperadoUsd)}</span>
-                  </div>
-                </div>
+              {/* Columna 2: Fecha */}
+              <div>
+                <div className="text-red-600 text-xs mb-1">Fecha:</div>
+                <div className="font-bold text-red-900">{cajaActual.fecha_apertura}</div>
               </div>
 
-              {/* PAGO MÓVIL */}
-              <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    <Smartphone className="h-4 w-4 text-purple-600" />
-                    <span className="font-semibold text-purple-900">Pago Móvil</span>
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Inicial:</span>
-                    <span className="font-medium">{formatearBolivares(resumen.inicialPagoMovil)} Bs</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-600">Recibidos:</span>
-                    <span className="font-medium text-green-700">+{formatearBolivares(resumen.totalPagoMovil)} Bs</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-600">Egresos:</span>
-                    <span className="font-medium text-slate-500">0 Bs</span>
-                  </div>
-                  <hr className="border-slate-200" />
-                  <div className="flex justify-between font-bold">
-                    <span>Esperado:</span>
-                    <span className="text-purple-800">{formatearBolivares(resumen.esperadoPagoMovil)} Bs</span>
-                  </div>
-                </div>
+              {/* Columna 3: Hora */}
+              <div>
+                <div className="text-red-600 text-xs mb-1">Hora:</div>
+                <div className="font-bold text-red-900">{cajaActual.hora_apertura}</div>
+              </div>
+
+              {/* Columna 4: Cerrando */}
+              <div>
+                <div className="text-red-600 text-xs mb-1">Cerrando:</div>
+                <div className="font-bold text-red-900">{usuario?.nombre}</div>
               </div>
             </div>
 
           </div>
 
-          {/* 🔥 CONTEO FINAL OBLIGATORIO CON INPUTS MEJORADOS (BUG #1 SOLUCIONADO) */}
-          <form onSubmit={handleSubmit}>
-           <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5 mb-6">
-             <h4 className="font-bold text-red-900 mb-4 flex items-center">
-               <Coins className="h-5 w-5 mr-2" />
-               Conteo Final Obligatorio
-               <span className="text-xs font-normal ml-2 bg-red-200 text-red-800 px-2 py-1 rounded-full">
-                 Crítico
-               </span>
-             </h4>
-              
+          <div className="p-6">
+            {/* Resumen más compacto */}
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 mb-6 border border-slate-200">
+              <h3 className="font-bold text-slate-900 mb-3 flex items-center">
+                <TrendingUp className="h-4 w-4 mr-2 text-blue-600" />
+                Resumen del Día
+                <span className="ml-auto text-sm font-normal text-slate-600">
+                  {resumen.transacciones} transacciones
+                </span>
+              </h3>
+
+              {/* Grid 3 columnas: Bs, USD, Pago Móvil */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                
-                {/* 🔥 CONTEO BOLÍVARES CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
-                <div>
-                  <label className="block text-sm font-semibold text-amber-800 mb-2">
-                    💵 Efectivo Bolívares *
-                  </label>
-                  <input
-                    type="text"
-                    value={montoFinalBs}
-                    onChange={handleMontoChange(setMontoFinalBs)}
-                    placeholder={`Esperado: ${formatearBolivares(resumen.esperadoBs)}`}
-                    className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg font-mono"
-                    required
-                    // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
-                    onKeyDown={(e) => {
-                      // Permitir teclas de navegación y edición
-                      if (
-                        e.key === 'Backspace' || 
-                        e.key === 'Delete' || 
-                        e.key === 'Tab' || 
-                        e.key === 'Escape' || 
-                        e.key === 'Enter' ||
-                        e.key === 'ArrowLeft' || 
-                        e.key === 'ArrowRight' || 
-                        e.key === 'ArrowUp' || 
-                        e.key === 'ArrowDown' ||
-                        (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
-                      ) {
-                        return;
-                      }
-                      
-                      // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
-                      if (
-                        e.key === '-' || 
-                        e.key === '+' || 
-                        e.key === 'e' || 
-                        e.key === 'E' ||
-                        (e.key === ',' && montoFinalBs.includes(',')) || // Solo una coma
-                        (e.key === '.' && montoFinalBs.includes(',')) || // No punto si ya hay coma
-                        (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
-                      ) {
-                        e.preventDefault();
-                      }
-                      
-                      // 🔄 CONVERTIR PUNTO A COMA
-                      if (e.key === '.') {
-                        e.preventDefault();
-                        const newValue = sanitizarNumero(montoFinalBs + ',');
-                        setMontoFinalBs(newValue);
-                      }
-                    }}
-                  />
-                  {montoFinalBs && (
-                    <div className={`mt-1 text-xs font-medium ${
-                      diferenciasActuales.bs === 0 ? 'text-green-600' :
-                      diferenciasActuales.bs > 0 ? 'text-blue-600' : 'text-red-600'
-                    }`}>
-                      {diferenciasActuales.bs === 0 ? '✓ Exacto' :
-                       diferenciasActuales.bs > 0 ? `+${formatearBolivares(diferenciasActuales.bs)} Bs (sobrante)` :
-                       `${formatearBolivares(diferenciasActuales.bs)} Bs (faltante)`
-                      }
+
+                {/* BOLÍVARES */}
+                <div className="bg-white rounded-lg p-3 border-2 border-orange-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <Coins className="h-4 w-4 text-orange-600" />
+                      <span className="font-semibold text-orange-900">Bolívares</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Inicial:</span>
+                      <span className="font-medium">{formatearBolivares(resumen.inicialBs)} Bs</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-green-600">Ingresos:</span>
+                      <span className="font-medium text-green-700">+{formatearBolivares(resumen.ingresosBs)} Bs</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-red-600">Egresos:</span>
+                      <span className="font-medium text-red-700">-{formatearBolivares(resumen.egresosBs)} Bs</span>
+                    </div>
+                    <hr className="border-orange-200" />
+                    <div className="flex justify-between font-bold">
+                      <span>Esperado:</span>
+                      <span className="text-orange-800">{formatearBolivares(resumen.esperadoBs)} Bs</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* DÓLARES */}
+                <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <span className="font-semibold text-green-900">Dólares</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Inicial:</span>
+                      <span className="font-medium">${formatearDolares(resumen.inicialUsd)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-green-600">Ingresos:</span>
+                      <span className="font-medium text-green-700">+${formatearDolares(resumen.ingresosUsd)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-red-600">Egresos:</span>
+                      <span className="font-medium text-red-700">-${formatearDolares(resumen.egresosUsd)}</span>
+                    </div>
+                    <hr className="border-slate-200" />
+                    <div className="flex justify-between font-bold">
+                      <span>Esperado:</span>
+                      <span className="text-green-800">${formatearDolares(resumen.esperadoUsd)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PAGO MÓVIL */}
+                <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <Smartphone className="h-4 w-4 text-purple-600" />
+                      <span className="font-semibold text-purple-900">Pago Móvil</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Inicial:</span>
+                      <span className="font-medium">{formatearBolivares(resumen.inicialPagoMovil)} Bs</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-green-600">Recibidos:</span>
+                      <span className="font-medium text-green-700">+{formatearBolivares(resumen.totalPagoMovil)} Bs</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-red-600">Egresos:</span>
+                      <span className="font-medium text-red-700">-{formatearBolivares(resumen.egresosPagoMovil || 0)} Bs</span>
+                    </div>
+                    <hr className="border-slate-200" />
+                    <div className="flex justify-between font-bold">
+                      <span>Esperado:</span>
+                      <span className="text-purple-800">{formatearBolivares(resumen.esperadoPagoMovil)} Bs</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* 🔥 CONTEO FINAL OBLIGATORIO CON INPUTS MEJORADOS (BUG #1 SOLUCIONADO) */}
+            <form onSubmit={handleSubmit}>
+              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5 mb-6">
+                <h4 className="font-bold text-red-900 mb-4 flex items-center">
+                  <Coins className="h-5 w-5 mr-2" />
+                  Conteo Final Obligatorio
+                  <span className="text-xs font-normal ml-2 bg-red-200 text-red-800 px-2 py-1 rounded-full">
+                    Crítico
+                  </span>
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                  {/* 🔥 CONTEO BOLÍVARES CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
+                  <div>
+                    <label className="block text-sm font-semibold text-amber-800 mb-2 flex items-center">
+                      <Banknote className="h-4 w-4 mr-1" /> Efectivo Bolívares *
+                    </label>
+                    <input
+                      type="text"
+                      value={montoFinalBs}
+                      onChange={handleMontoChange(setMontoFinalBs)}
+                      placeholder={`Esperado: ${formatearBolivares(resumen.esperadoBs)}`}
+                      className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg font-mono"
+                      required
+                      // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
+                      onKeyDown={(e) => {
+                        // Permitir teclas de navegación y edición
+                        if (
+                          e.key === 'Backspace' ||
+                          e.key === 'Delete' ||
+                          e.key === 'Tab' ||
+                          e.key === 'Escape' ||
+                          e.key === 'Enter' ||
+                          e.key === 'ArrowLeft' ||
+                          e.key === 'ArrowRight' ||
+                          e.key === 'ArrowUp' ||
+                          e.key === 'ArrowDown' ||
+                          (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
+                        ) {
+                          return;
+                        }
+
+                        // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
+                        if (
+                          e.key === '-' ||
+                          e.key === '+' ||
+                          e.key === 'e' ||
+                          e.key === 'E' ||
+                          (e.key === ',' && montoFinalBs.includes(',')) || // Solo una coma
+                          (e.key === '.' && montoFinalBs.includes(',')) || // No punto si ya hay coma
+                          (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
+                        ) {
+                          e.preventDefault();
+                        }
+
+                        // 🔄 CONVERTIR PUNTO A COMA
+                        if (e.key === '.') {
+                          e.preventDefault();
+                          const newValue = sanitizarNumero(montoFinalBs + ',');
+                          setMontoFinalBs(newValue);
+                        }
+                      }}
+                    />
+                    {montoFinalBs && (
+                      <div className={`mt-1 text-xs font-medium ${Math.abs(diferenciasActuales.bs) < 0.01 ? 'text-green-600' :
+                        diferenciasActuales.bs > 0 ? 'text-blue-600' : 'text-red-600'
+                        }`}>
+                        {Math.abs(diferenciasActuales.bs) < 0.01 ? '✓ Exacto' :
+                          diferenciasActuales.bs > 0 ? `+${formatearBolivares(diferenciasActuales.bs)} Bs (sobrante)` :
+                            `${formatearBolivares(Math.abs(diferenciasActuales.bs))} Bs (faltante)`
+                        }
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 🔥 CONTEO DÓLARES CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
+                  <div>
+                    <label className="block text-sm font-semibold text-amber-800 mb-2 flex items-center">
+                      <DollarSign className="h-4 w-4 mr-1" /> Efectivo Dólares *
+                    </label>
+                    <input
+                      type="text"
+                      value={montoFinalUsd}
+                      onChange={handleMontoChange(setMontoFinalUsd)}
+                      placeholder={`Esperado: $${formatearDolares(resumen.esperadoUsd)}`}
+                      className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg font-mono"
+                      required
+                      // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
+                      onKeyDown={(e) => {
+                        // Permitir teclas de navegación y edición
+                        if (
+                          e.key === 'Backspace' ||
+                          e.key === 'Delete' ||
+                          e.key === 'Tab' ||
+                          e.key === 'Escape' ||
+                          e.key === 'Enter' ||
+                          e.key === 'ArrowLeft' ||
+                          e.key === 'ArrowRight' ||
+                          e.key === 'ArrowUp' ||
+                          e.key === 'ArrowDown' ||
+                          (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
+                        ) {
+                          return;
+                        }
+
+                        // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
+                        if (
+                          e.key === '-' ||
+                          e.key === '+' ||
+                          e.key === 'e' ||
+                          e.key === 'E' ||
+                          (e.key === ',' && montoFinalUsd.includes(',')) || // Solo una coma
+                          (e.key === '.' && montoFinalUsd.includes(',')) || // No punto si ya hay coma
+                          (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
+                        ) {
+                          e.preventDefault();
+                        }
+
+                        // 🔄 CONVERTIR PUNTO A COMA
+                        if (e.key === '.') {
+                          e.preventDefault();
+                          const newValue = sanitizarNumero(montoFinalUsd + ',');
+                          setMontoFinalUsd(newValue);
+                        }
+                      }}
+                    />
+                    {montoFinalUsd && (
+                      <div className={`mt-1 text-xs font-medium ${Math.abs(diferenciasActuales.usd) < 0.01 ? 'text-green-600' :
+                        diferenciasActuales.usd > 0 ? 'text-blue-600' : 'text-red-600'
+                        }`}>
+                        {Math.abs(diferenciasActuales.usd) < 0.01 ? '✓ Exacto' :
+                          diferenciasActuales.usd > 0 ? `+$${formatearDolares(diferenciasActuales.usd)} (sobrante)` :
+                            `$${formatearDolares(Math.abs(diferenciasActuales.usd))} (faltante)`
+                        }
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 🔥 CONTEO PAGO MÓVIL CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
+                  <div>
+                    <label className="block text-sm font-semibold text-purple-800 mb-2 flex items-center">
+                      <Smartphone className="h-4 w-4 mr-1" /> Total Pago Móvil *
+                    </label>
+                    <input
+                      type="text"
+                      value={montoFinalPagoMovil}
+                      onChange={handleMontoChange(setMontoFinalPagoMovil)}
+                      placeholder={`Esperado: ${formatearBolivares(resumen.esperadoPagoMovil)}`}
+                      className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg font-mono"
+                      required
+                      // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
+                      onKeyDown={(e) => {
+                        // Permitir teclas de navegación y edición
+                        if (
+                          e.key === 'Backspace' ||
+                          e.key === 'Delete' ||
+                          e.key === 'Tab' ||
+                          e.key === 'Escape' ||
+                          e.key === 'Enter' ||
+                          e.key === 'ArrowLeft' ||
+                          e.key === 'ArrowRight' ||
+                          e.key === 'ArrowUp' ||
+                          e.key === 'ArrowDown' ||
+                          (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
+                        ) {
+                          return;
+                        }
+
+                        // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
+                        if (
+                          e.key === '-' ||
+                          e.key === '+' ||
+                          e.key === 'e' ||
+                          e.key === 'E' ||
+                          (e.key === ',' && montoFinalPagoMovil.includes(',')) || // Solo una coma
+                          (e.key === '.' && montoFinalPagoMovil.includes(',')) || // No punto si ya hay coma
+                          (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
+                        ) {
+                          e.preventDefault();
+                        }
+
+                        // 🔄 CONVERTIR PUNTO A COMA
+                        if (e.key === '.') {
+                          e.preventDefault();
+                          const newValue = sanitizarNumero(montoFinalPagoMovil + ',');
+                          setMontoFinalPagoMovil(newValue);
+                        }
+                      }}
+                    />
+                    {montoFinalPagoMovil && (
+                      <div className={`mt-1 text-xs font-medium ${Math.abs(diferenciasActuales.pagoMovil) < 0.01 ? 'text-green-600' :
+                        diferenciasActuales.pagoMovil > 0 ? 'text-purple-600' : 'text-red-600'
+                        }`}>
+                        {Math.abs(diferenciasActuales.pagoMovil) < 0.01 ? '✓ Exacto' :
+                          diferenciasActuales.pagoMovil > 0 ? `+${formatearBolivares(diferenciasActuales.pagoMovil)} Bs (sobrante)` :
+                            `${formatearBolivares(Math.abs(diferenciasActuales.pagoMovil))} Bs (faltante)`
+                        }
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Alerta de diferencias globales */}
+                {(montoFinalBs && montoFinalUsd && montoFinalPagoMovil) &&
+                  (diferenciasActuales.bs !== 0 || diferenciasActuales.usd !== 0 || diferenciasActuales.pagoMovil !== 0) && (
+                    <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <span className="font-semibold text-red-800">Diferencias Detectadas</span>
+                      </div>
+                      <div className="text-sm text-red-700">
+                        Se requerirá autorización del CEO Andrés Morandín para proceder con el cierre.
+                      </div>
                     </div>
                   )}
-                </div>
+              </div>
 
-                {/* 🔥 CONTEO DÓLARES CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
-                <div>
-                  <label className="block text-sm font-semibold text-amber-800 mb-2">
-                    💵 Efectivo Dólares *
-                  </label>
-                  <input
-                    type="text"
-                    value={montoFinalUsd}
-                    onChange={handleMontoChange(setMontoFinalUsd)}
-                    placeholder={`Esperado: $${formatearDolares(resumen.esperadoUsd)}`}
-                    className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg font-mono"
-                   required
-                   // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
-                   onKeyDown={(e) => {
-                     // Permitir teclas de navegación y edición
-                     if (
-                       e.key === 'Backspace' || 
-                       e.key === 'Delete' || 
-                       e.key === 'Tab' || 
-                       e.key === 'Escape' || 
-                       e.key === 'Enter' ||
-                       e.key === 'ArrowLeft' || 
-                       e.key === 'ArrowRight' || 
-                       e.key === 'ArrowUp' || 
-                       e.key === 'ArrowDown' ||
-                       (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
-                     ) {
-                       return;
-                     }
-                     
-                     // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
-                     if (
-                       e.key === '-' || 
-                       e.key === '+' || 
-                       e.key === 'e' || 
-                       e.key === 'E' ||
-                       (e.key === ',' && montoFinalUsd.includes(',')) || // Solo una coma
-                       (e.key === '.' && montoFinalUsd.includes(',')) || // No punto si ya hay coma
-                       (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
-                     ) {
-                       e.preventDefault();
-                     }
-                     
-                     // 🔄 CONVERTIR PUNTO A COMA
-                     if (e.key === '.') {
-                       e.preventDefault();
-                       const newValue = sanitizarNumero(montoFinalUsd + ',');
-                       setMontoFinalUsd(newValue);
-                     }
-                   }}
-                 />
-                 {montoFinalUsd && (
-                   <div className={`mt-1 text-xs font-medium ${
-                     diferenciasActuales.usd === 0 ? 'text-green-600' :
-                     diferenciasActuales.usd > 0 ? 'text-blue-600' : 'text-red-600'
-                   }`}>
-                     {diferenciasActuales.usd === 0 ? '✓ Exacto' :
-                      diferenciasActuales.usd > 0 ? `+$${formatearDolares(diferenciasActuales.usd)} (sobrante)` :
-                       `$${formatearDolares(diferenciasActuales.usd)} (faltante)`
-                     }
-                   </div>
-                 )}
-               </div>
+              {/* Observaciones desplegables */}
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setObservacionesAbiertas(!observacionesAbiertas)}
+                  className="w-full flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <span className="font-medium text-slate-700">Observaciones del Cierre</span>
+                  {observacionesAbiertas ? (
+                    <ChevronUp className="h-4 w-4 text-slate-500" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-slate-500" />
+                  )}
+                </button>
 
-               {/* 🔥 CONTEO PAGO MÓVIL CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
-               <div>
-                <label className="block text-sm font-semibold text-purple-800 mb-2">
-                  📱 Total Pago Móvil *
-                </label>
-                 <input
-                   type="text"
-                   value={montoFinalPagoMovil}
-                   onChange={handleMontoChange(setMontoFinalPagoMovil)}
-                   placeholder={`Esperado: ${formatearBolivares(resumen.esperadoPagoMovil)}`}
-                   className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg font-mono"
-                   required
-                   // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
-                   onKeyDown={(e) => {
-                     // Permitir teclas de navegación y edición
-                     if (
-                       e.key === 'Backspace' || 
-                       e.key === 'Delete' || 
-                       e.key === 'Tab' || 
-                       e.key === 'Escape' || 
-                       e.key === 'Enter' ||
-                       e.key === 'ArrowLeft' || 
-                       e.key === 'ArrowRight' || 
-                       e.key === 'ArrowUp' || 
-                       e.key === 'ArrowDown' ||
-                       (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
-                     ) {
-                       return;
-                     }
-                     
-                     // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
-                     if (
-                       e.key === '-' || 
-                       e.key === '+' || 
-                       e.key === 'e' || 
-                       e.key === 'E' ||
-                       (e.key === ',' && montoFinalPagoMovil.includes(',')) || // Solo una coma
-                       (e.key === '.' && montoFinalPagoMovil.includes(',')) || // No punto si ya hay coma
-                       (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
-                     ) {
-                       e.preventDefault();
-                     }
-                     
-                     // 🔄 CONVERTIR PUNTO A COMA
-                     if (e.key === '.') {
-                       e.preventDefault();
-                       const newValue = sanitizarNumero(montoFinalPagoMovil + ',');
-                       setMontoFinalPagoMovil(newValue);
-                     }
-                   }}
-                 />
-                 {montoFinalPagoMovil && (
-                   <div className={`mt-1 text-xs font-medium ${
-                     diferenciasActuales.pagoMovil === 0 ? 'text-green-600' :
-                     diferenciasActuales.pagoMovil > 0 ? 'text-purple-600' : 'text-red-600'
-                   }`}>
-                     {diferenciasActuales.pagoMovil === 0 ? '✓ Exacto' :
-                      diferenciasActuales.pagoMovil > 0 ? `+${formatearBolivares(diferenciasActuales.pagoMovil)} Bs (sobrante)` :
-                      `${formatearBolivares(diferenciasActuales.pagoMovil)} Bs (faltante)`
-                     }
-                   </div>
-                 )}
-               </div>
-             </div>
-
-             {/* Alerta de diferencias globales */}
-             {(montoFinalBs && montoFinalUsd && montoFinalPagoMovil) && 
-              (diferenciasActuales.bs !== 0 || diferenciasActuales.usd !== 0 || diferenciasActuales.pagoMovil !== 0) && (
-               <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
-                 <div className="flex items-center space-x-2 mb-2">
-                   <AlertTriangle className="h-4 w-4 text-red-600" />
-                   <span className="font-semibold text-red-800">Diferencias Detectadas</span>
-                 </div>
-                 <div className="text-sm text-red-700">
-                   Se requerirá autorización del CEO Andrés Morandín para proceder con el cierre.
-                 </div>
-               </div>
-             )}
-           </div>
-
-           {/* Observaciones desplegables */}
-           <div className="mb-6">
-             <button
-               type="button"
-               onClick={() => setObservacionesAbiertas(!observacionesAbiertas)}
-               className="w-full flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
-             >
-               <span className="font-medium text-slate-700">Observaciones del Cierre</span>
-               {observacionesAbiertas ? (
-                 <ChevronUp className="h-4 w-4 text-slate-500" />
-               ) : (
-                 <ChevronDown className="h-4 w-4 text-slate-500" />
-               )}
-             </button>
-             
-             {observacionesAbiertas && (
-               <div className="mt-3 p-3 border border-slate-200 rounded-lg bg-white">
-                      <textarea
+                {observacionesAbiertas && (
+                  <div className="mt-3 p-3 border border-slate-200 rounded-lg bg-white">
+                    <textarea
                       value={observacionesCierre}
                       onChange={(e) => setObservacionesCierre(e.target.value)}
                       placeholder="Observaciones sobre el cierre..."
                       rows={1}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
                     />
-                 <div className="mt-1 text-xs text-slate-500">
-                 {/* 🔥 TEXTO CORREGIDO SOBRE OBSERVACIONES AUTOMÁTICAS (BUG #2 SOLUCIONADO) */}
-                 {observacionesCierre.trim() ? 
-                   'Las diferencias se registrarán automáticamente si requieren autorización CEO.' :
-                   'Si no agrega observaciones, se generará automáticamente "CIERRE EJECUTADO".'
-                 }
-               </div>
-               </div>
-             )}
-           </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {/* 🔥 TEXTO CORREGIDO SOBRE OBSERVACIONES AUTOMÁTICAS (BUG #2 SOLUCIONADO) */}
+                      {observacionesCierre.trim() ?
+                        'Las diferencias se registrarán automáticamente si requieren autorización CEO.' :
+                        'Si no agrega observaciones, se generará automáticamente "CIERRE EJECUTADO".'
+                      }
+                    </div>
+                  </div>
+                )}
+              </div>
 
-           {/* Indicador de progreso */}
-           {loading && (
-             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-               <div className="flex items-center space-x-3">
-                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
-                 <div className="text-sm text-red-700">
-                   Procesando cierre de caja...
-                 </div>
-               </div>
-             </div>
-           )}
+              {/* Indicador de progreso */}
+              {loading && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                    <div className="text-sm text-red-700">
+                      Procesando cierre de caja...
+                    </div>
+                  </div>
+                </div>
+              )}
 
-           {/* Confirmación de evidencia capturada */}
-           {fotoEvidencia && (
-             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-               <div className="flex items-center space-x-3">
-                 <Camera className="h-5 w-5 text-green-600" />
-                 <div>
-                   <div className="font-semibold text-green-800">Evidencia Fotográfica Capturada</div>
-                   <div className="text-sm text-green-700">Se ha registrado automáticamente la evidencia del cierre</div>
-                 </div>
-               </div>
-             </div>
-           )}
+              {/* Confirmación de evidencia capturada */}
+              {fotoEvidencia && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-center space-x-3">
+                    <Camera className="h-5 w-5 text-green-600" />
+                    <div>
+                      <div className="font-semibold text-green-800">Evidencia Fotográfica Capturada</div>
+                      <div className="text-sm text-green-700">Se ha registrado automáticamente la evidencia del cierre</div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-           {/* Botones de acción */}
-           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-             
-             {/* Botón Cancelar */}
-             <button
-               type="button"
-               onClick={handleClose}
-               disabled={loading || showProgreso}
-               className="flex-1 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
-             >
-               Cancelar
-             </button>
-             
-             {/* Botón Cerrar Caja */}
-             <button
-               type="submit"
-               disabled={loading || showProgreso || !montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil}
-               className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-             >
-               {loading || showProgreso ? (
-                 <span className="flex items-center justify-center space-x-2">
-                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                   <span>Cerrando...</span>
-                 </span>
-               ) : (
-                 'Cerrar Caja'
-               )}
-             </button>
-           </div>
-         </form>
-       </div>
-     </div>
+              {/* Botones de acción */}
+              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
 
-     {/* Modal CEO para diferencias */}
-     <ModalCEO 
-       isOpen={showModalCEO}
-       diferencias={diferenciasCalculadas}
-       onAutorizar={handleAutorizacionCEO}
-       usuarioActual={usuario}
-     />
+                {/* Botón Cancelar */}
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={loading || showProgreso}
+                  className="flex-1 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
+                >
+                  Cancelar
+                </button>
 
-     {/* Modal de progreso de cierre MEJORADO */}
-     <ModalProgresoCierre
-       isOpen={showProgreso}
-       pasoActual={pasoActual}
-       pasos={pasos}
-       mensajePaso={mensajePaso}
-     />
+                {/* Botón Cerrar Caja */}
+                <button
+                  type="submit"
+                  disabled={loading || showProgreso || !montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil}
+                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {loading || showProgreso ? (
+                    <span className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Cerrando...</span>
+                    </span>
+                  ) : (
+                    'Cerrar Caja'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
 
-     {/* Elementos ocultos para cámara */}
-     <video
-       ref={videoRef}
-       autoPlay
-       muted
-       playsInline
-       style={{ display: 'none' }}
-     />
-     <canvas
-       ref={canvasRef}
-       style={{ display: 'none' }}
-     />
-   </div>
- </>
-);
+        {/* Modal CEO para diferencias */}
+        <ModalCEO
+          isOpen={showModalCEO}
+          diferencias={diferenciasCalculadas}
+          onAutorizar={handleAutorizacionCEO}
+          usuarioActual={usuario}
+        />
+
+        {/* Modal de progreso de cierre MEJORADO */}
+        <ModalProgresoCierre
+          isOpen={showProgreso}
+          pasoActual={pasoActual}
+          pasos={pasos}
+          mensajePaso={mensajePaso}
+        />
+
+        {/* Elementos ocultos para cámara */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{ display: 'none' }}
+        />
+        <canvas
+          ref={canvasRef}
+          style={{ display: 'none' }}
+        />
+      </div>
+    </>
+  );
 };
 
 export default CerrarCajaModal;

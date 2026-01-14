@@ -5,7 +5,7 @@ import {
   X, Package, Plus, Edit2, Trash2, Search,
   Eye, DollarSign, AlertCircle, Hash, Image,
   Folder, Phone, CheckCircle, XCircle, BarChart3,
-  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, FileJson, Calculator, Globe, RefreshCw
+  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin
 } from 'lucide-react';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
@@ -17,6 +17,7 @@ import CargaMasivaModal from './inventario/CargaMasivaModal';
 import RespaldoJsonModal from './inventario/RespaldoJsonModal';
 import AjusteMasivoModal from './inventario/AjusteMasivoModal';
 import ConexionApiModal from './inventario/ConexionApiModal';
+import PrintInventarioModal from './inventario/PrintInventarioModal';
 import { getImageUrl, API_CONFIG } from '../config/api';
 
 const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
@@ -124,6 +125,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
   const [showRespaldoJson, setShowRespaldoJson] = useState(false);
   const [showAjusteMasivo, setShowAjusteMasivo] = useState(false);
   const [showConexionApi, setShowConexionApi] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
 
   //  ESTADO PARA ANIMACIÓN DE SALIDA
@@ -526,105 +528,76 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                   </div>
                 </div>
 
-                {/* Centro: Tasa BCV + Fecha (Minimalista) */}
-                <div className="flex-1 flex items-center justify-center gap-4 sm:gap-6">
-                  {/* Tasa BCV - Minimalista */}
-                  <div className="hidden sm:flex items-center gap-2 px-3 py-1.5">
-                    <DollarSign className="h-4 w-4 text-white/70" />
-                    <div className="text-sm">
-                      <span className="text-white/60">BCV</span>
-                      <span className="font-bold text-white ml-1">{tasaCambio?.toFixed(2) || '0.00'} Bs</span>
+                {/* Centro: Tasas de Cambio Compactas - Full Responsive */}
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center">
+                    {/* Tasa BCV - Siempre visible */}
+                    <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg text-xs">
+                      <span className="text-white/60 font-medium">BCV</span>
+                      <span className="font-bold text-white">{tasaCambio?.toFixed(2) || '0.00'}</span>
                     </div>
-                  </div>
 
-                  {/* Separador */}
-                  <div className="hidden sm:block w-px h-5 bg-white/20" />
-
-                  {/* Tasa Euro */}
-                  {tasas.euro && (
-                    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5">
-                      <div className="text-sm">
-                        <span className="text-purple-300">EUR</span>
-                        <span className="font-bold text-white ml-1">{tasas.euro?.toFixed(2)} Bs</span>
+                    {/* Tasa Euro */}
+                    {tasas.euro && (
+                      <div className="hidden sm:flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg text-xs">
+                        <span className="text-purple-300 font-medium">EUR</span>
+                        <span className="font-bold text-white">{tasas.euro?.toFixed(2)}</span>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Separador */}
-                  {tasas.euro && <div className="hidden lg:block w-px h-5 bg-white/20" />}
-
-                  {/* Tasa Paralelo */}
-                  {tasas.paralelo && (
-                    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5">
-                      <div className="text-sm">
-                        <span className="text-orange-300">PAR</span>
-                        <span className="font-bold text-white ml-1">{tasas.paralelo?.toFixed(2)} Bs</span>
+                    {/* Tasa Paralelo */}
+                    {tasas.paralelo && (
+                      <div className="hidden md:flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg text-xs">
+                        <span className="text-orange-300 font-medium">PAR</span>
+                        <span className="font-bold text-white">{tasas.paralelo?.toFixed(2)}</span>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Separador */}
-                  {tasas.paralelo && <div className="hidden lg:block w-px h-5 bg-white/20" />}
-
-                  {/* Tasa USDT */}
-                  {tasas.usdt && (
-                    <div className="hidden xl:flex items-center gap-2 px-3 py-1.5">
-                      <div className="text-sm">
-                        <span className="text-blue-300">USDT</span>
-                        <span className="font-bold text-white ml-1">{tasas.usdt?.toFixed(2)} Bs</span>
+                    {/* Tasa USDT */}
+                    {tasas.usdt && (
+                      <div className="hidden lg:flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg text-xs">
+                        <span className="text-blue-300 font-medium">USDT</span>
+                        <span className="font-bold text-white">{tasas.usdt?.toFixed(2)}</span>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Separador */}
-                  {tasas.usdt && <div className="hidden xl:block w-px h-5 bg-white/20" />}
-
-                  {/* Promedio */}
-                  {tasas.promedio && (
-                    <div className="hidden xl:flex items-center gap-2 px-3 py-1.5">
-                      <div className="text-sm">
-                        <span className="text-cyan-300">PROM</span>
-                        <span className="font-bold text-white ml-1">{tasas.promedio?.toFixed(2)} Bs</span>
+                    {/* Promedio */}
+                    {tasas.promedio && (
+                      <div className="hidden xl:flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg text-xs">
+                        <span className="text-cyan-300 font-medium">PROM</span>
+                        <span className="font-bold text-white">{tasas.promedio?.toFixed(2)}</span>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Separador */}
-                  {tasas.promedio && <div className="hidden xl:block w-px h-5 bg-white/20" />}
-
-                  {/* Brecha % (USDT o PAR vs BCV) */}
-                  {(tasas.brecha || tasas.brechaPar) && (
-                    <div className="hidden xl:flex items-center gap-2 px-2 py-1.5">
-                      <div className="text-sm">
+                    {/* Brecha % */}
+                    {(tasas.brecha || tasas.brechaPar) && (
+                      <div className="hidden xl:flex items-center bg-white/10 px-2 py-1 rounded-lg text-xs">
                         <span className={`font-bold ${(tasas.brecha || tasas.brechaPar) > 50 ? 'text-red-300' : (tasas.brecha || tasas.brechaPar) > 20 ? 'text-yellow-300' : 'text-green-300'}`}>
                           +{(tasas.brecha || tasas.brechaPar)?.toFixed(0)}%
                         </span>
                       </div>
+                    )}
+
+                    {/* Fecha Actual - Solo en pantallas grandes */}
+                    <div className="hidden lg:flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg text-xs">
+                      <svg className="h-3 w-3 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-medium text-white">
+                        {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                      </span>
                     </div>
-                  )}
 
-                  {/* Separador */}
-                  <div className="hidden md:block w-px h-5 bg-white/20" />
-
-                  {/* Fecha Actual - Minimalista */}
-                  <div className="hidden md:flex items-center gap-2 px-3 py-1.5">
-                    <svg className="h-4 w-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-sm font-medium text-white">
-                      {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </span>
+                    {/* Botón refrescar tasas */}
+                    <button
+                      onClick={refreshTasas}
+                      disabled={tasas.loading}
+                      className="flex items-center bg-white/10 hover:bg-white/20 px-2 py-1 rounded-lg text-xs transition-all"
+                      title="Actualizar tasas"
+                    >
+                      <RefreshCw className={`h-3 w-3 text-white/80 ${tasas.loading ? 'animate-spin' : ''}`} />
+                    </button>
                   </div>
-
-                  {/* Botón refrescar tasas */}
-                  <button
-                    onClick={refreshTasas}
-                    disabled={tasas.loading}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white text-xs rounded-lg transition-all border border-white/10"
-                    title="Actualizar tasas"
-                  >
-                    <RefreshCw className={`h-3 w-3 ${tasas.loading ? 'animate-spin' : ''}`} />
-                  </button>
                 </div>
 
                 {/* Lado derecho: Botón cerrar */}
@@ -861,6 +834,20 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
 
                             <div className="border-t border-gray-100 my-1" />
 
+                            {/* Imprimir Inventario */}
+                            <button
+                              onClick={() => { setShowPrintModal(true); setShowAdminMenu(false); }}
+                              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                            >
+                              <Printer className="h-5 w-5 text-blue-500" />
+                              <div>
+                                <div className="font-medium text-gray-900">Imprimir Inventario</div>
+                                <div className="text-xs text-gray-500">Generar listado para impresión</div>
+                              </div>
+                            </button>
+
+                            <div className="border-t border-gray-100 my-1" />
+
                             {/* Conexión API */}
                             <button
                               onClick={() => { setShowConexionApi(true); setShowAdminMenu(false); }}
@@ -916,7 +903,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                   </div>
 
                   <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 shadow-lg overflow-x-auto">
-                    <table className="w-full min-w-[1200px]">
+                    <table className="w-full min-w-[1350px]">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                         <tr>
                           <th className="w-[8%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -963,15 +950,23 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                           </th>
 
                           {/* Stock con icono */}
-                          <th className="w-[8%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <th className="w-[6%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                             <div className="flex items-center justify-center space-x-1">
                               <Boxes className="h-3 w-3" />
                               <span>Stock</span>
                             </div>
                           </th>
 
+                          {/* Ubicación con icono */}
+                          <th className="w-[10%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            <div className="flex items-center justify-center space-x-1">
+                              <MapPin className="h-3 w-3" />
+                              <span>Ubicación</span>
+                            </div>
+                          </th>
+
                           {/* Proveedor con icono */}
-                          <th className="w-[13%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <th className="w-[10%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                             <div className="flex items-center justify-center space-x-1">
                               <Store className="h-3 w-3" />
                               <span>Proveedor</span>
@@ -1133,8 +1128,22 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                               )}
                             </td>
 
+                            {/* Ubicación */}
+                            <td className="px-2 py-3 text-center w-[10%]">
+                              {item.ubicacion_fisica ? (
+                                <div
+                                  className="text-[10px] text-gray-700 bg-gray-100 px-2 py-1 rounded-md inline-block cursor-help"
+                                  title={item.ubicacion_fisica}
+                                >
+                                  {item.ubicacion_fisica}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs">-</span>
+                              )}
+                            </td>
+
                             {/* Proveedor - Truncado */}
-                            <td className="px-2 py-3 text-center w-[13%]">
+                            <td className="px-2 py-3 text-center w-[10%]">
                               {item.proveedor ? (
                                 <div className="space-y-1">
                                   <div
@@ -1281,6 +1290,12 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
       <ConexionApiModal
         isOpen={showConexionApi}
         onClose={() => setShowConexionApi(false)}
+      />
+
+      {/* Modal de Impresión de Inventario */}
+      <PrintInventarioModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
       />
     </>
   );
