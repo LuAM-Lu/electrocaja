@@ -903,7 +903,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                   </div>
 
                   <div className="bg-white rounded-lg sm:rounded-2xl border border-gray-200 shadow-lg overflow-x-auto">
-                    <table className="w-full min-w-[1350px]">
+                    <table className="w-full min-w-[900px]">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                         <tr>
                           <th className="w-[8%] px-2 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">

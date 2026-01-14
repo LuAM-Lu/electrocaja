@@ -8,15 +8,15 @@ const getBaseURL = () => {
   if (envApiUrl) {
     return `${envApiUrl}/api`;
   }
-  
+
   // Fallback: detectar automáticamente basado en hostname
   const hostname = window.location.hostname;
-  
+
   // Para localhost, usar localhost
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return `https://localhost:3001/api`;
   }
-  
+
   // Para red local, usar la misma IP del frontend con puerto 3001
   return `https://${hostname}:3001/api`;
 };
@@ -48,7 +48,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error) => {
@@ -74,43 +74,43 @@ api.interceptors.response.use(
       silentError.config = error.config;
       return Promise.reject(silentError);
     }
-    
+
     // Solo loguear errores que no sean silenciosos
     if (!error.isSilent) {
       console.error(` API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url} - ${error.response?.status || 'Network Error'}`);
     }
-    
+
     //  MANEJO ESPECÍFICO DE TOKEN EXPIRADO
     if (error.response?.status === 401) {
       // ✅ Excluir endpoints que pueden devolver 401 legítimamente sin ser token expirado
       const isAuthValidationEndpoint = error.config?.url?.includes('/auth/validate-admin-token') ||
-                                      error.config?.url?.includes('/auth/validate-quick-token');
-      
+        error.config?.url?.includes('/auth/validate-quick-token');
+
       // ✅ Excluir endpoint de WhatsApp estado (puede fallar por otras razones)
       const isWhatsAppEstadoEndpoint = error.config?.url?.includes('/whatsapp/estado');
-      
+
       // Si es un endpoint de validación o WhatsApp estado, no tratar como token expirado
       if (isAuthValidationEndpoint || isWhatsAppEstadoEndpoint) {
         console.log(' 401 de endpoint excluido, no es token expirado');
         return Promise.reject(error);
       }
-      
+
       console.log(' Token expirado detectado en interceptor');
-      
+
       // 1. Limpiar token inmediatamente
       localStorage.removeItem('auth-token');
-      
+
       // 2. Prevenir loops infinitos - solo actuar si no es request de login
-      const isLoginRequest = error.config?.url?.includes('/auth/login') || 
-                           error.config?.url?.includes('/users/login-by-token') ||
-                           error.config?.url?.includes('/auth/me');
-      
+      const isLoginRequest = error.config?.url?.includes('/auth/login') ||
+        error.config?.url?.includes('/users/login-by-token') ||
+        error.config?.url?.includes('/auth/me');
+
       if (!isLoginRequest) {
         console.log(' Despachando evento token-expired...');
-        
+
         // 3. Despachar evento para que authStore limpie el estado
         window.dispatchEvent(new CustomEvent('token-expired', {
-          detail: { 
+          detail: {
             message: 'Token expirado',
             timestamp: new Date().toISOString(),
             url: error.config?.url
@@ -118,7 +118,7 @@ api.interceptors.response.use(
         }));
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -141,11 +141,11 @@ export const apiWithRetry = async (requestFunction, maxRetries = API_CONFIG.RETR
       return await requestFunction();
     } catch (error) {
       console.warn(` Intento ${attempt}/${maxRetries} falló:`, error.message);
-      
+
       if (attempt === maxRetries) {
         throw error;
       }
-      
+
       // Esperar antes del siguiente intento
       await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
@@ -163,26 +163,40 @@ console.log(' API Configuration:', {
 //  HELPER PARA URLs DE IMÁGENES
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return '';
-  
+
   // Si ya es una URL completa, devolverla tal como está
-  if (imagePath.startsWith('http')) return imagePath;
-  
+  if (typeof imagePath === 'string' && imagePath.startsWith('http')) return imagePath;
+
   // Si es base64, devolverla tal como está
-  if (imagePath.startsWith('data:')) return imagePath;
-  
+  if (typeof imagePath === 'string' && imagePath.startsWith('data:')) return imagePath;
+
+  // Si es un objeto con url, extraer la url
+  if (typeof imagePath === 'object' && imagePath.url) {
+    return getImageUrl(imagePath.url);
+  }
+
   // Para rutas de uploads, usar SERVER_URL sin /api
   const serverUrl = API_CONFIG.BASE_URL.replace('/api', '');
-  
-  if (imagePath.startsWith('/uploads/')) {
+
+  if (typeof imagePath === 'string') {
+    if (imagePath.startsWith('/uploads/')) {
+      const fullUrl = `${serverUrl}${imagePath}`;
+      console.log('🖼️ getImageUrl:', { path: imagePath, fullUrl });
+      return fullUrl;
+    }
+
+    // Para rutas relativas sin /uploads/, agregarlas
+    if (!imagePath.startsWith('/')) {
+      const fullUrl = `${serverUrl}/uploads/products/thumbnails/${imagePath}`;
+      console.log('🖼️ getImageUrl (relative):', { path: imagePath, fullUrl });
+      return fullUrl;
+    }
+
     return `${serverUrl}${imagePath}`;
   }
-  
-  // Para rutas relativas sin /uploads/, agregarlas
-  if (!imagePath.startsWith('/')) {
-    return `${serverUrl}/uploads/products/thumbnails/${imagePath}`;
-  }
-  
-  return `${serverUrl}${imagePath}`;
+
+  console.warn('⚠️ getImageUrl: tipo de imagePath no soportado:', typeof imagePath, imagePath);
+  return '';
 };
 
 export default api;
