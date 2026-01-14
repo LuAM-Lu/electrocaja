@@ -1,35 +1,30 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import fs from 'fs'
 import path from 'path'
 
+// En producción no importamos 'fs' porque no leeremos certificados .pem
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: {
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, 'localhost+2-key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, 'localhost+2.pem'))
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
+  },
+  server: {
+    // Configuraciones de desarrollo (opcionales durante el build)
     host: true,
     port: 5173,
     proxy: {
-  '/api': {
-    target: 'https://localhost:3001',  // ← Cambiar a puerto 3000
-    changeOrigin: true,
-    secure: false,  // ← Permitir certificados auto-firmados
-    configure: (proxy, options) => {
-      proxy.on('error', (err, req, res) => {
-        console.log('proxy error', err);
-      });
-      proxy.on('proxyReq', (proxyReq, req, res) => {
-        console.log('Sending Request to the Target:', req.method, req.url);
-      });
-      proxy.on('proxyRes', (proxyRes, req, res) => {
-        console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-      });
+      '/api': {
+        target: 'http://127.0.0.1:3000', // El puerto que configuramos en el backend
+        changeOrigin: true,
+        secure: false,
+      }
     }
-  }
-}
+  },
+  build: {
+    outDir: 'dist', // Carpeta donde se generará el build
+    emptyOutDir: true,
   }
 })

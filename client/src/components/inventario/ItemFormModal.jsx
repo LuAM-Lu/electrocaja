@@ -1529,7 +1529,7 @@ const ItemModal = ({
                           className="w-32 h-32 md:w-40 md:h-40 object-cover rounded-xl border-2 border-blue-200 shadow-lg"
                           onError={(e) => {
                             logger.error('Error en vista previa:', formData.imagen_url);
-                            e.target.style.display = 'none';
+                            if (e.target) e.target.style.display = 'none';
                           }}
                         />
                       ) : (

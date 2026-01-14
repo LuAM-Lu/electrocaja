@@ -1014,8 +1014,8 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                                   alt={item.descripcion}
                                   className="w-10 h-10 object-cover rounded-lg border border-gray-200 shadow-sm mx-auto"
                                   onError={(e) => {
-                                    e.target.style.display = 'none';
-                                    e.target.nextSibling.style.display = 'flex';
+                                    if (e.target) e.target.style.display = 'none';
+                                    if (e.target?.nextSibling) e.target.nextSibling.style.display = 'flex';
                                   }}
                                 />
                               ) : (

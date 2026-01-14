@@ -26,11 +26,11 @@ const app = express();
 
 // Crear servidor HTTPS usando los mismos certificados del frontend
 const httpsOptions = {
-  key: fs.readFileSync(path.join(__dirname, '../../client/localhost+2-key.pem')),
-  cert: fs.readFileSync(path.join(__dirname, '../../client/localhost+2.pem'))
+  // key: fs.readFileSync(path.join(__dirname, '../../client/localhost+2-key.pem')),
+  // cert: fs.readFileSync(path.join(__dirname, '../../client/localhost+2.pem'))
 };
 
-const server = https.createServer(httpsOptions, app);
+const server = http.createServer(app);
 
 // 🔧 CONFIGURAR SOCKET.IO CON CORS Y OPTIMIZACIONES DE LATENCIA
 const io = new Server(server, {

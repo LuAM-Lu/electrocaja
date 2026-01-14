@@ -414,10 +414,10 @@ const PrintInventarioModal = ({ isOpen, onClose }) => {
                                                 onDrop={(e) => handleDrop(e, idx)}
                                                 onDragEnd={handleDragEnd}
                                                 className={`flex items-center justify-between bg-white px-3 py-2 rounded-lg border transition-all cursor-move ${draggedItem === idx
-                                                        ? 'opacity-50 border-amber-400 bg-amber-100'
-                                                        : dragOverIndex === idx
-                                                            ? 'border-amber-500 border-2 bg-amber-50'
-                                                            : 'border-amber-200 hover:border-amber-400'
+                                                    ? 'opacity-50 border-amber-400 bg-amber-100'
+                                                    : dragOverIndex === idx
+                                                        ? 'border-amber-500 border-2 bg-amber-50'
+                                                        : 'border-amber-200 hover:border-amber-400'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-2">
@@ -506,7 +506,7 @@ const PrintInventarioModal = ({ isOpen, onClose }) => {
                                                                             src={getImageUrl(item.imagen_url)}
                                                                             alt=""
                                                                             className="w-8 h-8 object-cover rounded mx-auto"
-                                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                                            onError={(e) => { if (e.target) e.target.style.display = 'none'; }}
                                                                         />
                                                                     ) : (
                                                                         <span className="text-gray-300">-</span>
