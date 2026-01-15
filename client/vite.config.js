@@ -17,7 +17,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3000', // El puerto que configuramos en el backend
+        target: 'http://127.0.0.1:3001', // El puerto que configuramos en el backend
         changeOrigin: true,
         secure: false,
       }

@@ -1165,15 +1165,25 @@ const ajusteMasivo = async (req, res) => {
 
     for (const ajuste of ajustes) {
       try {
-        const updateData = {
-          precio: ajuste.precio,
-          updatedAt: new Date()
-        };
+        // Obtener el producto actual para calcular el margen
+        const productoActual = await prisma.product.findUnique({
+          where: { id: ajuste.id },
+          select: { precioCosto: true }
+        });
 
-        // Si se especifica porcentaje de ganancia, guardarlo
-        if (ajuste.porcentaje_ganancia !== null && ajuste.porcentaje_ganancia !== undefined) {
-          updateData.porcentaje_ganancia = ajuste.porcentaje_ganancia;
-        }
+        const precioCosto = productoActual ? parseFloat(productoActual.precioCosto) : 0;
+        const precioVentaNuevo = parseFloat(ajuste.precio);
+
+        // Calcular el nuevo margen de ganancia
+        const margenNuevo = precioCosto > 0
+          ? ((precioVentaNuevo - precioCosto) / precioCosto) * 100
+          : 0;
+
+        const updateData = {
+          precioVenta: precioVentaNuevo,
+          margenPorcentaje: Math.round(margenNuevo * 100) / 100
+          // fechaActualizacion se actualiza automáticamente por @updatedAt
+        };
 
         await prisma.product.update({
           where: { id: ajuste.id },
@@ -1181,7 +1191,7 @@ const ajusteMasivo = async (req, res) => {
         });
 
         actualizados++;
-        detalles.push({ id: ajuste.id, status: 'ok', precio: ajuste.precio });
+        detalles.push({ id: ajuste.id, status: 'ok', precioVenta: precioVentaNuevo, margen: margenNuevo.toFixed(2) });
 
       } catch (error) {
         console.error(`Error actualizando producto ${ajuste.id}:`, error.message);

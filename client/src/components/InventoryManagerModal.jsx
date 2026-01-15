@@ -5,7 +5,7 @@ import {
   X, Package, Plus, Edit2, Trash2, Search,
   Eye, DollarSign, AlertCircle, Hash, Image,
   Folder, Phone, CheckCircle, XCircle, BarChart3,
-  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin
+  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, ChevronUp, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin
 } from 'lucide-react';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
@@ -134,6 +134,9 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
   // Estados para animaciones del header
   const [valorTotalType, setValorTotalType] = useState('total');
   const [isRotating, setIsRotating] = useState(false);
+
+  // Estado para ordenamiento de columnas
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // Estado para tasas de cambio
   const [tasas, setTasas] = useState({
@@ -399,15 +402,48 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
     }
   };
 
-  // Función para filtrar items
-  const filteredItems = inventario.filter(item => {
-    const matchesSearch = item.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.observaciones?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'todos' || item.tipo === filterType;
-    const isActive = hideInactive ? item.activo !== false : true;
-    return matchesSearch && matchesFilter && isActive;
-  });
+  // Función para cambiar el orden de columnas
+  const toggleSort = (key) => {
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        // Si es la misma columna, alternar dirección
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      // Nueva columna, empezar con ascendente
+      return { key, direction: 'asc' };
+    });
+  };
+
+  // Función para filtrar y ordenar items
+  const filteredItems = inventario
+    .filter(item => {
+      const matchesSearch = item.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.observaciones?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter = filterType === 'todos' || item.tipo === filterType;
+      const isActive = hideInactive ? item.activo !== false : true;
+      return matchesSearch && matchesFilter && isActive;
+    })
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+
+      // Manejar valores numéricos
+      if (['precio', 'precio_costo', 'stock', 'id'].includes(sortConfig.key)) {
+        aVal = parseFloat(aVal) || 0;
+        bVal = parseFloat(bVal) || 0;
+      } else {
+        // Manejar strings
+        aVal = (aVal || '').toString().toLowerCase();
+        bVal = (bVal || '').toString().toLowerCase();
+      }
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
 
   // Obtener estadísticas
   const stats = obtenerEstadisticas();
@@ -906,71 +942,146 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                     <table className="w-full table-fixed">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                         <tr>
-                          <th className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
-                            <div className="flex items-center justify-center">
+                          {/* ID - Sortable */}
+                          <th
+                            className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('id')}
+                          >
+                            <div className="flex items-center justify-center gap-0.5">
                               <Hash className="h-3 w-3" />
+                              {sortConfig.key === 'id' && (
+                                sortConfig.direction === 'asc'
+                                  ? <ChevronUp className="h-3 w-3 text-indigo-600" />
+                                  : <ChevronDown className="h-3 w-3 text-indigo-600" />
+                              )}
                             </div>
                           </th>
 
+                          {/* Imagen - No sortable */}
                           <th className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
                             <div className="flex items-center justify-center">
                               <Image className="h-3 w-3" />
                             </div>
                           </th>
 
-                          <th className="w-[25%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Descripción - Sortable */}
+                          <th
+                            className="w-[25%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('descripcion')}
+                          >
                             <div className="flex items-center justify-center gap-1">
                               <Package className="h-3 w-3" />
                               <span>Descripción</span>
+                              {sortConfig.key === 'descripcion' && (
+                                sortConfig.direction === 'asc'
+                                  ? <ChevronUp className="h-3 w-3 text-indigo-600" />
+                                  : <ChevronDown className="h-3 w-3 text-indigo-600" />
+                              )}
                             </div>
                           </th>
 
-                          <th className="w-[12%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Código - Sortable */}
+                          <th
+                            className="w-[12%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('codigo_barras')}
+                          >
                             <div className="flex items-center justify-center gap-1">
                               <BarChart3 className="h-3 w-3" />
                               <span>Código</span>
+                              {sortConfig.key === 'codigo_barras' && (
+                                sortConfig.direction === 'asc'
+                                  ? <ChevronUp className="h-3 w-3 text-indigo-600" />
+                                  : <ChevronDown className="h-3 w-3 text-indigo-600" />
+                              )}
                             </div>
                           </th>
 
-                          <th className="w-[4%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Tipo - Sortable */}
+                          <th
+                            className="w-[4%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('tipo')}
+                          >
                             <div className="flex items-center justify-center">
                               <Tag className="h-3 w-3" />
+                              {sortConfig.key === 'tipo' && (
+                                sortConfig.direction === 'asc'
+                                  ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                  : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />
+                              )}
                             </div>
                           </th>
 
-                          <th className="w-[11%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Precio - Sortable */}
+                          <th
+                            className="w-[11%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('precio')}
+                          >
                             <div className="flex items-center justify-center gap-1">
                               <DollarSign className="h-3 w-3" />
                               <span>Precio</span>
+                              {sortConfig.key === 'precio' && (
+                                sortConfig.direction === 'asc'
+                                  ? <ChevronUp className="h-3 w-3 text-indigo-600" />
+                                  : <ChevronDown className="h-3 w-3 text-indigo-600" />
+                              )}
                             </div>
                           </th>
 
-                          <th className="w-[7%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Stock - Sortable */}
+                          <th
+                            className="w-[7%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('stock')}
+                          >
                             <div className="flex items-center justify-center">
                               <Boxes className="h-3 w-3" />
+                              {sortConfig.key === 'stock' && (
+                                sortConfig.direction === 'asc'
+                                  ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                  : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />
+                              )}
                             </div>
                           </th>
 
-                          <th className="w-[8%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Ubicación - Sortable */}
+                          <th
+                            className="w-[8%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('ubicacion_fisica')}
+                          >
                             <div className="flex items-center justify-center gap-1">
                               <MapPin className="h-3 w-3" />
                               <span className="hidden lg:inline">Ubic.</span>
+                              {sortConfig.key === 'ubicacion_fisica' && (
+                                sortConfig.direction === 'asc'
+                                  ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                  : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />
+                              )}
                             </div>
                           </th>
 
-                          <th className="w-[8%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Proveedor - Sortable */}
+                          <th
+                            className="w-[8%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('proveedor')}
+                          >
                             <div className="flex items-center justify-center gap-1">
                               <Store className="h-3 w-3" />
                               <span className="hidden lg:inline">Prov.</span>
+                              {sortConfig.key === 'proveedor' && (
+                                sortConfig.direction === 'asc'
+                                  ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                  : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />
+                              )}
                             </div>
                           </th>
 
+                          {/* Estado - No sortable */}
                           <th className="w-[6%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
                             <div className="flex items-center justify-center">
                               <Circle className="h-3 w-3" />
                             </div>
                           </th>
 
+                          {/* Acciones - No sortable */}
                           <th className="w-[10%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase bg-gray-100/80">
                             <div className="flex items-center justify-center gap-1">
                               <Settings className="h-3 w-3" />

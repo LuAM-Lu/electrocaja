@@ -13,7 +13,7 @@ const getBaseURL = () => {
   // 2. Si estás en tu PC (Localhost)
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     // Aquí sí usamos el puerto de tu backend local
-    return `http://localhost:3000/api`;
+    return `http://localhost:3001/api`;
   }
 
   // 3. PRODUCCIÓN (Nginx en el VPS)

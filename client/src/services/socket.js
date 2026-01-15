@@ -8,19 +8,19 @@ const getServerURL = () => {
     console.log('🔌 [SOCKET] Usando VITE_API_URL:', envApiUrl);
     return envApiUrl;
   }
-  
+
   // Fallback: detectar automáticamente
   const hostname = window.location.hostname;
-  
+
   // Para localhost, usar localhost
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    const url = 'https://localhost:3000';
+    const url = 'http://localhost:3001';
     console.log('🔌 [SOCKET] Usando localhost:', url);
     return url;
   }
-  
+
   // Para red local, usar la misma IP del frontend con puerto 3000
-  const url = `https://${hostname}:3000`;
+  const url = `http://${hostname}:3001`;
   console.log('🔌 [SOCKET] Usando IP de red local:', url);
   return url;
 };
