@@ -139,8 +139,8 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
   const [valorTotalType, setValorTotalType] = useState('total');
   const [isRotating, setIsRotating] = useState(false);
 
-  // Estado para ordenamiento de columnas
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  // Estado para ordenamiento múltiple de columnas (array de {key, direction})
+  const [sortConfig, setSortConfig] = useState([]);
 
   // Estado para tasas de cambio
   const [tasas, setTasas] = useState({
@@ -406,16 +406,33 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
     }
   };
 
-  // Función para cambiar el orden de columnas
+  // Función para cambiar el orden de columnas (multi-sort)
   const toggleSort = (key) => {
     setSortConfig(prev => {
-      if (prev.key === key) {
-        // Si es la misma columna, alternar dirección
-        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      const existingIndex = prev.findIndex(s => s.key === key);
+      if (existingIndex >= 0) {
+        // Si ya existe, alternar dirección o quitar si ya está en desc
+        const existing = prev[existingIndex];
+        if (existing.direction === 'asc') {
+          // Cambiar a desc
+          const newConfig = [...prev];
+          newConfig[existingIndex] = { key, direction: 'desc' };
+          return newConfig;
+        } else {
+          // Quitar del ordenamiento
+          return prev.filter(s => s.key !== key);
+        }
       }
-      // Nueva columna, empezar con ascendente
-      return { key, direction: 'asc' };
+      // Nueva columna, agregar al final con asc
+      return [...prev, { key, direction: 'asc' }];
     });
+  };
+
+  // Helper para verificar si una columna está ordenada
+  const getSortInfo = (key) => {
+    const index = sortConfig.findIndex(s => s.key === key);
+    if (index === -1) return null;
+    return { direction: sortConfig[index].direction, order: index + 1 };
   };
 
   // Función para cambio rápido de imagen (solo admin)
@@ -479,23 +496,25 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
       return matchesSearch && matchesFilter && isActive;
     })
     .sort((a, b) => {
-      if (!sortConfig.key) return 0;
+      if (sortConfig.length === 0) return 0;
 
-      let aVal = a[sortConfig.key];
-      let bVal = b[sortConfig.key];
+      for (const { key, direction } of sortConfig) {
+        let aVal = a[key];
+        let bVal = b[key];
 
-      // Manejar valores numéricos
-      if (['precio', 'precio_costo', 'stock', 'id'].includes(sortConfig.key)) {
-        aVal = parseFloat(aVal) || 0;
-        bVal = parseFloat(bVal) || 0;
-      } else {
-        // Manejar strings
-        aVal = (aVal || '').toString().toLowerCase();
-        bVal = (bVal || '').toString().toLowerCase();
+        // Manejar valores numéricos
+        if (['precio', 'precio_costo', 'stock', 'id'].includes(key)) {
+          aVal = parseFloat(aVal) || 0;
+          bVal = parseFloat(bVal) || 0;
+        } else {
+          // Manejar strings
+          aVal = (aVal || '').toString().toLowerCase();
+          bVal = (bVal || '').toString().toLowerCase();
+        }
+
+        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
       }
-
-      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
 
@@ -996,150 +1015,170 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                     <table className="w-full table-fixed">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
                         <tr>
-                          {/* ID - Sortable */}
+                          {/* ID - Sortable - 4% */}
                           <th
-                            className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            className="w-[4%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
                             onClick={() => toggleSort('id')}
                           >
                             <div className="flex items-center justify-center gap-0.5">
                               <Hash className="h-3 w-3" />
-                              {sortConfig.key === 'id' && (
-                                sortConfig.direction === 'asc'
-                                  ? <ChevronUp className="h-3 w-3 text-indigo-600" />
-                                  : <ChevronDown className="h-3 w-3 text-indigo-600" />
+                              {getSortInfo('id') && (
+                                <>
+                                  {getSortInfo('id').direction === 'asc'
+                                    ? <ChevronUp className="h-3 w-3 text-indigo-600" />
+                                    : <ChevronDown className="h-3 w-3 text-indigo-600" />}
+                                  <span className="text-[8px] text-indigo-500">{getSortInfo('id').order}</span>
+                                </>
                               )}
                             </div>
                           </th>
 
-                          {/* Imagen - No sortable */}
-                          <th className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Imagen - No sortable - 6% */}
+                          <th className="w-[6%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
                             <div className="flex items-center justify-center">
                               <Image className="h-3 w-3" />
                             </div>
                           </th>
 
-                          {/* Descripción - Sortable */}
+                          {/* Descripción - Sortable - 26% */}
                           <th
-                            className="w-[25%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            className="w-[26%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
                             onClick={() => toggleSort('descripcion')}
                           >
                             <div className="flex items-center justify-center gap-1">
                               <Package className="h-3 w-3" />
                               <span>Descripción</span>
-                              {sortConfig.key === 'descripcion' && (
-                                sortConfig.direction === 'asc'
-                                  ? <ChevronUp className="h-3 w-3 text-indigo-600" />
-                                  : <ChevronDown className="h-3 w-3 text-indigo-600" />
+                              {getSortInfo('descripcion') && (
+                                <>
+                                  {getSortInfo('descripcion').direction === 'asc'
+                                    ? <ChevronUp className="h-3 w-3 text-indigo-600" />
+                                    : <ChevronDown className="h-3 w-3 text-indigo-600" />}
+                                  <span className="text-[8px] text-indigo-500">{getSortInfo('descripcion').order}</span>
+                                </>
                               )}
                             </div>
                           </th>
 
-                          {/* Código - Sortable */}
+                          {/* Código - Sortable - 13% */}
                           <th
-                            className="w-[12%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            className="w-[13%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
                             onClick={() => toggleSort('codigo_barras')}
                           >
                             <div className="flex items-center justify-center gap-1">
                               <BarChart3 className="h-3 w-3" />
                               <span>Código</span>
-                              {sortConfig.key === 'codigo_barras' && (
-                                sortConfig.direction === 'asc'
-                                  ? <ChevronUp className="h-3 w-3 text-indigo-600" />
-                                  : <ChevronDown className="h-3 w-3 text-indigo-600" />
+                              {getSortInfo('codigo_barras') && (
+                                <>
+                                  {getSortInfo('codigo_barras').direction === 'asc'
+                                    ? <ChevronUp className="h-3 w-3 text-indigo-600" />
+                                    : <ChevronDown className="h-3 w-3 text-indigo-600" />}
+                                  <span className="text-[8px] text-indigo-500">{getSortInfo('codigo_barras').order}</span>
+                                </>
                               )}
                             </div>
                           </th>
 
-                          {/* Tipo - Sortable */}
+                          {/* Tipo - Sortable - 3% */}
                           <th
-                            className="w-[4%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            className="w-[3%] px-0.5 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
                             onClick={() => toggleSort('tipo')}
                           >
                             <div className="flex items-center justify-center">
                               <Tag className="h-3 w-3" />
-                              {sortConfig.key === 'tipo' && (
-                                sortConfig.direction === 'asc'
-                                  ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
-                                  : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />
+                              {getSortInfo('tipo') && (
+                                <>
+                                  {getSortInfo('tipo').direction === 'asc'
+                                    ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                    : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />}
+                                </>
                               )}
                             </div>
                           </th>
 
-                          {/* Precio - Sortable */}
+                          {/* Precio - Sortable - 12% */}
                           <th
-                            className="w-[11%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            className="w-[12%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
                             onClick={() => toggleSort('precio')}
                           >
                             <div className="flex items-center justify-center gap-1">
                               <DollarSign className="h-3 w-3" />
                               <span>Precio</span>
-                              {sortConfig.key === 'precio' && (
-                                sortConfig.direction === 'asc'
-                                  ? <ChevronUp className="h-3 w-3 text-indigo-600" />
-                                  : <ChevronDown className="h-3 w-3 text-indigo-600" />
+                              {getSortInfo('precio') && (
+                                <>
+                                  {getSortInfo('precio').direction === 'asc'
+                                    ? <ChevronUp className="h-3 w-3 text-indigo-600" />
+                                    : <ChevronDown className="h-3 w-3 text-indigo-600" />}
+                                  <span className="text-[8px] text-indigo-500">{getSortInfo('precio').order}</span>
+                                </>
                               )}
                             </div>
                           </th>
 
-                          {/* Stock - Sortable */}
-                          <th
-                            className="w-[7%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
-                            onClick={() => toggleSort('stock')}
-                          >
-                            <div className="flex items-center justify-center">
-                              <Boxes className="h-3 w-3" />
-                              {sortConfig.key === 'stock' && (
-                                sortConfig.direction === 'asc'
-                                  ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
-                                  : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />
-                              )}
-                            </div>
-                          </th>
-
-                          {/* Ubicación - Sortable */}
+                          {/* Stock - Sortable - 8% */}
                           <th
                             className="w-[8%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('stock')}
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              <Boxes className="h-3 w-3" />
+                              <span className="hidden lg:inline">Stock</span>
+                              {getSortInfo('stock') && (
+                                <>
+                                  {getSortInfo('stock').direction === 'asc'
+                                    ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                    : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />}
+                                </>
+                              )}
+                            </div>
+                          </th>
+
+                          {/* Ubicación - Sortable - 7% */}
+                          <th
+                            className="w-[7%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
                             onClick={() => toggleSort('ubicacion_fisica')}
                           >
                             <div className="flex items-center justify-center gap-1">
                               <MapPin className="h-3 w-3" />
                               <span className="hidden lg:inline">Ubic.</span>
-                              {sortConfig.key === 'ubicacion_fisica' && (
-                                sortConfig.direction === 'asc'
-                                  ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
-                                  : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />
+                              {getSortInfo('ubicacion_fisica') && (
+                                <>
+                                  {getSortInfo('ubicacion_fisica').direction === 'asc'
+                                    ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                    : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />}
+                                </>
                               )}
                             </div>
                           </th>
 
-                          {/* Proveedor - Sortable */}
+                          {/* Proveedor - Sortable - 7% */}
                           <th
-                            className="w-[8%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            className="w-[7%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
                             onClick={() => toggleSort('proveedor')}
                           >
                             <div className="flex items-center justify-center gap-1">
                               <Store className="h-3 w-3" />
                               <span className="hidden lg:inline">Prov.</span>
-                              {sortConfig.key === 'proveedor' && (
-                                sortConfig.direction === 'asc'
-                                  ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
-                                  : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />
+                              {getSortInfo('proveedor') && (
+                                <>
+                                  {getSortInfo('proveedor').direction === 'asc'
+                                    ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                    : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />}
+                                </>
                               )}
                             </div>
                           </th>
 
-                          {/* Estado - No sortable */}
-                          <th className="w-[6%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
+                          {/* Estado - No sortable - 5% */}
+                          <th className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
                             <div className="flex items-center justify-center">
                               <Circle className="h-3 w-3" />
                             </div>
                           </th>
 
-                          {/* Acciones - No sortable */}
-                          <th className="w-[10%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase bg-gray-100/80">
-                            <div className="flex items-center justify-center gap-1">
+                          {/* Acciones - No sortable - 6% */}
+                          <th className="w-[6%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase bg-gray-100/80">
+                            <div className="flex items-center justify-center">
                               <Settings className="h-3 w-3" />
-                              <span className="hidden sm:inline">Acc.</span>
                             </div>
                           </th>
                         </tr>
@@ -1166,13 +1205,13 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                                   <img
                                     src={getImageUrl(item.imagen_url)}
                                     alt={item.descripcion}
-                                    className="w-8 h-8 object-cover rounded border border-gray-200 mx-auto"
+                                    className="w-10 h-10 object-cover rounded border border-gray-200 mx-auto"
                                     onError={(e) => {
                                       if (e.target) e.target.style.display = 'none';
                                     }}
                                   />
                                 ) : (
-                                  <div className="w-8 h-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mx-auto text-gray-400">
+                                  <div className="w-10 h-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mx-auto text-gray-400">
                                     {getIconoTipo(item.tipo)}
                                   </div>
                                 )}
@@ -1194,12 +1233,12 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                             {/* Descripción + Código Interno */}
                             <td className="px-1 py-2">
                               <div
-                                className="font-medium text-gray-900 text-xs truncate cursor-help"
+                                className="font-semibold text-gray-900 text-sm truncate cursor-help"
                                 title={item.descripcion}
                               >
                                 {item.descripcion}
                               </div>
-                              <div className="flex items-center gap-1 text-[10px] text-gray-500 truncate">
+                              <div className="flex items-center gap-1 text-xs text-gray-500 truncate">
                                 {item.codigo_interno && (
                                   <span className="font-mono text-indigo-600" title={`Cód. Int: ${item.codigo_interno}`}>
                                     {item.codigo_interno}
@@ -1213,7 +1252,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                             {/* Código de Barras */}
                             <td className="px-1 py-2 text-center">
                               <div
-                                className="font-mono text-[10px] text-gray-600 truncate cursor-help"
+                                className="font-mono text-xs text-gray-700 truncate cursor-help"
                                 title={item.codigo_barras}
                               >
                                 {item.codigo_barras || '-'}
@@ -1236,24 +1275,36 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                               </span>
                             </td>
 
-                            {/* Precio Venta + Costo */}
+                            {/* Precio Venta + Costo - Con tooltip de Bs */}
                             <td className="px-1 py-2 text-center">
-                              <div className="font-bold text-gray-900 text-xs">
-                                ${item.precio.toFixed(0)}
-                              </div>
-                              {item.precio_costo && (
-                                <div className="text-[10px] text-gray-500">
-                                  C: ${parseFloat(item.precio_costo || 0).toFixed(0)}
+                              <div className="group/precio relative cursor-help">
+                                <div className="font-bold text-gray-900 text-sm">
+                                  ${parseFloat(item.precio).toFixed(2)}
                                 </div>
-                              )}
+                                {item.precio_costo && (
+                                  <div className="text-xs text-gray-500">
+                                    C: ${parseFloat(item.precio_costo || 0).toFixed(2)}
+                                  </div>
+                                )}
+                                {/* Tooltip personalizado con precio en Bs - Aparece ABAJO */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover/precio:opacity-100 group-hover/precio:visible transition-all duration-200 whitespace-nowrap z-[9999] shadow-xl">
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
+                                  <div className="font-bold text-emerald-400">
+                                    Bs. {tasas.bcv ? (parseFloat(item.precio) * parseFloat(tasas.bcv)).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
+                                  </div>
+                                  <div className="text-[10px] text-gray-400">
+                                    Tasa BCV: {tasas.bcv ? parseFloat(tasas.bcv).toFixed(2) : '---'}
+                                  </div>
+                                </div>
+                              </div>
                             </td>
 
                             {/* Stock */}
                             <td className="px-1 py-2 text-center">
                               {item.tipo === 'servicio' ? (
-                                <span className="text-gray-400 text-[10px]">-</span>
+                                <span className="text-gray-400 text-xs">-</span>
                               ) : (
-                                <span className={`inline-block px-1.5 py-0.5 text-[10px] font-medium rounded ${item.stock === 0 ? 'bg-red-100 text-red-700' :
+                                <span className={`inline-block px-2 py-0.5 text-xs font-bold rounded ${item.stock === 0 ? 'bg-red-100 text-red-700' :
                                   (item.stock_minimo && item.stock <= item.stock_minimo) ? 'bg-orange-100 text-orange-700' :
                                     'bg-green-100 text-green-700'
                                   }`}>
