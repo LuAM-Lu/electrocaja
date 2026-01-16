@@ -51,16 +51,22 @@ const upload = multer({
 const processImage = async (tempFilePath, filename) => {
   const originalDir = path.join(__dirname, '../../uploads/products/original');
   const thumbnailDir = path.join(__dirname, '../../uploads/products/thumbnails');
-  const originalPath = path.join(originalDir, filename);
-  const thumbnailPath = path.join(thumbnailDir, filename);
+
+  // Cambiar extensión a .jpg ya que convertimos a JPEG
+  const jpgFilename = filename.replace(/\.(webp|png|jpeg|jpg)$/i, '.jpg');
+  const originalPath = path.join(originalDir, jpgFilename);
+  const thumbnailPath = path.join(thumbnailDir, jpgFilename);
 
   try {
     // Asegurar que los directorios existen
     await fs.mkdir(originalDir, { recursive: true });
     await fs.mkdir(thumbnailDir, { recursive: true });
 
+    // Leer archivo en buffer primero (evita bloqueo de archivo en Windows)
+    const inputBuffer = await fs.readFile(tempFilePath);
+
     // Mover/procesar imagen original (max 1200px de ancho)
-    await sharp(tempFilePath)
+    await sharp(inputBuffer)
       .resize(1200, 1200, {
         fit: 'inside',
         withoutEnlargement: true
@@ -69,7 +75,7 @@ const processImage = async (tempFilePath, filename) => {
       .toFile(originalPath);
 
     // Crear thumbnail (200x200px)
-    await sharp(tempFilePath)
+    await sharp(inputBuffer)
       .resize(200, 200, {
         fit: 'cover',
         position: 'center'
@@ -77,14 +83,21 @@ const processImage = async (tempFilePath, filename) => {
       .jpeg({ quality: 80 })
       .toFile(thumbnailPath);
 
-    // Eliminar archivo temporal
-    await fs.unlink(tempFilePath);
+    // Eliminar archivo temporal (con retry para Windows)
+    try {
+      await fs.unlink(tempFilePath);
+    } catch (unlinkErr) {
+      // Si falla, intentar después de un delay
+      setTimeout(async () => {
+        try { await fs.unlink(tempFilePath); } catch (e) { }
+      }, 1000);
+    }
 
-    console.log(`✅ Imagen procesada: ${filename}`);
+    console.log(`✅ Imagen procesada: ${jpgFilename}`);
 
     return {
-      original: `/uploads/products/original/${filename}`,
-      thumbnail: `/uploads/products/thumbnails/${filename}`
+      original: `/uploads/products/original/${jpgFilename}`,
+      thumbnail: `/uploads/products/thumbnails/${jpgFilename}`
     };
 
   } catch (error) {
@@ -93,7 +106,7 @@ const processImage = async (tempFilePath, filename) => {
     try {
       await fs.unlink(tempFilePath);
     } catch (unlinkError) {
-      console.error('Error eliminando archivo temporal:', unlinkError);
+      // Ignorar error de limpieza
     }
     throw error;
   }

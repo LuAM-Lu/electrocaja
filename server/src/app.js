@@ -428,6 +428,7 @@ app.use('/api/email', require('./routes/email')); // 🆕 RUTAS DE EMAIL
 app.use('/api/reportes', require('./routes/reportes')); // 🎯 RUTAS DE REPORTES
 app.use('/api/auditoria', require('./routes/auditoria')); // 🆕 RUTAS DE AUDITORIA INVENTARIO
 app.use('/api/presupuestos', require('./routes/presupuestos')); // 🆕 RUTAS DE PRESUPUESTOS
+app.use('/api/pedidos', require('./routes/pedidos')); // 🆕 RUTAS DE PEDIDOS
 app.use('/api/servicios', serviciosRoutes); // 🔧 RUTAS DE SERVICIOS TÉCNICOS
 app.use('/api/cron', cronRoutes); // 🕐 RUTAS DE CRON JOBS (ADMIN)
 

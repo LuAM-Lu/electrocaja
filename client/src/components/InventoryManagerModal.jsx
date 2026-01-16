@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 import {
   X, Package, Plus, Edit2, Trash2, Search,
-  Eye, DollarSign, AlertCircle, Hash, Image,
+  Eye, DollarSign, AlertCircle, Hash, Image, Camera,
   Folder, Phone, CheckCircle, XCircle, BarChart3,
   AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, ChevronUp, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin
 } from 'lucide-react';
@@ -18,7 +18,7 @@ import RespaldoJsonModal from './inventario/RespaldoJsonModal';
 import AjusteMasivoModal from './inventario/AjusteMasivoModal';
 import ConexionApiModal from './inventario/ConexionApiModal';
 import PrintInventarioModal from './inventario/PrintInventarioModal';
-import { getImageUrl, API_CONFIG } from '../config/api';
+import { getImageUrl, API_CONFIG, api } from '../config/api';
 
 const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
   const {
@@ -127,6 +127,10 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
   const [showConexionApi, setShowConexionApi] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
+
+  // Ref para input de imagen oculto (cambio rápido de imagen)
+  const imageInputRef = React.useRef(null);
+  const [pendingImageProductId, setPendingImageProductId] = useState(null);
 
   //  ESTADO PARA ANIMACIÓN DE SALIDA
   const [isClosing, setIsClosing] = useState(false);
@@ -412,6 +416,56 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
       // Nueva columna, empezar con ascendente
       return { key, direction: 'asc' };
     });
+  };
+
+  // Función para cambio rápido de imagen (solo admin)
+  const handleQuickImageClick = (e, productId) => {
+    e.stopPropagation(); // Evita abrir ProductViewModal
+    setPendingImageProductId(productId);
+    imageInputRef.current?.click();
+  };
+
+  const handleQuickImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingImageProductId) return;
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      toast.error('Solo se permiten archivos de imagen');
+      return;
+    }
+
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no puede superar 5MB');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('productId', pendingImageProductId);
+
+      const response = await api.post('/inventory/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (response.data.success) {
+        toast.success('Imagen actualizada');
+        await obtenerInventario(); // Recargar inventario
+      } else {
+        toast.error(response.data.message || 'Error al subir imagen');
+      }
+    } catch (error) {
+      console.error('Error subiendo imagen:', error);
+      toast.error('Error al subir imagen');
+    } finally {
+      setPendingImageProductId(null);
+      // Limpiar input para permitir subir la misma imagen
+      if (imageInputRef.current) {
+        imageInputRef.current.value = '';
+      }
+    }
   };
 
   // Función para filtrar y ordenar items
@@ -1105,22 +1159,36 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                               </div>
                             </td>
 
-                            {/* Imagen - Más pequeña */}
+                            {/* Imagen - Con botón de cambio rápido para admin */}
                             <td className="px-1 py-2 text-center">
-                              {item.imagen_url ? (
-                                <img
-                                  src={getImageUrl(item.imagen_url)}
-                                  alt={item.descripcion}
-                                  className="w-8 h-8 object-cover rounded border border-gray-200 mx-auto"
-                                  onError={(e) => {
-                                    if (e.target) e.target.style.display = 'none';
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-8 h-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mx-auto text-gray-400">
-                                  {getIconoTipo(item.tipo)}
-                                </div>
-                              )}
+                              <div className="relative inline-block group/img">
+                                {item.imagen_url ? (
+                                  <img
+                                    src={getImageUrl(item.imagen_url)}
+                                    alt={item.descripcion}
+                                    className="w-8 h-8 object-cover rounded border border-gray-200 mx-auto"
+                                    onError={(e) => {
+                                      if (e.target) e.target.style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mx-auto text-gray-400">
+                                    {getIconoTipo(item.tipo)}
+                                  </div>
+                                )}
+                                {/* Botón de cambio rápido de imagen - Solo admin */}
+                                {usuario?.rol === 'admin' && (
+                                  <button
+                                    onClick={(e) => handleQuickImageClick(e, item.id)}
+                                    className="absolute inset-0 w-full h-full flex items-center justify-center bg-black/50 rounded opacity-0 group-hover/img:opacity-100 transition-all duration-200"
+                                  >
+                                    <div className="flex flex-col items-center gap-0.5">
+                                      <Camera className="h-4 w-4 text-white drop-shadow-lg" />
+                                      <span className="text-[8px] text-white font-medium drop-shadow-lg">Cambiar</span>
+                                    </div>
+                                  </button>
+                                )}
+                              </div>
                             </td>
 
                             {/* Descripción + Código Interno */}
@@ -1335,6 +1403,15 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
       <PrintInventarioModal
         isOpen={showPrintModal}
         onClose={() => setShowPrintModal(false)}
+      />
+
+      {/* Input oculto para cambio rápido de imagen */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleQuickImageChange}
+        className="hidden"
       />
     </>
   );

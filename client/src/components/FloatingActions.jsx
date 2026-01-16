@@ -1,6 +1,6 @@
 // components/FloatingActions.jsx (VERSIÓN CORREGIDA COMPLETA)
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Minus, Menu, X, Lock, Zap, Package, Calculator, Users, Settings, Search, Scan, FileText, /* Activity, */ DollarSign, Camera, XCircle } from 'lucide-react';
+import { Plus, Minus, Menu, X, Lock, Zap, Package, Calculator, Users, Settings, Search, Scan, FileText, /* Activity, */ DollarSign, Camera, XCircle, ClipboardList } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useCajaStore } from '../store/cajaStore';
@@ -9,7 +9,7 @@ import ReportesModal from './reportes/ReportesModal';
 import toast from '../utils/toast.jsx';
 import { Html5Qrcode } from 'html5-qrcode';
 
-const FloatingActions = ({ onNewTransaction, onCerrarCaja, onOpenInventario, onOpenArqueo, onOpenConfiguracion, onOpenPresupuesto, onOpenActividades, onOpenScanner, onOpenReportes, cajaActual }) => {
+const FloatingActions = ({ onNewTransaction, onCerrarCaja, onOpenInventario, onOpenArqueo, onOpenConfiguracion, onOpenPresupuesto, onOpenPedidos, onOpenActividades, onOpenScanner, onOpenReportes, cajaActual }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -70,15 +70,15 @@ const FloatingActions = ({ onNewTransaction, onCerrarCaja, onOpenInventario, onO
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!showResultsList) return;
-      
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedResultIndex(prev => 
+        setSelectedResultIndex(prev =>
           prev < searchResults.length - 1 ? prev + 1 : 0
         );
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedResultIndex(prev => 
+        setSelectedResultIndex(prev =>
           prev > 0 ? prev - 1 : searchResults.length - 1
         );
       } else if (e.key === 'Enter') {
@@ -105,11 +105,11 @@ const FloatingActions = ({ onNewTransaction, onCerrarCaja, onOpenInventario, onO
     };
   }, [showResultsList, searchResults, selectedResultIndex]);
 
-const handleAction = (action) => {
+  const handleAction = (action) => {
     setIsOpen(false);
     setSearchQuery('');
     setShowShortcuts(false);
-    
+
     setTimeout(() => {
       if (action === 'ingreso') {
         onNewTransaction('ingreso');
@@ -125,11 +125,13 @@ const handleAction = (action) => {
         onOpenConfiguracion();
       } else if (action === 'reportes') {
         onOpenReportes();
-      // TODO: Botón de Actividades - Comentado para uso posterior
-      // } else if (action === 'actividades') {
-      //   onOpenActividades();
+        // TODO: Botón de Actividades - Comentado para uso posterior
+        // } else if (action === 'actividades') {
+        //   onOpenActividades();
       } else if (action === 'presupuesto') {
         onOpenPresupuesto();
+      } else if (action === 'pedidos') {
+        onOpenPedidos?.();
       }
     }, 100);
   };;
@@ -276,9 +278,8 @@ const handleAction = (action) => {
       {/* Contenedor principal -  z-[45] para estar por debajo de modales z-50 */}
       <div className="fixed bottom-6 right-20 z-[45]">
         {/* Input de Búsqueda */}
-        <div className={`absolute bottom-0 right-20 transition-all duration-300 ${
-          isOpen ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-95 translate-x-4 pointer-events-none'
-        }`}>
+        <div className={`absolute bottom-0 right-20 transition-all duration-300 ${isOpen ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-95 translate-x-4 pointer-events-none'
+          }`}>
           <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-3 min-w-[350px]">
             <div className="flex items-center space-x-2 mb-2">
 
@@ -333,11 +334,10 @@ const handleAction = (action) => {
               {isMobile && (
                 <button
                   onClick={isScannerActive ? stopScanner : startScanner}
-                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-lg transition-all ${
-                    isScannerActive
-                      ? 'bg-red-500 text-white hover:bg-red-600'
-                      : 'bg-purple-500 text-white hover:bg-purple-600'
-                  }`}
+                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-lg transition-all ${isScannerActive
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-purple-500 text-white hover:bg-purple-600'
+                    }`}
                   title={isScannerActive ? 'Cerrar cámara' : 'Escanear con cámara'}
                 >
                   {isScannerActive ? (
@@ -354,7 +354,7 @@ const handleAction = (action) => {
               <div className="mt-3">
                 <div id="barcode-scanner" className="w-full rounded-lg overflow-hidden border-2 border-purple-500"></div>
                 <div className="text-xs text-center text-purple-600 mt-2 font-medium">
-                   Apunta al código de barras
+                  Apunta al código de barras
                 </div>
               </div>
             )}
@@ -412,11 +412,10 @@ const handleAction = (action) => {
         )}
 
         {/* Botones secundarios - misma estructura que servicios */}
-        <div className={`flex flex-col-reverse items-end space-y-reverse space-y-3 mb-3 transition-all duration-300 ${
-          isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-        }`}>
+        <div className={`flex flex-col-reverse items-end space-y-reverse space-y-3 mb-3 transition-all duration-300 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+          }`}>
 
-          {/* Configuración PARA ADMIN Y SUPERVISOR (supervisor solo ve WhatsApp) */}
+          {/* 9. Configuración - ADMIN Y SUPERVISOR */}
           {(usuario?.rol === 'admin' || usuario?.rol === 'supervisor') && (
             <button
               onClick={() => handleAction('configuracion')}
@@ -430,7 +429,7 @@ const handleAction = (action) => {
             </button>
           )}
 
-          {/*  Reportes SOLO PARA ADMIN */}
+          {/* 8. Reportes - SOLO ADMIN */}
           {usuario?.rol === 'admin' && (
             <button
               onClick={() => handleAction('reportes')}
@@ -444,60 +443,7 @@ const handleAction = (action) => {
             </button>
           )}
 
-          {/* TODO: Botón de Actividades - Comentado para uso posterior */}
-          {/* Actividades PARA TODOS */}
-          {/* <button
-            onClick={() => handleAction('actividades')}
-            className="group relative bg-cyan-500 hover:bg-cyan-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
-          >
-            <Activity className="h-6 w-6" />
-            <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
-              Actividades
-              <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
-            </div>
-          </button> */}
-
-          {/*  Presupuesto PARA ADMIN/SUPERVISOR/CAJERO */}
-          {(usuario?.rol === 'admin' || usuario?.rol === 'supervisor' || usuario?.rol === 'cajero') && (
-            <button
-              onClick={() => handleAction('presupuesto')}
-              className="group relative bg-emerald-500 hover:bg-emerald-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
-            >
-              <DollarSign className="h-6 w-6" />
-              <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
-                Presupuesto
-                <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
-              </div>
-            </button>
-          )}
-          
-          {/* Arqueo de Caja */}
-          {cajaActual && tienePermiso('ARQUEO_CAJA') && (
-            <button
-              onClick={() => handleAction('arqueo')}
-              className="group relative bg-orange-500 hover:bg-orange-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
-            >
-              <Calculator className="h-6 w-6" />
-              <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
-                Arqueo de Caja
-                <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
-              </div>
-            </button>
-          )}
-
-          {/* Inventario */}
-          <button
-            onClick={() => handleAction('inventario')}
-            className="group relative bg-indigo-500 hover:bg-indigo-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
-          >
-            <Package className="h-6 w-6" />
-            <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
-              Inventario
-              <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
-            </div>
-          </button>
-
-          {/* Cerrar Caja */}
+          {/* 7. Cerrar Caja */}
           {cajaActual && tienePermiso('CERRAR_CAJA') && (
             <button
               onClick={() => handleAction('cerrar')}
@@ -511,7 +457,61 @@ const handleAction = (action) => {
             </button>
           )}
 
-          {/* Nuevo Egreso */}
+          {/* 6. Arqueo de Caja - SOLO ADMIN */}
+          {cajaActual && usuario?.rol === 'admin' && (
+            <button
+              onClick={() => handleAction('arqueo')}
+              className="group relative bg-orange-500 hover:bg-orange-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
+            >
+              <Calculator className="h-6 w-6" />
+              <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
+                Arqueo de Caja
+                <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+              </div>
+            </button>
+          )}
+
+          {/* 5. Inventario - TODOS */}
+          <button
+            onClick={() => handleAction('inventario')}
+            className="group relative bg-indigo-500 hover:bg-indigo-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
+          >
+            <Package className="h-6 w-6" />
+            <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
+              Inventario
+              <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+            </div>
+          </button>
+
+          {/* 4. Pedidos - ADMIN/SUPERVISOR/CAJERO */}
+          {(usuario?.rol === 'admin' || usuario?.rol === 'supervisor' || usuario?.rol === 'cajero') && (
+            <button
+              onClick={() => handleAction('pedidos')}
+              className="group relative bg-blue-500 hover:bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
+            >
+              <ClipboardList className="h-6 w-6" />
+              <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
+                Pedidos
+                <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+              </div>
+            </button>
+          )}
+
+          {/* 3. Presupuesto - ADMIN/SUPERVISOR/CAJERO */}
+          {(usuario?.rol === 'admin' || usuario?.rol === 'supervisor' || usuario?.rol === 'cajero') && (
+            <button
+              onClick={() => handleAction('presupuesto')}
+              className="group relative bg-emerald-500 hover:bg-emerald-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
+            >
+              <DollarSign className="h-6 w-6" />
+              <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
+                Presupuesto
+                <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
+              </div>
+            </button>
+          )}
+
+          {/* 2. Nuevo Egreso */}
           {cajaActual && tienePermiso('REALIZAR_VENTAS') && (
             <button
               onClick={() => handleAction('egreso')}
@@ -525,7 +525,7 @@ const handleAction = (action) => {
             </button>
           )}
 
-          {/* Nuevo Ingreso */}
+          {/* 1. Nuevo Ingreso */}
           {cajaActual && tienePermiso('REALIZAR_VENTAS') && (
             <button
               onClick={() => handleAction('ingreso')}
@@ -544,7 +544,7 @@ const handleAction = (action) => {
         <div className="relative">
           {/* Badge de ayuda - Solo visible cuando menú está abierto */}
           {isOpen && (
-            <div 
+            <div
               onClick={() => setShowShortcuts(!showShortcuts)}
               className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 hover:bg-amber-600 text-white rounded-full flex items-center justify-center text-xs font-bold cursor-pointer shadow-lg transition-all duration-300 hover:scale-110 z-10"
             >
@@ -556,12 +556,11 @@ const handleAction = (action) => {
           <div className="flex items-center space-x-3 group">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className={`p-4 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-2xl hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] transition-all duration-300 hover:scale-110 active:scale-95 group relative ${
-                isOpen ? 'rotate-45' : 'rotate-0'
-              }`}
+              className={`p-4 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-2xl hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] transition-all duration-300 hover:scale-110 active:scale-95 group relative ${isOpen ? 'rotate-45' : 'rotate-0'
+                }`}
             >
               {isOpen ? <X className="h-8 w-8" /> : <Menu className="h-8 w-8" />}
-              
+
               {/* Anillo animado como en servicios */}
               <div className="absolute inset-0 rounded-full border-2 border-blue-400/30 animate-pulse" />
             </button>
@@ -573,13 +572,13 @@ const handleAction = (action) => {
       {showResultsList && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[55]">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
-            
+
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-4 rounded-t-xl">
               <div className="flex items-center justify-between text-white">
                 <div className="flex items-center space-x-3">
                   <div className="bg-white/20 p-2 rounded-lg">
-                    
+
                   </div>
                   <div>
                     <h3 className="text-lg font-bold">{searchResults.length} Productos Encontrados</h3>
@@ -594,7 +593,7 @@ const handleAction = (action) => {
                   }}
                   className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
                 >
-                  
+
                 </button>
               </div>
             </div>
@@ -605,11 +604,10 @@ const handleAction = (action) => {
                 {searchResults.map((producto, index) => (
                   <label
                     key={producto.id}
-                    className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      selectedResultIndex === index
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
-                    }`}
+                    className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${selectedResultIndex === index
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                      }`}
                   >
                     <input
                       id={`producto-radio-${index}`}
@@ -627,32 +625,32 @@ const handleAction = (action) => {
                         {/* Primera línea: Códigos */}
                         <div className="flex items-center space-x-2">
                           <span className="font-mono bg-gray-100 px-2 py-0.5 rounded text-xs">
-                             {producto.codigo_barras}
+                            {producto.codigo_barras}
                           </span>
                           <span>•</span>
                           <span className="font-mono bg-blue-100 px-2 py-0.5 rounded text-xs text-blue-700">
-                             {producto.codigo_interno || 'Sin código'}
+                            {producto.codigo_interno || 'Sin código'}
                           </span>
                           <span>•</span>
                           <span className="font-bold text-green-600">
                             ${parseFloat(producto.precio || producto.precio_venta || 0).toFixed(2)}
                           </span>
                         </div>
-                        
+
                         {/* Segunda línea: Observaciones */}
                         {producto.observaciones && (
                           <div className="text-xs text-gray-600 bg-yellow-50 px-2 py-1 rounded border-l-2 border-yellow-400">
-                             {producto.observaciones.length > 60 
-                              ? `${producto.observaciones.substring(0, 60)}...` 
+                            {producto.observaciones.length > 60
+                              ? `${producto.observaciones.substring(0, 60)}...`
                               : producto.observaciones
                             }
                           </div>
                         )}
-                        
+
                         {/* Tercera línea: Stock */}
                         {producto.stock !== null && (
                           <div className="text-xs text-gray-500">
-                             Stock: {producto.stock} unidades
+                            Stock: {producto.stock} unidades
                           </div>
                         )}
                       </div>
@@ -669,7 +667,7 @@ const handleAction = (action) => {
                 <div className="text-xs text-gray-500">
                   <div> Navegar • <kbd className="px-1 bg-gray-200 rounded">Enter</kbd> Seleccionar • <kbd className="px-1 bg-gray-200 rounded">Esc</kbd> Cancelar</div>
                 </div>
-                
+
                 {/* Botones */}
                 <div className="flex space-x-3">
                   <button

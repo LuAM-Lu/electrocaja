@@ -36,6 +36,9 @@ class CronService {
     // Job 5: Actualización automática de tasa de cambio cada 1 hora
     this.scheduleTasaCambioUpdate();
 
+    // Job 6: Limpieza de pedidos cancelados > 1 mes (diario a las 3:00 AM)
+    this.schedulePedidosCanceladosCleanup();
+
     this.isInitialized = true;
     console.log(`✅ [CronService] ${this.jobs.size} tareas programadas activas`);
   }
@@ -390,6 +393,86 @@ class CronService {
   }
 
   /**
+   * 🗑️ JOB: Limpieza de pedidos cancelados con más de 1 mes
+   * Se ejecuta diariamente a las 3:00 AM
+   */
+  schedulePedidosCanceladosCleanup() {
+    const jobName = 'pedidos-cancelados-cleanup';
+
+    // Cron: '0 3 * * *' = todos los días a las 3:00 AM
+    const job = cron.schedule('0 3 * * *', async () => {
+      await this._cleanupPedidosCancelados();
+    }, {
+      scheduled: true,
+      timezone: "America/Caracas"
+    });
+
+    this.jobs.set(jobName, job);
+    console.log(`✅ [CronService] Job "${jobName}" programado (3:00 AM diario)`);
+  }
+
+  /**
+   * 🗑️ HELPER: Eliminar pedidos cancelados > 1 mes
+   */
+  async _cleanupPedidosCancelados() {
+    try {
+      console.log('🗑️ [CronService] Limpiando pedidos cancelados antiguos...');
+
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+
+      // Calcular fecha límite (1 mes atrás)
+      const unMesAtras = new Date();
+      unMesAtras.setMonth(unMesAtras.getMonth() - 1);
+
+      // Buscar pedidos cancelados con más de 1 mes
+      const pedidosAntiguos = await prisma.pedido.findMany({
+        where: {
+          estado: 'CANCELADO',
+          createdAt: {
+            lt: unMesAtras
+          }
+        },
+        select: {
+          id: true,
+          numero: true,
+          createdAt: true,
+          clienteNombre: true
+        }
+      });
+
+      if (pedidosAntiguos.length > 0) {
+        console.log(`🗑️ [CronService] Encontrados ${pedidosAntiguos.length} pedidos cancelados antiguos`);
+
+        // Eliminar los pedidos
+        const resultado = await prisma.pedido.deleteMany({
+          where: {
+            estado: 'CANCELADO',
+            createdAt: {
+              lt: unMesAtras
+            }
+          }
+        });
+
+        console.log(`✅ [CronService] ${resultado.count} pedidos cancelados eliminados`);
+
+        // Log de detalles
+        pedidosAntiguos.forEach(p => {
+          console.log(`   - ${p.numero} (${p.clienteNombre}) - Creado: ${new Date(p.createdAt).toLocaleDateString('es-VE')}`);
+        });
+
+      } else {
+        console.log('ℹ️ [CronService] No hay pedidos cancelados antiguos para eliminar');
+      }
+
+      await prisma.$disconnect();
+
+    } catch (error) {
+      console.error('❌ [CronService] Error limpiando pedidos cancelados:', error);
+    }
+  }
+
+  /**
    * 🛑 DETENER TODOS LOS CRON JOBS
    */
   stopAll() {
@@ -481,6 +564,16 @@ class CronService {
           return resultado;
         } catch (error) {
           console.error('❌ [CronService] Error en actualización manual de tasa:', error);
+          throw error;
+        }
+
+      case 'pedidos-cancelados-cleanup':
+        try {
+          await this._cleanupPedidosCancelados();
+          console.log('✅ [CronService] Limpieza de pedidos cancelados completada');
+          return { success: true, message: 'Limpieza completada' };
+        } catch (error) {
+          console.error('❌ [CronService] Error en limpieza de pedidos:', error);
           throw error;
         }
 

@@ -39,6 +39,7 @@ model User {
   aprobacionesDescuento      DiscountRequest[]       @relation("AprobacionesDescuento")
   rechazosDescuento          DiscountRequest[]       @relation("RechazosDescuento")
   presupuestosCreados        Presupuesto[]          @relation("PresupuestosCreados")
+  pedidosCreados             Pedido[]               @relation("PedidosCreados")
 
   @@map("users")
 }
@@ -144,6 +145,7 @@ model Transaccion {
   servicioTecnicoId   Int?                  @map("servicio_tecnico_id")
   pagosServicio       ServicioTecnicoPago[] @relation("PagosServicio")
   servicioTecnico     ServicioTecnico?      @relation("TransaccionesServicio", fields: [servicioTecnicoId], references: [id])
+  pedido              Pedido?               @relation("PedidoTransaccion")
 
   @@map("transacciones")
 }
@@ -363,6 +365,7 @@ model Cliente {
   ventas    Transaccion[]     @relation("VentasCliente")
   servicios ServicioTecnico[] @relation("ServiciosCliente")
   presupuestos Presupuesto[]  @relation("PresupuestosCliente")
+  pedidos   Pedido[]          @relation("PedidosCliente")
 
   @@map("clientes")
 }
@@ -908,4 +911,75 @@ enum EstadoPresupuesto {
   RECHAZADO
   VENCIDO
   CONVERTIDO_VENTA
+}
+
+// =====================================================
+// MODELO PEDIDO - Solicitudes de productos no en stock
+// =====================================================
+model Pedido {
+  id                  Int              @id @default(autoincrement())
+  numero              String           @unique  // PED-2026-0001
+  fecha               DateTime         @default(now()) @db.Date
+  
+  // Cliente
+  clienteId           Int?             @map("cliente_id")
+  clienteNombre       String           @map("cliente_nombre")
+  clienteTelefono     String?          @map("cliente_telefono")
+  clienteEmail        String?          @map("cliente_email")
+  clienteCedulaRif    String?          @map("cliente_cedula_rif")
+  
+  // Items (JSON con notas internas)
+  // [{descripcion, cantidad, precioUnitario, subtotal, notaInterna: {proveedor, codigoProducto, link}}]
+  items               Json
+  
+  // Totales
+  subtotal            Decimal          @db.Decimal(12, 2)
+  descuento           Decimal          @default(0) @db.Decimal(12, 2)
+  totalUsd            Decimal          @map("total_usd") @db.Decimal(12, 2)
+  totalBs             Decimal          @map("total_bs") @db.Decimal(12, 2)
+  tasaCambio          Decimal          @map("tasa_cambio") @db.Decimal(8, 4)
+  
+  // Estado del pedido
+  estado              EstadoPedido     @default(PENDIENTE)
+  
+  // Pago
+  pagado              Boolean          @default(false)
+  fechaPago           DateTime?        @map("fecha_pago")
+  transaccionId       Int?             @unique @map("transaccion_id")
+  
+  // Origen (si viene de presupuesto)
+  presupuestoId       Int?             @map("presupuesto_id")
+  
+  // Historial de estados [{estado, fecha, usuario, mensaje}]
+  historialEstados    Json?            @map("historial_estados")
+  
+  // Observaciones internas
+  observaciones       String?
+  
+  // Auditoría
+  creadoPorId         Int              @map("creado_por_id")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  
+  // Relaciones
+  cliente             Cliente?         @relation("PedidosCliente", fields: [clienteId], references: [id])
+  transaccion         Transaccion?     @relation("PedidoTransaccion", fields: [transaccionId], references: [id])
+  creadoPor           User             @relation("PedidosCreados", fields: [creadoPorId], references: [id])
+  
+  @@index([clienteId])
+  @@index([estado])
+  @@index([fecha])
+  @@index([pagado])
+  @@index([numero])
+  @@map("pedidos")
+}
+
+enum EstadoPedido {
+  PENDIENTE           // Creado, esperando pago o confirmación
+  PAGADO              // Cliente pagó, pedido pendiente de procesar
+  CONFIRMADO          // Proveedor confirmó disponibilidad
+  EN_CAMINO           // Producto en tránsito
+  RECIBIDO            // Llegó a tienda, listo para entregar
+  ENTREGADO           // Cliente recibió el producto
+  CANCELADO           // Pedido cancelado
 }

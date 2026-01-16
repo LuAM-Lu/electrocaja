@@ -181,14 +181,12 @@ export const getImageUrl = (imagePath) => {
   if (typeof imagePath === 'string') {
     if (imagePath.startsWith('/uploads/')) {
       const fullUrl = `${serverUrl}${imagePath}`;
-      console.log('🖼️ getImageUrl:', { path: imagePath, fullUrl });
       return fullUrl;
     }
 
     // Para rutas relativas sin /uploads/, agregarlas
     if (!imagePath.startsWith('/')) {
       const fullUrl = `${serverUrl}/uploads/products/thumbnails/${imagePath}`;
-      console.log('🖼️ getImageUrl (relative):', { path: imagePath, fullUrl });
       return fullUrl;
     }
 

@@ -887,7 +887,7 @@ const getInventoryStats = async (req, res) => {
   }
 };
 
-// ✅ VERSIÓN QUE MANEJA TANTO TEMPORAL COMO DEFINITIVO
+// ✅ VERSIÓN QUE MANEJA TEMPORAL, DEFINITIVO Y ACTUALIZACIÓN DIRECTA
 const uploadProductImage = async (req, res) => {
   try {
     if (!req.file) {
@@ -900,6 +900,7 @@ const uploadProductImage = async (req, res) => {
     const filename = req.file.filename;
     const tempPath = req.file.path;
     const isTemporary = req.body.isTemporary === 'true';
+    const productId = req.body.productId; // Para cambio rápido de imagen
 
     if (isTemporary) {
       // 🆕 MODO TEMPORAL - Solo mover a /temp/
@@ -928,6 +929,44 @@ const uploadProductImage = async (req, res) => {
       // 🔄 MODO DEFINITIVO - Procesar normalmente
       const imagePaths = await processImage(tempPath, filename);
 
+      // 🆕 Si viene productId, actualizar el producto directamente
+      if (productId) {
+        const product = await prisma.product.findUnique({
+          where: { id: parseInt(productId) }
+        });
+
+        if (product) {
+          // Eliminar imagen anterior si existe
+          if (product.imagenUrl) {
+            try {
+              await deleteOldImage(product.imagenUrl);
+            } catch (err) {
+              console.warn('⚠️ No se pudo eliminar imagen anterior:', err.message);
+            }
+          }
+
+          // Actualizar producto con nueva imagen
+          await prisma.product.update({
+            where: { id: parseInt(productId) },
+            data: { imagenUrl: imagePaths.thumbnail }
+          });
+
+          console.log(`✅ Imagen actualizada para producto ${productId}: ${imagePaths.thumbnail}`);
+
+          return res.json({
+            success: true,
+            message: 'Imagen del producto actualizada',
+            data: {
+              productId: parseInt(productId),
+              filename: filename,
+              original: imagePaths.original,
+              thumbnail: imagePaths.thumbnail
+            }
+          });
+        }
+      }
+
+      // Respuesta normal si no hay productId
       res.json({
         success: true,
         message: 'Imagen subida correctamente',
