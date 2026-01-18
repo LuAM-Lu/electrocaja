@@ -49,7 +49,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
 
   // Función: Obtener icono del inventario
   const getInventarioIcon = (tipo) => {
-    switch(tipo) {
+    switch (tipo) {
       case 'producto': return '';
       case 'servicio': return '';
       case 'electrobar': return '';
@@ -71,7 +71,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
 
       if (response.data.success && response.data.user) {
         const adminUser = response.data.user;
-        
+
         if (adminUser.rol === 'admin') {
           setAdminVerificado(adminUser);
           setStep(2);
@@ -104,12 +104,12 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
     setLoading(true);
     try {
       // Si la transacción tiene item del inventario, devolver stock
-      if (transaccion.item_inventario && 
-          (transaccion.item_inventario.tipo === 'producto' || transaccion.item_inventario.tipo === 'electrobar') &&
-          transaccion.tipo === 'ingreso') {
-        
+      if (transaccion.item_inventario &&
+        (transaccion.item_inventario.tipo === 'producto' || transaccion.item_inventario.tipo === 'electrobar') &&
+        transaccion.tipo === 'ingreso') {
+
         const cantidad = transaccion.item_inventario.cantidad;
-        
+
         try {
           await aumentarStock(transaccion.item_inventario.id, cantidad);
           toast.success(`Stock devuelto: +${cantidad} ${transaccion.item_inventario.descripcion}`);
@@ -119,7 +119,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
       }
 
       // Eliminar la transacción con motivo y token
-      const response = await api.delete(`/caja/transacciones/${transaccion.id}`, {
+      const response = await api.delete(`/cajas/transacciones/${transaccion.id}`, {
         data: {
           motivoEliminacion: motivoEliminacion.trim(),
           adminToken: adminToken.toUpperCase().trim()
@@ -128,18 +128,18 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
 
       if (response.data.success) {
         toast.success('Transacción eliminada correctamente');
-        
+
         // Cerrar modal primero
         onClose();
-        
+
         // Recargar la caja actual para actualizar la lista
         await cargarCajaActual();
-        
+
         // Llamar al callback si existe (para cualquier acción adicional)
         if (typeof onConfirm === 'function') {
           onConfirm(transaccion.id);
         }
-        
+
         // Limpiar estados
         setAdminToken('');
         setMotivoEliminacion('');
@@ -207,7 +207,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
           {step === 1 ? (
             /* PASO 1: Verificación de administrador */
             <div className="space-y-6">
-              
+
               {/* Advertencia */}
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
@@ -215,7 +215,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
                   <div>
                     <h3 className="font-medium text-red-900 mb-1">Acción Peligrosa</h3>
                     <p className="text-red-700 text-sm">
-                      Estás a punto de eliminar permanentemente esta transacción. 
+                      Estás a punto de eliminar permanentemente esta transacción.
                       Esta acción <strong>no se puede deshacer</strong>.
                     </p>
                   </div>
@@ -223,38 +223,38 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
               </div>
 
               {/* Alerta de inventario si aplica */}
-              {transaccion.item_inventario && 
-               (transaccion.item_inventario.tipo === 'producto' || transaccion.item_inventario.tipo === 'electrobar') &&
-               transaccion.tipo === 'ingreso' && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Package className="h-4 w-4 text-orange-600" />
-                    <span className="text-sm font-medium text-orange-800">Stock del Inventario</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-lg">{getInventarioIcon(transaccion.item_inventario.tipo)}</span>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {transaccion.item_inventario.descripcion}
+              {transaccion.item_inventario &&
+                (transaccion.item_inventario.tipo === 'producto' || transaccion.item_inventario.tipo === 'electrobar') &&
+                transaccion.tipo === 'ingreso' && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Package className="h-4 w-4 text-orange-600" />
+                      <span className="text-sm font-medium text-orange-800">Stock del Inventario</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">{getInventarioIcon(transaccion.item_inventario.tipo)}</span>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {transaccion.item_inventario.descripcion}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            ID: #{transaccion.item_inventario.id}
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-600">
-                          ID: #{transaccion.item_inventario.id}
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center space-x-1 text-sm text-orange-700 font-medium">
+                          <ArrowLeft className="h-3 w-3" />
+                          <span>+{transaccion.item_inventario.cantidad}</span>
+                        </div>
+                        <div className="text-xs text-orange-600">
+                          Se devolverá al stock
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center space-x-1 text-sm text-orange-700 font-medium">
-                        <ArrowLeft className="h-3 w-3" />
-                        <span>+{transaccion.item_inventario.cantidad}</span>
-                      </div>
-                      <div className="text-xs text-orange-600">
-                        Se devolverá al stock
-                      </div>
-                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Información de la transacción */}
               <div className="bg-gray-50 rounded-lg p-4">
@@ -270,7 +270,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
                       <span className="font-medium">{new Date(transaccion.fecha_hora || transaccion.fechaHora).toLocaleDateString('es-VE')}</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex justify-between items-center border-t pt-2">
                     <div className="flex items-center space-x-2">
                       {transaccion.tipo === 'ingreso' || transaccion.tipo === 'INGRESO' ? (
@@ -282,12 +282,11 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
                     </div>
                     <span className="font-medium text-sm truncate ml-2 max-w-[180px]">{transaccion.categoria}</span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-gray-600">Monto:</span>
-                    <span className={`font-bold text-sm ${
-                      transaccion.tipo === 'ingreso' || transaccion.tipo === 'INGRESO' ? 'text-emerald-700' : 'text-red-700'
-                    }`}>
+                    <span className={`font-bold text-sm ${transaccion.tipo === 'ingreso' || transaccion.tipo === 'INGRESO' ? 'text-emerald-700' : 'text-red-700'
+                      }`}>
                       {transaccion.tipo === 'ingreso' || transaccion.tipo === 'INGRESO' ? '+' : '-'}{formatBolivares(transaccion.total_bs || transaccion.totalBs)} Bs
                     </span>
                   </div>
@@ -353,7 +352,7 @@ const DeleteTransactionModal = ({ isOpen, onClose, transaccion, onConfirm }) => 
           ) : (
             /* PASO 2: Confirmación final */
             <div className="space-y-6">
-              
+
               {/* Admin verificado */}
               {adminVerificado && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
