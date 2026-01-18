@@ -58,12 +58,12 @@ const getServicios = async (req, res) => {
       fechaDesde,
       fechaHasta,
       page = 1,
-      limit = 50
+      limit = 200
     } = req.query;
 
     // Límite máximo para evitar cargas excesivas
-    const MAX_LIMIT = 200;
-    const limitValue = Math.min(parseInt(limit) || 50, MAX_LIMIT);
+    const MAX_LIMIT = 700;
+    const limitValue = Math.min(parseInt(limit) || 200, MAX_LIMIT);
     const pageValue = Math.max(parseInt(page) || 1, 1);
     const offset = (pageValue - 1) * limitValue;
 
