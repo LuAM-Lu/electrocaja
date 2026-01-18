@@ -43,14 +43,14 @@ const obtenerTasasCambio = async () => {
 const getCajaActual = async (req, res) => {
   try {
     const caja = await prisma.caja.findFirst({
-  where: {
-    estado: {
-      in: ['ABIERTA', 'PENDIENTE_CIERRE_FISICO']  // ✅ BUSCAR AMBOS ESTADOS
-    }
-  },
-  orderBy: {
-    fecha: 'desc'
-  },
+      where: {
+        estado: {
+          in: ['ABIERTA', 'PENDIENTE_CIERRE_FISICO']  // ✅ BUSCAR AMBOS ESTADOS
+        }
+      },
+      orderBy: {
+        fecha: 'desc'
+      },
       include: {
         usuarioApertura: {
           select: {
@@ -67,32 +67,35 @@ const getCajaActual = async (req, res) => {
           }
         },
         transacciones: {
+          where: {
+            deletedAt: null
+          },
+          include: {
+            pagos: true,
+            items: {
               include: {
-                pagos: true,
-                items: {
-                  include: {
-                    producto: {
-                      select: {
-                        id: true,
-                        descripcion: true,
-                        tipo: true
-                      }
-                    }
-                  }
-                },
-                usuario: {
+                producto: {
                   select: {
                     id: true,
-                    nombre: true,
-                    email: true,
-                    rol: true
+                    descripcion: true,
+                    tipo: true
                   }
                 }
-              },
-              orderBy: {
-                fechaHora: 'desc'
               }
             },
+            usuario: {
+              select: {
+                id: true,
+                nombre: true,
+                email: true,
+                rol: true
+              }
+            }
+          },
+          orderBy: {
+            fechaHora: 'desc'
+          }
+        },
         arqueos: true
       }
     });
@@ -126,7 +129,7 @@ const getCajaActual = async (req, res) => {
           }))
         }))
       };
-      
+
       sendSuccess(res, { caja: cajaConvertida, transacciones: cajaConvertida.transacciones });
     } else {
       sendSuccess(res, { caja: null, transacciones: [] });
@@ -142,14 +145,14 @@ const getCajaActual = async (req, res) => {
 // ===================================
 const abrirCaja = async (req, res) => {
   try {
-    const { 
-      montoInicialBs = 0, 
-      montoInicialUsd = 0, 
+    const {
+      montoInicialBs = 0,
+      montoInicialUsd = 0,
       montoInicialPagoMovil = 0,
       observacionesApertura = '',
       imagenApertura = null
     } = req.body;
-    
+
     const userId = req.user.userId;
     const userRole = req.user.rol;
 
@@ -245,13 +248,13 @@ const abrirCaja = async (req, res) => {
         usuario: req.user?.email,
         timestamp: new Date().toISOString()
       });
-      
+
       req.io.emit('caja_abierta', {
         caja: cajaConvertida,
         usuario: req.user?.nombre || req.user?.email,
         timestamp: new Date().toISOString()
       });
-      
+
       console.log('📡 Evento caja_abierta enviado a todos los usuarios conectados');
     } else {
       console.log('⚠️ req.io no disponible para emitir evento');
@@ -269,14 +272,14 @@ const abrirCaja = async (req, res) => {
 // ===================================
 const cerrarCaja = async (req, res) => {
   try {
-    const { 
+    const {
       montoFinalBs,
       montoFinalUsd,
       montoFinalPagoMovil,
       observacionesCierre = '',
       imagenCierre = null
     } = req.body;
-    
+
     const userId = req.user.userId;
     const userRole = req.user.rol;
 
@@ -388,18 +391,18 @@ const cerrarCaja = async (req, res) => {
         timestamp: new Date().toISOString()
       });
 
-       console.log('📡 Emitiendo evento caja_cerrada:', {
+      console.log('📡 Emitiendo evento caja_cerrada:', {
         caja_id: cajaConvertida.id,
         usuario: req.user?.email,
         timestamp: new Date().toISOString()
       });
-      
+
       req.io.emit('caja_cerrada', {
         caja: cajaConvertida,
         usuario: req.user?.nombre || req.user?.email,
         timestamp: new Date().toISOString()
       });
-      
+
       console.log('📡 Notificaciones Socket.IO enviadas (desbloqueo + cierre)');
     }
 
@@ -415,7 +418,7 @@ const cerrarCaja = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error cerrando caja:', error);
-    
+
     // 🔧 LIMPIAR ESTADOS EN CASO DE ERROR TAMBIÉN
     if (global.estadoApp) {
       global.estadoApp.usuarios_bloqueados = false;
@@ -424,7 +427,7 @@ const cerrarCaja = async (req, res) => {
       global.estadoApp.timestamp_bloqueo = null;
       global.estadoApp.diferencias_pendientes = null;
     }
-    
+
     sendError(res, 'Error interno del servidor');
   }
 };
@@ -688,7 +691,7 @@ const realizarArqueo = async (req, res) => {
 
         // 📊 ACTUALIZAR TOTALES DE LA CAJA
         const updateData = {};
-        
+
         if (diferencias.bs !== 0) {
           if (diferencias.bs > 0) {
             updateData.totalIngresosBs = { increment: toDecimal(diferencias.bs) };
@@ -744,7 +747,7 @@ const realizarArqueo = async (req, res) => {
       });
 
       console.log('📡 Usuarios desbloqueados y notificados');
-      }
+    }
 
     // Convertir para el frontend
     const arqueosConvertidos = arqueoData.map(arqueo => ({
@@ -831,7 +834,7 @@ const subirEvidenciaFotografica = async (req, res) => {
       try {
         // Extraer tipo de imagen del base64
         const matches = imagen_base64.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
-        
+
         if (!matches || matches.length !== 3) {
           return sendError(res, 'Formato de imagen base64 inválido', 400);
         }
@@ -848,12 +851,12 @@ const subirEvidenciaFotografica = async (req, res) => {
         const timestamp = Date.now();
         const fechaHoy = new Date().toISOString().split('T')[0];
         nombreArchivo = `evidencia_${evento}_${caja_id}_${timestamp}.${tipoImagen}`;
-        
+
         // Crear directorio si no existe
         const fs = require('fs');
         const path = require('path');
         const directorioEvidencias = path.join(__dirname, '../../uploads/evidencias', fechaHoy);
-        
+
         if (!fs.existsSync(directorioEvidencias)) {
           fs.mkdirSync(directorioEvidencias, { recursive: true });
         }
@@ -878,7 +881,7 @@ const subirEvidenciaFotografica = async (req, res) => {
     // 🗄️ ACTUALIZAR LA CAJA CON LA EVIDENCIA
     const campoImagen = evento === 'apertura' ? 'imagenApertura' : 'imagenCierre';
     const updateData = {};
-    
+
     if (rutaImagen) {
       updateData[campoImagen] = rutaImagen;
     }
@@ -1088,13 +1091,13 @@ const crearTransaccion = async (req, res) => {
       numeroFactura = null
     } = req.body;
 
-    console.log('💰 Creando transacción completa:', { 
-      tipo, 
-      categoria, 
-      totalBs, 
+    console.log('💰 Creando transacción completa:', {
+      tipo,
+      categoria,
+      totalBs,
       totalUsd,
       pagos: pagos.length,
-      cliente: cliente?.nombre 
+      cliente: cliente?.nombre
     });
 
     // Validaciones
@@ -1137,7 +1140,7 @@ const crearTransaccion = async (req, res) => {
       if (montoPago.lte(0)) {
         return sendError(res, 'Todos los montos deben ser mayores a 0', 400);
       }
-      
+
       // Convertir a Bs para validación total
       if (pago.moneda === 'usd' && tasaCambioUsada) {
         sumaTotalPagos = sumaTotalPagos.add(montoPago.mul(toDecimal(tasaCambioUsada)));
@@ -1149,7 +1152,7 @@ const crearTransaccion = async (req, res) => {
     // Validar que la suma de pagos coincida con el total
     const totalEsperado = totalBsDecimal.add(totalUsdDecimal.mul(tasaCambioUsada ? toDecimal(tasaCambioUsada) : new Decimal(1)));
     const diferenciaPagos = sumaTotalPagos.sub(totalEsperado).abs();
-    
+
     if (diferenciaPagos.gt(new Decimal(0.01))) { // Tolerancia de 1 centavo
       console.log('⚠️ Diferencia en pagos:', {
         suma_pagos: sumaTotalPagos.toNumber(),
@@ -1182,41 +1185,41 @@ const crearTransaccion = async (req, res) => {
         }
       });
 
-        const consecutivo = (transaccionesDelDia + 1);
-        const prefijo = tipo === 'INGRESO' ? 'I' : 'E';
-        const codigoTransaccion = `${prefijo}${dia}${mes}${año}${consecutivo.toString().padStart(3, '0')}`;
+      const consecutivo = (transaccionesDelDia + 1);
+      const prefijo = tipo === 'INGRESO' ? 'I' : 'E';
+      const codigoTransaccion = `${prefijo}${dia}${mes}${año}${consecutivo.toString().padStart(3, '0')}`;
 
-        // 1. Crear la transacción principal
-        const transaccion = await tx.transaccion.create({
-          data: {
-            cajaId: cajaAbierta.id,
-            usuarioId: req.user.userId,                    // ✅ AGREGAR usuarioId
-            tipo: tipo,
-            categoria: categoria.trim(),
-            observaciones: observaciones.trim(),
-            totalBs: totalBsDecimal,
-            totalUsd: totalUsdDecimal,
-            tasaCambioUsada: tasaCambioUsada ? toDecimal(tasaCambioUsada) : null,
-            fechaHora: new Date(),
-            // ✅ CAMPOS OBLIGATORIOS FALTANTES
-            codigoVenta: codigoTransaccion,               // ✅ Código único generado
-            consecutivoDelDia: consecutivo,               // ✅ Consecutivo del día
-            clienteId: cliente?.id || null,
-            clienteNombre: cliente?.nombre || null,
-            metodoPagoPrincipal: pagos[0]?.metodo || null,
-            descuentoTotal: descuentoDecimal,
-            cantidadItems: items.length,
-            ipAddress: req.ip || req.connection.remoteAddress,
-            userAgent: req.get('User-Agent'),
-            requiereFactura: false,
-            reciboGenerado: false,
-            facturaGenerada: false
-          }
-        });
+      // 1. Crear la transacción principal
+      const transaccion = await tx.transaccion.create({
+        data: {
+          cajaId: cajaAbierta.id,
+          usuarioId: req.user.userId,                    // ✅ AGREGAR usuarioId
+          tipo: tipo,
+          categoria: categoria.trim(),
+          observaciones: observaciones.trim(),
+          totalBs: totalBsDecimal,
+          totalUsd: totalUsdDecimal,
+          tasaCambioUsada: tasaCambioUsada ? toDecimal(tasaCambioUsada) : null,
+          fechaHora: new Date(),
+          // ✅ CAMPOS OBLIGATORIOS FALTANTES
+          codigoVenta: codigoTransaccion,               // ✅ Código único generado
+          consecutivoDelDia: consecutivo,               // ✅ Consecutivo del día
+          clienteId: cliente?.id || null,
+          clienteNombre: cliente?.nombre || null,
+          metodoPagoPrincipal: pagos[0]?.metodo || null,
+          descuentoTotal: descuentoDecimal,
+          cantidadItems: items.length,
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.get('User-Agent'),
+          requiereFactura: false,
+          reciboGenerado: false,
+          facturaGenerada: false
+        }
+      });
 
       // 2. Crear los pagos asociados
       const pagosCreados = await Promise.all(
-        pagos.map(pago => 
+        pagos.map(pago =>
           tx.pago.create({
             data: {
               transaccionId: transaccion.id,
@@ -1234,7 +1237,7 @@ const crearTransaccion = async (req, res) => {
       let itemsCreados = [];
       if (items && items.length > 0) {
         itemsCreados = await Promise.all(
-          items.map(item => 
+          items.map(item =>
             tx.transactionItem.create({
               data: {
                 transaccionId: transaccion.id,
@@ -1254,7 +1257,7 @@ const crearTransaccion = async (req, res) => {
 
       // 4. Actualizar totales de la caja
       const updateData = {};
-      
+
       if (tipo === 'INGRESO') {
         updateData.totalIngresosBs = {
           increment: totalBsDecimal
@@ -1287,10 +1290,10 @@ const crearTransaccion = async (req, res) => {
         data: updateData
       });
 
-      return { 
-        transaccion, 
-        pagos: pagosCreados, 
-        items: itemsCreados 
+      return {
+        transaccion,
+        pagos: pagosCreados,
+        items: itemsCreados
       };
     });
 
@@ -1350,7 +1353,7 @@ const crearTransaccion = async (req, res) => {
 // ===================================
 const obtenerTransacciones = async (req, res) => {
   try {
-    
+
     const {
       cajaId,
       tipo, // 'INGRESO', 'EGRESO', 'TODOS'
@@ -1384,7 +1387,7 @@ const obtenerTransacciones = async (req, res) => {
     } else {
       // Si no se especifica, usar caja actual (abierta o pendiente)
       const cajaActual = await prisma.caja.findFirst({
-        where: { 
+        where: {
           estado: {
             in: ['ABIERTA', 'PENDIENTE_CIERRE_FISICO']
           }
@@ -1440,35 +1443,35 @@ const obtenerTransacciones = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Obtener transacciones
-      const transacciones = await prisma.transaccion.findMany({
-        where: finalWhereClause,
-        include: {
-          pagos: true,
-          items: true,
-          usuario: {
-            select: {
-              id: true,
-              nombre: true,
-              email: true,
-              rol: true
-            }
-          },
-          caja: {
-            select: {
-              id: true,
-              fecha: true,
-              estado: true
-            }
+    const transacciones = await prisma.transaccion.findMany({
+      where: finalWhereClause,
+      include: {
+        pagos: true,
+        items: true,
+        usuario: {
+          select: {
+            id: true,
+            nombre: true,
+            email: true,
+            rol: true
           }
         },
-        orderBy: {
-          [orderBy]: orderDirection
-        },
-        skip: skip,
-        take: parseInt(limit)
-      });
+        caja: {
+          select: {
+            id: true,
+            fecha: true,
+            estado: true
+          }
+        }
+      },
+      orderBy: {
+        [orderBy]: orderDirection
+      },
+      skip: skip,
+      take: parseInt(limit)
+    });
 
-      console.log('🔍🔍🔍 TRANSACCIONES OBTENIDAS:', transacciones.length);
+    console.log('🔍🔍🔍 TRANSACCIONES OBTENIDAS:', transacciones.length);
     console.log('🔍🔍🔍 PRIMERA TRANSACCIÓN:', JSON.stringify(transacciones[0], null, 2));
     console.log('🔍🔍🔍 USUARIO DE PRIMERA TRANSACCIÓN:', transacciones[0]?.usuario);
 
@@ -1501,25 +1504,25 @@ const obtenerTransacciones = async (req, res) => {
       }
     });
     // Convertir Decimals a números para el frontend
-const transaccionesConvertidas = transacciones.map(t => ({
-  ...t,
-  totalBs: decimalToNumber(t.totalBs),
-  totalUsd: decimalToNumber(t.totalUsd),
-  tasaCambioUsada: decimalToNumber(t.tasaCambioUsada),
-  usuario: t.usuario?.nombre || 'Usuario desconocido',
-  fechaHora: t.fechaHora, // Mantener el nombre original
-  pagos: t.pagos.map(p => ({
-    ...p,
-    monto: decimalToNumber(p.monto)
-  })),
-  items: t.items?.map(i => ({
-    ...i,
-    precioUnitario: decimalToNumber(i.precioUnitario),
-    precioCosto: decimalToNumber(i.precioCosto),
-    descuento: decimalToNumber(i.descuento),
-    subtotal: decimalToNumber(i.subtotal)
-  })) || []
-}));
+    const transaccionesConvertidas = transacciones.map(t => ({
+      ...t,
+      totalBs: decimalToNumber(t.totalBs),
+      totalUsd: decimalToNumber(t.totalUsd),
+      tasaCambioUsada: decimalToNumber(t.tasaCambioUsada),
+      usuario: t.usuario?.nombre || 'Usuario desconocido',
+      fechaHora: t.fechaHora, // Mantener el nombre original
+      pagos: t.pagos.map(p => ({
+        ...p,
+        monto: decimalToNumber(p.monto)
+      })),
+      items: t.items?.map(i => ({
+        ...i,
+        precioUnitario: decimalToNumber(i.precioUnitario),
+        precioCosto: decimalToNumber(i.precioCosto),
+        descuento: decimalToNumber(i.descuento),
+        subtotal: decimalToNumber(i.subtotal)
+      })) || []
+    }));
 
     const estadisticasConvertidas = {
       total_transacciones: estadisticas._count._all,
@@ -1635,7 +1638,7 @@ const eliminarTransaccion = async (req, res) => {
     await prisma.$transaction(async (tx) => {
       // 1. Revertir totales de la caja
       const updateData = {};
-      
+
       if (transaccion.tipo === 'INGRESO') {
         updateData.totalIngresosBs = {
           decrement: transaccion.totalBs
@@ -1764,7 +1767,7 @@ const obtenerCajasPendientes = async (req, res) => {
 const resolverCajaPendiente = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
+    const {
       montoFinalBs,
       montoFinalUsd,
       montoFinalPagoMovil,
@@ -2054,14 +2057,14 @@ const generarPDFTemporal = async (req, res) => {
       cajaActual = await prisma.caja.findUnique({
         where: { id: parseInt(caja.id) }
       });
-      
+
       if (!cajaActual) {
         return sendError(res, `No se encontró la caja pendiente con ID ${caja.id}`, 400);
       }
     } else {
       // Verificar que hay una caja abierta (para cajas normales)
       cajaActual = await prisma.caja.findFirst({
-        where: { 
+        where: {
           estado: {
             in: ['ABIERTA', 'PENDIENTE_CIERRE_FISICO']
           }
@@ -2104,41 +2107,41 @@ const generarPDFTemporal = async (req, res) => {
     // Preparar datos completos para el PDF CON DIFERENCIAS
     // ✅ Normalizar datos para que cajas pendientes y normales tengan la misma estructura
     let datosCajaNormalizados;
-    
+
     if (req.body.esPendiente && caja) {
       // ✅ Normalizar datos de caja pendiente para que coincidan con cierre normal
       const montoEsperadoBs = (decimalToNumber(cajaActual.totalIngresosBs) - decimalToNumber(cajaActual.totalEgresosBs)) + decimalToNumber(cajaActual.montoInicialBs);
       const montoEsperadoUsd = (decimalToNumber(cajaActual.totalIngresosUsd) - decimalToNumber(cajaActual.totalEgresosUsd)) + decimalToNumber(cajaActual.montoInicialUsd);
       const montoEsperadoPagoMovil = decimalToNumber(cajaActual.totalPagoMovil) + decimalToNumber(cajaActual.montoInicialPagoMovil);
-      
+
       datosCajaNormalizados = {
         ...cajaActual,
         fecha: caja.fecha || (cajaActual.fecha ? new Date(cajaActual.fecha).toLocaleDateString('es-VE') : new Date().toLocaleDateString('es-VE')),
         horaApertura: caja.horaApertura || cajaActual.horaApertura || '08:00',
         horaCierre: caja.horaCierre || new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-        
+
         // Montos iniciales
         montoInicialBs: caja.montoInicialBs ?? decimalToNumber(cajaActual.montoInicialBs),
         montoInicialUsd: caja.montoInicialUsd ?? decimalToNumber(cajaActual.montoInicialUsd),
         montoInicialPagoMovil: caja.montoInicialPagoMovil ?? decimalToNumber(cajaActual.montoInicialPagoMovil),
-        
+
         // Totales del día
         totalIngresosBs: caja.totalIngresosBs ?? decimalToNumber(cajaActual.totalIngresosBs),
         totalEgresosBs: caja.totalEgresosBs ?? decimalToNumber(cajaActual.totalEgresosBs),
         totalIngresosUsd: caja.totalIngresosUsd ?? decimalToNumber(cajaActual.totalIngresosUsd),
         totalEgresosUsd: caja.totalEgresosUsd ?? decimalToNumber(cajaActual.totalEgresosUsd),
         totalPagoMovil: caja.totalPagoMovil ?? decimalToNumber(cajaActual.totalPagoMovil),
-        
+
         // Montos esperados (calculados igual que en cierre normal)
         montoEsperadoBs: montoEsperadoBs,
         montoEsperadoUsd: montoEsperadoUsd,
         montoEsperadoPagoMovil: montoEsperadoPagoMovil,
-        
+
         // Montos finales del conteo físico
         montoFinalBs: montosFinales?.bs ?? caja.montoFinalBs ?? 0,
         montoFinalUsd: montosFinales?.usd ?? caja.montoFinalUsd ?? 0,
         montoFinalPagoMovil: montosFinales?.pagoMovil ?? caja.montoFinalPagoMovil ?? 0,
-        
+
         esCajaPendiente: true
       };
     } else {
@@ -2146,37 +2149,37 @@ const generarPDFTemporal = async (req, res) => {
       const montoEsperadoBs = (decimalToNumber(cajaActual.totalIngresosBs) - decimalToNumber(cajaActual.totalEgresosBs)) + decimalToNumber(cajaActual.montoInicialBs);
       const montoEsperadoUsd = (decimalToNumber(cajaActual.totalIngresosUsd) - decimalToNumber(cajaActual.totalEgresosUsd)) + decimalToNumber(cajaActual.montoInicialUsd);
       const montoEsperadoPagoMovil = decimalToNumber(cajaActual.totalPagoMovil) + decimalToNumber(cajaActual.montoInicialPagoMovil);
-      
+
       datosCajaNormalizados = {
         ...cajaActual,
         fecha: cajaActual.fecha ? new Date(cajaActual.fecha).toLocaleDateString('es-VE') : new Date().toLocaleDateString('es-VE'),
         horaApertura: cajaActual.horaApertura || '08:00',
         horaCierre: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-        
+
         // Montos iniciales
         montoInicialBs: montosFinales?.montoInicialBs ?? decimalToNumber(cajaActual.montoInicialBs),
         montoInicialUsd: montosFinales?.montoInicialUsd ?? decimalToNumber(cajaActual.montoInicialUsd),
         montoInicialPagoMovil: montosFinales?.montoInicialPagoMovil ?? decimalToNumber(cajaActual.montoInicialPagoMovil),
-        
+
         // Totales del día
         totalIngresosBs: decimalToNumber(cajaActual.totalIngresosBs),
         totalEgresosBs: decimalToNumber(cajaActual.totalEgresosBs),
         totalIngresosUsd: decimalToNumber(cajaActual.totalIngresosUsd),
         totalEgresosUsd: decimalToNumber(cajaActual.totalEgresosUsd),
         totalPagoMovil: decimalToNumber(cajaActual.totalPagoMovil),
-        
+
         // Montos esperados (calculados igual que en cierre normal)
         montoEsperadoBs: montoEsperadoBs,
         montoEsperadoUsd: montoEsperadoUsd,
         montoEsperadoPagoMovil: montoEsperadoPagoMovil,
-        
+
         // Montos finales del conteo
         montoFinalBs: montosFinales?.bs || 0,
         montoFinalUsd: montosFinales?.usd || 0,
         montoFinalPagoMovil: montosFinales?.pagoMovil || 0
       };
     }
-    
+
     const datosCompletos = {
       caja: datosCajaNormalizados,
       transacciones: transaccionesCompletas.map(t => ({
@@ -2192,7 +2195,7 @@ const generarPDFTemporal = async (req, res) => {
         rol: usuario?.rol || req.user?.rol || 'cajero',
         sucursal: usuario?.sucursal || req.user?.sucursal || 'Principal'
       },
-      
+
       // 🔥 DATOS DE DIFERENCIAS Y AUTORIZACIÓN
       diferencias: diferencias || null,
       montosFinales: montosFinales || null,
@@ -2211,10 +2214,10 @@ const generarPDFTemporal = async (req, res) => {
 
     // Generar PDF
     const pdfInfo = await PDFCierreService.generarPDFCierre(datosCompletos);
-    
+
     if (pdfInfo.success) {
       console.log('✅ PDF temporal generado con diferencias:', pdfInfo.nombreArchivo);
-      
+
       // 💾 LEER ARCHIVO PDF Y CONVERTIR A BASE64
       let pdfBase64 = null;
       try {
@@ -2225,7 +2228,7 @@ const generarPDFTemporal = async (req, res) => {
       } catch (error) {
         console.warn('⚠️ Error convirtiendo PDF a base64:', error);
       }
-      
+
       sendSuccess(res, {
         nombreArchivo: pdfInfo.nombreArchivo,
         rutaPDF: pdfInfo.rutaPDF,
@@ -2236,7 +2239,7 @@ const generarPDFTemporal = async (req, res) => {
         generadoEn: new Date().toISOString(),
         esTemporal: true
       }, 'PDF temporal generado correctamente con diferencias incluidas');
-      
+
     } else {
       throw new Error('Error generando PDF temporal');
     }
