@@ -477,17 +477,19 @@ const facturarPedido = async (req, res) => {
 // HELPER: Crear transacción desde pedido
 // ===================================
 const crearTransaccionDesdePedido = async (pedido, pagos, usuario) => {
-    // Obtener caja abierta
+    // Obtener caja abierta (cualquier caja abierta, no solo del usuario actual)
     const cajaAbierta = await prisma.caja.findFirst({
         where: {
-            estado: 'ABIERTA',
-            usuarioAperturaId: usuario.userId
-        }
+            estado: 'ABIERTA'
+        },
+        orderBy: { createdAt: 'desc' }
     });
 
     if (!cajaAbierta) {
         throw new Error('No hay caja abierta para registrar el pago');
     }
+
+    console.log(`💰 Usando caja abierta ID: ${cajaAbierta.id} para pedido ${pedido.numero}`);
 
     // Generar código de venta
     const hoy = new Date();
