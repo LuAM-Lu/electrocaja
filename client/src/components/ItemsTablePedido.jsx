@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import {
     Plus, Trash2, Edit3, Save, X, Package,
-    FileText, Link as LinkIcon, Building, Tag
+    FileText, Link as LinkIcon, Building, Tag, Monitor, Truck, Sparkles, DollarSign,
+    Wallet, PiggyBank, Mail, PackageCheck, AlertCircle, TrendingUp
 } from 'lucide-react';
 import toast from '../utils/toast.jsx';
 
@@ -107,41 +108,100 @@ const ModalNotaInterna = ({ isOpen, onClose, onGuardar, notaActual }) => {
     );
 };
 
-// Modal para agregar item personalizado
-const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio }) => {
+// Modal para agregar item personalizado - Diseño Premium
+const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio, itemsExistentes = [] }) => {
     const [descripcion, setDescripcion] = useState('');
     const [cantidad, setCantidad] = useState(1);
-    const [precioUnitario, setPrecioUnitario] = useState('');
     const [precioCosto, setPrecioCosto] = useState('');
+    const [precioUnitario, setPrecioUnitario] = useState('');
     // Notas internas
     const [proveedor, setProveedor] = useState('');
     const [codigoProducto, setCodigoProducto] = useState('');
     const [link, setLink] = useState('');
+    // Errores de validación
+    const [errors, setErrors] = useState({});
+
+    // Determinar tipo requerido según items existentes
+    const tipoRequerido = itemsExistentes.length > 0
+        ? (itemsExistentes[0].tipoProducto || 'fisico')
+        : null;
+
+    // Si hay items existentes, forzar el mismo tipo
+    const [tipoProducto, setTipoProducto] = useState(tipoRequerido || 'fisico');
+
+    // El tipo está bloqueado si ya hay items
+    const tipoBloqueado = itemsExistentes.length > 0;
 
     if (!isOpen) return null;
 
-    const handleAgregar = () => {
+    // Validar URL
+    const isValidUrl = (string) => {
+        if (!string) return true; // URL es opcional
+        try {
+            new URL(string);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    };
+
+    // Validar todo el formulario
+    const validateForm = () => {
+        const newErrors = {};
+
+        // Descripción requerida
         if (!descripcion.trim()) {
-            toast.error('Ingresa una descripción');
-            return;
+            newErrors.descripcion = 'La descripción es requerida';
+        } else if (descripcion.trim().length < 3) {
+            newErrors.descripcion = 'Mínimo 3 caracteres';
         }
 
-        if (!precioUnitario || parseFloat(precioUnitario) <= 0) {
-            toast.error('Ingresa un precio válido');
+        // Cantidad
+        const cantidadNum = parseInt(cantidad);
+        if (!cantidad || cantidadNum < 1) {
+            newErrors.cantidad = 'Mínimo 1';
+        } else if (cantidadNum > 999) {
+            newErrors.cantidad = 'Máximo 999';
+        }
+
+        // Precio de venta requerido
+        const precioNum = parseFloat(precioUnitario);
+        if (!precioUnitario || isNaN(precioNum)) {
+            newErrors.precioUnitario = 'Precio requerido';
+        } else if (precioNum <= 0) {
+            newErrors.precioUnitario = 'Debe ser mayor a 0';
+        }
+
+        // Validar URL si se proporciona
+        if (link && !isValidUrl(link)) {
+            newErrors.link = 'URL inválida';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleAgregar = () => {
+        if (!validateForm()) {
+            toast.error('Corrige los errores del formulario');
             return;
         }
 
         const precio = parseFloat(precioUnitario);
         const costo = parseFloat(precioCosto) || 0;
 
-        // Construir nota interna si hay datos
-        const notaInterna = (proveedor.trim() || codigoProducto.trim() || link.trim())
-            ? {
-                proveedor: proveedor.trim() || null,
-                codigoProducto: codigoProducto.trim() || null,
-                link: link.trim() || null
-            }
-            : null;
+        // Advertencia si venta < costo (pero permitir)
+        if (costo > 0 && precio < costo) {
+            toast('⚠️ El precio de venta es menor al costo', { icon: '⚠️' });
+        }
+
+        // Construir nota interna (siempre incluir tipo)
+        const notaInterna = {
+            tipo: tipoProducto,
+            proveedor: proveedor.trim() || null,
+            codigoProducto: codigoProducto.trim() || null,
+            link: link.trim() || null
+        };
 
         onAgregar({
             id: `custom_${Date.now()}`,
@@ -151,104 +211,268 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio }) => {
             precioCosto: costo,
             subtotal: precio * parseInt(cantidad),
             esPersonalizado: true,
+            tipoProducto, // Para acceso directo
             notaInterna
         });
 
         // Limpiar
         setDescripcion('');
         setCantidad(1);
-        setPrecioUnitario('');
         setPrecioCosto('');
+        setPrecioUnitario('');
+        setTipoProducto('fisico');
         setProveedor('');
         setCodigoProducto('');
         setLink('');
+        setErrors({});
         onClose();
     };
 
+    // Calcular margen
+    const margen = precioUnitario && precioCosto
+        ? ((parseFloat(precioUnitario) - parseFloat(precioCosto)) / parseFloat(precioCosto) * 100).toFixed(1)
+        : null;
+
+
     return (
-        <div className="fixed inset-0 bg-black/50 z-[120] flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 flex items-center justify-between rounded-t-xl sticky top-0">
-                    <div className="flex items-center space-x-2">
-                        <Package className="h-5 w-5 text-white" />
-                        <span className="font-bold text-white">Agregar Producto</span>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+            <div className="bg-gradient-to-br from-white to-blue-50/80 rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden border border-white/50">
+
+                {/* Header Premium */}
+                <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 py-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <div className="bg-white/20 backdrop-blur-sm p-2.5 rounded-xl">
+                                <Package className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-white">Agregar Producto</h2>
+                                <p className="text-blue-100 text-xs">Nuevo item para el pedido</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="text-white/70 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
                     </div>
-                    <button onClick={onClose} className="text-white/80 hover:text-white">
-                        <X className="h-5 w-5" />
-                    </button>
                 </div>
 
-                <div className="p-4 space-y-4">
-                    {/* Descripción */}
+                {/* Contenido */}
+                <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-180px)]">
+
+                    {/* Descripción - Campo principal destacado */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Descripción del Producto *
+                        <label className="flex items-center space-x-2 text-sm font-semibold text-gray-700 mb-2">
+                            <Sparkles className="h-4 w-4 text-blue-500" />
+                            <span>Descripción del Producto</span>
+                            <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="text"
                             value={descripcion}
-                            onChange={(e) => setDescripcion(e.target.value)}
-                            placeholder="Ej: Samsung Galaxy A54..."
-                            className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-blue-50/30"
+                            onChange={(e) => { setDescripcion(e.target.value); setErrors(prev => ({ ...prev, descripcion: null })); }}
+                            placeholder="Ej: Samsung Galaxy A54 256GB Negro..."
+                            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 font-medium transition-all placeholder:text-gray-400 ${errors.descripcion ? 'border-red-400 bg-red-50' : 'border-blue-200 focus:border-blue-400'
+                                }`}
                             autoFocus
                         />
+                        {errors.descripcion && (
+                            <p className="flex items-center gap-1 text-red-500 text-xs mt-1">
+                                <AlertCircle className="h-3 w-3" /> {errors.descripcion}
+                            </p>
+                        )}
                     </div>
 
-                    {/* Cantidad, Precio Venta y Precio Costo en una fila */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Cantidad *
+                    {/* Fila 1: Cantidad + Costo + Venta - Todo junto */}
+                    <div className="flex gap-3 items-end">
+                        {/* Cantidad - Compacto */}
+                        <div className="w-16 flex-shrink-0">
+                            <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">
+                                Cant. *
                             </label>
                             <input
                                 type="number"
                                 min="1"
+                                max="999"
                                 value={cantidad}
-                                onChange={(e) => setCantidad(e.target.value)}
-                                className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-blue-50/30"
+                                onChange={(e) => { setCantidad(e.target.value); setErrors(prev => ({ ...prev, cantidad: null })); }}
+                                className={`w-full px-1 py-2 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-center font-bold text-base transition-all ${errors.cantidad ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-blue-400'
+                                    }`}
                             />
+                            {errors.cantidad && (
+                                <p className="text-red-500 text-[8px] mt-0.5 text-center">{errors.cantidad}</p>
+                            )}
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Precio Venta (USD) *
+
+                        {/* Precio Costo */}
+                        <div className="flex-1">
+                            <label className="flex items-center gap-1 text-[10px] font-semibold text-gray-500 mb-1 uppercase">
+                                <Wallet className="h-3 w-3 text-orange-500" />
+                                <span>Costo USD</span>
                             </label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={precioUnitario}
-                                onChange={(e) => setPrecioUnitario(e.target.value)}
-                                placeholder="0.00"
-                                className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-blue-50/30"
-                            />
+                            <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={precioCosto}
+                                    onChange={(e) => setPrecioCosto(e.target.value)}
+                                    placeholder="0.00"
+                                    className="w-full pl-6 pr-2 py-2 border-2 border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-400 bg-orange-50/50 text-right font-medium transition-all"
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Costo (USD)
+
+                        {/* Precio Venta */}
+                        <div className="flex-1">
+                            <label className="flex items-center gap-1 text-[10px] font-semibold text-gray-500 mb-1 uppercase">
+                                <PiggyBank className="h-3 w-3 text-green-600" />
+                                <span>Venta USD *</span>
                             </label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={precioCosto}
-                                onChange={(e) => setPrecioCosto(e.target.value)}
-                                placeholder="0.00"
-                                className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-blue-50/30"
-                            />
+                            <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-green-600 font-bold text-sm">$</span>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={precioUnitario}
+                                    onChange={(e) => { setPrecioUnitario(e.target.value); setErrors(prev => ({ ...prev, precioUnitario: null })); }}
+                                    placeholder="0.00"
+                                    className={`w-full pl-6 pr-2 py-2 border-2 rounded-lg focus:ring-2 focus:ring-green-500 text-right font-bold text-green-700 transition-all ${errors.precioUnitario ? 'border-red-400 bg-red-50' : 'border-green-300 focus:border-green-400 bg-green-50'
+                                        }`}
+                                />
+                            </div>
+                            {errors.precioUnitario && (
+                                <p className="text-red-500 text-[8px] mt-0.5">{errors.precioUnitario}</p>
+                            )}
                         </div>
                     </div>
 
-                    {/* Separador con título */}
-                    <div className="pt-2 border-t border-purple-100">
-                        <div className="flex items-center space-x-2 mb-3">
+                    {/* Fila 2: Botones de margen + Badge - Todo en línea */}
+                    <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 rounded-lg p-2">
+                        <span className="text-[10px] text-gray-500 font-medium">Margen:</span>
+                        {[30, 40, 50, 60, 70].map((pct) => (
+                            <button
+                                key={pct}
+                                type="button"
+                                disabled={!precioCosto || parseFloat(precioCosto) <= 0}
+                                onClick={() => {
+                                    const costo = parseFloat(precioCosto);
+                                    if (costo > 0) {
+                                        const venta = costo * (1 + pct / 100);
+                                        setPrecioUnitario(venta.toFixed(2));
+                                    }
+                                }}
+                                className={`px-2 py-1 rounded font-bold text-[10px] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${margen && Math.round(parseFloat(margen)) === pct
+                                    ? 'bg-green-500 text-white shadow-sm'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                                    }`}
+                            >
+                                {pct}%
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            disabled={!precioCosto || parseFloat(precioCosto) <= 0}
+                            onClick={() => {
+                                const costo = parseFloat(precioCosto);
+                                if (costo > 0) {
+                                    const venta = costo * 2;
+                                    setPrecioUnitario(venta.toFixed(2));
+                                }
+                            }}
+                            className={`px-2 py-1 rounded font-bold text-[10px] transition-all disabled:opacity-40 disabled:cursor-not-allowed ${margen && parseFloat(margen) >= 95 && parseFloat(margen) <= 105
+                                ? 'bg-purple-500 text-white shadow-sm'
+                                : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                }`}
+                        >
+                            x2
+                        </button>
+
+                        {/* Badge de Margen - Inline */}
+                        {margen && parseFloat(margen) > 0 ? (
+                            <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${parseFloat(margen) >= 40 ? 'bg-green-100 text-green-700' :
+                                parseFloat(margen) >= 25 ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                                }`}>
+                                {margen}% (${(parseFloat(precioUnitario) - parseFloat(precioCosto)).toFixed(2)})
+                            </span>
+                        ) : (
+                            <span className="ml-auto text-[10px] text-gray-400">Ingresa costo</span>
+                        )}
+                    </div>
+
+
+                    {/* Sección Notas Internas */}
+                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-200/50">
+                        <div className="flex items-center space-x-2 mb-4">
                             <FileText className="h-4 w-4 text-purple-600" />
-                            <span className="text-sm font-medium text-purple-600">Notas Internas (Solo visible internamente)</span>
+                            <span className="text-sm font-bold text-purple-700">Notas Internas</span>
+                            <span className="text-[10px] text-purple-500 bg-purple-100 px-2 py-0.5 rounded-full">Solo staff</span>
                         </div>
 
-                        {/* Proveedor, Código y Link en una fila */}
+                        {/* Tipo de Producto - Digital o Físico */}
+                        <div className="mb-4">
+                            <label className="block text-xs font-semibold text-purple-700 mb-2">
+                                Tipo de Producto
+                                {tipoBloqueado && (
+                                    <span className="ml-2 text-[10px] text-orange-600 font-normal">
+                                        (Bloqueado - mismo tipo que items existentes)
+                                    </span>
+                                )}
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => !tipoBloqueado && setTipoProducto('fisico')}
+                                    disabled={tipoBloqueado && tipoProducto !== 'fisico'}
+                                    className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-xl border-2 transition-all ${tipoProducto === 'fisico'
+                                            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md'
+                                            : tipoBloqueado
+                                                ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                        }`}
+                                >
+                                    <Truck className="h-5 w-5" />
+                                    <span className="font-medium">Físico</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => !tipoBloqueado && setTipoProducto('digital')}
+                                    disabled={tipoBloqueado && tipoProducto !== 'digital'}
+                                    className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-xl border-2 transition-all ${tipoProducto === 'digital'
+                                            ? 'border-cyan-500 bg-cyan-50 text-cyan-700 shadow-md'
+                                            : tipoBloqueado
+                                                ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                        }`}
+                                >
+                                    <Monitor className="h-5 w-5" />
+                                    <span className="font-medium">Digital</span>
+                                </button>
+                            </div>
+                            {tipoBloqueado && (
+                                <p className="flex items-center justify-center gap-1 text-[10px] text-orange-500 mt-2 bg-orange-50 rounded p-1.5">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Todos los productos del pedido deben ser del mismo tipo
+                                </p>
+                            )}
+                            <p className="flex items-center justify-center gap-1 text-[10px] text-purple-500 mt-1">
+                                {tipoProducto === 'digital' ? (
+                                    <><Mail className="h-3 w-3" /> No requiere envío - Entrega inmediata</>
+                                ) : (
+                                    <><PackageCheck className="h-3 w-3" /> Requiere envío físico</>
+                                )}
+                            </p>
+                        </div>
+
+                        {/* Proveedor, Código y Link */}
                         <div className="grid grid-cols-3 gap-3">
                             <div>
-                                <label className="flex items-center space-x-1 text-xs font-medium text-gray-600 mb-1">
+                                <label className="flex items-center space-x-1 text-[10px] font-semibold text-purple-600 mb-1 uppercase">
                                     <Building className="h-3 w-3" />
                                     <span>Proveedor</span>
                                 </label>
@@ -256,12 +480,12 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio }) => {
                                     type="text"
                                     value={proveedor}
                                     onChange={(e) => setProveedor(e.target.value)}
-                                    placeholder="Ej: ML..."
-                                    className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-purple-50/30"
+                                    placeholder="ML, Amazon..."
+                                    className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-white/80 transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="flex items-center space-x-1 text-xs font-medium text-gray-600 mb-1">
+                                <label className="flex items-center space-x-1 text-[10px] font-semibold text-purple-600 mb-1 uppercase">
                                     <Tag className="h-3 w-3" />
                                     <span>Código</span>
                                 </label>
@@ -270,36 +494,43 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio }) => {
                                     value={codigoProducto}
                                     onChange={(e) => setCodigoProducto(e.target.value)}
                                     placeholder="SKU..."
-                                    className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-purple-50/30"
+                                    className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-white/80 transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="flex items-center space-x-1 text-xs font-medium text-gray-600 mb-1">
+                                <label className="flex items-center space-x-1 text-[10px] font-semibold text-purple-600 mb-1 uppercase">
                                     <LinkIcon className="h-3 w-3" />
                                     <span>Link</span>
                                 </label>
                                 <input
                                     type="url"
                                     value={link}
-                                    onChange={(e) => setLink(e.target.value)}
+                                    onChange={(e) => { setLink(e.target.value); setErrors(prev => ({ ...prev, link: null })); }}
                                     placeholder="https://..."
-                                    className="w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-purple-50/30"
+                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-sm bg-white/80 transition-all ${errors.link ? 'border-red-400 bg-red-50' : 'border-purple-200'
+                                        }`}
                                 />
+                                {errors.link && (
+                                    <p className="text-red-500 text-[8px] mt-0.5">{errors.link}</p>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Preview */}
+                    {/* Preview de Subtotal */}
                     {precioUnitario && cantidad && (
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                        <div className="bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 rounded-xl p-4 border border-green-200 shadow-inner">
                             <div className="flex justify-between items-center">
-                                <span className="text-gray-600 font-medium">Subtotal</span>
-                                <span className="font-bold text-2xl text-blue-600">
-                                    ${(parseFloat(precioUnitario) * parseInt(cantidad)).toFixed(2)}
+                                <div className="flex items-center space-x-2">
+                                    <DollarSign className="h-5 w-5 text-green-600" />
+                                    <span className="text-gray-600 font-semibold">Subtotal</span>
+                                </div>
+                                <span className="font-bold text-3xl text-green-600">
+                                    ${(parseFloat(precioUnitario) * parseInt(cantidad)).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                             </div>
-                            <div className="flex justify-between items-center mt-1">
-                                <span className="text-sm text-gray-500">En Bs.</span>
+                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-green-200/50">
+                                <span className="text-sm text-gray-500">Equivalente en Bs.</span>
                                 <span className="text-lg text-gray-600 font-medium">
                                     Bs. {((parseFloat(precioUnitario) * parseInt(cantidad)) * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
@@ -308,23 +539,24 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio }) => {
                     )}
                 </div>
 
-                <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-blue-50/50 rounded-b-xl flex justify-end space-x-3 sticky bottom-0">
+                {/* Footer Premium */}
+                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 via-blue-50/50 to-purple-50/50 border-t border-gray-200/50 flex justify-end space-x-3">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                        className="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all font-medium"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleAgregar}
-                        className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl font-semibold"
                     >
-                        <Plus className="h-4 w-4" />
-                        <span>Agregar</span>
+                        <Plus className="h-5 w-5" />
+                        <span>Agregar Producto</span>
                     </button>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 
@@ -448,14 +680,29 @@ const ItemsTablePedido = ({
                                 <tr key={item.id} className="hover:bg-gray-50">
                                     {/* Producto */}
                                     <td className="px-4 py-3">
-                                        <div className="font-medium text-gray-800">{item.descripcion}</div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="font-medium text-gray-800">{item.descripcion}</span>
+                                            {/* Badge de tipo */}
+                                            {item.tipoProducto && (
+                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${item.tipoProducto === 'digital'
+                                                    ? 'bg-cyan-100 text-cyan-700'
+                                                    : 'bg-blue-100 text-blue-700'
+                                                    }`}>
+                                                    {item.tipoProducto === 'digital' ? (
+                                                        <><Monitor className="h-2.5 w-2.5 mr-0.5" />Digital</>
+                                                    ) : (
+                                                        <><Truck className="h-2.5 w-2.5 mr-0.5" />Físico</>
+                                                    )}
+                                                </span>
+                                            )}
+                                        </div>
                                         {/* Nota interna */}
                                         {showNotasInternas && item.notaInterna && (
                                             <div className="flex items-center space-x-2 mt-1 text-xs text-purple-600">
                                                 <FileText className="h-3 w-3" />
                                                 <span>
                                                     {item.notaInterna.proveedor && `${item.notaInterna.proveedor}`}
-                                                    {item.notaInterna.codigoProducto && ` - ${item.notaInterna.codigoProducto}`}
+                                                    {item.notaInterna.codigoProducto && ` • ${item.notaInterna.codigoProducto}`}
                                                 </span>
                                             </div>
                                         )}
@@ -582,6 +829,7 @@ const ItemsTablePedido = ({
                 onClose={() => setShowModalItem(false)}
                 onAgregar={handleAgregarItem}
                 tasaCambio={tasaCambio}
+                itemsExistentes={items}
             />
 
             {/* Modal nota interna */}

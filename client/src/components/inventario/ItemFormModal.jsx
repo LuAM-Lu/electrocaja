@@ -946,19 +946,26 @@ const ItemModal = ({
                     </label>
 
                     {isEditing ? (
-                      // Modo SOLO LECTURA cuando edita
+                      // Modo EDICIÓN - Ahora permite editar descripción
                       <div className="relative">
                         <input
                           type="text"
                           value={formData.descripcion}
-                          readOnly
-                          className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
+                          onChange={(e) => {
+                            const valor = e.target.value.toUpperCase();
+                            updateFormData('descripcion', valor);
+                          }}
+                          onKeyDown={handleEnterKey}
+                          placeholder="NOMBRE DESCRIPTIVO DEL PRODUCTO, SERVICIO O ITEM"
+                          className="w-full px-4 py-3 border border-amber-400 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors uppercase bg-amber-50/50"
+                          required
                         />
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <Package className="h-4 w-4 text-gray-400" />
+                          <Package className="h-4 w-4 text-amber-500" />
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Campo protegido - No se puede modificar al editar
+                        <div className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Editar con precaución - Cambios afectan historial de ventas
                         </div>
                       </div>
                     ) : (

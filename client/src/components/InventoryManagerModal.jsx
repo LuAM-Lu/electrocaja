@@ -258,6 +258,18 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
     setShowItemForm(true);
   };
 
+  // Función para obtener URL de thumbnail (convierte /original/ a /thumbnails/)
+  const getThumbnailUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    // Si ya es thumbnail, devolverla tal cual
+    if (imageUrl.includes('/thumbnails/')) {
+      return getImageUrl(imageUrl);
+    }
+    // Convertir /original/ a /thumbnails/
+    const thumbnailUrl = imageUrl.replace('/original/', '/thumbnails/');
+    return getImageUrl(thumbnailUrl);
+  };
+
   // Función para editar item existente
   const handleEditItem = (item) => {
     console.log(' [InventoryManagerModal] handleEditItem - Abriendo modal para editar:', item.id);
@@ -458,24 +470,54 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
       return;
     }
 
+    const productIdToUpdate = pendingImageProductId;
+
+    // Mostrar toast de carga
+    const toastId = toast.loading('Subiendo imagen...');
+
     try {
       const formData = new FormData();
       formData.append('image', file);
-      formData.append('productId', pendingImageProductId);
+      formData.append('productId', productIdToUpdate);
 
       const response = await api.post('/inventory/upload-image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       if (response.data.success) {
-        toast.success('Imagen actualizada');
-        await obtenerInventario(); // Recargar inventario
+        // Actualizar inmediatamente la imagen en el inventario local
+        // Usamos la original (la tabla convertirá a thumbnail automáticamente)
+        const newImageUrl = response.data.data?.original || response.data.data?.thumbnail;
+        if (newImageUrl) {
+          // Agregar timestamp para forzar recarga de cache
+          const imageWithCache = `${newImageUrl}?t=${Date.now()}`;
+
+          // Actualizar el item en el inventario local usando el setter del store
+          useInventarioStore.setState((state) => ({
+            inventario: state.inventario.map(item =>
+              item.id === productIdToUpdate
+                ? { ...item, imagen_url: imageWithCache }
+                : item
+            )
+          }));
+        }
+
+        toast.dismiss(toastId);
+        toast.success('✅ Imagen actualizada');
+
+        // También recargar desde el backend para asegurar sincronización
+        setTimeout(() => obtenerInventario(), 1000);
       } else {
+        toast.dismiss(toastId);
         toast.error(response.data.message || 'Error al subir imagen');
       }
     } catch (error) {
+      toast.dismiss(toastId);
       console.error('Error subiendo imagen:', error);
-      toast.error('Error al subir imagen');
+
+      // Mensaje de error más descriptivo
+      const errorMsg = error.response?.data?.message || error.message || 'Error al subir imagen';
+      toast.error(`❌ ${errorMsg}`);
     } finally {
       setPendingImageProductId(null);
       // Limpiar input para permitir subir la misma imagen
@@ -1203,7 +1245,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                               <div className="relative inline-block group/img">
                                 {item.imagen_url ? (
                                   <img
-                                    src={getImageUrl(item.imagen_url)}
+                                    src={getThumbnailUrl(item.imagen_url)}
                                     alt={item.descripcion}
                                     className="w-10 h-10 object-cover rounded border border-gray-200 mx-auto"
                                     onError={(e) => {

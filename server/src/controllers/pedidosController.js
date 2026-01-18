@@ -26,8 +26,10 @@ const generarNumeroPedido = async () => {
 // Mensajes WhatsApp por estado
 const MENSAJES_ESTADO = {
     PENDIENTE: (pedido) => `🛒 *NUEVO PEDIDO #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nTu solicitud ha sido registrada.\n\n📦 Total: $${pedido.totalUsd}\n⏳ Estado: Pendiente de pago\n\nTe contactaremos pronto para confirmar.`,
+    ANTICIPO: (pedido) => `💰 *ANTICIPO RECIBIDO - Pedido #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nHemos recibido tu anticipo.\n\n📦 Total: $${pedido.totalUsd}\n🔄 Estamos procesando tu pedido.\n\nTe avisaremos cuando esté listo.`,
     PAGADO: (pedido) => `✅ *PAGO CONFIRMADO - Pedido #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nHemos recibido tu pago.\n\n📦 Total: $${pedido.totalUsd}\n🔄 Estamos procesando tu pedido.\n\nTe avisaremos cuando lo confirmemos con el proveedor.`,
-    CONFIRMADO: (pedido) => `📋 *PEDIDO CONFIRMADO #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nEl proveedor ha confirmado la disponibilidad de tu producto.\n\n⏳ Pronto estará en camino.`,
+    CONFIRMADO: (pedido) => `📋 *PEDIDO CONFIRMADO #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nEl proveedor ha confirmado la disponibilidad de tu producto.\n\n⏳ Pronto estará listo.`,
+    LISTO: (pedido) => `🎁 *¡TU PEDIDO ESTÁ LISTO! #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nTu pedido está listo y procesado.\n\n📦 Pasa a recogerlo o te lo entregaremos pronto.\n\n🏪 Tu Tienda de Tecnología`,
     EN_CAMINO: (pedido) => `🚚 *EN CAMINO - Pedido #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nTu producto está en camino hacia nuestra tienda.\n\n📍 Te avisaremos cuando llegue.`,
     RECIBIDO: (pedido) => `📦 *¡LLEGÓ TU PEDIDO! #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nTu producto ya está en nuestra tienda y listo para entrega.\n\n🏪 Pasa a recogerlo cuando puedas.\n📍 Tu Tienda de Tecnología`,
     ENTREGADO: (pedido) => `🎉 *PEDIDO ENTREGADO #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nGracias por tu compra.\n\n⭐ Esperamos verte pronto!`,
@@ -48,14 +50,27 @@ const crearPedido = async (req, res) => {
             totalBs,
             tasaCambio,
             observaciones,
+            tipoPedido = 'fisico', // 'digital' o 'fisico'
+            tipoPago = 'diferido', // 'total', 'anticipo', 'diferido'
             pagarAhora = false,
+            montoAnticipo = 0,
+            montoPendiente = 0,
             pagos = [] // Si paga ahora, aquí van los datos de pago
         } = req.body;
 
         const usuario = req.user;
         const numero = await generarNumeroPedido();
 
-        console.log(`📦 Creando pedido ${numero} para cliente: ${cliente.nombre}`);
+        console.log(`📦 Creando pedido ${numero} [${tipoPedido.toUpperCase()}] para cliente: ${cliente.nombre}`);
+
+        // Estado inicial según tipo de pedido y pago
+        let estadoInicial = 'PENDIENTE';
+        if (pagarAhora) {
+            estadoInicial = tipoPago === 'anticipo' ? 'ANTICIPO' : 'PAGADO';
+        }
+
+        // Para pedidos digitales: pago total va a PAGADO (no LISTO)
+        // LISTO se marca cuando el pedido está procesado y listo para entregar
 
         // Crear el pedido
         const pedido = await prisma.pedido.create({
@@ -73,15 +88,21 @@ const crearPedido = async (req, res) => {
                 totalBs,
                 tasaCambio,
                 observaciones,
-                pagado: pagarAhora,
+                tipoPedido, // NUEVO: digital o fisico
+                tipoPago,   // NUEVO: total, anticipo, diferido
+                montoAnticipo: tipoPago === 'anticipo' ? montoAnticipo : 0,
+                montoPendiente: tipoPago === 'diferido' ? totalUsd : montoPendiente,
+                pagado: tipoPago === 'total' && pagarAhora,
                 fechaPago: pagarAhora ? new Date() : null,
-                estado: pagarAhora ? 'PAGADO' : 'PENDIENTE',
+                estado: estadoInicial,
                 creadoPorId: usuario.userId,
                 historialEstados: [{
-                    estado: pagarAhora ? 'PAGADO' : 'PENDIENTE',
+                    estado: estadoInicial,
                     fecha: new Date().toISOString(),
                     usuario: usuario.nombre,
-                    mensaje: pagarAhora ? 'Pedido creado con pago' : 'Pedido creado'
+                    mensaje: tipoPago === 'anticipo'
+                        ? `Pedido creado con anticipo de $${montoAnticipo.toFixed(2)}`
+                        : pagarAhora ? 'Pedido creado con pago completo' : 'Pedido creado'
                 }]
             },
             include: {
@@ -104,12 +125,9 @@ const crearPedido = async (req, res) => {
             });
         }
 
-        // Enviar WhatsApp de confirmación (fire-and-forget, no bloquea)
-        if (cliente.telefono) {
-            enviarWhatsAppPedido(pedido, pedido.estado)
-                .then(() => console.log('✅ WhatsApp enviado para pedido', numero))
-                .catch(err => console.warn('⚠️ WhatsApp no enviado:', err.message));
-        }
+        // Enviar WhatsApp en segundo plano (fire-and-forget, no bloquea)
+        // NOTA: Se envía después de responder para no causar timeout
+        const enviarWhatsAppEnSegundoPlano = cliente.telefono ? true : false;
 
         console.log(`✅ Pedido ${numero} creado exitosamente`);
 
@@ -117,9 +135,39 @@ const crearPedido = async (req, res) => {
             success: true,
             message: `Pedido ${numero} creado exitosamente`,
             data: {
-                pedido: { ...pedido, transaccion }
+                pedido: { ...pedido, transaccion },
+                whatsappEnviado: enviarWhatsAppEnSegundoPlano // Se intentará enviar
             }
         });
+
+        // 🔄 EMITIR EVENTOS SOCKET PARA SINCRONIZAR TODAS LAS SESIONES
+        if (transaccion && req.io) {
+            req.io.emit('nueva_transaccion', {
+                transaccion,
+                cajaId: transaccion.cajaId,
+                mensaje: `Nuevo pedido ${numero}`,
+                timestamp: new Date().toISOString()
+            });
+            req.io.emit('transaction-added', {
+                transaccion,
+                cajaId: transaccion.cajaId
+            });
+        }
+
+        // Emitir evento de pedido creado para actualizar lista de pedidos
+        if (req.io) {
+            req.io.emit('pedido_creado', {
+                pedido: { ...pedido, transaccion },
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Enviar WhatsApp DESPUÉS de responder (no bloquea)
+        if (enviarWhatsAppEnSegundoPlano) {
+            enviarWhatsAppPedido(pedido, pedido.estado)
+                .then(() => console.log('✅ WhatsApp enviado para pedido', numero))
+                .catch(err => console.warn('⚠️ WhatsApp no enviado:', err.message));
+        }
 
     } catch (error) {
         console.error('❌ Error creando pedido:', error);
@@ -597,11 +645,255 @@ const obtenerEstadisticas = async (req, res) => {
     }
 };
 
+// ===================================
+// ELIMINAR PEDIDO (Solo Admin)
+// ===================================
+const eliminarPedido = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Verificar que el pedido existe
+        const pedido = await prisma.pedido.findUnique({
+            where: { id: parseInt(id) }
+        });
+
+        if (!pedido) {
+            return res.status(404).json({
+                success: false,
+                message: 'Pedido no encontrado'
+            });
+        }
+
+        // Eliminar el pedido (items están como JSON, no tabla separada)
+        await prisma.pedido.delete({
+            where: { id: parseInt(id) }
+        });
+
+        console.log(`🗑️ Pedido ${pedido.numero} eliminado`);
+
+        res.json({
+            success: true,
+            message: `Pedido ${pedido.numero} eliminado correctamente`
+        });
+
+    } catch (error) {
+        console.error('❌ Error eliminando pedido:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al eliminar pedido'
+        });
+    }
+};
+
+// ===================================
+// PAGAR PEDIDO (Monto pendiente o completo)
+// ===================================
+const pagarPedido = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { metodoPago, pagos, referencia, cajaId } = req.body;
+        const usuario = req.user;
+
+        // Buscar pedido
+        const pedido = await prisma.pedido.findUnique({
+            where: { id: parseInt(id) }
+        });
+
+        if (!pedido) {
+            return res.status(404).json({
+                success: false,
+                message: 'Pedido no encontrado'
+            });
+        }
+
+        if (pedido.pagado) {
+            return res.status(400).json({
+                success: false,
+                message: 'El pedido ya está completamente pagado'
+            });
+        }
+
+        // Verificar caja
+        const caja = await prisma.caja.findUnique({
+            where: { id: parseInt(cajaId) }
+        });
+
+        if (!caja || caja.estado !== 'ABIERTA') {
+            return res.status(400).json({
+                success: false,
+                message: 'No hay caja abierta para registrar el pago'
+            });
+        }
+
+        // Calcular monto a pagar
+        const montoPendiente = parseFloat(pedido.montoPendiente || pedido.totalUsd);
+        const tasaCambioActual = parseFloat(caja.tasaCambio) || 1;
+        const totalBs = montoPendiente * tasaCambioActual;
+
+        // Calcular total pagado según pagos recibidos
+        let totalPagado = 0;
+        if (pagos && Array.isArray(pagos)) {
+            for (const pago of pagos) {
+                if (pago.moneda === 'bs') {
+                    // Convertir Bs a USD
+                    totalPagado += pago.monto / tasaCambioActual;
+                } else {
+                    totalPagado += pago.monto;
+                }
+            }
+        }
+
+        // Generar código de venta único
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const ventasHoy = await prisma.transaccion.count({
+            where: {
+                cajaId: caja.id,
+                fechaHora: { gte: hoy }
+            }
+        });
+        const consecutivo = ventasHoy + 1;
+        const codigoVenta = `PED-${Date.now()}-${consecutivo}`;
+
+        // Crear transacción en caja
+        const descripcion = `Pago Pedido #${pedido.numero} - ${pedido.clienteNombre}`;
+
+        // Determinar si el método principal es en Bs
+        const esMetodoBs = (metodoPago === 'pago_movil' || metodoPago === 'efectivo_bs');
+
+        // Preparar pagos para crear - respetando la moneda correcta según método
+        const pagosACrear = (pagos && Array.isArray(pagos) && pagos.length > 0)
+            ? pagos.map(p => {
+                const esMetodoPagoBs = (p.metodo === 'pago_movil' || p.metodo === 'efectivo_bs');
+                return {
+                    metodo: p.metodo,
+                    monto: parseFloat(p.monto),
+                    moneda: esMetodoPagoBs ? 'bs' : (p.moneda || 'usd'),
+                    banco: p.banco || null,
+                    referencia: p.referencia || referencia || null
+                };
+            })
+            : [{
+                metodo: metodoPago || 'efectivo_usd',
+                monto: esMetodoBs ? totalBs : montoPendiente,
+                moneda: esMetodoBs ? 'bs' : 'usd',
+                banco: null,
+                referencia: referencia || null
+            }];
+
+        const transaccion = await prisma.transaccion.create({
+            data: {
+                caja: { connect: { id: caja.id } },
+                tipo: 'INGRESO',
+                categoria: 'PEDIDO',
+                observaciones: descripcion,
+                totalUsd: montoPendiente,
+                totalBs: totalBs,
+                tasaCambioUsada: tasaCambioActual,
+                usuario: { connect: { id: usuario.userId || usuario.id } },
+                ...(pedido.clienteId && { cliente: { connect: { id: pedido.clienteId } } }),
+                clienteNombre: pedido.clienteNombre,
+                codigoVenta,
+                consecutivoDelDia: consecutivo,
+                metodoPagoPrincipal: metodoPago || 'efectivo_usd',
+                cantidadItems: (pedido.items || []).length,
+                pagos: {
+                    create: pagosACrear
+                }
+            },
+            include: {
+                pagos: true
+            }
+        });
+
+        // Actualizar historial
+        const historial = pedido.historialEstados || [];
+        const pagoInfo = pagosACrear.map(p => `${p.metodo}: ${p.moneda === 'bs' ? 'Bs.' : '$'}${p.monto.toFixed(2)}`).join(', ');
+        historial.push({
+            estado: 'PAGADO',
+            fecha: new Date().toISOString(),
+            usuario: usuario.nombre,
+            mensaje: `Pago registrado - ${pagoInfo}`
+        });
+
+        // Actualizar pedido como pagado
+        const pedidoActualizado = await prisma.pedido.update({
+            where: { id: parseInt(id) },
+            data: {
+                pagado: true,
+                fechaPago: new Date(),
+                montoPendiente: 0,
+                transaccionId: transaccion.id,
+                historialEstados: historial,
+                tipoPago: metodoPago || 'efectivo_usd'
+            }
+        });
+
+        console.log(`💰 Pedido ${pedido.numero} pagado completamente - $${montoPendiente.toFixed(2)}`);
+
+        // Flag para indicar que se intentará enviar WhatsApp
+        const whatsappEnviado = !!pedido.clienteTelefono;
+
+        res.json({
+            success: true,
+            message: 'Pago registrado exitosamente',
+            data: {
+                pedido: pedidoActualizado,
+                transaccion,
+                whatsappEnviado // Se intentará enviar en segundo plano
+            }
+        });
+
+        // 🔄 EMITIR EVENTOS SOCKET PARA SINCRONIZAR TODAS LAS SESIONES
+        if (transaccion && req.io) {
+            req.io.emit('nueva_transaccion', {
+                transaccion,
+                cajaId: transaccion.cajaId,
+                mensaje: `Pago de pedido ${pedido.numero}`,
+                timestamp: new Date().toISOString()
+            });
+            req.io.emit('transaction-added', {
+                transaccion,
+                cajaId: transaccion.cajaId
+            });
+        }
+
+        // Emitir evento de pedido pagado para actualizar lista de pedidos
+        if (req.io) {
+            req.io.emit('pedido_pagado', {
+                pedido: pedidoActualizado,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Enviar WhatsApp DESPUÉS de responder (fire-and-forget, no bloquea)
+        if (pedido.clienteTelefono) {
+            enviarWhatsAppPedido({
+                ...pedidoActualizado,
+                clienteNombre: pedido.clienteNombre,
+                clienteTelefono: pedido.clienteTelefono
+            }, 'PAGADO')
+                .then(() => console.log('✅ WhatsApp de pago enviado exitosamente'))
+                .catch(err => console.log('⚠️ WhatsApp no disponible:', err.message));
+        }
+
+    } catch (error) {
+        console.error('❌ Error procesando pago:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al procesar pago',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     crearPedido,
     listarPedidos,
     obtenerPedido,
     cambiarEstado,
     facturarPedido,
-    obtenerEstadisticas
+    obtenerEstadisticas,
+    eliminarPedido,
+    pagarPedido
 };

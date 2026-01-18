@@ -5,7 +5,7 @@ import {
     DollarSign, Printer, MessageCircle, Clock,
     CheckCircle, Truck, Store, XCircle, FileText,
     ChevronRight, Building, Tag, Link as LinkIcon,
-    History, Send
+    History, Send, Monitor, Wallet
 } from 'lucide-react';
 import { api } from '../config/api';
 import toast from '../utils/toast.jsx';
@@ -16,46 +16,53 @@ const ESTADOS_CONFIG = {
     PENDIENTE: {
         color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
         icon: Clock,
-        label: 'Pendiente',
-        siguiente: 'PAGADO'
+        label: 'Pendiente'
+    },
+    ANTICIPO: {
+        color: 'bg-orange-100 text-orange-800 border-orange-200',
+        icon: Wallet,
+        label: 'Anticipo'
     },
     PAGADO: {
         color: 'bg-blue-100 text-blue-800 border-blue-200',
         icon: DollarSign,
-        label: 'Pagado',
-        siguiente: 'CONFIRMADO'
+        label: 'Pagado'
     },
     CONFIRMADO: {
         color: 'bg-purple-100 text-purple-800 border-purple-200',
         icon: CheckCircle,
-        label: 'Confirmado',
-        siguiente: 'EN_CAMINO'
+        label: 'Confirmado'
     },
     EN_CAMINO: {
         color: 'bg-orange-100 text-orange-800 border-orange-200',
         icon: Truck,
-        label: 'En Camino',
-        siguiente: 'RECIBIDO'
+        label: 'En Camino'
     },
     RECIBIDO: {
         color: 'bg-green-100 text-green-800 border-green-200',
         icon: Store,
-        label: 'Listo para Entregar',
-        siguiente: 'ENTREGADO'
+        label: 'Recibido'
+    },
+    LISTO: {
+        color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+        icon: Monitor,
+        label: 'Listo para Entregar'
     },
     ENTREGADO: {
         color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
         icon: CheckCircle,
-        label: 'Entregado',
-        siguiente: null
+        label: 'Entregado'
     },
     CANCELADO: {
         color: 'bg-red-100 text-red-800 border-red-200',
         icon: XCircle,
-        label: 'Cancelado',
-        siguiente: null
+        label: 'Cancelado'
     }
 };
+
+// Estados según tipo de pedido
+const ESTADOS_FISICO = ['PENDIENTE', 'ANTICIPO', 'PAGADO', 'CONFIRMADO', 'EN_CAMINO', 'RECIBIDO', 'ENTREGADO'];
+const ESTADOS_DIGITAL = ['PENDIENTE', 'ANTICIPO', 'PAGADO', 'CONFIRMADO', 'LISTO', 'ENTREGADO'];
 
 // Componente de Ticket para imprimir
 const TicketPedido = React.forwardRef(({ pedido }, ref) => {
@@ -218,6 +225,9 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
 
     const estadoActual = ESTADOS_CONFIG[pedido.estado] || ESTADOS_CONFIG.PENDIENTE;
     const IconEstado = estadoActual.icon;
+    const esDigital = pedido.tipoPedido === 'digital';
+    const estadosFlujo = esDigital ? ESTADOS_DIGITAL : ESTADOS_FISICO;
+    const indiceActual = estadosFlujo.indexOf(pedido.estado);
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
@@ -227,10 +237,16 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <div className="bg-white/20 p-2 rounded-lg">
-                            <Package className="h-6 w-6 text-white" />
+                            {esDigital ? <Monitor className="h-6 w-6 text-white" /> : <Package className="h-6 w-6 text-white" />}
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">Pedido {pedido.numero}</h2>
+                            <div className="flex items-center space-x-2">
+                                <h2 className="text-xl font-bold text-white">Pedido {pedido.numero}</h2>
+                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${esDigital ? 'bg-cyan-400/30 text-cyan-100' : 'bg-blue-400/30 text-blue-100'
+                                    }`}>
+                                    {esDigital ? 'Digital' : 'Físico'}
+                                </span>
+                            </div>
                             <p className="text-blue-100 text-sm">
                                 {new Date(pedido.fecha).toLocaleDateString('es-VE')}
                             </p>
@@ -254,80 +270,96 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
                 {/* Contenido */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
-                    {/* Info Cliente - Compacto en una fila */}
-                    <div className="bg-blue-50/50 rounded-xl px-4 py-2 border border-blue-100">
-                        <div className="flex items-center justify-center flex-wrap gap-x-6 gap-y-1 text-sm">
-                            <div className="flex items-center space-x-1">
-                                <User className="h-4 w-4 text-blue-600" />
-                                <span className="font-medium text-gray-800">{pedido.clienteNombre}</span>
+                    {/* Info Cliente - Una sola fila */}
+                    <div className="bg-gradient-to-r from-slate-50 via-blue-50 to-indigo-50 rounded-xl px-4 py-3 border border-blue-100/50 shadow-sm">
+                        <div className="flex items-center justify-center flex-wrap gap-x-4 gap-y-1">
+                            <div className="flex items-center space-x-2">
+                                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 rounded-lg">
+                                    <User className="h-4 w-4 text-white" />
+                                </div>
+                                <span className="font-bold text-gray-800">{pedido.clienteNombre}</span>
                             </div>
                             {pedido.clienteTelefono && (
-                                <div className="flex items-center space-x-1 text-gray-600">
-                                    <Phone className="h-3 w-3" />
+                                <span className="flex items-center space-x-1 text-sm text-gray-500">
+                                    <Phone className="h-3.5 w-3.5" />
                                     <span>{pedido.clienteTelefono}</span>
-                                </div>
+                                </span>
                             )}
                             {pedido.clienteEmail && (
-                                <div className="flex items-center space-x-1 text-gray-600">
-                                    <Mail className="h-3 w-3" />
+                                <span className="flex items-center space-x-1 text-sm text-gray-500">
+                                    <Mail className="h-3.5 w-3.5" />
                                     <span>{pedido.clienteEmail}</span>
-                                </div>
+                                </span>
+                            )}
+                            {pedido.clienteCedulaRif && (
+                                <span className="flex items-center space-x-1 text-sm">
+                                    <span className="text-gray-400">RIF/CI:</span>
+                                    <span className="font-mono font-medium text-gray-600">{pedido.clienteCedulaRif}</span>
+                                </span>
                             )}
                         </div>
                     </div>
 
-                    {/* Items */}
+                    {/* Items - Premium Table */}
                     <div>
                         <h3 className="flex items-center space-x-2 font-bold text-gray-800 mb-3">
-                            <Package className="h-5 w-5 text-blue-600" />
+                            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-1.5 rounded-lg">
+                                <Package className="h-4 w-4 text-white" />
+                            </div>
                             <span>Items del Pedido</span>
+                            <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                                {(pedido.items || []).length}
+                            </span>
                         </h3>
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                             <table className="w-full">
-                                <thead className="bg-gradient-to-r from-blue-50 to-indigo-50">
+                                <thead className="bg-gradient-to-r from-indigo-500 to-purple-600">
                                     <tr>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Producto</th>
-                                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Cant.</th>
-                                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Precio</th>
-                                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Subtotal</th>
+                                        <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wide">Producto</th>
+                                        <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wide">Cant.</th>
+                                        <th className="px-4 py-3 text-right text-xs font-semibold text-white uppercase tracking-wide">Precio</th>
+                                        <th className="px-4 py-3 text-right text-xs font-semibold text-white uppercase tracking-wide">Subtotal</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y">
+                                <tbody className="divide-y divide-gray-100">
                                     {(pedido.items || []).map((item, idx) => (
-                                        <tr key={idx}>
-                                            <td className="px-3 py-2">
+                                        <tr key={idx} className="hover:bg-indigo-50/50 transition-colors">
+                                            <td className="px-4 py-3">
                                                 <div className="flex items-center flex-wrap gap-x-2">
-                                                    <span className="font-medium text-sm">{item.descripcion}</span>
-                                                    {/* Nota interna - inline */}
+                                                    <span className="font-medium text-gray-800">{item.descripcion}</span>
                                                     {item.notaInterna && (
                                                         <div className="flex items-center gap-2 text-xs">
                                                             {item.notaInterna.proveedor && (
-                                                                <span className="flex items-center space-x-1 text-purple-600">
+                                                                <span className="flex items-center space-x-1 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
                                                                     <Building className="h-3 w-3" />
                                                                     <span>{item.notaInterna.proveedor}</span>
                                                                 </span>
                                                             )}
                                                             {item.notaInterna.codigoProducto && (
-                                                                <span className="text-gray-500">• {item.notaInterna.codigoProducto}</span>
+                                                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                                                    {item.notaInterna.codigoProducto}
+                                                                </span>
                                                             )}
                                                             {item.notaInterna.link && (
                                                                 <a
                                                                     href={item.notaInterna.link}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="text-blue-600 hover:underline"
+                                                                    className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full hover:bg-blue-200 transition-colors"
                                                                 >
-                                                                    🔗
+                                                                    <LinkIcon className="h-3 w-3 inline" /> Link
                                                                 </a>
                                                             )}
                                                         </div>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-2 text-center text-sm">{item.cantidad}</td>
-                                            <td className="px-3 py-2 text-right text-sm">${item.precioUnitario?.toFixed(2)}</td>
-                                            <td className="px-3 py-2 text-right font-medium text-green-600 text-sm">
-                                                ${item.subtotal?.toFixed(2)}
+                                            <td className="px-4 py-3 text-center">
+                                                <span className="bg-gray-100 px-2.5 py-1 rounded-lg font-bold text-gray-700">{item.cantidad}</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-gray-600">${item.precioUnitario?.toFixed(2)}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <span className="font-bold text-green-600 text-lg">${item.subtotal?.toFixed(2)}</span>
                                             </td>
                                         </tr>
                                     ))}
@@ -336,53 +368,93 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
                         </div>
                     </div>
 
-                    {/* Totales */}
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                            <div>
-                                <div className="text-sm text-gray-500">Subtotal</div>
-                                <div className="text-lg font-bold">${parseFloat(pedido.subtotal).toFixed(2)}</div>
+                    {/* Totales - Compacto sin Descuento */}
+                    <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-3 shadow-md">
+                        <div className="flex items-center justify-center space-x-6">
+                            <div className="text-center">
+                                <div className="text-[10px] text-white/70 uppercase tracking-wide">Total</div>
+                                <div className="text-2xl font-black text-white">${parseFloat(pedido.totalUsd).toFixed(2)}</div>
                             </div>
-                            <div>
-                                <div className="text-sm text-gray-500">Descuento</div>
-                                <div className="text-lg font-bold text-red-600">
-                                    -${parseFloat(pedido.descuento || 0).toFixed(2)}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="text-sm text-gray-500">Total USD</div>
-                                <div className="text-2xl font-bold text-green-600">
-                                    ${parseFloat(pedido.totalUsd).toFixed(2)}
-                                </div>
-                                <div className="text-sm text-gray-400">
+                            <div className="text-white/40">|</div>
+                            <div className="text-center">
+                                <div className="text-[10px] text-white/70 uppercase tracking-wide">En Bs.</div>
+                                <div className="text-lg font-bold text-white/90">
                                     Bs. {parseFloat(pedido.totalBs).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Estado de pago */}
-                    <div className={`rounded-xl p-4 ${pedido.pagado ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                                {pedido.pagado ? (
-                                    <>
-                                        <CheckCircle className="h-5 w-5 text-green-600" />
-                                        <span className="font-bold text-green-800">Pagado</span>
-                                        {pedido.fechaPago && (
-                                            <span className="text-sm text-green-600">
-                                                ({new Date(pedido.fechaPago).toLocaleDateString('es-VE')})
-                                            </span>
-                                        )}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Clock className="h-5 w-5 text-yellow-600" />
-                                        <span className="font-bold text-yellow-800">Pendiente de Pago</span>
-                                    </>
-                                )}
-                            </div>
+                    {/* Estado de pago - Una sola fila */}
+                    <div className={`rounded-xl px-4 py-2.5 flex items-center justify-center flex-wrap gap-x-4 gap-y-1 ${pedido.pagado ? 'bg-green-50 border border-green-200' : pedido.tipoPago === 'anticipo' ? 'bg-orange-50 border border-orange-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+                        {/* Estado */}
+                        <div className="flex items-center space-x-1.5">
+                            {pedido.pagado ? (
+                                <>
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    <span className="font-bold text-green-800 text-sm">Pagado</span>
+                                    {pedido.tipoPago && (
+                                        <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                                            {pedido.tipoPago.replace('_', ' ')}
+                                        </span>
+                                    )}
+                                    {pedido.fechaPago && (
+                                        <span className="text-xs text-green-600">
+                                            ({new Date(pedido.fechaPago).toLocaleDateString('es-VE')})
+                                        </span>
+                                    )}
+                                </>
+                            ) : pedido.tipoPago === 'anticipo' ? (
+                                <>
+                                    <Wallet className="h-4 w-4 text-orange-600" />
+                                    <span className="font-bold text-orange-800 text-sm">Anticipo</span>
+                                </>
+                            ) : pedido.tipoPago === 'diferido' ? (
+                                <>
+                                    <Truck className="h-4 w-4 text-gray-600" />
+                                    <span className="font-bold text-gray-700 text-sm">Pagar al Recibir</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Clock className="h-4 w-4 text-yellow-600" />
+                                    <span className="font-bold text-yellow-800 text-sm">Pendiente</span>
+                                </>
+                            )}
                         </div>
+
+                        {/* Montos inline */}
+                        {parseFloat(pedido.montoAnticipo || 0) > 0 && (
+                            <>
+                                <span className="text-gray-300">|</span>
+                                <span className="text-sm">
+                                    <span className="text-gray-500">Pagado:</span>{' '}
+                                    <span className="font-bold text-green-600">${parseFloat(pedido.montoAnticipo).toFixed(2)}</span>
+                                </span>
+                            </>
+                        )}
+                        {parseFloat(pedido.montoPendiente || 0) > 0 && (
+                            <>
+                                <span className="text-gray-300">|</span>
+                                <span className="text-sm">
+                                    <span className="text-gray-500">Deuda:</span>{' '}
+                                    <span className="font-bold text-red-600">${parseFloat(pedido.montoPendiente).toFixed(2)}</span>
+                                </span>
+                            </>
+                        )}
+
+                        {/* Mostrar pagos de la transacción si existen */}
+                        {pedido.transaccion?.pagos?.length > 0 && (
+                            <>
+                                <span className="text-gray-300">|</span>
+                                <span className="text-sm flex items-center gap-1">
+                                    {pedido.transaccion.pagos.map((pago, idx) => (
+                                        <span key={idx} className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                                            {pago.metodo?.replace('_', ' ')}: {pago.moneda === 'bs' ? 'Bs.' : '$'}{parseFloat(pago.monto).toFixed(2)}
+                                        </span>
+                                    ))}
+                                </span>
+                            </>
+                        )}
                     </div>
 
                     {/* Historial de estados */}
@@ -418,51 +490,35 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
                     </div>
                 </div>
 
-                {/* Footer con acciones */}
-                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50/50 border-t border-blue-100 flex items-center justify-between">
+                {/* Footer con acciones - Premium */}
+                <div className="px-6 py-4 bg-gradient-to-r from-slate-50 via-gray-50 to-indigo-50 border-t border-gray-200 flex items-center justify-between">
                     {/* Acciones secundarias */}
                     <div className="flex items-center space-x-2">
                         <button
                             onClick={handlePrint}
-                            className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 rounded-xl shadow-sm transition-all"
                         >
-                            <Printer className="h-5 w-5" />
-                            <span>Imprimir</span>
+                            <Printer className="h-4 w-4" />
+                            <span className="font-medium">Imprimir</span>
                         </button>
                         <button
                             onClick={handleEnviarWhatsApp}
-                            className="flex items-center space-x-2 px-4 py-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                            className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-700 transition-all"
                         >
-                            <MessageCircle className="h-5 w-5" />
-                            <span>WhatsApp</span>
+                            <MessageCircle className="h-4 w-4" />
+                            <span className="font-medium">WhatsApp</span>
                         </button>
                     </div>
 
-                    {/* Cambiar estado */}
+                    {/* Cerrar - Premium */}
                     <div className="flex items-center space-x-3">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                            className="flex items-center space-x-2 px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 rounded-xl shadow-sm font-medium transition-all"
                         >
-                            Cerrar
+                            <X className="h-4 w-4" />
+                            <span>Cerrar</span>
                         </button>
-
-                        {estadoActual.siguiente && (
-                            <button
-                                onClick={() => handleCambiarEstado(estadoActual.siguiente)}
-                                disabled={loading}
-                                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                            >
-                                {loading ? (
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                                ) : (
-                                    <>
-                                        <Send className="h-5 w-5" />
-                                        <span>Pasar a {ESTADOS_CONFIG[estadoActual.siguiente]?.label}</span>
-                                    </>
-                                )}
-                            </button>
-                        )}
                     </div>
                 </div>
 
@@ -476,3 +532,4 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
 };
 
 export default DetallePedidoModal;
+

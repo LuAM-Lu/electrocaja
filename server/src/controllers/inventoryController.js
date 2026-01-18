@@ -224,10 +224,10 @@ const createProduct = async (req, res) => {
           finalName
         );
 
-        // Actualizar la URL en la base de datos
+        // Actualizar la URL en la base de datos (guardar ORIGINAL para alta calidad)
         await prisma.product.update({
           where: { id: product.id },
-          data: { imagenUrl: `/uploads/products/thumbnails/${finalName}` }
+          data: { imagenUrl: `/uploads/products/original/${finalName}` }
         });
 
         console.log('✅ Imagen movida y URL actualizada:', finalName);
@@ -945,10 +945,10 @@ const uploadProductImage = async (req, res) => {
             }
           }
 
-          // Actualizar producto con nueva imagen
+          // Actualizar producto con nueva imagen (guardar ORIGINAL para alta calidad)
           await prisma.product.update({
             where: { id: parseInt(productId) },
-            data: { imagenUrl: imagePaths.thumbnail }
+            data: { imagenUrl: imagePaths.original }
           });
 
           console.log(`✅ Imagen actualizada para producto ${productId}: ${imagePaths.thumbnail}`);

@@ -22,5 +22,11 @@ router.patch('/:id/estado', verifyToken, pedidosController.cambiarEstado);
 // Facturar pedido pendiente
 router.post('/:id/facturar', verifyToken, pedidosController.facturarPedido);
 
+// Procesar pago de pedido (nuevo endpoint)
+router.post('/:id/pagar', verifyToken, pedidosController.pagarPedido);
+
+// Eliminar pedido (solo admin)
+router.delete('/:id', verifyToken, pedidosController.eliminarPedido);
+
 module.exports = router;
 

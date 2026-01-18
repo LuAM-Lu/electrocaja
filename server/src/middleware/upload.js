@@ -65,22 +65,22 @@ const processImage = async (tempFilePath, filename) => {
     // Leer archivo en buffer primero (evita bloqueo de archivo en Windows)
     const inputBuffer = await fs.readFile(tempFilePath);
 
-    // Mover/procesar imagen original (max 1200px de ancho)
+    // Mover/procesar imagen original (max 1600px de ancho - alta calidad)
     await sharp(inputBuffer)
-      .resize(1200, 1200, {
+      .resize(1600, 1600, {
         fit: 'inside',
         withoutEnlargement: true
       })
-      .jpeg({ quality: 85 })
+      .jpeg({ quality: 92, mozjpeg: true })
       .toFile(originalPath);
 
-    // Crear thumbnail (200x200px)
+    // Crear thumbnail (300x300px - buena calidad para vista previa)
     await sharp(inputBuffer)
-      .resize(200, 200, {
+      .resize(300, 300, {
         fit: 'cover',
         position: 'center'
       })
-      .jpeg({ quality: 80 })
+      .jpeg({ quality: 88, mozjpeg: true })
       .toFile(thumbnailPath);
 
     // Eliminar archivo temporal (con retry para Windows)

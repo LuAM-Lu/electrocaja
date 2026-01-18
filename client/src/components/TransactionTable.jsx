@@ -46,29 +46,29 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
           const zIndex = parseInt(el.style.zIndex) || 0;
           return zIndex >= 99999;
         });
-      
+
       return !!(porAtributo || porClase || modalesAltos.length > 0);
     };
 
     // ✅ HANDLER UNIFICADO: Manejar ambos eventos con deduplicación
     const handleNuevaTransaccion = async (data) => {
       const transactionId = data.transaccion?.id || data.id;
-      
+
       // ✅ DEDUPLICACIÓN: Evitar procesar la misma transacción dos veces
       if (transactionId && transaccionesProcesadas.has(transactionId)) {
         console.log(`⏭️ TransactionTable: Transacción ${transactionId} ya procesada, omitiendo`);
         return;
       }
-      
+
       if (transactionId) {
         transaccionesProcesadas.add(transactionId);
-        
+
         // Limpiar después de 5 minutos para evitar memory leak
         setTimeout(() => {
           transaccionesProcesadas.delete(transactionId);
         }, 5 * 60 * 1000);
       }
-      
+
       // ✅ PREVENIR QUE SE EJECUTE SI HAY UN MODAL DE PROCESAMIENTO ABIERTO
       if (!hayModalProcesando()) {
         // ✅ SIEMPRE recargar caja para actualizar la lista en tiempo real
@@ -105,7 +105,7 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
       socket.off('nueva_transaccion', handleNuevaTransaccion);
       socket.off('transaction-added', handleNuevaTransaccion);
       socket.off('transaction-deleted', handleTransactionDeleted);
-      
+
       // ✅ LIMPIAR TODOS LOS TIMEOUTS PENDIENTES
       timeouts.forEach(timeoutId => clearTimeout(timeoutId));
       timeouts.length = 0; // Limpiar array
@@ -114,16 +114,16 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
 
   const filteredTransactions = transacciones.filter(t => {
     const matchesSearch = t.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         t.observaciones?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         t.usuario?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         t.pagos?.some(pago => pago.metodo.toLowerCase().includes(searchTerm.toLowerCase()));
+      t.observaciones?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.usuario?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.pagos?.some(pago => pago.metodo.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesFilter = filterType === 'todas' || t.tipo === filterType;
     return matchesSearch && matchesFilter;
   });
 
   const sortedTransactions = React.useMemo(() => {
     if (!sortConfig.key) return filteredTransactions;
-    
+
     return [...filteredTransactions].sort((a, b) => {
       if (a[sortConfig.key] < b[sortConfig.key]) {
         return sortConfig.direction === 'asc' ? -1 : 1;
@@ -152,16 +152,16 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
     setSortConfig({ key, direction });
   };
 
-const handleViewDetails = async (transaccion) => {
-  try {
-    // Emitir evento al Dashboard para que maneje el modal
-    if (window.showTransactionDetail) {
-      window.showTransactionDetail(transaccion);
+  const handleViewDetails = async (transaccion) => {
+    try {
+      // Emitir evento al Dashboard para que maneje el modal
+      if (window.showTransactionDetail) {
+        window.showTransactionDetail(transaccion);
+      }
+    } catch (error) {
+      console.error('Error:', error);
     }
-  } catch (error) {
-    console.error('Error:', error);
-  }
-};
+  };
 
   const handleDeleteClick = (transaccion) => {
     setSelectedTransaction(transaccion);
@@ -175,7 +175,7 @@ const handleViewDetails = async (transaccion) => {
 
   const formatCodigoVenta = (codigoVenta) => {
     if (!codigoVenta) return 'Sin código';
-    
+
     // Si es un código de servicio técnico con formato largo (ej: S20251109002-F-1762665708704)
     // Mostrar solo la parte relevante (S20251109002-F o S20251109002-A)
     if (codigoVenta.includes('-F-') || codigoVenta.includes('-A-')) {
@@ -185,70 +185,94 @@ const handleViewDetails = async (transaccion) => {
         return match[1];
       }
     }
-    
+
     // Para otros códigos, truncar si es muy largo
     if (codigoVenta.length > 20) {
       return codigoVenta.substring(0, 17) + '...';
     }
-    
+
     return codigoVenta;
   };
 
   const formatTime = (fechaHora) => {
-  if (!fechaHora) return '--:--';
-  
-  try {
-    const date = new Date(fechaHora);
-    if (isNaN(date.getTime())) return '--:--';
-    
-    return date.toLocaleTimeString('es-VE', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  } catch (error) {
-    console.error('Error formateando hora:', error);
-    return '--:--';
-  }
-};
+    if (!fechaHora) return '--:--';
+
+    try {
+      const date = new Date(fechaHora);
+      if (isNaN(date.getTime())) return '--:--';
+
+      return date.toLocaleTimeString('es-VE', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formateando hora:', error);
+      return '--:--';
+    }
+  };
 
   const formatAmount = (amount) => {
     return amount.toLocaleString('es-VE', { minimumFractionDigits: 2 });
   };
 
- const obtenerMontosOriginales = (transaccion) => {
+  const obtenerMontosOriginales = (transaccion) => {
     //  MEJORAR PRESENTACIÓN DE VUELTOS
     if (transaccion.categoria?.includes('Vuelto de venta')) {
       // Detectar moneda original del vuelto
-      const esUSD = transaccion.metodoPagoPrincipal?.includes('usd') || 
-                   transaccion.metodoPagoPrincipal === 'zelle' || 
-                   transaccion.metodoPagoPrincipal === 'binance';
-      
+      const esUSD = transaccion.metodoPagoPrincipal?.includes('usd') ||
+        transaccion.metodoPagoPrincipal === 'zelle' ||
+        transaccion.metodoPagoPrincipal === 'binance';
+
       if (esUSD) {
         return [{
-          monto: transaccion.totalUsd,
+          monto: parseFloat(transaccion.totalUsd) || 0,
           moneda: 'usd',
           metodo: transaccion.metodoPagoPrincipal,
           simbolo: '$'
         }];
       } else {
         return [{
-          monto: transaccion.totalBs,
+          monto: parseFloat(transaccion.totalBs) || 0,
           moneda: 'bs',
           metodo: transaccion.metodoPagoPrincipal,
           simbolo: 'Bs'
         }];
       }
     }
-    
-    // Para transacciones normales, usar pagos
-    if (!transaccion.pagos || transaccion.pagos.length === 0) return [];
-    
-    return transaccion.pagos.map(pago => ({
-      monto: pago.monto,
-      moneda: pago.moneda,
-      metodo: pago.metodo,
-      simbolo: pago.moneda === 'usd' ? '$' : 'Bs'
-    }));
+
+    // Para transacciones con pagos registrados
+    if (transaccion.pagos && transaccion.pagos.length > 0) {
+      return transaccion.pagos.map(pago => ({
+        monto: parseFloat(pago.monto) || 0,
+        moneda: pago.moneda || 'usd',
+        metodo: pago.metodo,
+        simbolo: pago.moneda === 'bs' ? 'Bs' : '$'
+      }));
+    }
+
+    // FALLBACK: Si no hay pagos, usar totalUsd con metodoPagoPrincipal
+    const totalUsd = parseFloat(transaccion.totalUsd) || 0;
+    if (totalUsd > 0) {
+      return [{
+        monto: totalUsd,
+        moneda: 'usd',
+        metodo: transaccion.metodoPagoPrincipal || 'efectivo_usd',
+        simbolo: '$'
+      }];
+    }
+
+    // Si no hay totalUsd, intentar con totalBs
+    const totalBs = parseFloat(transaccion.totalBs) || 0;
+    if (totalBs > 0) {
+      return [{
+        monto: totalBs,
+        moneda: 'bs',
+        metodo: transaccion.metodoPagoPrincipal || 'pago_movil',
+        simbolo: 'Bs'
+      }];
+    }
+
+    return [];
   };
 
   const getMetodoIcon = (metodo) => {
@@ -290,7 +314,7 @@ const handleViewDetails = async (transaccion) => {
   };
 
   const getInventarioIcon = (tipo) => {
-    switch(tipo) {
+    switch (tipo) {
       case 'producto': return '';
       case 'servicio': return '';
       case 'electrobar': return '';
@@ -327,7 +351,7 @@ const handleViewDetails = async (transaccion) => {
   return (
     <>
       <div className="bg-white/70 backdrop-blur-lg rounded-xl shadow-sm border border-white/20 overflow-hidden">
-        
+
         {/* Header con VERDE cuando caja está abierta - CORREGIDO */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 backdrop-blur-sm px-6 py-4 border-b border-white/30">
           <div className="flex items-center justify-between gap-4">
@@ -389,10 +413,10 @@ const handleViewDetails = async (transaccion) => {
                   placeholder="Buscar..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-48 pl-10 pr-4 py-2 border border-white/30 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white/60 backdrop-blur-sm placeholder-gray-500 text-gray-900 relative z-0" 
+                  className="w-48 pl-10 pr-4 py-2 border border-white/30 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white/60 backdrop-blur-sm placeholder-gray-500 text-gray-900 relative z-0"
                 />
               </div>
-              
+
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white z-10 pointer-events-none" />
                 <select
@@ -412,319 +436,336 @@ const handleViewDetails = async (transaccion) => {
         </div>
 
         {/* Tabla con fondo glassmorphism - SIN CAMBIOS */}
-       <div className="overflow-x-auto bg-white/40 backdrop-blur-sm">
-         {currentTransactions.length === 0 ? (
-           <div className="p-12 text-center">
-             <div className="bg-gray-100/70 backdrop-blur-sm rounded-full p-6 w-16 h-16 mx-auto mb-4 flex items-center justify-center border border-white/30">
-               <Plus className="h-6 w-6 text-gray-400" />
-             </div>
-             <h3 className="text-lg font-semibold text-gray-600 mb-2">
-               {searchTerm || filterType !== 'todas' ? 'No se encontraron resultados' : 'No hay transacciones'}
-             </h3>
-             <p className="text-gray-500">
-               {searchTerm || filterType !== 'todas' 
-                 ? 'Prueba ajustando los filtros de búsqueda'
-                 : 'Usa los botones flotantes para agregar la primera transacción'
-               }
-             </p>
-           </div>
-         ) : (
-           <table className="w-full">
-             <thead className="bg-gray-50/80 backdrop-blur-sm border-b border-white/30">
-               <tr>
-                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-24">
-                   <button 
-                     onClick={() => handleSort('id')}
-                     className="flex items-center space-x-1 hover:text-emerald-600 transition-colors"
-                   >
-                     <span>ID/Hora</span>
-                     <ArrowUpDown className="h-3 w-3" />
-                   </button>
-                 </th>
-                 
-                 <th className="px-2 py-3 text-left text-xs font-semibold text-gray-600 tracking-wider w-32">
-                  Usuario
-                 </th>
-                 
-                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[220px]">
-                   <button 
-                     onClick={() => handleSort('categoria')}
-                     className="flex items-center space-x-1 hover:text-emerald-600 transition-colors"
-                   >
-                     <span>Descripción</span>
-                     <ArrowUpDown className="h-3 w-3" />
-                   </button>
-                 </th>
-                 
-                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
-                   <button 
-                     onClick={() => handleSort('total_bs')}
-                     className="flex items-center justify-end space-x-1 hover:text-emerald-600 transition-colors w-full"
-                   >
-                     <span>Monto</span>
-                     <ArrowUpDown className="h-3 w-3" />
-                   </button>
-                 </th>
-                 
-                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 tracking-wider w-32">
-                   Forma de Pago
-                 </th>
-                 
-                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 tracking-wider w-20">
-                   Acciones
-                 </th>
-               </tr>
-             </thead>
-             <tbody className="bg-white/20 backdrop-blur-sm divide-y divide-white/20">
-               {currentTransactions.map((transaccion, index) => {
-                 const rowColors = transaccion.tipo === 'ingreso' 
-                   ? 'bg-emerald-50/60 hover:bg-emerald-50/80 border-l-4 border-l-emerald-400 backdrop-blur-sm' 
-                   : 'bg-red-50/60 hover:bg-red-50/80 border-l-4 border-l-red-400 backdrop-blur-sm';
-                 
-                 const montosOriginales = obtenerMontosOriginales(transaccion);
-                 
-                 return (
-                   <tr key={transaccion.id} className={`transition-all duration-200 ${rowColors}`}>
-                     <td className="px-4 py-4 whitespace-nowrap">
-                       <div className="text-xs font-mono text-gray-400 leading-tight">#{transaccion.id}</div>
-                       <div className="text-xs text-gray-600 font-medium flex items-center">
-                         <Clock className="h-3 w-3 mr-1 text-gray-400" />
-                         {formatTime(transaccion.fechaHora || transaccion.fecha_hora)}
-                       </div>
-                     </td>
-                     
-                     {/* Usuario */}
-                     <td className="px-2 py-4 whitespace-nowrap min-w-[120px]">
-                       <div className="text-xs font-medium text-gray-900">
-                         {transaccion.usuario || 'N/A'}
-                       </div>
-                     </td>
-                     
-                     {/* Descripción con info de inventario - 2 FILAS */}
-                     <td className="px-6 py-4">
-                       {/* FILA 1: Tipo, código, orden de servicio */}
-                       <div className="flex items-center space-x-2 flex-wrap mb-1.5">
-                         {transaccion.item_inventario && (
-                           <span className="text-sm" title={`Del inventario: ${transaccion.item_inventario.tipo}`}>
-                             {getInventarioIcon(transaccion.item_inventario.tipo)}
-                           </span>
-                         )}
-                         {/* Tipo de transacción */}
-                         <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border backdrop-blur-sm ${
-                           transaccion.tipo === 'ingreso'
-                             ? 'bg-emerald-50/80 text-emerald-700 border-emerald-200'
-                             : 'bg-red-50/80 text-red-700 border-red-200'
-                         }`}>
-                           {transaccion.tipo === 'ingreso' ? (
-                             <TrendingUp className="h-3 w-3 mr-1" />
-                           ) : (
-                             <TrendingDown className="h-3 w-3 mr-1" />
-                           )}
-                           {transaccion.tipo === 'ingreso' ? 'ING' : 'EGR'}
-                         </div>
-                         {/* Código de venta */}
-                         <div className="text-base font-semibold text-gray-900">
-                           {(() => {
-                             const codigoVenta = transaccion.codigoVenta || 
-                               transaccion.categoria.match(/V\d+/)?.[0] || 
-                               'Sin código';
-                             return `- ${formatCodigoVenta(codigoVenta)}`;
-                           })()}
-                         </div>
-                         {/* Número real de orden de servicio si existe */}
-                         {transaccion.servicioTecnico?.numeroServicio && (
-                           <>
-                             <span className="text-gray-400">•</span>
-                             <Wrench className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
-                             <span className="text-xs font-semibold text-blue-700">Orden:</span>
-                             <span className="text-xs text-blue-600 font-mono">{transaccion.servicioTecnico.numeroServicio}</span>
-                           </>
-                         )}
-                       </div>
-                       
-                       {/* FILA 2: Items, cliente, observaciones */}
-                       <div className="flex items-start space-x-3 text-xs flex-wrap">
-                         {/* Items y conteo */}
-                         {transaccion.items && transaccion.items.length > 0 && (
-                           <div className="flex items-center space-x-1.5 flex-wrap">
-                             <span className="text-gray-600 font-medium">
-                               {(() => {
-                                 const conteo = transaccion.items.reduce((acc, item) => {
-                                   const tipo = item.producto?.tipo?.toLowerCase() || 'producto';
-                                   acc[tipo] = (acc[tipo] || 0) + item.cantidad;
-                                   return acc;
-                                 }, {});
-                                 const partes = [];
-                                 if (conteo.producto) partes.push(`${conteo.producto} prod`);
-                                 if (conteo.servicio) partes.push(`${conteo.servicio} serv`);
-                                 if (conteo.electrobar) partes.push(`${conteo.electrobar} elec`);
-                                 return partes.join(', ');
-                               })()}
-                             </span>
-                             {/* Primeros 2 items con detalles */}
-                             {transaccion.items.slice(0, 2).map((item, idx) => (
-                               <span key={idx} className="text-gray-600">
-                                 <span className="text-gray-400">•</span>
-                                 <span className="font-medium ml-1">{item.descripcion || item.producto?.nombre || 'Item'}</span>
-                                 {item.cantidad > 1 && <span className="text-gray-500 ml-1">(x{item.cantidad})</span>}
-                               </span>
-                             ))}
-                             {transaccion.items.length > 2 && (
-                               <span className="text-gray-500 italic">+{transaccion.items.length - 2} más</span>
-                             )}
-                           </div>
-                         )}
-                         
-                         {/* Cliente */}
-                         {transaccion.servicioTecnico?.clienteNombre && (
-                           <>
-                             <span className="text-gray-400">•</span>
-                             <span className="text-gray-600">{transaccion.servicioTecnico.clienteNombre}</span>
-                             {transaccion.servicioTecnico.dispositivoMarca && transaccion.servicioTecnico.dispositivoModelo && (
-                               <span className="text-gray-500">({transaccion.servicioTecnico.dispositivoMarca} {transaccion.servicioTecnico.dispositivoModelo})</span>
-                             )}
-                           </>
-                         )}
-                         {transaccion.clienteNombre && !transaccion.servicioTecnico && (
-                           <>
-                             <span className="text-gray-400">•</span>
-                             <User className="h-3 w-3 text-gray-400 inline" />
-                             <span className="text-gray-600 ml-1">{transaccion.clienteNombre}</span>
-                           </>
-                         )}
-                         
-                         {/* Observaciones (solo si no es venta automática) */}
-                         {transaccion.observaciones && 
-                          !transaccion.observaciones.startsWith('Venta procesada con código') && (
-                           <>
-                             <span className="text-gray-400">•</span>
-                             <span className="text-gray-500">
-                               {(() => {
-                                 if (transaccion.observaciones.includes('Vuelto entregado')) {
-                                   const metodo = transaccion.observaciones.match(/Método: (\w+)/)?.[1];
-                                   const metodosMap = {
-                                     'efectivo_bs': 'Efectivo Bs',
-                                     'efectivo_usd': 'Efectivo USD',
-                                     'pago_movil': 'Pago Móvil',
-                                     'transferencia': 'Transferencia',
-                                     'zelle': 'Zelle',
-                                     'binance': 'Binance',
-                                     'tarjeta': 'Tarjeta'
-                                   };
-                                   const metodoPretty = metodosMap[metodo] || metodo;
-                                   return `Vuelto en ${metodoPretty}`;
-                                 }
-                                 return transaccion.observaciones.length > 50 
-                                   ? transaccion.observaciones.substring(0, 50) + '...'
-                                   : transaccion.observaciones;
-                               })()}
-                             </span>
-                           </>
-                         )}
-                       </div>
-                     </td>
-                     
-                     {/* Montos Originales */}
-                     <td className="px-4 py-4 whitespace-nowrap text-right min-w-[140px]">
-                       <div className="space-y-1">
-                         {montosOriginales.map((montoInfo, idx) => (
-                           <div key={idx} className={`text-sm font-bold ${
-                             montoInfo.metodo === 'pago_movil' ? 'text-purple-700' :
-                             montoInfo.moneda === 'usd' ? 'text-green-700' :
-                             transaccion.tipo === 'ingreso' ? 'text-emerald-700' : 'text-red-700'
-                           }`}>
-                             {transaccion.tipo === 'ingreso' ? '+' : '-'}
-                             {montoInfo.simbolo}{formatAmount(montoInfo.monto)}
-                             {montoInfo.metodo === 'pago_movil' && (
-                               <span className="ml-1 text-xs text-purple-600">(PM)</span>
-                             )}
-                           </div>
-                         ))}
-                       </div>
-                       
-                       {transaccion.pagos && transaccion.pagos.length > 1 && (
-                         <div className="text-xs text-gray-500 flex items-center justify-end mt-1">
-                           <span className="bg-gray-100/70 backdrop-blur-sm text-gray-600 px-1.5 py-0.5 rounded text-xs border border-white/30">
-                             {transaccion.pagos.length} método{transaccion.pagos.length > 1 ? 's' : ''}
-                           </span>
-                         </div>
-                       )}
-                     </td>
-                     
-                     {/* Forma de Pago */}
-                     <td className="px-4 py-4">
-                       <div className="flex flex-wrap gap-1">
-                         {(() => {
-                           // Para vueltos, mostrar método principal en lugar de pagos
-                           if (transaccion.categoria?.includes('Vuelto de venta') && transaccion.metodoPagoPrincipal) {
-                             return (
-                               <span
-                                 className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border backdrop-blur-sm ${getMetodoColor(transaccion.metodoPagoPrincipal).replace('bg-', 'bg-').replace('-50', '-50/80')}`}
-                                 title={`Vuelto en ${transaccion.metodoPagoPrincipal.replace('_', ' ').toUpperCase()}`}
-                               >
-                                 
-                                 {getMetodoIcon(transaccion.metodoPagoPrincipal)}
-                                 <span className="ml-1 truncate max-w-[50px]">
-                                   {getMetodoLabel(transaccion.metodoPagoPrincipal)}
-                                 </span>
-                               </span>
-                             );
-                           }
-                           
-                           // Para transacciones normales, mostrar pagos
-                           return (
-                             <>
-                               {transaccion.pagos?.slice(0, 2).map((pago, idx) => (
-                                 <span
-                                   key={idx}
-                                   className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border backdrop-blur-sm ${getMetodoColor(pago.metodo).replace('bg-', 'bg-').replace('-50', '-50/80')}`}
-                                   title={`${pago.metodo.replace('_', ' ').toUpperCase()}: ${pago.monto} ${pago.moneda.toUpperCase()}`}
-                                 >
-                                   {getMetodoIcon(pago.metodo)}
-                                   <span className="ml-1 truncate max-w-[50px]">
-                                     {getMetodoLabel(pago.metodo)}
-                                   </span>
-                                 </span>
-                               ))}
-                               {transaccion.pagos?.length > 2 && (
-                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100/70 backdrop-blur-sm text-gray-600 border border-white/30">
-                                   +{transaccion.pagos.length - 2}
-                                 </span>
-                               )}
-                             </>
-                           );
-                         })()}
-                       </div>
-                     </td>
-                     
-                     {/* Acciones */}
-                     <td className="px-4 py-4 whitespace-nowrap text-center">
-                       <div className="flex items-center justify-center space-x-2">
-                         <button
-                           onClick={() => handleViewDetails(transaccion)}
-                           className="bg-blue-50/80 backdrop-blur-sm hover:bg-blue-100/80 text-blue-600 p-2 rounded-md transition-colors border border-blue-200/50 hover:border-blue-300/50"
-                           title="Ver detalles"
-                         >
-                           <Eye className="h-4 w-4" />
-                         </button>
-                         {usuario?.rol === 'admin' && (
-                           <button
-                             onClick={() => handleDeleteClick(transaccion)}
-                             className="bg-red-50/80 backdrop-blur-sm hover:bg-red-100/80 text-red-600 p-2 rounded-md transition-colors border border-red-200/50 hover:border-red-300/50"
-                             title="Eliminar"
-                           >
-                             <Trash2 className="h-4 w-4" />
-                           </button>
-                         )}
-                       </div>
-                     </td>
-                   </tr>
-                 );
-               })}
-             </tbody>
-           </table>
-         )}
-       </div>
+        <div className="overflow-x-auto bg-white/40 backdrop-blur-sm">
+          {currentTransactions.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="bg-gray-100/70 backdrop-blur-sm rounded-full p-6 w-16 h-16 mx-auto mb-4 flex items-center justify-center border border-white/30">
+                <Plus className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                {searchTerm || filterType !== 'todas' ? 'No se encontraron resultados' : 'No hay transacciones'}
+              </h3>
+              <p className="text-gray-500">
+                {searchTerm || filterType !== 'todas'
+                  ? 'Prueba ajustando los filtros de búsqueda'
+                  : 'Usa los botones flotantes para agregar la primera transacción'
+                }
+              </p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50/80 backdrop-blur-sm border-b border-white/30">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-24">
+                    <button
+                      onClick={() => handleSort('id')}
+                      className="flex items-center space-x-1 hover:text-emerald-600 transition-colors"
+                    >
+                      <span>ID/Hora</span>
+                      <ArrowUpDown className="h-3 w-3" />
+                    </button>
+                  </th>
+
+                  <th className="px-2 py-3 text-left text-xs font-semibold text-gray-600 tracking-wider w-32">
+                    Usuario
+                  </th>
+
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[220px]">
+                    <button
+                      onClick={() => handleSort('categoria')}
+                      className="flex items-center space-x-1 hover:text-emerald-600 transition-colors"
+                    >
+                      <span>Descripción</span>
+                      <ArrowUpDown className="h-3 w-3" />
+                    </button>
+                  </th>
+
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider min-w-[140px]">
+                    <button
+                      onClick={() => handleSort('total_bs')}
+                      className="flex items-center justify-end space-x-1 hover:text-emerald-600 transition-colors w-full"
+                    >
+                      <span>Monto</span>
+                      <ArrowUpDown className="h-3 w-3" />
+                    </button>
+                  </th>
+
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 tracking-wider w-32">
+                    Forma de Pago
+                  </th>
+
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 tracking-wider w-20">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white/20 backdrop-blur-sm divide-y divide-white/20">
+                {currentTransactions.map((transaccion, index) => {
+                  const rowColors = transaccion.tipo === 'ingreso'
+                    ? 'bg-emerald-50/60 hover:bg-emerald-50/80 border-l-4 border-l-emerald-400 backdrop-blur-sm'
+                    : 'bg-red-50/60 hover:bg-red-50/80 border-l-4 border-l-red-400 backdrop-blur-sm';
+
+                  const montosOriginales = obtenerMontosOriginales(transaccion);
+
+                  return (
+                    <tr key={transaccion.id} className={`transition-all duration-200 ${rowColors}`}>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-xs font-mono text-gray-400 leading-tight">#{transaccion.id}</div>
+                        <div className="text-xs text-gray-600 font-medium flex items-center">
+                          <Clock className="h-3 w-3 mr-1 text-gray-400" />
+                          {formatTime(transaccion.fechaHora || transaccion.fecha_hora)}
+                        </div>
+                      </td>
+
+                      {/* Usuario */}
+                      <td className="px-2 py-4 whitespace-nowrap min-w-[120px]">
+                        <div className="text-xs font-medium text-gray-900">
+                          {transaccion.usuario || 'N/A'}
+                        </div>
+                      </td>
+
+                      {/* Descripción con info de inventario - 2 FILAS */}
+                      <td className="px-6 py-4">
+                        {/* FILA 1: Tipo, código, orden de servicio */}
+                        <div className="flex items-center space-x-2 flex-wrap mb-1.5">
+                          {transaccion.item_inventario && (
+                            <span className="text-sm" title={`Del inventario: ${transaccion.item_inventario.tipo}`}>
+                              {getInventarioIcon(transaccion.item_inventario.tipo)}
+                            </span>
+                          )}
+                          {/* Tipo de transacción */}
+                          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border backdrop-blur-sm ${transaccion.tipo === 'ingreso'
+                            ? 'bg-emerald-50/80 text-emerald-700 border-emerald-200'
+                            : 'bg-red-50/80 text-red-700 border-red-200'
+                            }`}>
+                            {transaccion.tipo === 'ingreso' ? (
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                            ) : (
+                              <TrendingDown className="h-3 w-3 mr-1" />
+                            )}
+                            {transaccion.tipo === 'ingreso' ? 'ING' : 'EGR'}
+                          </div>
+                          {/* Código de venta */}
+                          <div className="text-base font-semibold text-gray-900">
+                            {(() => {
+                              const codigoVenta = transaccion.codigoVenta ||
+                                transaccion.categoria.match(/V\d+/)?.[0] ||
+                                'Sin código';
+                              return `- ${formatCodigoVenta(codigoVenta)}`;
+                            })()}
+                          </div>
+                          {/* Número real de orden de servicio si existe */}
+                          {transaccion.servicioTecnico?.numeroServicio && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <Wrench className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
+                              <span className="text-xs font-semibold text-blue-700">Orden:</span>
+                              <span className="text-xs text-blue-600 font-mono">{transaccion.servicioTecnico.numeroServicio}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* FILA 2: Items, cliente, observaciones */}
+                        <div className="flex items-start space-x-3 text-xs flex-wrap">
+                          {/* Items y conteo */}
+                          {transaccion.items && transaccion.items.length > 0 && (
+                            <div className="flex items-center space-x-1.5 flex-wrap">
+                              <span className="text-gray-600 font-medium">
+                                {(() => {
+                                  const conteo = transaccion.items.reduce((acc, item) => {
+                                    const tipo = item.producto?.tipo?.toLowerCase() || 'producto';
+                                    acc[tipo] = (acc[tipo] || 0) + item.cantidad;
+                                    return acc;
+                                  }, {});
+                                  const partes = [];
+                                  if (conteo.producto) partes.push(`${conteo.producto} prod`);
+                                  if (conteo.servicio) partes.push(`${conteo.servicio} serv`);
+                                  if (conteo.electrobar) partes.push(`${conteo.electrobar} elec`);
+                                  return partes.join(', ');
+                                })()}
+                              </span>
+                              {/* Primeros 2 items con detalles */}
+                              {transaccion.items.slice(0, 2).map((item, idx) => (
+                                <span key={idx} className="text-gray-600">
+                                  <span className="text-gray-400">•</span>
+                                  <span className="font-medium ml-1">{item.descripcion || item.producto?.nombre || 'Item'}</span>
+                                  {item.cantidad > 1 && <span className="text-gray-500 ml-1">(x{item.cantidad})</span>}
+                                </span>
+                              ))}
+                              {transaccion.items.length > 2 && (
+                                <span className="text-gray-500 italic">+{transaccion.items.length - 2} más</span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Cliente */}
+                          {transaccion.servicioTecnico?.clienteNombre && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-gray-600">{transaccion.servicioTecnico.clienteNombre}</span>
+                              {transaccion.servicioTecnico.dispositivoMarca && transaccion.servicioTecnico.dispositivoModelo && (
+                                <span className="text-gray-500">({transaccion.servicioTecnico.dispositivoMarca} {transaccion.servicioTecnico.dispositivoModelo})</span>
+                              )}
+                            </>
+                          )}
+                          {transaccion.clienteNombre && !transaccion.servicioTecnico && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <User className="h-3 w-3 text-gray-400 inline" />
+                              <span className="text-gray-600 ml-1">{transaccion.clienteNombre}</span>
+                            </>
+                          )}
+
+                          {/* Observaciones (solo si no es venta automática) */}
+                          {transaccion.observaciones &&
+                            !transaccion.observaciones.startsWith('Venta procesada con código') && (
+                              <>
+                                <span className="text-gray-400">•</span>
+                                <span className="text-gray-500">
+                                  {(() => {
+                                    if (transaccion.observaciones.includes('Vuelto entregado')) {
+                                      const metodo = transaccion.observaciones.match(/Método: (\w+)/)?.[1];
+                                      const metodosMap = {
+                                        'efectivo_bs': 'Efectivo Bs',
+                                        'efectivo_usd': 'Efectivo USD',
+                                        'pago_movil': 'Pago Móvil',
+                                        'transferencia': 'Transferencia',
+                                        'zelle': 'Zelle',
+                                        'binance': 'Binance',
+                                        'tarjeta': 'Tarjeta'
+                                      };
+                                      const metodoPretty = metodosMap[metodo] || metodo;
+                                      return `Vuelto en ${metodoPretty}`;
+                                    }
+                                    return transaccion.observaciones.length > 50
+                                      ? transaccion.observaciones.substring(0, 50) + '...'
+                                      : transaccion.observaciones;
+                                  })()}
+                                </span>
+                              </>
+                            )}
+                        </div>
+                      </td>
+
+                      {/* Montos Originales */}
+                      <td className="px-4 py-4 whitespace-nowrap text-right min-w-[140px]">
+                        <div className="space-y-1">
+                          {montosOriginales.map((montoInfo, idx) => (
+                            <div key={idx} className={`text-sm font-bold ${montoInfo.metodo === 'pago_movil' ? 'text-purple-700' :
+                              montoInfo.moneda === 'usd' ? 'text-green-700' :
+                                transaccion.tipo === 'ingreso' ? 'text-emerald-700' : 'text-red-700'
+                              }`}>
+                              {transaccion.tipo === 'ingreso' ? '+' : '-'}
+                              {montoInfo.simbolo}{formatAmount(montoInfo.monto)}
+                              {montoInfo.metodo === 'pago_movil' && (
+                                <span className="ml-1 text-xs text-purple-600">(PM)</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {transaccion.pagos && transaccion.pagos.length > 1 && (
+                          <div className="text-xs text-gray-500 flex items-center justify-end mt-1">
+                            <span className="bg-gray-100/70 backdrop-blur-sm text-gray-600 px-1.5 py-0.5 rounded text-xs border border-white/30">
+                              {transaccion.pagos.length} método{transaccion.pagos.length > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Forma de Pago */}
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            // Para vueltos, mostrar método principal en lugar de pagos
+                            if (transaccion.categoria?.includes('Vuelto de venta') && transaccion.metodoPagoPrincipal) {
+                              return (
+                                <span
+                                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border backdrop-blur-sm ${getMetodoColor(transaccion.metodoPagoPrincipal).replace('bg-', 'bg-').replace('-50', '-50/80')}`}
+                                  title={`Vuelto en ${transaccion.metodoPagoPrincipal.replace('_', ' ').toUpperCase()}`}
+                                >
+
+                                  {getMetodoIcon(transaccion.metodoPagoPrincipal)}
+                                  <span className="ml-1 truncate max-w-[50px]">
+                                    {getMetodoLabel(transaccion.metodoPagoPrincipal)}
+                                  </span>
+                                </span>
+                              );
+                            }
+
+                            // Para transacciones con pagos
+                            if (transaccion.pagos && transaccion.pagos.length > 0) {
+                              return (
+                                <>
+                                  {transaccion.pagos.slice(0, 2).map((pago, idx) => (
+                                    <span
+                                      key={idx}
+                                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border backdrop-blur-sm ${getMetodoColor(pago.metodo).replace('bg-', 'bg-').replace('-50', '-50/80')}`}
+                                      title={`${pago.metodo?.replace('_', ' ').toUpperCase()}: ${pago.monto} ${pago.moneda?.toUpperCase()}`}
+                                    >
+                                      {getMetodoIcon(pago.metodo)}
+                                      <span className="ml-1 truncate max-w-[50px]">
+                                        {getMetodoLabel(pago.metodo)}
+                                      </span>
+                                    </span>
+                                  ))}
+                                  {transaccion.pagos.length > 2 && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100/70 backdrop-blur-sm text-gray-600 border border-white/30">
+                                      +{transaccion.pagos.length - 2}
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            }
+
+                            // FALLBACK: Si no hay pagos pero hay metodoPagoPrincipal
+                            if (transaccion.metodoPagoPrincipal) {
+                              return (
+                                <span
+                                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border backdrop-blur-sm ${getMetodoColor(transaccion.metodoPagoPrincipal).replace('bg-', 'bg-').replace('-50', '-50/80')}`}
+                                  title={transaccion.metodoPagoPrincipal.replace('_', ' ').toUpperCase()}
+                                >
+                                  {getMetodoIcon(transaccion.metodoPagoPrincipal)}
+                                  <span className="ml-1 truncate max-w-[50px]">
+                                    {getMetodoLabel(transaccion.metodoPagoPrincipal)}
+                                  </span>
+                                </span>
+                              );
+                            }
+
+                            return <span className="text-gray-400 text-xs">-</span>;
+                          })()}
+                        </div>
+                      </td>
+
+                      {/* Acciones */}
+                      <td className="px-4 py-4 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center space-x-2">
+                          <button
+                            onClick={() => handleViewDetails(transaccion)}
+                            className="bg-blue-50/80 backdrop-blur-sm hover:bg-blue-100/80 text-blue-600 p-2 rounded-md transition-colors border border-blue-200/50 hover:border-blue-300/50"
+                            title="Ver detalles"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          {usuario?.rol === 'admin' && (
+                            <button
+                              onClick={() => handleDeleteClick(transaccion)}
+                              className="bg-red-50/80 backdrop-blur-sm hover:bg-red-100/80 text-red-600 p-2 rounded-md transition-colors border border-red-200/50 hover:border-red-300/50"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
 
         {/* Paginación con Glassmorphism */}
         {sortedTransactions.length > 0 && (
@@ -752,25 +793,24 @@ const handleViewDetails = async (transaccion) => {
                   <div className="flex items-center space-x-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
                       if (
-                        page === 1 || 
-                        page === totalPages || 
+                        page === 1 ||
+                        page === totalPages ||
                         (page >= currentPage - 1 && page <= currentPage + 1)
                       ) {
                         return (
                           <button
                             key={page}
                             onClick={() => setCurrentPage(page)}
-                            className={`inline-flex items-center px-3 py-2 text-sm font-medium border rounded-lg transition-all duration-200 shadow-sm backdrop-blur-sm ${
-                              currentPage === page
-                                ? 'z-10 bg-blue-600/90 border-blue-600 text-white shadow-lg transform scale-105'
-                                : 'bg-white/60 border-white/30 text-gray-500 hover:bg-gray-50/80 hover:text-gray-700 hover:border-gray-400/50'
-                            }`}
+                            className={`inline-flex items-center px-3 py-2 text-sm font-medium border rounded-lg transition-all duration-200 shadow-sm backdrop-blur-sm ${currentPage === page
+                              ? 'z-10 bg-blue-600/90 border-blue-600 text-white shadow-lg transform scale-105'
+                              : 'bg-white/60 border-white/30 text-gray-500 hover:bg-gray-50/80 hover:text-gray-700 hover:border-gray-400/50'
+                              }`}
                           >
                             {page}
                           </button>
                         );
                       } else if (
-                        page === currentPage - 2 || 
+                        page === currentPage - 2 ||
                         page === currentPage + 2
                       ) {
                         return (

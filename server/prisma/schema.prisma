@@ -942,6 +942,12 @@ model Pedido {
   // Estado del pedido
   estado              EstadoPedido     @default(PENDIENTE)
   
+  // Tipo de pedido y pago
+  tipoPedido          String           @default("fisico") @map("tipo_pedido") // 'digital' o 'fisico'
+  tipoPago            String           @default("diferido") @map("tipo_pago") // 'total', 'anticipo', 'diferido'
+  montoAnticipo       Decimal          @default(0) @map("monto_anticipo") @db.Decimal(12, 2)
+  montoPendiente      Decimal          @default(0) @map("monto_pendiente") @db.Decimal(12, 2)
+  
   // Pago
   pagado              Boolean          @default(false)
   fechaPago           DateTime?        @map("fecha_pago")
@@ -976,10 +982,12 @@ model Pedido {
 
 enum EstadoPedido {
   PENDIENTE           // Creado, esperando pago o confirmación
+  ANTICIPO            // Pagó anticipo, falta completar pago
   PAGADO              // Cliente pagó, pedido pendiente de procesar
   CONFIRMADO          // Proveedor confirmó disponibilidad
-  EN_CAMINO           // Producto en tránsito
-  RECIBIDO            // Llegó a tienda, listo para entregar
+  EN_CAMINO           // Producto en tránsito (solo físicos)
+  RECIBIDO            // Llegó a tienda, listo para entregar (solo físicos)
+  LISTO               // Digital: listo para entregar credenciales
   ENTREGADO           // Cliente recibió el producto
   CANCELADO           // Pedido cancelado
 }

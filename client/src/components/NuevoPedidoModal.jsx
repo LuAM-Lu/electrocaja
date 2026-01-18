@@ -1,31 +1,33 @@
 // components/NuevoPedidoModal.jsx - Modal para crear nuevo pedido
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     X, Package, User, ShoppingCart, DollarSign,
     CreditCard, Save, CheckCircle, ChevronLeft, ChevronRight,
-    FileText, Send, ChevronDown, Building, AlertTriangle
+    FileText, Send, ChevronDown, Building, AlertTriangle,
+    Banknote, Wallet, Truck, Monitor, PackageCheck
 } from 'lucide-react';
 import { api } from '../config/api';
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import toast from '../utils/toast.jsx';
+import PedidoProcesandoModal from './PedidoProcesandoModal';
 
 // Reutilizar componentes de presupuesto
 import ClienteSelector from './presupuesto/ClienteSelector';
 import ItemsTablePedido from './ItemsTablePedido';
 
-// Tabs del wizard
+// Tabs del wizard - Items primero para cotizar rápido sin cliente
 const TABS = [
-    { id: 'cliente', label: 'Cliente', icon: User, step: 1 },
-    { id: 'items', label: 'Items', icon: ShoppingCart, step: 2 },
+    { id: 'items', label: 'Items', icon: ShoppingCart, step: 1 },
+    { id: 'cliente', label: 'Cliente', icon: User, step: 2 },
     { id: 'resumen', label: 'Resumen', icon: FileText, step: 3 },
     { id: 'pago', label: 'Pago', icon: CreditCard, step: 4 }
 ];
 
-// Breadcrumb moderno
+// Breadcrumb moderno - Tamaño aumentado
 const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
     return (
-        <div className="flex items-center justify-center space-x-2 py-3 bg-blue-50/50 border-b border-blue-100">
+        <div className="flex items-center justify-center space-x-3 py-4 bg-blue-50/50 border-b border-blue-100">
             {tabs.map((tab, index) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -36,26 +38,26 @@ const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
                     <React.Fragment key={tab.id}>
                         <button
                             onClick={() => onTabChange(tab.id)}
-                            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${isActive
-                                ? 'bg-blue-600 text-white shadow-lg'
+                            className={`flex items-center space-x-3 px-5 py-3 rounded-xl transition-all ${isActive
+                                ? 'bg-blue-600 text-white shadow-lg scale-105'
                                 : isPast && isValid
                                     ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                                 }`}
                         >
-                            <div className={`flex items-center justify-center w-6 h-6 rounded-full ${isActive ? 'bg-white/20' : isPast && isValid ? 'bg-green-500 text-white' : 'bg-gray-300'
+                            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${isActive ? 'bg-white/20' : isPast && isValid ? 'bg-green-500 text-white' : 'bg-gray-300'
                                 }`}>
                                 {isPast && isValid ? (
-                                    <CheckCircle className="h-4 w-4" />
+                                    <CheckCircle className="h-5 w-5" />
                                 ) : (
-                                    <span className="text-xs font-bold">{tab.step}</span>
+                                    <span className="text-sm font-bold">{tab.step}</span>
                                 )}
                             </div>
-                            <Icon className="h-4 w-4" />
-                            <span className="text-sm font-medium">{tab.label}</span>
+                            <Icon className="h-5 w-5" />
+                            <span className="text-base font-semibold">{tab.label}</span>
                         </button>
                         {index < tabs.length - 1 && (
-                            <ChevronRight className="h-5 w-5 text-gray-400" />
+                            <ChevronRight className="h-6 w-6 text-gray-400" />
                         )}
                     </React.Fragment>
                 );
@@ -69,24 +71,59 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
     const { usuario } = useAuthStore();
 
     // Estados
-    const [activeTab, setActiveTab] = useState('cliente');
+    const [activeTab, setActiveTab] = useState('items');
     const [loading, setLoading] = useState(false);
+
+    // Modal de procesamiento
+    const [showProcesando, setShowProcesando] = useState(false);
+    const procesandoRef = useRef(null);
 
     // Datos del pedido
     const [cliente, setCliente] = useState(null);
     const [items, setItems] = useState([]);
     const [descuento, setDescuento] = useState(0);
     const [observaciones, setObservaciones] = useState('');
-    const [pagarAhora, setPagarAhora] = useState(true);
 
-    // Datos de pago (si paga ahora)
+    // Tipo de pago: 'total' | 'anticipo' | 'diferido' (pagar al recibir)
+    const [tipoPago, setTipoPago] = useState('diferido');
+    const [anticipoPorcentaje, setAnticipoPorcentaje] = useState(60); // 50%, 60%, 70%
+    const [anticipoMonto, setAnticipoMonto] = useState(0);
+
+    // Datos de pago (si paga ahora o anticipo)
     const [metodoPago, setMetodoPago] = useState('efectivo_usd');
     const [referencia, setReferencia] = useState('');
+
+    // Pago mixto - múltiples métodos
+    const [pagoMixto, setPagoMixto] = useState(false);
+    const [pagos, setPagos] = useState([]);
+
+    // Compatibilidad con lógica existente
+    const pagarAhora = tipoPago === 'total' || tipoPago === 'anticipo';
 
     // Cálculos
     const subtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
     const totalUsd = subtotal - descuento;
     const totalBs = totalUsd * (tasaCambio || 1);
+    const minAnticipo = totalUsd * 0.6; // Mínimo 60%
+
+    // Calcular monto a pagar según tipo
+    const montoAnticipo = tipoPago === 'anticipo' ? anticipoMonto : 0;
+    const montoPagarAhora = tipoPago === 'total' ? totalUsd : montoAnticipo;
+    const montoPendiente = totalUsd - montoPagarAhora;
+
+    // Para pago mixto: calcular total pagado y faltante
+    const totalPagadoMixto = pagos.reduce((sum, p) => {
+        // Convertir Bs a USD para sumar correctamente
+        if (p.moneda === 'bs') {
+            return sum + (p.monto / (tasaCambio || 1));
+        }
+        return sum + p.monto;
+    }, 0);
+    const faltanteUsd = montoPagarAhora - totalPagadoMixto;
+    const faltanteBs = faltanteUsd * (tasaCambio || 1);
+
+    // Verificar si método seleccionado es en Bs
+    const esMetodoBs = metodoPago === 'pago_movil' || metodoPago === 'efectivo_bs';
 
     // Validaciones
     const validaciones = {
@@ -141,7 +178,10 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
         setItems(newItems);
     };
 
-    // Crear pedido
+    // Delay helper
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Crear pedido con pantalla de procesamiento
     const handleCrearPedido = async () => {
         if (!cliente?.nombre) {
             toast.error('Selecciona un cliente');
@@ -161,8 +201,31 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
             return;
         }
 
+        // Validar anticipo mínimo 60%
+        if (tipoPago === 'anticipo' && anticipoMonto < minAnticipo) {
+            toast.error(`El anticipo debe ser mínimo 60% del pedido ($${minAnticipo.toFixed(2)})`);
+            return;
+        }
+
+        // Validar pago mixto cubra el monto
+        if (pagoMixto && totalPagadoMixto < montoPagarAhora) {
+            toast.error(`Los pagos no cubren el monto. Faltan $${faltanteUsd.toFixed(2)}`);
+            return;
+        }
+
         try {
             setLoading(true);
+            setShowProcesando(true);
+
+            // Esperar al modal
+            await delay(300);
+
+            // Paso 1: Validando
+            procesandoRef.current?.avanzarPaso('validando');
+            await delay(800);
+
+            // Paso 2: Creando pedido
+            procesandoRef.current?.avanzarPaso('creando');
 
             const payload = {
                 cliente: {
@@ -178,36 +241,92 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                     precioUnitario: item.precioUnitario,
                     precioCosto: item.precioCosto || 0,
                     subtotal: item.subtotal,
+                    tipoProducto: item.tipoProducto || 'fisico',
                     notaInterna: item.notaInterna || null
                 })),
+                // Tipo general del pedido (digital o físico)
+                tipoPedido: items.length > 0 ? (items[0].tipoProducto || 'fisico') : 'fisico',
                 subtotal,
                 descuento,
                 totalUsd,
                 totalBs,
                 tasaCambio: tasaCambio || 1,
                 observaciones,
+                // Información de pago mejorada
+                tipoPago, // 'total', 'anticipo', 'diferido'
                 pagarAhora,
+                montoAnticipo: tipoPago === 'anticipo' ? montoPagarAhora : 0,
+                montoPendiente: tipoPago === 'diferido' ? totalUsd : montoPendiente,
                 pagos: pagarAhora ? (() => {
-                    // Determinar si es pago en Bs o USD según el método
+                    // Si es pago mixto, usar el array de pagos directamente
+                    if (pagoMixto && pagos.length > 0) {
+                        return pagos.map(p => ({
+                            metodo: p.metodo,
+                            monto: p.monto,
+                            moneda: p.moneda,
+                            referencia: p.referencia || null,
+                            tipo: tipoPago === 'anticipo' ? 'anticipo' : 'pago_total'
+                        }));
+                    }
+                    // Pago simple
                     const esMetodoBs = metodoPago === 'pago_movil' || metodoPago === 'efectivo_bs';
+                    const montoAPagar = tipoPago === 'total' ? totalUsd : montoPagarAhora;
+                    const montoBs = montoAPagar * (tasaCambio || 1);
                     return [{
                         metodo: metodoPago,
-                        monto: esMetodoBs ? totalBs : totalUsd,
+                        monto: esMetodoBs ? montoBs : montoAPagar,
                         moneda: esMetodoBs ? 'bs' : 'usd',
-                        referencia: referencia || null
+                        referencia: referencia || null,
+                        tipo: tipoPago === 'anticipo' ? 'anticipo' : 'pago_total'
                     }];
                 })() : []
             };
 
             const response = await api.post('/pedidos', payload);
+            await delay(500);
+
+            // Paso 3: Registrando pago (si aplica)
+            if (pagarAhora) {
+                procesandoRef.current?.avanzarPaso('registrando');
+                await delay(600);
+            } else {
+                procesandoRef.current?.avanzarPaso('registrando');
+                await delay(300);
+            }
+
+            // Paso 4: Imprimiendo comprobante (placeholder futuro)
+            procesandoRef.current?.avanzarPaso('comprobante');
+            await delay(400);
+
+            // Paso 5: WhatsApp
+            if (response.data?.data?.whatsappEnviado) {
+                procesandoRef.current?.avanzarPaso('whatsapp');
+            } else {
+                procesandoRef.current?.marcarError('whatsapp', 'WhatsApp no disponible');
+            }
+            await delay(400);
+
+            // Paso 6: Finalizando
+            procesandoRef.current?.avanzarPaso('finalizando');
+            await delay(500);
+
+            // Completar
+            procesandoRef.current?.completar();
+            await delay(1500);
 
             if (response.data.success) {
                 toast.success(`Pedido ${response.data.data.pedido.numero} creado exitosamente`);
+
+                // Actualizar caja para reflejar la nueva transacción
+                const { cargarCajaActual } = useCajaStore.getState();
+                await cargarCajaActual(true); // force refresh
+
                 onSuccess?.();
             }
 
         } catch (error) {
             console.error('Error creando pedido:', error);
+            setShowProcesando(false);
             toast.error(error.response?.data?.message || 'Error al crear pedido');
         } finally {
             setLoading(false);
@@ -220,9 +339,13 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
         setItems([]);
         setDescuento(0);
         setObservaciones('');
-        setPagarAhora(true);
+        setTipoPago('diferido');
+        setAnticipoPorcentaje(50);
+        setAnticipoMonto(0);
         setMetodoPago('efectivo_usd');
         setReferencia('');
+        setPagoMixto(false);
+        setPagos([]);
         setActiveTab('cliente');
         onClose();
     };
@@ -303,33 +426,58 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                                 />
                             )}
 
-                            {/* Toggle pagar ahora - EN EL PRIMER PASO */}
+                            {/* Selector de Tipo de Pago - Premium, solo 3 opciones */}
                             {cliente && (
-                                <div className="mt-6 bg-blue-50 rounded-xl p-4 border border-blue-200">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <div className="font-medium text-gray-800">¿El cliente paga ahora?</div>
-                                            <div className="text-sm text-gray-500">
-                                                {pagarAhora
-                                                    ? 'Se registrará el pago en caja al crear'
-                                                    : 'Pendiente - Pagará cuando reciba el producto'}
-                                            </div>
-                                            {pagarAhora && !cajaActual && (
-                                                <div className="flex items-center space-x-1 text-xs text-red-500 mt-1">
-                                                    <AlertTriangle className="h-3 w-3" />
-                                                    <span>Necesitas abrir caja para procesar pagos</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                <div className="mt-6 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl p-5 border border-blue-200 shadow-sm">
+                                    <div className="flex items-center space-x-2 mb-4">
+                                        <CreditCard className="h-5 w-5 text-blue-600" />
+                                        <span className="text-sm font-semibold text-gray-700">¿Cuándo paga el cliente?</span>
+                                    </div>
+
+                                    {/* Botones de tipo de pago - Premium */}
+                                    <div className="grid grid-cols-3 gap-3">
                                         <button
-                                            onClick={() => setPagarAhora(!pagarAhora)}
-                                            className={`relative w-14 h-8 rounded-full transition-colors ${pagarAhora ? 'bg-green-500' : 'bg-gray-300'
+                                            onClick={() => setTipoPago('total')}
+                                            className={`flex flex-col items-center px-4 py-4 rounded-xl transition-all ${tipoPago === 'total'
+                                                ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg scale-105'
+                                                : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-green-300 hover:bg-green-50'
                                                 }`}
                                         >
-                                            <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${pagarAhora ? 'translate-x-7' : 'translate-x-1'
-                                                }`} />
+                                            <Banknote className="h-6 w-6 mb-1" />
+                                            <span className="text-sm font-bold">Pago Total</span>
+                                            <span className={`text-[10px] mt-1 ${tipoPago === 'total' ? 'text-green-100' : 'text-gray-400'}`}>Paga todo ahora</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setTipoPago('anticipo')}
+                                            className={`flex flex-col items-center px-4 py-4 rounded-xl transition-all ${tipoPago === 'anticipo'
+                                                ? 'bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg scale-105'
+                                                : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-orange-300 hover:bg-orange-50'
+                                                }`}
+                                        >
+                                            <Wallet className="h-6 w-6 mb-1" />
+                                            <span className="text-sm font-bold">Anticipo</span>
+                                            <span className={`text-[10px] mt-1 ${tipoPago === 'anticipo' ? 'text-orange-100' : 'text-gray-400'}`}>Mínimo 60%</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setTipoPago('diferido')}
+                                            className={`flex flex-col items-center px-4 py-4 rounded-xl transition-all ${tipoPago === 'diferido'
+                                                ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg scale-105'
+                                                : 'bg-white text-gray-600 border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                                                }`}
+                                        >
+                                            <PackageCheck className="h-6 w-6 mb-1" />
+                                            <span className="text-sm font-bold">Al Recibir</span>
+                                            <span className={`text-[10px] mt-1 ${tipoPago === 'diferido' ? 'text-blue-100' : 'text-gray-400'}`}>Paga al entregar</span>
                                         </button>
                                     </div>
+
+                                    {/* Advertencia si necesita caja */}
+                                    {pagarAhora && !cajaActual && (
+                                        <div className="flex items-center space-x-2 text-xs text-red-600 mt-4 bg-red-50 p-3 rounded-lg border border-red-200">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <span>Necesitas abrir caja para procesar pagos</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -351,7 +499,22 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                     {/* Tab Resumen */}
                     {activeTab === 'resumen' && (
                         <div className="max-w-3xl mx-auto">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4">Resumen del Pedido</h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-gray-800">Resumen del Pedido</h3>
+                                {/* Badge de tipo de pedido */}
+                                {items.length > 0 && (
+                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${items[0].tipoProducto === 'digital'
+                                        ? 'bg-cyan-100 text-cyan-700'
+                                        : 'bg-blue-100 text-blue-700'
+                                        }`}>
+                                        {items[0].tipoProducto === 'digital' ? (
+                                            <><Monitor className="h-4 w-4 mr-1.5" />Pedido Digital</>
+                                        ) : (
+                                            <><Truck className="h-4 w-4 mr-1.5" />Pedido Físico</>
+                                        )}
+                                    </span>
+                                )}
+                            </div>
 
                             {/* Cliente - Centrado horizontalmente */}
                             <div className="bg-gray-50 rounded-lg px-4 py-2 mb-4 flex items-center justify-center">
@@ -377,6 +540,7 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                                         <tr>
                                             <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase w-16">Cant.</th>
                                             <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Descripción</th>
+                                            <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase w-20">Tipo</th>
                                             <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase w-24">P.Unit</th>
                                             <th className="px-3 py-2 text-right text-xs font-semibold text-gray-600 uppercase w-28">Total</th>
                                         </tr>
@@ -395,6 +559,18 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                                                             {item.notaInterna.codigoProducto && <span>• {item.notaInterna.codigoProducto}</span>}
                                                         </div>
                                                     )}
+                                                </td>
+                                                <td className="px-3 py-2 text-center">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${item.tipoProducto === 'digital'
+                                                        ? 'bg-cyan-100 text-cyan-700'
+                                                        : 'bg-blue-100 text-blue-700'
+                                                        }`}>
+                                                        {item.tipoProducto === 'digital' ? (
+                                                            <><Monitor className="h-3 w-3 mr-0.5" />Digital</>
+                                                        ) : (
+                                                            <><Truck className="h-3 w-3 mr-0.5" />Físico</>
+                                                        )}
+                                                    </span>
                                                 </td>
                                                 <td className="px-3 py-2 text-right text-gray-600">
                                                     ${item.precioUnitario?.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
@@ -456,59 +632,300 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                         <div className="max-w-2xl mx-auto">
                             <h3 className="text-lg font-bold text-gray-800 mb-4">Método de Pago</h3>
 
-                            {/* Métodos de pago */}
-                            {pagarAhora && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Método de Pago
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            {[
-                                                { value: 'efectivo_usd', label: 'Efectivo USD', icon: DollarSign },
-                                                { value: 'efectivo_bs', label: 'Efectivo Bs', icon: DollarSign },
-                                                { value: 'pago_movil', label: 'Pago Móvil', icon: CreditCard },
-                                                { value: 'zelle', label: 'Zelle', icon: CreditCard },
-                                                { value: 'tarjeta', label: 'Tarjeta', icon: CreditCard },
-                                                { value: 'binance', label: 'Binance', icon: CreditCard }
-                                            ].map(metodo => (
-                                                <button
-                                                    key={metodo.value}
-                                                    onClick={() => setMetodoPago(metodo.value)}
-                                                    className={`flex items-center space-x-2 px-4 py-3 rounded-lg border-2 transition-all ${metodoPago === metodo.value
-                                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                        : 'border-gray-200 hover:border-gray-300'
-                                                        }`}
-                                                >
-                                                    <metodo.icon className="h-5 w-5" />
-                                                    <span>{metodo.label}</span>
-                                                </button>
-                                            ))}
+                            {/* Sección de Anticipo - Solo si es anticipo */}
+                            {tipoPago === 'anticipo' && (
+                                <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-200 mb-4">
+                                    <div className="flex items-center space-x-2 mb-3">
+                                        <Wallet className="h-5 w-5 text-orange-600" />
+                                        <span className="text-sm font-semibold text-orange-800">Calcular Anticipo</span>
+                                    </div>
+
+                                    {/* Botones de porcentaje */}
+                                    <div className="grid grid-cols-3 gap-2 mb-3">
+                                        {[60, 70, 80].map(pct => (
+                                            <button
+                                                key={pct}
+                                                onClick={() => setAnticipoMonto(totalUsd * (pct / 100))}
+                                                className={`py-2.5 rounded-lg text-sm font-bold transition-all ${Math.abs(anticipoMonto - (totalUsd * pct / 100)) < 0.01
+                                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md'
+                                                    : 'bg-white text-orange-600 border-2 border-orange-200 hover:bg-orange-100'
+                                                    }`}
+                                            >
+                                                {pct}%
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Monto fijo */}
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-xs text-gray-600 font-medium">Monto fijo:</span>
+                                        <div className="relative flex-1">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-bold">$</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min={minAnticipo}
+                                                max={totalUsd}
+                                                value={anticipoMonto || ''}
+                                                onChange={(e) => setAnticipoMonto(parseFloat(e.target.value) || 0)}
+                                                placeholder={`Mín $${minAnticipo.toFixed(2)}`}
+                                                className={`w-full pl-8 pr-3 py-2 text-sm border-2 rounded-lg focus:ring-2 ${anticipoMonto > 0 && anticipoMonto < minAnticipo
+                                                    ? 'border-red-300 focus:ring-red-500 bg-red-50'
+                                                    : 'border-orange-200 focus:ring-orange-500'
+                                                    }`}
+                                            />
                                         </div>
                                     </div>
 
-                                    {/* Referencia */}
-                                    {!metodoPago.includes('efectivo') && (
+                                    {/* Resumen de montos */}
+                                    <div className="bg-white rounded-lg p-3 border border-orange-200 space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-gray-600">Total del pedido:</span>
+                                            <span className="font-bold text-gray-700">${totalUsd.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-orange-700 font-medium">Anticipo a cobrar:</span>
+                                            <span className="font-bold text-orange-700 text-lg">${anticipoMonto.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-t border-orange-100 pt-2">
+                                            <span className="text-sm text-red-600">Deuda pendiente:</span>
+                                            <span className="font-bold text-red-600">${montoPendiente.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Validaciones */}
+                                    {anticipoMonto > 0 && anticipoMonto < minAnticipo && (
+                                        <div className="flex items-center space-x-2 text-xs text-red-600 mt-2 bg-red-50 p-2 rounded-lg border border-red-200">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <span>Mínimo requerido: ${minAnticipo.toFixed(2)} (60%)</span>
+                                        </div>
+                                    )}
+                                    {anticipoMonto >= minAnticipo && (
+                                        <div className="flex items-center space-x-2 text-xs text-green-600 mt-2 bg-green-50 p-2 rounded-lg border border-green-200">
+                                            <CheckCircle className="h-4 w-4" />
+                                            <span>Anticipo válido ({((anticipoMonto / totalUsd) * 100).toFixed(0)}% del total)</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Métodos de pago */}
+                            {pagarAhora && (
+                                <div className="space-y-4">
+                                    {/* Toggle pago mixto */}
+                                    <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Referencia (opcional)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={referencia}
-                                                onChange={(e) => setReferencia(e.target.value)}
-                                                placeholder="Número de referencia..."
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            />
+                                            <div className="text-sm font-medium text-gray-700">¿Pago Mixto?</div>
+                                            <div className="text-xs text-gray-500">Combina varios métodos de pago</div>
+                                        </div>
+                                        <button
+                                            onClick={() => setPagoMixto(!pagoMixto)}
+                                            className={`relative w-12 h-6 rounded-full transition-colors ${pagoMixto ? 'bg-purple-500' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${pagoMixto ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                                        </button>
+                                    </div>
+
+                                    {!pagoMixto ? (
+                                        /* Pago simple - Un solo método */
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Método de Pago
+                                                </label>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    {[
+                                                        { value: 'efectivo_usd', label: 'Efectivo USD', icon: DollarSign },
+                                                        { value: 'efectivo_bs', label: 'Efectivo Bs', icon: DollarSign },
+                                                        { value: 'pago_movil', label: 'Pago Móvil', icon: CreditCard },
+                                                        { value: 'zelle', label: 'Zelle', icon: CreditCard },
+                                                        { value: 'tarjeta', label: 'Tarjeta', icon: CreditCard },
+                                                        { value: 'binance', label: 'Binance', icon: CreditCard }
+                                                    ].map(metodo => (
+                                                        <button
+                                                            key={metodo.value}
+                                                            onClick={() => setMetodoPago(metodo.value)}
+                                                            className={`flex items-center space-x-2 px-4 py-3 rounded-lg border-2 transition-all ${metodoPago === metodo.value
+                                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                                : 'border-gray-200 hover:border-gray-300'
+                                                                }`}
+                                                        >
+                                                            <metodo.icon className="h-5 w-5" />
+                                                            <span>{metodo.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Referencia */}
+                                            {!metodoPago.includes('efectivo') && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Referencia (opcional)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={referencia}
+                                                        onChange={(e) => setReferencia(e.target.value)}
+                                                        placeholder="Número de referencia..."
+                                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        /* Pago mixto - Múltiples métodos */
+                                        <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="text-sm font-medium text-purple-700">Pagos Múltiples</div>
+                                                <div className="text-xs text-gray-500">
+                                                    Pagado: ${totalPagadoMixto.toFixed(2)} / ${montoPagarAhora.toFixed(2)}
+                                                </div>
+                                            </div>
+
+                                            {/* Lista de pagos agregados */}
+                                            {pagos.length > 0 && (
+                                                <div className="space-y-2 mb-3">
+                                                    {pagos.map((pago, idx) => (
+                                                        <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-purple-200">
+                                                            <div className="flex items-center space-x-2">
+                                                                <span className="text-sm font-medium">{pago.metodoLabel}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${pago.moneda === 'bs' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                                                                    {pago.moneda === 'bs' ? 'Bs' : 'USD'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center space-x-2">
+                                                                <span className="font-bold text-green-600">
+                                                                    {pago.moneda === 'bs' ? `Bs. ${pago.monto.toFixed(2)}` : `$${pago.monto.toFixed(2)}`}
+                                                                </span>
+                                                                {pago.moneda === 'bs' && (
+                                                                    <span className="text-xs text-gray-400">≈ ${(pago.monto / (tasaCambio || 1)).toFixed(2)}</span>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => setPagos(pagos.filter((_, i) => i !== idx))}
+                                                                    className="text-red-500 hover:bg-red-50 rounded p-1"
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Monto faltante con conversión */}
+                                            {faltanteUsd > 0.01 && (
+                                                <div className="bg-white rounded-lg p-3 mb-3 border border-orange-200">
+                                                    <div className="text-xs text-gray-500 mb-1">Faltante por pagar:</div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-bold text-lg text-orange-600">${faltanteUsd.toFixed(2)}</span>
+                                                        <span className="text-sm text-gray-500">= Bs. {faltanteBs.toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Agregar nuevo pago - Solo si falta monto */}
+                                            {faltanteUsd > 0.01 && (
+                                                <div className="space-y-2 mb-2">
+                                                    <select
+                                                        value={metodoPago}
+                                                        onChange={(e) => setMetodoPago(e.target.value)}
+                                                        className="w-full text-sm border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500"
+                                                    >
+                                                        <option value="efectivo_usd">[$] Efectivo USD</option>
+                                                        <option value="efectivo_bs">[Bs] Efectivo Bs</option>
+                                                        <option value="pago_movil">[PM] Pago Móvil (Bs)</option>
+                                                        <option value="zelle">[Z] Zelle (USD)</option>
+                                                        <option value="tarjeta">[T] Tarjeta</option>
+                                                        <option value="binance">[B] Binance (USD)</option>
+                                                    </select>
+
+                                                    {/* Input con hint de conversión */}
+                                                    <div className="relative">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            placeholder={esMetodoBs ? `Monto en Bs (faltan Bs. ${faltanteBs.toFixed(2)})` : `Monto en USD (faltan $${faltanteUsd.toFixed(2)})`}
+                                                            value={referencia}
+                                                            onChange={(e) => setReferencia(e.target.value)}
+                                                            className="w-full text-sm border border-purple-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500"
+                                                        />
+                                                        {esMetodoBs && referencia && (
+                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                                                                ≈ ${(parseFloat(referencia) / (tasaCambio || 1)).toFixed(2)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => {
+                                                            const monto = parseFloat(referencia) || 0;
+                                                            if (monto <= 0) {
+                                                                toast.error('Ingresa un monto válido');
+                                                                return;
+                                                            }
+                                                            const metodoLabels = {
+                                                                efectivo_usd: 'Efectivo USD',
+                                                                efectivo_bs: 'Efectivo Bs',
+                                                                pago_movil: 'Pago Móvil',
+                                                                zelle: 'Zelle',
+                                                                tarjeta: 'Tarjeta',
+                                                                binance: 'Binance'
+                                                            };
+                                                            const esBs = metodoPago === 'pago_movil' || metodoPago === 'efectivo_bs';
+                                                            setPagos([...pagos, {
+                                                                metodo: metodoPago,
+                                                                metodoLabel: metodoLabels[metodoPago],
+                                                                monto,
+                                                                moneda: esBs ? 'bs' : 'usd'
+                                                            }]);
+                                                            setReferencia('');
+                                                        }}
+                                                        className="w-full text-sm bg-purple-600 text-white rounded-lg px-3 py-2 hover:bg-purple-700 font-medium"
+                                                    >
+                                                        + Agregar Pago
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Barra de progreso */}
+                                            <div className="mt-3">
+                                                <div className="h-2 bg-purple-200 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full transition-all ${totalPagadoMixto >= montoPagarAhora
+                                                            ? 'bg-green-500'
+                                                            : 'bg-purple-500'
+                                                            }`}
+                                                        style={{ width: `${Math.min(100, (totalPagadoMixto / montoPagarAhora) * 100)}%` }}
+                                                    />
+                                                </div>
+                                                {totalPagadoMixto >= montoPagarAhora && (
+                                                    <div className="flex items-center justify-center space-x-1 text-xs text-green-600 mt-1 font-medium">
+                                                        <CheckCircle className="h-3.5 w-3.5" />
+                                                        <span>Monto completo cubierto</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* Total a pagar */}
-                                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                                    {/* Monto a pagar ahora */}
+                                    <div className={`rounded-xl p-4 border ${tipoPago === 'anticipo' ? 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200' : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'}`}>
                                         <div className="text-center">
-                                            <div className="text-sm text-gray-600 mb-1">Total a Pagar</div>
-                                            <div className="text-3xl font-bold text-green-600">${totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</div>
-                                            <div className="text-lg text-gray-500">Bs. {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</div>
+                                            <div className="text-sm text-gray-600 mb-1">
+                                                {tipoPago === 'anticipo' ? 'Anticipo a Cobrar' : 'Total a Pagar'}
+                                            </div>
+                                            <div className={`text-3xl font-bold ${tipoPago === 'anticipo' ? 'text-orange-600' : 'text-green-600'}`}>
+                                                ${montoPagarAhora.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                                            </div>
+                                            <div className="text-lg text-gray-500">
+                                                Bs. {(montoPagarAhora * (tasaCambio || 1)).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                                            </div>
+                                            {tipoPago === 'anticipo' && (
+                                                <div className="mt-2 text-sm text-orange-700 bg-orange-100 rounded-lg px-3 py-1 inline-block">
+                                                    Pendiente: ${montoPendiente.toFixed(2)}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -536,15 +953,10 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                             Cancelar
                         </button>
 
-                        {activeTab !== 'pago' ? (
-                            <button
-                                onClick={() => handleNavigate('next')}
-                                className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                                <span>Siguiente</span>
-                                <ChevronRight className="h-5 w-5" />
-                            </button>
-                        ) : (
+                        {/* Mostrar botón Crear Pedido si:
+                            1. Estamos en pago (siempre)
+                            2. Estamos en resumen Y no va a pagar ahora */}
+                        {(activeTab === 'pago' || (activeTab === 'resumen' && !pagarAhora)) ? (
                             <button
                                 onClick={handleCrearPedido}
                                 disabled={loading}
@@ -559,10 +971,25 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                                     </>
                                 )}
                             </button>
+                        ) : (
+                            <button
+                                onClick={() => handleNavigate('next')}
+                                className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <span>Siguiente</span>
+                                <ChevronRight className="h-5 w-5" />
+                            </button>
                         )}
                     </div>
                 </div>
             </div>
+
+            {/* Modal de procesamiento */}
+            <PedidoProcesandoModal
+                ref={procesandoRef}
+                isOpen={showProcesando}
+                titulo="Creando Pedido"
+            />
         </div>
     );
 };
