@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { api } from '../config/api';
 import toast from '../utils/toast.jsx';
-import { useReactToPrint } from 'react-to-print';
+import { generarReciboPedidoHTML } from '../utils/printUtils';
 
 // Configuración de estados
 const ESTADOS_CONFIG = {
@@ -178,12 +178,33 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
     const [loading, setLoading] = useState(false);
     const [showHistorial, setShowHistorial] = useState(false);
 
-    // Imprimir
-    const handlePrint = useReactToPrint({
-        content: () => ticketRef.current,
-        documentTitle: `Pedido-${pedido?.numero}`,
-        onAfterPrint: () => toast.success('Ticket impreso')
-    });
+    // Imprimir Ticket Térmico 80mm
+    const handlePrint = () => {
+        const datosImpresion = {
+            ...pedido,
+            cliente: pedido.cliente || {
+                nombre: pedido.clienteNombre,
+                telefono: pedido.clienteTelefono,
+                email: pedido.clienteEmail,
+                cedula_rif: pedido.clienteCedulaRif
+            },
+            usuario: pedido.creadoPor || { nombre: 'Sistema' },
+            items: Array.isArray(pedido.items) ? pedido.items : [],
+            pagos: pedido.pagos || [], // Asegurar que vengan incluidos en el endpoint de detalle
+            montoAnticipo: pedido.montoAnticipo || 0,
+            montoPendiente: pedido.montoPendiente || 0
+        };
+
+        const html = generarReciboPedidoHTML(datosImpresion, pedido.tasaCambio || 1);
+
+        const win = window.open('', '_blank', 'width=350,height=600');
+        if (win) {
+            win.document.write(html);
+            win.document.close();
+        } else {
+            toast.error('Habilita los pop-ups para imprimir');
+        }
+    };
 
     // Cambiar estado
     const handleCambiarEstado = async (nuevoEstado) => {
@@ -201,24 +222,18 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
         }
     };
 
-    // Enviar WhatsApp
+    // Enviar WhatsApp (Chat directo)
     const handleEnviarWhatsApp = () => {
         if (!pedido.clienteTelefono) {
             toast.error('El cliente no tiene teléfono registrado');
             return;
         }
 
-        const mensaje = encodeURIComponent(
-            `Hola ${pedido.clienteNombre}!\n\n` +
-            `Tu pedido *#${pedido.numero}* está en estado: *${ESTADOS_CONFIG[pedido.estado]?.label}*\n\n` +
-            `Total: $${parseFloat(pedido.totalUsd).toFixed(2)}\n\n` +
-            `¡Gracias por tu preferencia!`
-        );
-
         let numero = pedido.clienteTelefono.replace(/\D/g, '');
         if (!numero.startsWith('58')) numero = `58${numero}`;
 
-        window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
+        // Abrir chat directo sin mensaje predefinido para escribir personalizado
+        window.open(`https://wa.me/${numero}`, '_blank');
     };
 
     if (!isOpen || !pedido) return null;
@@ -496,10 +511,10 @@ const DetallePedidoModal = ({ isOpen, pedido, onClose, onUpdate }) => {
                     <div className="flex items-center space-x-2">
                         <button
                             onClick={handlePrint}
-                            className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 rounded-xl shadow-sm transition-all"
+                            className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-md hover:shadow-lg hover:from-blue-700 hover:to-indigo-700 transition-all"
                         >
                             <Printer className="h-4 w-4" />
-                            <span className="font-medium">Imprimir</span>
+                            <span className="font-medium">Imprimir Ticket</span>
                         </button>
                         <button
                             onClick={handleEnviarWhatsApp}

@@ -24,16 +24,33 @@ const generarNumeroPedido = async () => {
 };
 
 // Mensajes WhatsApp por estado
+const formatItems = (items) => Array.isArray(items) ? items.map(i => `▫️ ${i.cantidad}x ${i.descripcion}`).join('\n') : '';
+
+const formatPagos = (pagos) => {
+    if (!pagos || !pagos.length) return '';
+    return '\n💳 *MÉTODOS DE PAGO:*\n' + pagos.map(p => {
+        const moneda = p.moneda === 'bs' ? 'Bs' : '$';
+        const monto = parseFloat(p.monto || 0).toFixed(2);
+        const metodo = p.metodo ? p.metodo.replace(/_/g, ' ').toUpperCase() : 'PAGO';
+        return `▫️ ${metodo}: ${moneda} ${monto}`;
+    }).join('\n');
+};
+
+const commonFooter = `\nGracias por su compra en Electro Shop Morandin! 🚀\nVisítanos en: www.electroshopve.com`;
+
 const MENSAJES_ESTADO = {
-    PENDIENTE: (pedido) => `🛒 *NUEVO PEDIDO #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nTu solicitud ha sido registrada.\n\n📦 Total: $${pedido.totalUsd}\n⏳ Estado: Pendiente de pago\n\nTe contactaremos pronto para confirmar.`,
-    ANTICIPO: (pedido) => `💰 *ANTICIPO RECIBIDO - Pedido #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nHemos recibido tu anticipo.\n\n📦 Total: $${pedido.totalUsd}\n🔄 Estamos procesando tu pedido.\n\nTe avisaremos cuando esté listo.`,
-    PAGADO: (pedido) => `✅ *PAGO CONFIRMADO - Pedido #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nHemos recibido tu pago.\n\n📦 Total: $${pedido.totalUsd}\n🔄 Estamos procesando tu pedido.\n\nTe avisaremos cuando lo confirmemos con el proveedor.`,
-    CONFIRMADO: (pedido) => `📋 *PEDIDO CONFIRMADO #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nEl proveedor ha confirmado la disponibilidad de tu producto.\n\n⏳ Pronto estará listo.`,
-    LISTO: (pedido) => `🎁 *¡TU PEDIDO ESTÁ LISTO! #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nTu pedido está listo y procesado.\n\n📦 Pasa a recogerlo o te lo entregaremos pronto.\n\n🏪 Tu Tienda de Tecnología`,
-    EN_CAMINO: (pedido) => `🚚 *EN CAMINO - Pedido #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nTu producto está en camino hacia nuestra tienda.\n\n📍 Te avisaremos cuando llegue.`,
-    RECIBIDO: (pedido) => `📦 *¡LLEGÓ TU PEDIDO! #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nTu producto ya está en nuestra tienda y listo para entrega.\n\n🏪 Pasa a recogerlo cuando puedas.\n📍 Tu Tienda de Tecnología`,
-    ENTREGADO: (pedido) => `🎉 *PEDIDO ENTREGADO #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nGracias por tu compra.\n\n⭐ Esperamos verte pronto!`,
-    CANCELADO: (pedido) => `❌ *PEDIDO CANCELADO #${pedido.numero}*\n\nHola ${pedido.clienteNombre}!\nLamentamos informarte que tu pedido ha sido cancelado.\n\nSi tienes dudas, contáctanos.`
+    PENDIENTE: (p) => `*PEDIDO #${p.numero}* ⏳\n📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n👤 Cliente: ${p.clienteNombre}\n\n📋 *DETALLE DEL PEDIDO:*\n${formatItems(p.items)}\n\n💵 *RESUMEN FINANCIERO:*\n*TOTAL: $${parseFloat(p.totalUsd).toFixed(2)}*\n🔴 *PENDIENTE DE PAGO*\n${commonFooter}`,
+
+    ANTICIPO: (p) => `*PEDIDO #${p.numero}* 💰\n📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n👤 Cliente: ${p.clienteNombre}\n\n📋 *DETALLE DEL PEDIDO:*\n${formatItems(p.items)}\n\n💵 *RESUMEN FINANCIERO:*\n*TOTAL: $${parseFloat(p.totalUsd).toFixed(2)}*\n💰 Abonado: $${parseFloat(p.montoAnticipo).toFixed(2)}\n🔴 *PENDIENTE: $${parseFloat(p.montoPendiente).toFixed(2)}*${formatPagos(p.pagos)}\n${commonFooter}`,
+
+    PAGADO: (p) => `*PEDIDO #${p.numero}* ✅\n📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n👤 Cliente: ${p.clienteNombre}\n\n📋 *DETALLE DEL PEDIDO:*\n${formatItems(p.items)}\n\n💵 *RESUMEN FINANCIERO:*\n*TOTAL: $${parseFloat(p.totalUsd).toFixed(2)}*\n✅ *PAGADO COMPLETO*${formatPagos(p.pagos)}\n${commonFooter}`,
+
+    CONFIRMADO: (p) => `📋 *PEDIDO CONFIRMADO #${p.numero}*\nHola ${p.clienteNombre}!\nEl proveedor ha confirmado disponibilidad.\n${commonFooter}`,
+    LISTO: (p) => `🎁 *¡TU PEDIDO ESTÁ LISTO! #${p.numero}*\nHola ${p.clienteNombre}!\nYa puedes pasar a recogerlo.\n${commonFooter}`,
+    EN_CAMINO: (p) => `🚚 *EN CAMINO - Pedido #${p.numero}*\nTu pedido está en ruta.\n${commonFooter}`,
+    RECIBIDO: (p) => `📦 *¡LLEGÓ TU PEDIDO! #${p.numero}*\nYa está en tienda listo para entrega.\n${commonFooter}`,
+    ENTREGADO: (p) => `🎉 *PEDIDO ENTREGADO #${p.numero}*\nGracias por su compra.\n${commonFooter}`,
+    CANCELADO: (p) => `❌ *PEDIDO CANCELADO #${p.numero}*\nLamentamos informarte que tu pedido ha sido cancelado.\n${commonFooter}`
 };
 
 // ===================================
@@ -163,8 +180,10 @@ const crearPedido = async (req, res) => {
         }
 
         // Enviar WhatsApp DESPUÉS de responder (no bloquea)
-        if (enviarWhatsAppEnSegundoPlano) {
-            enviarWhatsAppPedido(pedido, pedido.estado)
+        // Enviar WhatsApp DESPUÉS de responder (no bloquea)
+        if (typeof enviarWhatsAppEnSegundoPlano !== 'undefined' && enviarWhatsAppEnSegundoPlano) {
+            const pedidoConPagos = { ...pedido, pagos: (pagarAhora && Array.isArray(pagos)) ? pagos : [] };
+            enviarWhatsAppPedido(pedidoConPagos, pedido.estado)
                 .then(() => console.log('✅ WhatsApp enviado para pedido', numero))
                 .catch(err => console.warn('⚠️ WhatsApp no enviado:', err.message));
         }

@@ -4,7 +4,7 @@ import {
     X, Package, Search, Filter, Plus, Eye, Edit,
     DollarSign, Phone, Clock, CheckCircle, Truck,
     Store, XCircle, RefreshCw, MessageCircle, Monitor, Wallet,
-    Trash2, ClipboardCheck, ChevronDown
+    Trash2, ClipboardCheck, ChevronDown, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { api } from '../config/api';
 import toast from '../utils/toast.jsx';
@@ -174,33 +174,28 @@ const PedidosModal = ({ isOpen, onClose }) => {
                         </button>
                     </div>
 
-                    {/* Estadísticas */}
+                    {/* Estadísticas Premium */}
                     {estadisticas && (
-                        <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 grid grid-cols-6 gap-3">
-                            <div className="bg-white rounded-lg p-2 text-center border border-gray-100 shadow-sm">
-                                <div className="text-lg font-bold text-gray-800">{estadisticas.total}</div>
-                                <div className="text-xs text-gray-500">Total</div>
-                            </div>
-                            <div className="bg-yellow-50 rounded-lg p-2 text-center border border-yellow-200">
-                                <div className="text-lg font-bold text-yellow-700">{estadisticas.pendientes}</div>
-                                <div className="text-xs text-yellow-600">Pendientes</div>
-                            </div>
-                            <div className="bg-blue-50 rounded-lg p-2 text-center border border-blue-200">
-                                <div className="text-lg font-bold text-blue-700">{estadisticas.pagados}</div>
-                                <div className="text-xs text-blue-600">Pagados</div>
-                            </div>
-                            <div className="bg-orange-50 rounded-lg p-2 text-center border border-orange-200">
-                                <div className="text-lg font-bold text-orange-700">{estadisticas.enCamino}</div>
-                                <div className="text-xs text-orange-600">En Camino</div>
-                            </div>
-                            <div className="bg-green-50 rounded-lg p-2 text-center border border-green-200">
-                                <div className="text-lg font-bold text-green-700">{estadisticas.recibidos}</div>
-                                <div className="text-xs text-green-600">Recibidos</div>
-                            </div>
-                            <div className="bg-emerald-50 rounded-lg p-2 text-center border border-emerald-200">
-                                <div className="text-lg font-bold text-emerald-700">{estadisticas.entregados}</div>
-                                <div className="text-xs text-emerald-600">Entregados</div>
-                            </div>
+                        <div className="px-6 py-4 bg-gray-50/50 border-b border-gray-100 grid grid-cols-6 gap-4">
+                            {[
+                                { key: 'total', label: 'Total', icon: Package, color: 'text-gray-600', bg: 'bg-gray-100' },
+                                { key: 'pendientes', label: 'Pendientes', icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100' },
+                                { key: 'pagados', label: 'Pagados', icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-100' },
+                                { key: 'enCamino', label: 'En Camino', icon: Truck, color: 'text-orange-600', bg: 'bg-orange-100' },
+                                { key: 'recibidos', label: 'Recibidos', icon: Store, color: 'text-green-600', bg: 'bg-green-100' },
+                                { key: 'entregados', label: 'Entregados', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100' }
+                            ].map(({ key, label, icon: Icon, color, bg }) => (
+                                <div
+                                    key={key}
+                                    className="bg-white rounded-xl border border-gray-200/60 p-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-3 group cursor-default"
+                                    title={label}
+                                >
+                                    <div className={`p-2 rounded-lg ${bg} group-hover:scale-110 transition-transform duration-200`}>
+                                        <Icon className={`h-5 w-5 ${color}`} />
+                                    </div>
+                                    <span className="text-xl font-bold text-gray-700">{estadisticas[key] || 0}</span>
+                                </div>
+                            ))}
                         </div>
                     )}
 
@@ -475,43 +470,59 @@ const PedidosModal = ({ isOpen, onClose }) => {
                                 })}
                             </div>
                         )}
+                    </div>
 
-                        {/* Paginación */}
-                        {!loading && pedidos.length > PEDIDOS_POR_PAGINA && (
-                            <div className="flex items-center justify-center gap-2 pt-4 border-t border-blue-100 mt-4">
-                                <button
-                                    onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
-                                    disabled={paginaActual === 1}
-                                    className="px-3 py-1.5 text-sm border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Anterior
-                                </button>
-                                <div className="flex items-center gap-1">
-                                    {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(num => (
-                                        <button
-                                            key={num}
-                                            onClick={() => setPaginaActual(num)}
-                                            className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${paginaActual === num
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                                                }`}
-                                        >
-                                            {num}
-                                        </button>
-                                    ))}
+                    {/* Footer Paginación - Estilo Azul Centrado */}
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 border-t border-blue-500 px-4 py-2 grid grid-cols-3 items-center shrink-0 h-14 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
+                        {/* Izquierda: Contador */}
+                        <div className="text-left">
+                            <span className="text-xs text-blue-100 font-medium opacity-90">
+                                Total: {pedidos.length} registros
+                            </span>
+                        </div>
+
+                        {/* Centro: Paginación */}
+                        <div className="flex justify-center">
+                            {!loading && pedidos.length > PEDIDOS_POR_PAGINA && (
+                                <div className="flex items-center space-x-2 rounded-lg p-1">
+                                    <button
+                                        onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                                        disabled={paginaActual === 1}
+                                        className="p-1.5 rounded-md hover:bg-white/10 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                        title="Anterior"
+                                    >
+                                        <ChevronLeft className="h-5 w-5" />
+                                    </button>
+
+                                    <div className="flex items-center space-x-1 px-2 border-l border-r border-blue-400/30 mx-1">
+                                        {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(num => (
+                                            <button
+                                                key={num}
+                                                onClick={() => setPaginaActual(num)}
+                                                className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all ${paginaActual === num
+                                                        ? 'bg-white text-blue-700 shadow-md transform scale-105'
+                                                        : 'text-blue-100 hover:bg-white/10'
+                                                    }`}
+                                            >
+                                                {num}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                                        disabled={paginaActual === totalPaginas}
+                                        className="p-1.5 rounded-md hover:bg-white/10 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                                        title="Siguiente"
+                                    >
+                                        <ChevronRight className="h-5 w-5" />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
-                                    disabled={paginaActual === totalPaginas}
-                                    className="px-3 py-1.5 text-sm border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Siguiente
-                                </button>
-                                <span className="text-xs text-gray-500 ml-2">
-                                    {pedidos.length} pedidos
-                                </span>
-                            </div>
-                        )}
+                            )}
+                        </div>
+
+                        {/* Derecha: Espacio vacío para balancear */}
+                        <div></div>
                     </div>
                 </div>
             </div>

@@ -15,6 +15,7 @@ import PedidoProcesandoModal from './PedidoProcesandoModal';
 // Reutilizar componentes de presupuesto
 import ClienteSelector from './presupuesto/ClienteSelector';
 import ItemsTablePedido from './ItemsTablePedido';
+import { generarReciboPedidoHTML, generarMensajeWhatsAppPedido } from '../utils/printUtils';
 
 // Tabs del wizard - Items primero para cotizar rápido sin cliente
 const TABS = [
@@ -294,17 +295,73 @@ const NuevoPedidoModal = ({ isOpen, onClose, onSuccess }) => {
                 await delay(300);
             }
 
-            // Paso 4: Imprimiendo comprobante (placeholder futuro)
+            const pedidoCreado = response.data?.data?.pedido || {};
+
+            // Paso 4: Imprimiendo comprobante
             procesandoRef.current?.avanzarPaso('comprobante');
-            await delay(400);
+
+            if (pagarAhora) {
+                try {
+                    // Preparar objeto para impresión
+                    const datosImpresion = {
+                        ...pedidoCreado,
+                        // Datos robustos
+                        fecha: pedidoCreado.fecha || new Date(),
+                        usuario: pedidoCreado.usuario || usuario || { nombre: 'Sistema' },
+                        cliente: cliente,
+                        items: items,
+                        pagos: payload.pagos || [],
+                        montoAnticipo: tipoPago === 'anticipo' ? montoPagarAhora : 0,
+                        montoPendiente: tipoPago === 'anticipo' ? montoPendiente : (tipoPago === 'total' ? 0 : totalUsd)
+                    };
+
+                    const htmlRecibo = generarReciboPedidoHTML(datosImpresion, tasaCambio);
+
+                    // Abrir ventana de impresión
+                    const printWindow = window.open('', '_blank', 'width=350,height=600');
+                    if (printWindow) {
+                        printWindow.document.write(htmlRecibo);
+                        printWindow.document.close();
+                    } else {
+                        toast.error('Habilita los pop-ups para imprimir', { duration: 4000 });
+                    }
+                } catch (printError) {
+                    console.error('Error impresión:', printError);
+                }
+            } else {
+                await delay(500);
+            }
+
+            await delay(800);
 
             // Paso 5: WhatsApp
-            if (response.data?.data?.whatsappEnviado) {
-                procesandoRef.current?.avanzarPaso('whatsapp');
-            } else {
-                procesandoRef.current?.marcarError('whatsapp', 'WhatsApp no disponible');
+            procesandoRef.current?.avanzarPaso('whatsapp');
+
+            if (cliente.telefono) {
+                try {
+                    const datosWhatsApp = {
+                        ...pedidoCreado,
+                        cliente: cliente,
+                        items: items,
+                        observaciones: observaciones,
+                        totalUsd: totalUsd,
+                        montoAnticipo: tipoPago === 'anticipo' ? montoPagarAhora : 0,
+                        montoPendiente: tipoPago === 'anticipo' ? montoPendiente : (tipoPago === 'total' ? 0 : totalUsd),
+                        pagado: tipoPago === 'total' || (tipoPago === 'anticipo' && montoPagarAhora >= totalUsd),
+                        pagos: payload.pagos || []
+                    };
+
+                    const mensaje = generarMensajeWhatsAppPedido(datosWhatsApp);
+                    const telefono = cliente.telefono.replace(/\D/g, '');
+                    const urlWhatsApp = `https://wa.me/${telefono}?text=${mensaje}`;
+
+                    window.open(urlWhatsApp, '_blank');
+                } catch (waError) {
+                    console.error('Error WhatsApp:', waError);
+                }
             }
-            await delay(400);
+
+            await delay(600);
 
             // Paso 6: Finalizando
             procesandoRef.current?.avanzarPaso('finalizando');

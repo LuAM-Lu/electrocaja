@@ -5,22 +5,22 @@ import toast from './toast.jsx';
 
 //  FUNCIÓN PARA FORMATEAR NÚMEROS VENEZOLANOS
 const formatearVenezolano = (valor) => {
- if (!valor && valor !== 0) return '';
- const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
- return numero.toLocaleString('es-ES', {
-   minimumFractionDigits: 2,
-   maximumFractionDigits: 2
- });
+  if (!valor && valor !== 0) return '';
+  const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
+  return numero.toLocaleString('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 };
 
 //  FUNCIÓN PARA CARGAR LOGO
 const cargarLogo = () => {
   return new Promise((resolve) => {
     console.log(' Cargando logo desde /termico.png...');
-    
+
     const img = new Image();
-    
-    img.onload = function() {
+
+    img.onload = function () {
       console.log(' Logo cargado exitosamente');
       try {
         const canvas = document.createElement('canvas');
@@ -36,12 +36,12 @@ const cargarLogo = () => {
         resolve(null);
       }
     };
-    
+
     img.onerror = (error) => {
       console.error(' Error cargando logo:', error);
       resolve(null);
     };
-    
+
     img.src = '/termico.png';
   });
 };
@@ -50,7 +50,7 @@ const cargarLogo = () => {
 const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, formato = 'termica') => {
   //  DEBUG: Verificar usuario recibido
   console.log(' generarHTMLBase - Usuario recibido:', ventaData.usuario?.nombre || 'No definido');
-  
+
   const fechaActual = new Date().toLocaleDateString('es-ES', {
     day: '2-digit',
     month: '2-digit',
@@ -374,56 +374,56 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
           <div class="separator"></div>
           <div class="subtitle bold">MÉTODOS DE PAGO:</div>
           ${ventaData.pagos.map(pago => {
-            if (pago.monto && parseFloat(pago.monto) > 0) {
-              const metodo = pago.metodo.replace('_', ' ').toUpperCase();
-              const monto = parseFloat(pago.monto);
-              
-              //  DETERMINAR MONEDA SEGÚN EL MÉTODO
-              let montoTexto;
-              if (pago.metodo === 'efectivo_usd' || pago.metodo === 'zelle' || pago.metodo === 'binance') {
-                montoTexto = monto.toLocaleString('es-ES', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }) + ' $';
-              } else {
-                montoTexto = monto.toLocaleString('es-ES', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }) + ' Bs';
-              }
-              
-              return `<div class="payment-method">${metodo}: ${montoTexto}</div>`;
-            }
-            return '';
-          }).join('')}
+    if (pago.monto && parseFloat(pago.monto) > 0) {
+      const metodo = pago.metodo.replace('_', ' ').toUpperCase();
+      const monto = parseFloat(pago.monto);
+
+      //  DETERMINAR MONEDA SEGÚN EL MÉTODO
+      let montoTexto;
+      if (pago.metodo === 'efectivo_usd' || pago.metodo === 'zelle' || pago.metodo === 'binance') {
+        montoTexto = monto.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }) + ' $';
+      } else {
+        montoTexto = monto.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }) + ' Bs';
+      }
+
+      return `<div class="payment-method">${metodo}: ${montoTexto}</div>`;
+    }
+    return '';
+  }).join('')}
           <div class="separator"></div>
         ` : ''}
 
         ${ventaData.vueltos && ventaData.vueltos.length > 0 ? `
           <div class="subtitle bold">VUELTOS:</div>
           ${ventaData.vueltos.map(vuelto => {
-            if (vuelto.monto && parseFloat(vuelto.monto) > 0) {
-              const metodo = vuelto.metodo.replace('_', ' ').toUpperCase();
-              const monto = parseFloat(vuelto.monto);
-              
-              //  DETERMINAR MONEDA SEGÚN EL MÉTODO
-              let montoTexto;
-              if (vuelto.metodo === 'efectivo_usd' || vuelto.metodo === 'zelle' || vuelto.metodo === 'binance') {
-                montoTexto = monto.toLocaleString('es-ES', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }) + ' $';
-              } else {
-                montoTexto = monto.toLocaleString('es-ES', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }) + ' Bs';
-              }
-              
-              return `<div class="payment-method">- ${metodo}: ${montoTexto}</div>`;
-            }
-            return '';
-          }).join('')}
+    if (vuelto.monto && parseFloat(vuelto.monto) > 0) {
+      const metodo = vuelto.metodo.replace('_', ' ').toUpperCase();
+      const monto = parseFloat(vuelto.monto);
+
+      //  DETERMINAR MONEDA SEGÚN EL MÉTODO
+      let montoTexto;
+      if (vuelto.metodo === 'efectivo_usd' || vuelto.metodo === 'zelle' || vuelto.metodo === 'binance') {
+        montoTexto = monto.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }) + ' $';
+      } else {
+        montoTexto = monto.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }) + ' Bs';
+      }
+
+      return `<div class="payment-method">- ${metodo}: ${montoTexto}</div>`;
+    }
+    return '';
+  }).join('')}
         ` : ''}
                 
         <div class="separator"></div>
@@ -503,29 +503,236 @@ const generarHTMLBase = (ventaData, codigoVenta, tasaCambio, descuento = 0, form
   `;
 };
 
-//  MANTENER - Impresión térmica (función actual SIN CAMBIOS)
+// DUPLICADO A BORRAR
+const generarReciboPedidoHTML_OLD = (pedido, tasaCambio) => {
+  const fechaActual = new Date(pedido.fecha || Date.now()).toLocaleDateString('es-ES', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+
+  // Cálculos de montos
+  const totalUsd = parseFloat(pedido.totalUsd || 0);
+  const montoAnticipo = parseFloat(pedido.montoAnticipo || 0);
+  const montoPendiente = parseFloat(pedido.montoPendiente || 0);
+  const descuento = parseFloat(pedido.descuento || 0);
+
+  // Determinar estado de pago
+  let estadoPago = 'PENDIENTE';
+  if (pedido.pagado) estadoPago = 'PAGADO';
+  else if (montoAnticipo > 0) estadoPago = 'ANTICIPO';
+
+  return `
+    < !DOCTYPE html >
+      <html>
+        <head>
+          <meta charset="utf-8">
+            <title>Pedido #${pedido.numero}</title>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap');
+              @page {size: 80mm auto; margin: 0; }
+              body {
+                width: 80mm;
+              font-family: 'Roboto Mono', monospace;
+              font-size: 11px;
+              line-height: 1.2;
+              margin: 0;
+              padding: 8px;
+              background: white;
+              color: #000;
+            }
+              .center {text - align: center; }
+              .right {text - align: right; }
+              .bold {font - weight: 700; }
+              .title {font - size: 14px; font-weight: 700; margin: 4px 0; }
+              .subtitle {font - size: 10px; font-weight: 500; }
+              .separator {border - top: 1px dashed #000; margin: 4px 0; width: 100%; }
+              .thick-separator {border - top: 2px solid #000; margin: 6px 0; width: 100%; }
+
+              .item-row {display: flex; margin: 2px 0; align-items: flex-start; }
+              .qty {width: 10%; text-align: center; font-weight: 700; }
+              .desc {width: 60%; font-size: 10px; }
+              .price {width: 30%; text-align: right; font-weight: 700; }
+
+              .total-section {
+                background: #fff;
+              padding: 4px 0;
+              border-top: 1px solid #000;
+              margin-top: 4px;
+            }
+              .row {display: flex; justify-content: space-between; }
+              .status-badge {
+                border: 1px solid #000;
+              padding: 2px 4px;
+              display: inline-block;
+              margin-top: 4px;
+              font-weight: bold;
+            }
+            </style>
+        </head>
+        <body>
+          <div class="center">
+            <img src="/termico.png" alt="Logo" style="width: 60px; height: 60px; margin-bottom: 4px;" onerror="this.style.display='none'" />
+            <div class="title">ELECTRO SHOP MORANDIN</div>
+            <div class="subtitle">RIF: J-405903333</div>
+            <div class="subtitle">PEDIDO DE VENTA</div>
+          </div>
+
+          <div class="thick-separator"></div>
+
+          <div class="bold">Nro Pedido: #${pedido.numero}</div>
+          <div>Fecha: ${fechaActual}</div>
+          <div>Cliente: ${pedido.cliente?.nombre || 'General'}</div>
+          ${pedido.cliente?.telefono ? `<div>Tel: ${pedido.cliente.telefono}</div>` : ''}
+          <div>Vendedor: ${pedido.usuario?.nombre || 'Sistema'}</div>
+
+          <div class="separator"></div>
+
+          <!-- HEADER ITEMS -->
+          <div style="display: flex; font-weight: bold; font-size: 10px; margin-bottom: 2px;">
+            <div style="width: 10%; text-align: center;">Cant</div>
+            <div style="width: 60%;">Descripción</div>
+            <div style="width: 30%; text-align: right;">Total</div>
+          </div>
+
+          ${pedido.items.map(item => `
+            <div class="item-row">
+                <div class="qty">${item.cantidad}</div>
+                <div class="desc">
+                    ${item.descripcion}
+                    <div style="font-size: 9px; color: #333;">$${parseFloat(item.precioUnitario).toFixed(2)} c/u</div>
+                </div>
+                <div class="price">$${(item.cantidad * item.precioUnitario).toFixed(2)}</div>
+            </div>
+        `).join('')}
+
+          <div class="thick-separator"></div>
+
+          <!-- TOTALES -->
+          <div class="total-section">
+            <div class="row">
+              <span>Subtotal USD:</span>
+              <span>$${(totalUsd + descuento).toFixed(2)}</span>
+            </div>
+            ${descuento > 0 ? `
+            <div class="row">
+                <span>Descuento:</span>
+                <span>-$${descuento.toFixed(2)}</span>
+            </div>
+            ` : ''}
+            <div class="row bold" style="font-size: 13px; margin: 4px 0;">
+              <span>TOTAL:</span>
+              <span>$${totalUsd.toFixed(2)}</span>
+            </div>
+            <div class="row" style="font-size: 11px;">
+              <span>En Bolívares:</span>
+              <span>Bs. ${(totalUsd * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+
+          <!-- INFO PAGO -->
+          <div class="separator"></div>
+          <div class="row bold">
+            <span>Estado:</span>
+            <span>${estadoPago}</span>
+          </div>
+
+          ${montoAnticipo > 0 ? `
+        <div class="row">
+            <span>Abonado:</span>
+            <span>$${montoAnticipo.toFixed(2)}</span>
+        </div>
+        <div class="row bold" style="margin-top: 2px;">
+            <span>PENDIENTE:</span>
+            <span>$${montoPendiente.toFixed(2)}</span>
+        </div>
+        ` : ''}
+
+          ${pedido.pagos && pedido.pagos.length > 0 ? `
+        <div class="separator"></div>
+        <div class="bold" style="font-size: 10px;">DETALLE PAGOS:</div>
+        ${pedido.pagos.map(p => `
+            <div class="row" style="font-size: 9px;">
+                <span>${p.metodo.replace('_', ' ').toUpperCase()}:</span>
+                <span>${p.moneda === 'bs' ? 'Bs' : '$'} ${parseFloat(p.monto).toFixed(2)}</span>
+            </div>
+        `).join('')}
+        ` : ''}
+
+          <div class="center" style="margin-top: 15px; font-size: 10px;">
+            *** COMPROBANTE DE PEDIDO ***<br>
+              No válido como factura fiscal<br>
+                Válido por 3 días
+              </div>
+
+              <script>
+                window.onload = function() {window.print(); window.close(); }
+              </script>
+            </body>
+          </html>
+          `;
+};
+
+// DUPLICADO A BORRAR
+const generarMensajeWhatsAppPedido_OLD = (pedido) => {
+  const totalUsd = parseFloat(pedido.totalUsd || 0);
+  const montoAnticipo = parseFloat(pedido.montoAnticipo || 0);
+  const montoPendiente = parseFloat(pedido.montoPendiente || 0);
+
+  let estadoIcon = '⏳';
+  if (pedido.pagado) estadoIcon = '✅';
+  else if (montoAnticipo > 0) estadoIcon = '💰';
+
+  let mensaje = `*PEDIDO #${pedido.numero}* ${estadoIcon}\n`;
+  mensaje += `📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n`;
+  mensaje += `👤 Cliente: ${pedido.cliente?.nombre || 'Cliente'}\n`;
+
+  mensaje += `\n📋 *DETALLE DEL PEDIDO:*\n`;
+  pedido.items.forEach(item => {
+    mensaje += `▫️ ${item.cantidad}x ${item.descripcion}\n`;
+  });
+
+  mensaje += `\n💵 *RESUMEN FINANCIERO:*\n`;
+  mensaje += `*TOTAL: $${totalUsd.toFixed(2)}*\n`;
+
+  if (pedido.pagado) {
+    mensaje += `✅ *PAGADO COMPLETO*\n`;
+  } else {
+    if (montoAnticipo > 0) {
+      mensaje += `💰 Abonado: $${montoAnticipo.toFixed(2)}\n`;
+    }
+    mensaje += `🔴 *PENDIENTE: $${montoPendiente.toFixed(2)}*\n`;
+  }
+
+  if (pedido.observaciones) {
+    mensaje += `\n📝 Nota: ${pedido.observaciones}\n`;
+  }
+
+  mensaje += `\nGracias por su compra en Electro Shop Morandin! 🚀`;
+
+  return encodeURIComponent(mensaje);
+};
 export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio, descuento = 0, ventanaPreAbierta = null) => {
   try {
     console.log(' Generando impresión térmica 80mm optimizada...');
-    
+
     const contenidoHTML = generarHTMLBase(ventaData, codigoVenta, tasaCambio, descuento, 'termica');
-    
+
     //  Configuración optimizada para impresoras térmicas 80mm
     // Si se proporciona una ventana pre-abierta, usarla; de lo contrario, intentar abrir una nueva
     let ventanaImpresion = ventanaPreAbierta;
-    
+
     if (!ventanaImpresion) {
       ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
-      
+
       if (!ventanaImpresion) {
         throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
       }
     }
-    
+
     // ✅ ESCRIBIR HTML CON SCRIPT DE PREVENCIÓN INCLUIDO
     ventanaImpresion.document.write(contenidoHTML);
     ventanaImpresion.document.close();
-    
+
     ventanaImpresion.onload = () => {
       setTimeout(() => {
         ventanaImpresion.print();
@@ -541,11 +748,11 @@ export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio,
         }, 1000);
       }, 500);
     };
-    
+
     // ✅ PREVENIR QUE EL CIERRE MANUAL DE LA VENTANA CAUSE RECARGA
     // ✅ AISLAR COMPLETAMENTE LA REFERENCIA DE LA VENTANA
     let ventanaRef = ventanaImpresion;
-    
+
     // ✅ PREVENIR QUE EVENTOS DE LA VENTANA DE IMPRESIÓN AFECTEN LA VENTANA PRINCIPAL
     // Agregar listener en la ventana principal para ignorar eventos de la ventana de impresión
     const preventMainWindowRefresh = (e) => {
@@ -555,10 +762,10 @@ export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio,
         e.stopPropagation();
       }
     };
-    
+
     // Temporalmente prevenir eventos en la ventana principal mientras la ventana de impresión está abierta
     window.addEventListener('beforeunload', preventMainWindowRefresh, true);
-    
+
     const verificarCierre = setInterval(() => {
       if (ventanaRef && ventanaRef.closed) {
         clearInterval(verificarCierre);
@@ -568,16 +775,16 @@ export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio,
         ventanaRef = null;
       }
     }, 500);
-    
+
     // Limpiar el intervalo después de un tiempo razonable
     setTimeout(() => {
       clearInterval(verificarCierre);
       window.removeEventListener('beforeunload', preventMainWindowRefresh, true);
       ventanaRef = null;
     }, 30000); // 30 segundos máximo
-    
+
     console.log(' Ventana de impresión térmica abierta');
-    
+
   } catch (error) {
     console.error(' Error en impresión térmica tradicional:', error);
     throw error;
@@ -588,7 +795,7 @@ export const imprimirFacturaTermica = async (ventaData, codigoVenta, tasaCambio,
 export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
     console.log(' Generando PDF para descarga/email...');
-    
+
     const doc = new jsPDF();
     const fechaActual = new Date().toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -601,7 +808,7 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
 
     // Cargar logo
     const logoData = await cargarLogo();
-    
+
     // Logo centrado si está disponible
     if (logoData) {
       doc.addImage(logoData, 'PNG', 85, 5, 40, 40);
@@ -611,7 +818,7 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
     doc.text('ELECTRO SHOP MORANDIN C.A.', 105, logoData ? 50 : 20, { align: 'center' });
-    
+
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.text('Sistema de Punto de Venta', 105, logoData ? 60 : 30, { align: 'center' });
@@ -622,7 +829,7 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text(`FACTURA #${codigoVenta}`, 20, startY);
-    
+
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Fecha: ${fechaActual}`, 20, startY + 10);
@@ -670,7 +877,7 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
     // Totales
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFont('helvetica', 'bold');
-    
+
     if (descuento > 0) {
       doc.text(`Subtotal: ${formatearVenezolano(ventaData.totalBs)} Bs`, 120, finalY);
       doc.text(`Descuento: -${formatearVenezolano(descuento)} Bs`, 120, finalY + 7);
@@ -684,7 +891,7 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
       doc.setFont('helvetica', 'bold');
       doc.text('MÉTODOS DE PAGO:', 20, finalY + 25);
       doc.setFont('helvetica', 'normal');
-      
+
       let yPos = finalY + 35;
       ventaData.pagos.forEach(pago => {
         if (pago.monto && parseFloat(pago.monto) > 0) {
@@ -702,10 +909,10 @@ export const generarPDFFactura = async (ventaData, codigoVenta, tasaCambio, desc
 
     // Retornar blob para descarga o email
     const pdfBlob = doc.output('blob');
-    
+
     console.log(' PDF generado exitosamente');
     return pdfBlob;
-    
+
   } catch (error) {
     console.error(' Error generando PDF:', error);
     throw error;
@@ -732,37 +939,37 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
     console.log(' codigoVenta:', codigoVenta);
     console.log(' tasaCambio:', tasaCambio);
     console.log(' descuento:', descuento);
-    
+
     // ✅ CREAR CANVAS CON MAYOR RESOLUCIÓN PARA MEJOR CALIDAD
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     // Dimensiones aumentadas para mejor calidad (2x para retina)
     const scaleFactor = 2; // Factor de escala para alta calidad
     canvas.width = 720 * scaleFactor; // 1440px de ancho real
     canvas.height = 2000 * scaleFactor; // Altura inicial ajustable
-    
+
     // Escalar contexto para que todo se dibuje al doble de tamaño
     ctx.scale(scaleFactor, scaleFactor);
-    
+
     // Ahora trabajamos con dimensiones lógicas (360x1000)
     const width = 720;
     const height = 2000;
-    
+
     console.log(' Canvas creado (alta calidad):', canvas.width, 'x', canvas.height, '(escala:', scaleFactor + 'x)');
-    
+
     // ✅ FONDO BLANCO PREMIUM CON SOMBRA SUTIL
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
-    
+
     // Sombra sutil alrededor del comprobante
     ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
     ctx.shadowBlur = 20;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 5;
-    
+
     console.log(' Fondo premium aplicado');
-    
+
     // ✅ HEADER PREMIUM CON GRADIENTE Y LOGO MEJORADO
     const headerHeight = 100;
     const gradient = ctx.createLinearGradient(0, 0, width, headerHeight);
@@ -771,34 +978,34 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
     gradient.addColorStop(1, '#1E40AF'); // Azul más oscuro
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, headerHeight);
-    
+
     // Sombra en el header
     ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 2;
-    
+
     console.log(' Header premium aplicado');
-    
+
     // ✅ CARGAR Y DIBUJAR LOGO MEJORADO (MÁS GRANDE Y CON SOMBRA)
     let logoLoaded = false;
     try {
       const logoUrl = `${window.location.origin}/android-chrome-512x5129.png`;
       console.log(' Cargando logo desde:', logoUrl);
-      
+
       const logo = await loadImage(logoUrl);
-      
+
       // Logo más grande y mejor posicionado
       const logoSize = 70; // Aumentado de 40 a 70
       const logoX = 30; // Margen izquierdo
       const logoY = (headerHeight - logoSize) / 2; // Centrado verticalmente
-      
+
       // Sombra para el logo
       ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
       ctx.shadowBlur = 8;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 2;
-      
+
       // Dibujar logo con fondo circular blanco para mejor contraste
       ctx.save();
       ctx.beginPath();
@@ -806,18 +1013,18 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.fill();
       ctx.restore();
-      
+
       ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
       logoLoaded = true;
-      
+
       // Resetear sombra
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
-      
+
       console.log(' Logo premium dibujado');
-      
+
     } catch (error) {
       console.log(' No se pudo cargar el logo:', error.message);
       logoLoaded = false;
@@ -826,52 +1033,52 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
     }
-    
+
     // ✅ TEXTO DEL HEADER MEJORADO (MEJOR TIPOGRAFÍA Y ESPACIADO)
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 20px "Segoe UI", Arial, sans-serif'; // Fuente más grande y mejor
     ctx.textAlign = 'left';
-    
+
     const textStartX = logoLoaded ? 120 : 30; // Más espacio después del logo
     const textStartY = 35;
-    
+
     ctx.fillText('ELECTRO SHOP MORANDIN C.A.', textStartX, textStartY);
-    
+
     ctx.font = '13px "Segoe UI", Arial, sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.fillText('RIF: J-405903333 - Guanare, Venezuela', textStartX, textStartY + 20);
-    
+
     ctx.font = '11px "Segoe UI", Arial, sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.fillText('ElectroCaja v1.0', textStartX, textStartY + 38);
-    
+
     console.log(' Texto del header premium aplicado');
-    
+
     let yPos = 130; // Más espacio después del header
-    
+
     // ✅ INFORMACIÓN DE LA VENTA MEJORADA
     ctx.fillStyle = '#1F2937';
     ctx.font = 'bold 22px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'center';
-    
+
     // Fondo sutil para el código de venta
     ctx.fillStyle = '#F3F4F6';
     ctx.fillRect(width / 2 - 200, yPos - 25, 400, 50);
-    
+
     ctx.fillStyle = '#1F2937';
     ctx.fillText(`COMPROBANTE #${codigoVenta}`, width / 2, yPos);
     yPos += 35;
-    
+
     ctx.font = '14px "Segoe UI", Arial, sans-serif';
     ctx.fillStyle = '#6B7280';
-    ctx.fillText(`${new Date().toLocaleDateString('es-ES', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    })} ${new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'})}`, width / 2, yPos);
+    ctx.fillText(`${new Date().toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })} ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`, width / 2, yPos);
     yPos += 30;
-    
+
     // Cliente con mejor formato
     if (ventaData.cliente && ventaData.cliente.nombre) {
       ctx.fillStyle = '#374151';
@@ -886,16 +1093,16 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
       }
       console.log(' Cliente aplicado:', ventaData.cliente.nombre);
     }
-    
+
     yPos += 20;
-    
+
     // ✅ PRODUCTOS CON MEJOR DISEÑO
     ctx.fillStyle = '#1F2937';
     ctx.font = 'bold 18px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText('PRODUCTOS', 40, yPos);
     yPos += 30;
-    
+
     // Línea decorativa bajo "PRODUCTOS"
     ctx.strokeStyle = '#E5E7EB';
     ctx.lineWidth = 2;
@@ -904,37 +1111,37 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
     ctx.lineTo(width - 40, yPos - 10);
     ctx.stroke();
     yPos += 10;
-    
+
     ctx.font = '14px "Segoe UI", Arial, sans-serif';
     ctx.fillStyle = '#374151';
-    
+
     if (ventaData.items && ventaData.items.length > 0) {
       console.log(' Productos a dibujar:', ventaData.items.length);
-      
+
       ventaData.items.forEach((item, index) => {
         // Fondo alternado para mejor legibilidad
         if (index % 2 === 0) {
           ctx.fillStyle = '#F9FAFB';
           ctx.fillRect(40, yPos - 15, width - 80, 30);
         }
-        
+
         const descripcion = `${item.cantidad}× ${item.descripcion}`;
         const precio = (item.cantidad * item.precio_unitario * tasaCambio).toLocaleString('es-ES', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         }) + ' Bs';
-        
+
         ctx.fillStyle = '#374151';
         ctx.textAlign = 'left';
         ctx.fillText(descripcion.substring(0, 40), 50, yPos);
-        
+
         ctx.textAlign = 'right';
         ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
         ctx.fillText(precio, width - 50, yPos);
-        
+
         ctx.font = '14px "Segoe UI", Arial, sans-serif';
         yPos += 30;
-        
+
         console.log(` Producto ${index + 1} dibujado:`, descripcion);
       });
     } else {
@@ -944,9 +1151,9 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
       yPos += 30;
       console.log(' Sin productos para dibujar');
     }
-    
+
     yPos += 20;
-    
+
     // ✅ LÍNEA SEPARADORA MEJORADA
     ctx.strokeStyle = '#D1D5DB';
     ctx.lineWidth = 2;
@@ -955,7 +1162,7 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
     ctx.lineTo(width - 40, yPos);
     ctx.stroke();
     yPos += 30;
-    
+
     // ✅ CÁLCULOS DE TOTALES
     let subtotal = 0;
     if (ventaData.items) {
@@ -963,16 +1170,16 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
         return sum + (item.cantidad * item.precio_unitario);
       }, 0) * tasaCambio;
     }
-    
+
     const totalFinal = subtotal - (descuento || 0);
-    
+
     console.log(' Cálculos:', { subtotal, descuento, totalFinal });
-    
+
     // ✅ SUBTOTAL Y DESCUENTO CON MEJOR FORMATO
     ctx.fillStyle = '#374151';
     ctx.font = '15px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'left';
-    
+
     ctx.fillText('Subtotal:', 40, yPos);
     ctx.textAlign = 'right';
     ctx.fillText(subtotal.toLocaleString('es-ES', {
@@ -980,7 +1187,7 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
       maximumFractionDigits: 2
     }) + ' Bs', width - 40, yPos);
     yPos += 25;
-    
+
     // Descuento con mejor diseño
     if (descuento > 0) {
       ctx.fillStyle = '#DC2626';
@@ -993,7 +1200,7 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
         maximumFractionDigits: 2
       }) + ' Bs', width - 40, yPos);
       yPos += 25;
-      
+
       if (ventaData.motivoDescuento) {
         ctx.font = '12px "Segoe UI", Arial, sans-serif';
         ctx.fillStyle = '#9CA3AF';
@@ -1002,34 +1209,34 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
         yPos += 20;
         ctx.font = '15px "Segoe UI", Arial, sans-serif';
       }
-      
+
       console.log(' Descuento aplicado:', descuento);
     }
-    
+
     yPos += 15;
-    
+
     // ✅ TOTAL FINAL PREMIUM CON DISEÑO MEJORADO
     const totalBoxHeight = 80;
     const totalBoxY = yPos - 10;
-    
+
     // Fondo con gradiente verde
     const totalGradient = ctx.createLinearGradient(40, totalBoxY, width - 40, totalBoxY + totalBoxHeight);
     totalGradient.addColorStop(0, '#F0FDF4');
     totalGradient.addColorStop(1, '#DCFCE7');
     ctx.fillStyle = totalGradient;
     ctx.fillRect(40, totalBoxY, width - 80, totalBoxHeight);
-    
+
     // Borde verde más grueso
     ctx.strokeStyle = '#22C55E';
     ctx.lineWidth = 3;
     ctx.strokeRect(40, totalBoxY, width - 80, totalBoxHeight);
-    
+
     // Sombra para el total
     ctx.shadowColor = 'rgba(34, 197, 94, 0.3)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 3;
-    
+
     ctx.fillStyle = '#15803D';
     ctx.font = 'bold 32px "Segoe UI", Arial, sans-serif';
     ctx.textAlign = 'center';
@@ -1038,140 +1245,140 @@ export const generarImagenWhatsApp = async (ventaData, codigoVenta, tasaCambio, 
       maximumFractionDigits: 2
     }) + ' Bs';
     ctx.fillText(totalTexto, width / 2, totalBoxY + 35);
-    
+
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
-    
+
     ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
     ctx.fillStyle = '#16A34A';
     ctx.fillText('TOTAL A PAGAR', width / 2, totalBoxY + 60);
-    
-    yPos += totalBoxHeight + 20;
-    
 
-// ✅ MÉTODOS DE PAGO MEJORADOS
-if (ventaData.pagos && ventaData.pagos.length > 0) {
-  const pagosConMonto = ventaData.pagos.filter(pago => pago.monto && parseFloat(pago.monto) > 0);
-  
-  if (pagosConMonto.length > 0) {
-    yPos += 20;
-    
-    ctx.fillStyle = '#1F2937';
-    ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('MÉTODOS DE PAGO', 40, yPos);
-    yPos += 25;
-    
-    // Línea decorativa
-    ctx.strokeStyle = '#E5E7EB';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(40, yPos - 10);
-    ctx.lineTo(width - 40, yPos - 10);
-    ctx.stroke();
-    yPos += 5;
-    
-    ctx.font = '14px "Segoe UI", Arial, sans-serif';
-    ctx.fillStyle = '#374151';
-    
-    pagosConMonto.forEach((pago, index) => {
-      const metodoTexto = pago.metodo.replace('_', ' ').toUpperCase();
-      
-      let montoTexto;
-      const monto = parseFloat(pago.monto);
-      
-      if (pago.metodo === 'efectivo_usd' || pago.metodo === 'zelle' || pago.metodo === 'binance') {
-        montoTexto = monto.toLocaleString('es-ES', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }) + ' $';
-      } else {
-        montoTexto = monto.toLocaleString('es-ES', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }) + ' Bs';
-      }
-      
-      ctx.textAlign = 'left';
-      ctx.fillText(`• ${metodoTexto}:`, 50, yPos);
-      ctx.textAlign = 'right';
-      ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(montoTexto, width - 50, yPos);
-      ctx.font = '14px "Segoe UI", Arial, sans-serif';
-      
-      yPos += 22;
-      
-      if (pago.referencia && pago.referencia.trim()) {
-        ctx.font = '12px "Segoe UI", Arial, sans-serif';
-        ctx.fillStyle = '#6B7280';
+    yPos += totalBoxHeight + 20;
+
+
+    // ✅ MÉTODOS DE PAGO MEJORADOS
+    if (ventaData.pagos && ventaData.pagos.length > 0) {
+      const pagosConMonto = ventaData.pagos.filter(pago => pago.monto && parseFloat(pago.monto) > 0);
+
+      if (pagosConMonto.length > 0) {
+        yPos += 20;
+
+        ctx.fillStyle = '#1F2937';
+        ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(`  Ref: ${pago.referencia.substring(0, 30)}`, 60, yPos);
-        yPos += 18;
+        ctx.fillText('MÉTODOS DE PAGO', 40, yPos);
+        yPos += 25;
+
+        // Línea decorativa
+        ctx.strokeStyle = '#E5E7EB';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(40, yPos - 10);
+        ctx.lineTo(width - 40, yPos - 10);
+        ctx.stroke();
+        yPos += 5;
+
         ctx.font = '14px "Segoe UI", Arial, sans-serif';
         ctx.fillStyle = '#374151';
-      }
-      
-      console.log(` Método de pago ${index + 1}:`, metodoTexto, montoTexto);
-    });
-    
-    yPos += 15;
-  }
-}
 
-// ✅ VUELTOS MEJORADOS
-if (ventaData.vueltos && ventaData.vueltos.length > 0) {
-  const vueltosConMonto = ventaData.vueltos.filter(vuelto => vuelto.monto && parseFloat(vuelto.monto) > 0);
-  
-  if (vueltosConMonto.length > 0) {
-    yPos += 15;
-    
-    ctx.fillStyle = '#1F2937';
-    ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('VUELTOS', 40, yPos);
-    yPos += 25;
-    
-    ctx.font = '14px "Segoe UI", Arial, sans-serif';
-    ctx.fillStyle = '#374151';
-    
-    vueltosConMonto.forEach((vuelto, index) => {
-      const metodoTexto = vuelto.metodo.replace('_', ' ').toUpperCase();
-      
-      let montoTexto;
-      const monto = parseFloat(vuelto.monto);
-      
-      if (vuelto.metodo === 'efectivo_usd' || vuelto.metodo === 'zelle' || vuelto.metodo === 'binance') {
-        montoTexto = monto.toLocaleString('es-ES', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }) + ' $';
-      } else {
-        montoTexto = monto.toLocaleString('es-ES', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        }) + ' Bs';
+        pagosConMonto.forEach((pago, index) => {
+          const metodoTexto = pago.metodo.replace('_', ' ').toUpperCase();
+
+          let montoTexto;
+          const monto = parseFloat(pago.monto);
+
+          if (pago.metodo === 'efectivo_usd' || pago.metodo === 'zelle' || pago.metodo === 'binance') {
+            montoTexto = monto.toLocaleString('es-ES', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }) + ' $';
+          } else {
+            montoTexto = monto.toLocaleString('es-ES', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }) + ' Bs';
+          }
+
+          ctx.textAlign = 'left';
+          ctx.fillText(`• ${metodoTexto}:`, 50, yPos);
+          ctx.textAlign = 'right';
+          ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+          ctx.fillText(montoTexto, width - 50, yPos);
+          ctx.font = '14px "Segoe UI", Arial, sans-serif';
+
+          yPos += 22;
+
+          if (pago.referencia && pago.referencia.trim()) {
+            ctx.font = '12px "Segoe UI", Arial, sans-serif';
+            ctx.fillStyle = '#6B7280';
+            ctx.textAlign = 'left';
+            ctx.fillText(`  Ref: ${pago.referencia.substring(0, 30)}`, 60, yPos);
+            yPos += 18;
+            ctx.font = '14px "Segoe UI", Arial, sans-serif';
+            ctx.fillStyle = '#374151';
+          }
+
+          console.log(` Método de pago ${index + 1}:`, metodoTexto, montoTexto);
+        });
+
+        yPos += 15;
       }
-      
-      ctx.textAlign = 'left';
-      ctx.fillText(`• ${metodoTexto}:`, 50, yPos);
-      ctx.textAlign = 'right';
-      ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(montoTexto, width - 50, yPos);
-      ctx.font = '14px "Segoe UI", Arial, sans-serif';
-      
-      yPos += 22;
-      
-      console.log(` Vuelto ${index + 1}:`, metodoTexto, montoTexto);
-    });
-    
-    yPos += 15;
-  }
-}
-    
+    }
+
+    // ✅ VUELTOS MEJORADOS
+    if (ventaData.vueltos && ventaData.vueltos.length > 0) {
+      const vueltosConMonto = ventaData.vueltos.filter(vuelto => vuelto.monto && parseFloat(vuelto.monto) > 0);
+
+      if (vueltosConMonto.length > 0) {
+        yPos += 15;
+
+        ctx.fillStyle = '#1F2937';
+        ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('VUELTOS', 40, yPos);
+        yPos += 25;
+
+        ctx.font = '14px "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = '#374151';
+
+        vueltosConMonto.forEach((vuelto, index) => {
+          const metodoTexto = vuelto.metodo.replace('_', ' ').toUpperCase();
+
+          let montoTexto;
+          const monto = parseFloat(vuelto.monto);
+
+          if (vuelto.metodo === 'efectivo_usd' || vuelto.metodo === 'zelle' || vuelto.metodo === 'binance') {
+            montoTexto = monto.toLocaleString('es-ES', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }) + ' $';
+          } else {
+            montoTexto = monto.toLocaleString('es-ES', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }) + ' Bs';
+          }
+
+          ctx.textAlign = 'left';
+          ctx.fillText(`• ${metodoTexto}:`, 50, yPos);
+          ctx.textAlign = 'right';
+          ctx.font = 'bold 14px "Segoe UI", Arial, sans-serif';
+          ctx.fillText(montoTexto, width - 50, yPos);
+          ctx.font = '14px "Segoe UI", Arial, sans-serif';
+
+          yPos += 22;
+
+          console.log(` Vuelto ${index + 1}:`, metodoTexto, montoTexto);
+        });
+
+        yPos += 15;
+      }
+    }
+
     yPos += 20;
-    
+
     // ✅ FOOTER PREMIUM
     ctx.fillStyle = '#6B7280';
     ctx.font = '13px "Segoe UI", Arial, sans-serif';
@@ -1185,9 +1392,9 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
     ctx.font = '13px "Segoe UI", Arial, sans-serif';
     ctx.fillStyle = '#22C55E';
     ctx.fillText('¡Gracias por su compra!', width / 2, yPos);
-    
+
     console.log(' Footer premium aplicado');
-    
+
     // ✅ AJUSTAR ALTURA DEL CANVAS
     const finalHeight = Math.ceil((yPos + 40) * scaleFactor);
     if (finalHeight !== canvas.height) {
@@ -1195,12 +1402,12 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
       const newCtx = newCanvas.getContext('2d');
       newCanvas.width = canvas.width;
       newCanvas.height = finalHeight;
-      
+
       newCtx.drawImage(canvas, 0, 0);
-      
+
       // ✅ EXPORTAR EN PNG PARA MEJOR CALIDAD (sin compresión JPEG)
       const imagenBase64 = newCanvas.toDataURL('image/png');
-      
+
       console.log(' Imagen premium generada:', {
         size_kb: Math.round(imagenBase64.length / 1024),
         width: newCanvas.width,
@@ -1208,13 +1415,13 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
         format: 'PNG',
         scale: scaleFactor + 'x'
       });
-      
+
       return imagenBase64;
     }
-    
+
     // ✅ EXPORTAR EN PNG PARA MEJOR CALIDAD
     const imagenBase64 = canvas.toDataURL('image/png');
-    
+
     console.log(' Imagen premium generada:', {
       size_kb: Math.round(imagenBase64.length / 1024),
       width: canvas.width,
@@ -1222,15 +1429,15 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
       format: 'PNG',
       scale: scaleFactor + 'x'
     });
-    
+
     if (imagenBase64.length < 1000) {
       throw new Error('Imagen generada está vacía o muy pequeña');
     }
-    
+
     console.log(' ===== IMAGEN WHATSAPP PREMIUM COMPLETADA =====');
-    
+
     return imagenBase64;
-    
+
   } catch (error) {
     console.error(' Error generando imagen premium para WhatsApp:', error);
     throw error;
@@ -1241,57 +1448,57 @@ if (ventaData.vueltos && ventaData.vueltos.length > 0) {
 const generarImagenFallback = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
     console.log(' Generando imagen fallback con Canvas...');
-    
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     // Configurar canvas
     canvas.width = 350;
     canvas.height = 600;
-    
+
     // Fondo blanco
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     // Configurar texto
     ctx.fillStyle = '#000000';
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
-    
+
     let y = 30;
     const lineHeight = 20;
-    
+
     // Header
     ctx.fillText('ELECTRO SHOP MORANDÍN C.A.', canvas.width / 2, y);
     y += lineHeight;
-    
+
     ctx.font = '12px Arial';
     ctx.fillText('RIF: J-405903333', canvas.width / 2, y);
     y += lineHeight * 2;
-    
+
     // Información de la factura
     ctx.font = 'bold 14px Arial';
     ctx.fillText(`Recibo #${codigoVenta}`, canvas.width / 2, y);
     y += lineHeight * 1.5;
-    
+
     ctx.font = '12px Arial';
     ctx.textAlign = 'left';
-    
+
     const fechaActual = new Date().toLocaleDateString('es-ES');
     ctx.fillText(`Fecha: ${fechaActual}`, 20, y);
     y += lineHeight;
-    
+
     ctx.fillText(`Cliente: ${ventaData.cliente?.nombre || 'Sin Cliente'}`, 20, y);
     y += lineHeight;
-    
+
     if (ventaData.cliente?.cedula_rif) {
       ctx.fillText(`CI/RIF: ${ventaData.cliente.cedula_rif}`, 20, y);
       y += lineHeight;
     }
-    
+
     ctx.fillText(`Tasa: ${formatearVenezolano(tasaCambio)} Bs/$`, 20, y);
     y += lineHeight * 2;
-    
+
     // Línea separadora
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 1;
@@ -1300,63 +1507,63 @@ const generarImagenFallback = async (ventaData, codigoVenta, tasaCambio, descuen
     ctx.lineTo(canvas.width - 20, y);
     ctx.stroke();
     y += lineHeight;
-    
+
     // Productos
     ctx.font = 'bold 12px Arial';
     ctx.fillText('PRODUCTOS:', 20, y);
     y += lineHeight;
-    
+
     ctx.font = '11px Arial';
-    
+
     ventaData.items.forEach(item => {
       const descripcion = `${item.cantidad}× ${item.descripcion}`;
       const precio = `${formatearVenezolano(item.cantidad * item.precio_unitario * tasaCambio)} Bs`;
-      
+
       // Texto a la izquierda
       ctx.textAlign = 'left';
       ctx.fillText(descripcion.substring(0, 35), 20, y);
-      
+
       // Precio a la derecha
       ctx.textAlign = 'right';
       ctx.fillText(precio, canvas.width - 20, y);
-      
+
       y += lineHeight;
     });
-    
+
     y += lineHeight;
-    
+
     // Línea separadora
     ctx.beginPath();
     ctx.moveTo(20, y);
     ctx.lineTo(canvas.width - 20, y);
     ctx.stroke();
     y += lineHeight;
-    
+
     // Total
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
-    
+
     const totalFinal = ventaData.totalBs - (descuento || 0);
     ctx.fillText(`TOTAL: ${formatearVenezolano(totalFinal)} Bs`, canvas.width / 2, y);
     y += lineHeight;
-    
+
     ctx.font = '12px Arial';
     ctx.fillText(`En USD: $${(totalFinal / tasaCambio).toFixed(2)}`, canvas.width / 2, y);
     y += lineHeight * 2;
-    
+
     // Footer
     ctx.font = '10px Arial';
     ctx.fillStyle = '#666666';
     ctx.fillText('Gracias por su compra', canvas.width / 2, y);
     y += lineHeight;
     ctx.fillText(' Enviado por WhatsApp', canvas.width / 2, y);
-    
+
     // Convertir a base64
     const imagenBase64 = canvas.toDataURL('image/png', 0.9);
-    
+
     console.log(' Imagen fallback generada exitosamente');
     return imagenBase64;
-    
+
   } catch (error) {
     console.error(' Error en imagen fallback:', error);
     throw new Error('No se pudo generar la imagen para WhatsApp');
@@ -1367,7 +1574,7 @@ const generarImagenFallback = async (ventaData, codigoVenta, tasaCambio, descuen
 export const descargarPDF = async (ventaData, codigoVenta, tasaCambio, descuento = 0) => {
   try {
     const pdfBlob = await generarPDFFactura(ventaData, codigoVenta, tasaCambio, descuento);
-    
+
     // Crear enlace de descarga
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
@@ -1398,18 +1605,18 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
       tieneLinkSeguimiento: !!linkSeguimiento,
       usuario: usuario?.nombre || 'N/A'
     });
-    
+
     // Validar que el servicio existe
     if (!servicio) {
       console.error('❌ [printUtils] ERROR: servicio es null o undefined');
       throw new Error('Servicio no válido para imprimir');
     }
-    
+
     if (!servicio.id) {
       console.error('❌ [printUtils] ERROR: servicio no tiene ID');
       throw new Error('Servicio no tiene ID válido');
     }
-    
+
     // Si no hay ticketHTML, solicitarlo al backend
     if (!servicio.ticketHTML && servicio.id) {
       console.log('📥 [printUtils] No hay ticketHTML en el servicio, solicitando al backend...');
@@ -1418,7 +1625,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
         const { api } = await import('../config/api');
         console.log('📡 [printUtils] Realizando petición GET a /servicios/' + servicio.id + '/ticket?tipo=cliente');
         const response = await api.get(`/servicios/${servicio.id}/ticket?tipo=cliente`);
-        
+
         console.log('📥 [printUtils] Respuesta del backend:', {
           success: response.data?.success,
           tieneData: !!response.data?.data,
@@ -1427,7 +1634,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
           tieneQRCode: !!response.data?.data?.qrCode,
           tieneLinkSeguimiento: !!response.data?.data?.linkSeguimiento
         });
-        
+
         if (response.data.success && response.data.data) {
           servicio.ticketHTML = response.data.data.ticketHTML;
           servicio.ticketHTMLInterno = response.data.data.ticketHTMLInterno;
@@ -1458,7 +1665,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
         throw new Error('No se pudo obtener el ticket del servicio: ' + (error.message || 'Error desconocido'));
       }
     }
-    
+
     // Si el backend ya generó el HTML, usarlo directamente
     if (servicio.ticketHTML) {
       console.log('✅ [printUtils] TicketHTML disponible, preparando impresión...');
@@ -1467,7 +1674,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
         length: contenidoHTML.length,
         preview: contenidoHTML.substring(0, 300) + '...'
       });
-      
+
       // Si hay QR code, insertarlo en el HTML si hay placeholder
       let htmlConQR = contenidoHTML;
       const tieneQRPlaceholder = contenidoHTML.includes('qr-code-placeholder');
@@ -1476,7 +1683,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
         tieneQRPlaceholder,
         qrCodeLength: qrCode?.length || 0
       });
-      
+
       if (qrCode && tieneQRPlaceholder) {
         console.log('🔄 [printUtils] Insertando QR Code en HTML...');
         htmlConQR = contenidoHTML.replace(
@@ -1495,10 +1702,10 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
       } else if (qrCode && !tieneQRPlaceholder) {
         console.log('⚠️ [printUtils] Hay QR Code pero no hay placeholder en el HTML');
       }
-      
+
       // 🆕 IMPRIMIR TICKET DEL CLIENTE PRIMERO
       console.log('🪟 [printUtils] Abriendo ventana de impresión...');
-      
+
       // 🆕 Asegurar que el modal no esté bloqueando
       const modalElement = document.querySelector('[data-procesando-modal="true"]');
       if (modalElement) {
@@ -1506,9 +1713,9 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
         modalElement.style.zIndex = '1'; // Reducir z-index temporalmente
         modalElement.style.pointerEvents = 'none'; // Deshabilitar eventos del modal
       }
-      
+
       const ventanaImpresionCliente = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
-      
+
       if (!ventanaImpresionCliente) {
         console.error('❌ [printUtils] ERROR: No se pudo abrir la ventana de impresión');
         // Restaurar modal si falla
@@ -1518,14 +1725,14 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
         }
         throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
       }
-      
+
       console.log('✅ [printUtils] Ventana de impresión abierta, escribiendo contenido HTML...');
       console.log('📝 [printUtils] HTML a escribir (primeros 500 caracteres):', htmlConQR.substring(0, 500));
-      
+
       ventanaImpresionCliente.document.write(htmlConQR);
       ventanaImpresionCliente.document.close();
       console.log('✅ [printUtils] Contenido HTML escrito en ventana');
-      
+
       // 🆕 Restaurar modal después de abrir la ventana
       if (modalElement) {
         setTimeout(() => {
@@ -1534,10 +1741,10 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
           console.log('👁️ [printUtils] Modal restaurado después de abrir ventana');
         }, 500);
       }
-      
+
       // Bandera para evitar impresión duplicada del ticket interno
       let ticketInternoImpreso = false;
-      
+
       const imprimirTicketInterno = () => {
         console.log('🖨️ [printUtils] imprimirTicketInterno llamado');
         // Evitar impresión duplicada
@@ -1546,13 +1753,13 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
           return;
         }
         ticketInternoImpreso = true;
-        
+
         // Cerrar ventana del cliente si aún está abierta
         if (!ventanaImpresionCliente.closed) {
           console.log('🔒 [printUtils] Cerrando ventana del cliente...');
           ventanaImpresionCliente.close();
         }
-        
+
         // Imprimir ticket interno inmediatamente si existe
         if (servicio.ticketHTMLInterno) {
           console.log('✅ [printUtils] Ticket interno disponible, preparando impresión...');
@@ -1561,12 +1768,12 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
           setTimeout(() => {
             console.log('🪟 [printUtils] Abriendo ventana para ticket interno...');
             const ventanaImpresionInterno = window.open('', '_blank', 'width=302,height=200,scrollbars=yes');
-            
+
             if (ventanaImpresionInterno) {
               console.log('✅ [printUtils] Ventana de ticket interno abierta, escribiendo contenido...');
               ventanaImpresionInterno.document.write(servicio.ticketHTMLInterno);
               ventanaImpresionInterno.document.close();
-              
+
               ventanaImpresionInterno.onload = () => {
                 console.log('✅ [printUtils] Ticket interno cargado, imprimiendo...');
                 setTimeout(() => {
@@ -1585,7 +1792,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
           console.log('ℹ️ [printUtils] No hay ticket interno para imprimir');
         }
       };
-      
+
       ventanaImpresionCliente.onload = () => {
         console.log('✅ [printUtils] Ventana de impresión cargada, esperando 500ms antes de imprimir...');
         setTimeout(() => {
@@ -1593,7 +1800,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
           try {
             ventanaImpresionCliente.print();
             console.log('✅ [printUtils] window.print() ejecutado exitosamente');
-            
+
             // 🆕 DESPUÉS DE IMPRIMIR EL TICKET DEL CLIENTE, IMPRIMIR EL TICKET INTERNO INMEDIATAMENTE
             // Usar el evento afterprint para detectar cuando terminó la impresión del cliente
             console.log('👂 [printUtils] Registrando listener para evento afterprint...');
@@ -1601,7 +1808,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
               console.log('📄 [printUtils] Evento afterprint detectado, imprimiendo ticket interno...');
               imprimirTicketInterno();
             }, { once: true });
-            
+
             // Fallback: si afterprint no funciona, usar timeout
             setTimeout(() => {
               if (!ticketInternoImpreso) {
@@ -1615,7 +1822,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
           }
         }, 500);
       };
-      
+
       // Fallback si onload no se dispara
       setTimeout(() => {
         if (ventanaImpresionCliente.document.readyState === 'complete') {
@@ -1623,11 +1830,11 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
           ventanaImpresionCliente.print();
         }
       }, 1000);
-      
+
       console.log('✅ [printUtils] Ventana de impresión térmica configurada correctamente');
       return;
     }
-    
+
     // Si no hay HTML del backend, generar uno básico
     console.warn('⚠️ [printUtils] No hay HTML del ticket del backend');
     console.warn('⚠️ [printUtils] Estado del servicio:', {
@@ -1636,7 +1843,7 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
       servicioCompleto: servicio
     });
     toast.warning('Generando ticket básico (sin QR)', { duration: 3000 });
-    
+
   } catch (error) {
     console.error('❌ [printUtils] ========== ERROR EN IMPRESIÓN ==========');
     console.error('❌ [printUtils] Error completo:', error);
@@ -1652,4 +1859,447 @@ export const imprimirTicketServicio = async (servicio, usuario, linkSeguimiento,
     toast.error('Error al imprimir ticket: ' + error.message);
     throw error;
   }
+};
+
+// 🆕 GENERAR HTML PARA PEDIDOS (TÉRMICA 80MM)
+// DEPRECATED
+const generarReciboPedidoHTML_OLD2 = (pedido, tasaCambio) => {
+  const fechaActual = new Date(pedido.fecha || Date.now()).toLocaleDateString('es-ES', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+
+  // Cálculos de montos
+  const totalUsd = parseFloat(pedido.totalUsd || 0);
+  const montoAnticipo = parseFloat(pedido.montoAnticipo || 0);
+  const montoPendiente = parseFloat(pedido.montoPendiente || 0);
+  const descuento = parseFloat(pedido.descuento || 0);
+
+  // Determinar estado de pago
+  let estadoPago = 'PENDIENTE';
+  if (pedido.pagado) estadoPago = 'PAGADO';
+  else if (montoAnticipo > 0) estadoPago = 'ANTICIPO';
+
+  return `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+                <title>Pedido #${pedido.numero}</title>
+                <style>
+                  @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap');
+                  @page {size: 80mm auto; margin: 0; }
+                  body {
+                    width: 80mm;
+                  font-family: 'Roboto Mono', monospace;
+                  font-size: 11px;
+                  line-height: 1.2;
+                  margin: 0;
+                  padding: 8px;
+                  background: white;
+                  color: #000;
+            }
+                  .center {text - align: center; }
+                  .col-left {text - align: left; }
+                  .col-right {text - align: right; }
+                  .bold {font - weight: 700; }
+                  .title {font - size: 14px; font-weight: 700; margin: 4px 0; }
+                  .subtitle {font - size: 10px; font-weight: 500; }
+                  .separator {border - top: 1px dashed #000; margin: 4px 0; width: 100%; }
+                  .thick-separator {border - top: 2px solid #000; margin: 6px 0; width: 100%; }
+                  .item-row {display: flex; margin: 2px 0; align-items: flex-start; }
+                  .qty {width: 10%; text-align: center; font-weight: 700; }
+                  .desc {width: 60%; font-size: 10px; }
+                  .price {width: 30%; text-align: right; font-weight: 700; }
+                  .total-section {
+                    background: #fff;
+                  padding: 4px 0;
+                  border-top: 1px solid #000;
+                  margin-top: 4px;
+            }
+                  .row {display: flex; justify-content: space-between; }
+                </style>
+            </head>
+            <body>
+              <div class="center">
+                <img src="/termico.png" alt="Logo" style="width: 60px; height: 60px; margin-bottom: 4px;" onerror="this.style.display='none'" />
+                <div class="title">ELECTRO SHOP MORANDIN</div>
+                <div class="subtitle">RIF: J-405903333</div>
+                <div class="subtitle">PEDIDO DE VENTA</div>
+              </div>
+
+              <div class="thick-separator"></div>
+
+              <div class="bold">Nro Pedido: #${pedido.numero}</div>
+              <div>Fecha: ${fechaActual}</div>
+              <div>Cliente: ${pedido.cliente?.nombre || 'General'}</div>
+              ${pedido.cliente?.telefono ? `<div>Tel: ${pedido.cliente.telefono}</div>` : ''}
+              <div>Vendedor: ${pedido.usuario?.nombre || 'Sistema'}</div>
+
+              <div class="separator"></div>
+
+              <div style="display: flex; font-weight: bold; font-size: 10px; margin-bottom: 2px;">
+                <div style="width: 10%; text-align: center;">Cant</div>
+                <div style="width: 60%;">Descripción</div>
+                <div style="width: 30%; text-align: right;">Total</div>
+              </div>
+
+              ${pedido.items.map(item => `
+            <div class="item-row">
+                <div class="qty">${item.cantidad}</div>
+                <div class="desc">
+                    ${item.descripcion}
+                    <div style="font-size: 9px; color: #333;">$${parseFloat(item.precioUnitario).toFixed(2)} c/u</div>
+                </div>
+                <div class="price">$${(item.cantidad * item.precioUnitario).toFixed(2)}</div>
+            </div>
+        `).join('')}
+
+              <div class="thick-separator"></div>
+
+              <div class="total-section">
+                <div class="row">
+                  <span>Subtotal USD:</span>
+                  <span>$${(totalUsd + descuento).toFixed(2)}</span>
+                </div>
+                ${descuento > 0 ? `
+            <div class="row">
+                <span>Descuento:</span>
+                <span>-$${descuento.toFixed(2)}</span>
+            </div>
+            ` : ''}
+                <div class="row bold" style="font-size: 13px; margin: 4px 0;">
+                  <span>TOTAL:</span>
+                  <span>$${totalUsd.toFixed(2)}</span>
+                </div>
+                <div class="row" style="font-size: 11px;">
+                  <span>En Bolívares:</span>
+                  <span>Bs. ${(totalUsd * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <div class="separator"></div>
+              <div class="row bold">
+                <span>Estado:</span>
+                <span>${estadoPago}</span>
+              </div>
+
+              ${montoAnticipo > 0 ? `
+        <div class="row">
+            <span>Abonado:</span>
+            <span>$${montoAnticipo.toFixed(2)}</span>
+        </div>
+        <div class="row bold" style="margin-top: 2px;">
+            <span>PENDIENTE:</span>
+            <span>$${montoPendiente.toFixed(2)}</span>
+        </div>
+        ` : ''}
+
+              ${pedido.pagos && pedido.pagos.length > 0 ? `
+        <div class="separator"></div>
+        <div class="bold" style="font-size: 10px;">DETALLE PAGOS:</div>
+        ${pedido.pagos.map(p => `
+            <div class="row" style="font-size: 9px;">
+                <span>${p.metodo.replace('_', ' ').toUpperCase()}:</span>
+                <span>${p.moneda === 'bs' ? 'Bs' : '$'} ${parseFloat(p.monto).toFixed(2)}</span>
+            </div>
+        `).join('')}
+        ` : ''}
+
+              <div class="center" style="margin-top: 15px; font-size: 10px;">
+                *** COMPROBANTE DE PEDIDO ***<br>
+                  No válido como factura fiscal<br>
+                    Válido por 3 días
+                  </div>
+
+                  <script>
+                    window.onload = function() {window.print(); window.close(); }
+                  </script>
+                </body>
+              </html>
+              `;
+};
+
+// 🆕 GENERAR MENSAJE WHATSAPP DETALLADO
+// DEPRECATED
+const generarMensajeWhatsAppPedido_OLD2 = (pedido) => {
+  const totalUsd = parseFloat(pedido.totalUsd || 0);
+  const montoAnticipo = parseFloat(pedido.montoAnticipo || 0);
+  const montoPendiente = parseFloat(pedido.montoPendiente || 0);
+
+  let estadoIcon = '⏳';
+  if (pedido.pagado) estadoIcon = '✅';
+  else if (montoAnticipo > 0) estadoIcon = '💰';
+
+  let mensaje = `*PEDIDO #${pedido.numero}* ${estadoIcon}\n`;
+  mensaje += `📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n`;
+  mensaje += `👤 Cliente: ${pedido.cliente?.nombre || 'Cliente'}\n`;
+
+  mensaje += `\n📋 *DETALLE DEL PEDIDO:*\n`;
+  pedido.items.forEach(item => {
+    mensaje += `▫️ ${item.cantidad}x ${item.descripcion}\n`;
+  });
+
+  mensaje += `\n💵 *RESUMEN FINANCIERO:*\n`;
+  mensaje += `*TOTAL: $${totalUsd.toFixed(2)}*\n`;
+
+  if (pedido.pagado) {
+    mensaje += `✅ *PAGADO COMPLETO*\n`;
+  } else {
+    if (montoAnticipo > 0) {
+      mensaje += `💰 Abonado: $${montoAnticipo.toFixed(2)}\n`;
+    }
+    mensaje += `🔴 *PENDIENTE: $${montoPendiente.toFixed(2)}*\n`;
+  }
+
+  // Agregar detalle de pagos realizados
+  if (pedido.pagos && pedido.pagos.length > 0) {
+    mensaje += `\n💳 *PAGOS REALIZADOS:*\n`;
+    pedido.pagos.forEach(p => {
+      const moneda = p.moneda === 'bs' ? 'Bs' : '$';
+      mensaje += `▫️ ${p.metodo.replace(/_/g, ' ').toUpperCase()}: ${moneda} ${parseFloat(p.monto).toFixed(2)}\n`;
+    });
+  }
+
+  if (pedido.observaciones) {
+    mensaje += `\n📝 Nota: ${pedido.observaciones}\n`;
+  }
+
+  mensaje += `\nGracias por su compra en Electro Shop Morandin! 🚀`;
+
+  return encodeURIComponent(mensaje);
+};
+
+// ==========================================
+// 🆕 IMPLEMENTACIONES FINALES Y CORREGIDAS
+// ==========================================
+
+// 🆕 GENERAR HTML PARA PEDIDOS (TÉRMICA 80MM) - VERSIÓN FINAL
+export const generarReciboPedidoHTML = (pedido, tasaCambioInput) => {
+  const tasaCambio = parseFloat(tasaCambioInput || 0);
+  const fechaActual = new Date(pedido.fecha || Date.now()).toLocaleDateString('es-ES', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
+
+  // Cálculos de montos
+  const totalUsd = parseFloat(pedido.totalUsd || 0);
+  const montoAnticipo = parseFloat(pedido.montoAnticipo || 0);
+  const montoPendiente = parseFloat(pedido.montoPendiente || 0);
+  const descuento = parseFloat(pedido.descuento || 0);
+
+  // Determinar estado de pago
+  let estadoPago = 'PENDIENTE DE PAGO';
+  if (pedido.pagado) estadoPago = 'PAGADO';
+  else if (montoAnticipo > 0) estadoPago = 'ANTICIPO';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Pedido #${pedido.numero}</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap');
+            @page { size: 80mm auto; margin: 0; }
+            body {
+                width: 80mm;
+                font-family: 'Roboto Mono', monospace;
+                font-size: 11px;
+                line-height: 1.2;
+                margin: 0;
+                padding: 8px;
+                background: white;
+                color: #000;
+            }
+            .center { 
+                text-align: center; 
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                width: 100%;
+            }
+            .col-left { text-align: left; }
+            .col-right { text-align: right; }
+            .bold { font-weight: 700; }
+            .title { font-size: 14px; font-weight: 700; margin: 4px 0; }
+            .subtitle { font-size: 10px; font-weight: 500; }
+            .separator { border-top: 1px dashed #000; margin: 4px 0; width: 100%; }
+            .thick-separator { border-top: 2px solid #000; margin: 6px 0; width: 100%; }
+            .item-row { display: flex; margin: 2px 0; align-items: flex-start; }
+            .qty { width: 10%; text-align: center; font-weight: 700; }
+            .desc { width: 60%; font-size: 10px; }
+            .price { width: 30%; text-align: right; font-weight: 700; }
+            .total-section { 
+                background: #fff; 
+                padding: 4px 0; 
+                border-top: 1px solid #000; 
+                margin-top: 4px;
+            }
+            .row { display: flex; justify-content: space-between; }
+        </style>
+    </head>
+    <body>
+        <div class="center">
+            <img src="/termico.png" alt="Logo" style="width: 60px; height: 60px; margin-bottom: 4px;" onerror="this.style.display='none'" />
+            <div class="title">ELECTRO SHOP MORANDIN</div>
+            <div class="subtitle">RIF: J-405903333</div>
+            <div class="subtitle">PEDIDO DE VENTA</div>
+        </div>
+        
+        <div class="thick-separator"></div>
+        
+        <div class="row">
+            <span class="bold">Nro Pedido:</span>
+            <span class="bold">#${pedido.numero}</span>
+        </div>
+        <div class="row">
+            <span>Fecha:</span>
+            <span>${fechaActual}</span>
+        </div>
+        <div class="row">
+            <span>Tasa Cambio:</span>
+            <span>Bs ${tasaCambio ? tasaCambio.toFixed(2) : '-'}</span>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div><span class="bold">Cliente:</span> ${pedido.cliente?.nombre || 'General'}</div>
+        ${pedido.cliente?.telefono ? `<div>Tel: ${pedido.cliente.telefono}</div>` : ''}
+        <div><span class="bold">Vendedor:</span> ${pedido.usuario?.nombre || 'Sistema'}</div>
+        
+        <div class="separator"></div>
+        
+        <div style="display: flex; font-weight: bold; font-size: 10px; margin-bottom: 2px;">
+            <div style="width: 10%; text-align: center;">Cant</div>
+            <div style="width: 60%;">Descripción</div>
+            <div style="width: 30%; text-align: right;">Total</div>
+        </div>
+        
+        ${pedido.items.map(item => `
+            <div class="item-row">
+                <div class="qty">${item.cantidad}</div>
+                <div class="desc">
+                    ${item.descripcion}
+                    <div style="font-size: 9px; color: #333;">$${parseFloat(item.precioUnitario).toFixed(2)} c/u</div>
+                </div>
+                <div class="price">$${(item.cantidad * item.precioUnitario).toFixed(2)}</div>
+            </div>
+        `).join('')}
+        
+        <div class="thick-separator"></div>
+        
+        <div class="total-section">
+            <div class="row">
+                <span>Subtotal USD:</span>
+                <span>$${(totalUsd + descuento).toFixed(2)}</span>
+            </div>
+            ${descuento > 0 ? `
+            <div class="row">
+                <span>Descuento:</span>
+                <span>-$${descuento.toFixed(2)}</span>
+            </div>
+            ` : ''}
+            <div class="row bold" style="font-size: 13px; margin: 4px 0;">
+                <span>TOTAL:</span>
+                <span>$${totalUsd.toFixed(2)}</span>
+            </div>
+            <div class="row" style="font-size: 11px;">
+                <span>En Bolívares:</span>
+                <span>Bs. ${(totalUsd * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+            </div>
+        </div>
+        
+        <div class="separator"></div>
+        <div class="row bold">
+            <span>Estado:</span>
+            <span>${estadoPago}</span>
+        </div>
+        
+        ${montoAnticipo > 0 ? `
+        <div class="row">
+            <span>Abonado:</span>
+            <span>$${montoAnticipo.toFixed(2)}</span>
+        </div>
+        <div class="row bold" style="margin-top: 2px;">
+            <span>PENDIENTE:</span>
+            <span>$${montoPendiente.toFixed(2)}</span>
+        </div>
+        ` : ''}
+        
+        ${pedido.pagos && pedido.pagos.length > 0 ? `
+        <div class="separator"></div>
+        <div class="bold" style="font-size: 10px;">MÉTODOS DE PAGO:</div>
+        ${pedido.pagos.map(p => `
+            <div class="row" style="font-size: 9px;">
+                <span>${p.metodo ? p.metodo.replace(/_/g, ' ').toUpperCase() : 'PAGO'}:</span>
+                <span>${p.moneda === 'bs' ? 'Bs' : '$'} ${parseFloat(p.monto).toFixed(2)}</span>
+            </div>
+        `).join('')}
+        ` : ''}
+        
+        <div class="center" style="margin-top: 15px; font-size: 10px;">
+            *** COMPROBANTE DE PEDIDO ***<br>
+            No válido como factura fiscal
+        </div>
+        
+        <script>
+            window.onload = function() { window.print(); window.close(); }
+        </script>
+    </body>
+    </html>
+  `;
+};
+
+// 🆕 GENERAR MENSAJE WHATSAPP DETALLADO - VERSIÓN FINAL
+export const generarMensajeWhatsAppPedido = (pedido) => {
+  const totalUsd = parseFloat(pedido.totalUsd || 0);
+  const montoAnticipo = parseFloat(pedido.montoAnticipo || 0);
+  const montoPendiente = parseFloat(pedido.montoPendiente || 0);
+
+  let estadoIcon = '⏳';
+  if (pedido.pagado) estadoIcon = '✅';
+  else if (montoAnticipo > 0) estadoIcon = '💰';
+
+  let mensaje = `*PEDIDO #${pedido.numero}* ${estadoIcon}\n`;
+  mensaje += `📅 Fecha: ${new Date().toLocaleDateString('es-VE')}\n`;
+  mensaje += `👤 Cliente: ${pedido.cliente?.nombre || 'Cliente'}\n`;
+
+  mensaje += `\n📋 *DETALLE DEL PEDIDO:*\n`;
+  pedido.items.forEach(item => {
+    mensaje += `▫️ ${item.cantidad}x ${item.descripcion}\n`;
+  });
+
+  mensaje += `\n💵 *RESUMEN FINANCIERO:*\n`;
+  mensaje += `*TOTAL: $${totalUsd.toFixed(2)}*\n`;
+
+  if (pedido.pagado) {
+    mensaje += `✅ *PAGADO COMPLETO*\n`;
+  } else if (montoAnticipo > 0) {
+    mensaje += `💰 Abonado: $${montoAnticipo.toFixed(2)}\n`;
+    mensaje += `🔴 *PENDIENTE: $${montoPendiente.toFixed(2)}*\n`;
+  } else {
+    // Caso diferido / pago al final
+    mensaje += `🔴 *PENDIENTE DE PAGO*\n`;
+  }
+
+  // Agregar detalle de pagos realizados
+  if (pedido.pagos && pedido.pagos.length > 0) {
+    mensaje += `\n💳 *MÉTODOS DE PAGO:*\n`;
+    pedido.pagos.forEach(p => {
+      if (p.metodo && p.monto > 0) {
+        const moneda = p.moneda === 'bs' ? 'Bs' : '$';
+        mensaje += `▫️ ${p.metodo.replace(/_/g, ' ').toUpperCase()}: ${moneda} ${parseFloat(p.monto).toFixed(2)}\n`;
+      }
+    });
+  }
+
+  if (pedido.observaciones) {
+    mensaje += `\n📝 Nota: ${pedido.observaciones}\n`;
+  }
+
+  mensaje += `\nGracias por su compra en Electro Shop Morandin! 🚀\n`;
+  mensaje += `Visítanos en: www.electroshopve.com`;
+
+  return encodeURIComponent(mensaje);
 };
