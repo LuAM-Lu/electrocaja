@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';
 import { useMontosEnCaja, formatearBolivares, formatearDolares } from '../hooks/useMontosEnCaja';
 import { useNotificacionesStore } from '../store/notificacionesStore';
+import { imprimirTicketArqueo } from '../utils/printUtils'; // Importación correcta
 import toast from 'react-hot-toast';
 import { api } from '../config/api';
 
@@ -22,7 +23,7 @@ const ArqueoModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [fase, setFase] = useState('conteo'); // conteo, diferencia, autorizacion, completado
   const [bloqueandoUsuarios, setBloqueandoUsuarios] = useState(false);
-  
+
   // Estados del arqueo (3 MONEDAS)
   const [arqueo, setArqueo] = useState({
     efectivo_bs: '',
@@ -34,13 +35,13 @@ const ArqueoModal = ({ isOpen, onClose }) => {
   // Estados de autorización
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [adminAutorizado, setAdminAutorizado] = useState(null);
-    // 🆕 Estados para observaciones desplegables
+  // 🆕 Estados para observaciones desplegables
   const [observacionesAbiertas, setObservacionesAbiertas] = useState(false);
 
   // Estados de cámara (COPIADO DE ABRIRCAJAMODAL)
   const [cameraStatus, setCameraStatus] = useState('initializing');
   const [fotoEvidencia, setFotoEvidencia] = useState(null);
-  
+
   // Refs para cámara
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -56,7 +57,7 @@ const ArqueoModal = ({ isOpen, onClose }) => {
       initializeCamera();
       bloquearUsuarios();
     }
-    
+
     return () => {
       cleanupCamera();
       if (bloqueandoUsuarios) {
@@ -68,7 +69,7 @@ const ArqueoModal = ({ isOpen, onClose }) => {
   const initializeCamera = async () => {
     try {
       setCameraStatus('initializing');
-      
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -77,7 +78,7 @@ const ArqueoModal = ({ isOpen, onClose }) => {
         },
         audio: false
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
@@ -108,21 +109,21 @@ const ArqueoModal = ({ isOpen, onClose }) => {
         }
 
         setCameraStatus('capturing');
-        
+
         const video = videoRef.current;
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
-        
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        
+
         console.log('📸 Evidencia de arqueo capturada silenciosamente');
         setCameraStatus('ready');
         resolve(imageData);
-        
+
       } catch (error) {
         console.error('❌ Error capturando evidencia:', error);
         setCameraStatus('error');
@@ -168,18 +169,18 @@ const ArqueoModal = ({ isOpen, onClose }) => {
   // ===================================
   if (!isOpen || !cajaActual) return null;
 
- // ✅ USAR HOOK UNIFICADO - Montos esperados calculados reactivamente
+  // ✅ USAR HOOK UNIFICADO - Montos esperados calculados reactivamente
   const esperados = {
     efectivo_bs: montosReales.efectivoBs,
     efectivo_usd: montosReales.efectivoUsd,
     pago_movil: montosReales.pagoMovil
   };;
-  
+
   const calcularDiferencias = () => {
     const contadoBs = parseFloat(arqueo.efectivo_bs) || 0;
     const contadoUsd = parseFloat(arqueo.efectivo_usd) || 0;
     const contadoPagoMovil = parseFloat(arqueo.pago_movil) || 0;
-    
+
     return {
       bs: contadoBs - esperados.efectivo_bs,
       usd: contadoUsd - esperados.efectivo_usd,
@@ -190,15 +191,22 @@ const ArqueoModal = ({ isOpen, onClose }) => {
   const diferencias = calcularDiferencias();
   const hayDiferencias = Math.abs(diferencias.bs) > 0.01 || Math.abs(diferencias.usd) > 0.01 || Math.abs(diferencias.pagoMovil) > 0.01;
 
- // ✅ Usar función unificada del hook
+  // ✅ Usar función unificada del hook
   // ===================================
   // 🎯 MANEJADORES DE EVENTOS
   // ===================================
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!arqueo.efectivo_bs || !arqueo.efectivo_usd || !arqueo.pago_movil) {
       toast.error('Todos los conteos son obligatorios');
+      return;
+    }
+
+    // 🆕 VALIDACIÓN DE OBSERVACIONES SI HAY DIFERENCIAS
+    if (hayDiferencias && (!arqueo.observaciones || arqueo.observaciones.trim().length < 5)) {
+      toast.error('Debe justificar las diferencias en Observaciones');
+      setObservacionesAbiertas(true); // Abrir el panel de observaciones para que lo vea
       return;
     }
 
@@ -210,7 +218,7 @@ const ArqueoModal = ({ isOpen, onClose }) => {
       console.log('🚨 Diferencias críticas detectadas en arqueo:', diferencias);
       setFase('diferencia');
       bloquearPorDiferencia(diferencias);
-      
+
       // Notificación crítica a todos los usuarios
       addNotificacion({
         tipo: 'diferencia_caja',
@@ -230,7 +238,7 @@ const ArqueoModal = ({ isOpen, onClose }) => {
     setAdminAutorizado(tokenData);
     setShowQRScanner(false);
     setFase('completado');
-    
+
     // Proceder con ajustes automáticos
     await registrarAjustes();
     await completarArqueo();
@@ -350,13 +358,13 @@ const ArqueoModal = ({ isOpen, onClose }) => {
       }
 
       // WhatsApp solo si hay diferencias importantes (opcional)
-    if (hayDiferencias) {
-      try {
-        await enviarNotificacionWhatsApp();
-      } catch (error) {
-        console.warn('⚠️ Error en WhatsApp, continuando con arqueo...');
+      if (hayDiferencias) {
+        try {
+          await enviarNotificacionWhatsApp();
+        } catch (error) {
+          console.warn('⚠️ Error en WhatsApp, continuando con arqueo...');
+        }
       }
-    }
 
       // Notificación a todos los usuarios del sistema
       addNotificacion({
@@ -367,11 +375,29 @@ const ArqueoModal = ({ isOpen, onClose }) => {
         datos: { usuario: usuario?.nombre, diferencias: hayDiferencias ? diferencias : null }
       });
 
+      // 🖨️ IMPRIMIR TICKET DE ARQUEO
+      try {
+        console.log('🖨️ Iniciando impresión de ticket de arqueo...');
+        const datosImpresion = {
+          caja: cajaActual,
+          usuario: usuario || { nombre: 'Sistema' },
+          esperados,
+          reales: arqueo,
+          diferencias,
+          observaciones: arqueo.observaciones,
+          autorizadoPor: adminAutorizado?.nombre
+        };
+        await imprimirTicketArqueo(datosImpresion);
+      } catch (printError) {
+        console.error('⚠️ Error al imprimir ticket:', printError);
+        toast.error('Arqueo guardado, pero falló la impresión');
+      }
+
       // Desbloquear usuarios
       desbloquearUsuarios();
 
       toast.success('✅ Arqueo completado exitosamente');
-      
+
       setTimeout(() => {
         onClose();
         resetModal();
@@ -387,8 +413,7 @@ const ArqueoModal = ({ isOpen, onClose }) => {
   };
 
   const enviarNotificacionWhatsApp = async () => {
-  const mensajeWhatsApp = `ELECTRO CAJA - ARQUEO CRÍTICO
-
+    const mensajeWhatsApp = `ELECTRO CAJA - ARQUEO CRÍTICO
 Fecha: ${new Date().toLocaleDateString('es-VE')}
 Hora: ${new Date().toLocaleTimeString('es-VE')}
 Usuario: ${usuario?.nombre}
@@ -403,20 +428,20 @@ Evidencia fotográfica capturada automáticamente.
 
 Notificación automática del sistema Electro Caja`;
 
-  try {
-    console.log('📱 Intentando enviar WhatsApp de arqueo...');
-    await api.post('/whatsapp/enviar', {
-      numero: '+584120552931',
-      mensaje: mensajeWhatsApp
-    });
-    console.log('✅ Notificación WhatsApp de arqueo enviada');
-    toast.success('WhatsApp enviado al supervisor');
-  } catch (error) {
-    console.warn('⚠️ WhatsApp no disponible:', error.message);
-    toast.warning('Arqueo completado. WhatsApp no disponible.');
-    // NO FALLAR - Solo log de advertencia
-  }
-};
+    try {
+      console.log('📱 Intentando enviar WhatsApp de arqueo...');
+      await api.post('/whatsapp/enviar', {
+        numero: '+584120552931',
+        mensaje: mensajeWhatsApp
+      });
+      console.log('✅ Notificación WhatsApp de arqueo enviada');
+      toast.success('WhatsApp enviado al supervisor');
+    } catch (error) {
+      console.warn('⚠️ WhatsApp no disponible:', error.message);
+      toast.warning('Arqueo completado. WhatsApp no disponible.');
+      // NO FALLAR - Solo log de advertencia
+    }
+  };
 
   const resetModal = () => {
     setFase('conteo');
@@ -433,7 +458,7 @@ Notificación automática del sistema Electro Caja`;
       toast.warning('No se puede cancelar durante el proceso de arqueo crítico');
       return;
     }
-    
+
     desbloquearUsuarios();
     resetModal();
     onClose();
@@ -445,714 +470,438 @@ Notificación automática del sistema Electro Caja`;
   return (
     <>
       <div className="fixed inset-0 bg-orange-900/40 backdrop-blur-sm modal-backdrop flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 max-h-[95vh] flex flex-col overflow-hidden">
-          
-          {/* HEADER PREMIUM - 2 FILAS */}
-          <div className={`bg-gradient-to-r ${
-            fase === 'diferencia' ? 'from-red-500 to-red-600' :
+        <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 h-[90vh] flex flex-col overflow-hidden">
+
+          {/* HEADER PREMIUM COMPACTO - 1 FILA INDEPENDIENTE */}
+          <div className={`bg-gradient-to-r ${fase === 'diferencia' ? 'from-red-500 to-red-600' :
             fase === 'completado' ? 'from-green-500 to-green-600' :
-            'from-orange-500 to-orange-600'
-          } relative overflow-hidden flex-shrink-0`}>
+              'from-orange-500 to-orange-600'
+            } relative overflow-hidden flex-shrink-0 shadow-md z-20`}>
             {/* Efecto de brillo animado */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 animate-shimmer"></div>
-            
-            <div className="px-6 py-4 text-white relative flex gap-4">
-              {/* Icono que ocupa ambas filas */}
-              <div className="flex items-center justify-center flex-shrink-0">
-                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg shadow-lg flex items-center justify-center">
-                  {fase === 'diferencia' ? <AlertTriangle className="h-7 w-7" /> :
-                   fase === 'completado' ? <CheckCircle className="h-7 w-7" /> :
-                   <Calculator className="h-7 w-7" />}
+
+            <div className="px-5 py-3 text-white relative flex items-center justify-between gap-4">
+              {/* IZQUIERDA: Icono + Título */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg shadow-sm flex-shrink-0">
+                  {fase === 'diferencia' ? <AlertTriangle className="h-5 w-5" /> :
+                    fase === 'completado' ? <CheckCircle className="h-5 w-5" /> :
+                      <Calculator className="h-5 w-5" />}
                 </div>
+                <h2 className="text-lg font-bold leading-none tracking-tight truncate">
+                  {fase === 'diferencia' ? 'Diferencia Crítica' :
+                    fase === 'completado' ? 'Arqueo Finalizado' :
+                      'Arqueo de Caja'}
+                </h2>
               </div>
 
-              {/* Contenedor de las dos filas */}
-              <div className="flex-1 min-w-0">
-                {/* FILA 1: Título */}
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xl font-bold">
-                    {fase === 'diferencia' ? 'Diferencia Crítica Detectada' :
-                     fase === 'completado' ? 'Arqueo Completado' :
-                     'Arqueo Crítico de Caja'}
-                  </h2>
-                  
-                  {/* Botón cerrar */}
-                  <button 
-                    onClick={handleClose}
-                    className="bg-white/20 hover:bg-white/30 p-1.5 rounded-lg transition-colors disabled:opacity-50 shadow-sm"
-                    disabled={loading || fase === 'diferencia'}
-                    title="Cerrar"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+              {/* DERECHA: Datos + Botón Cerrar */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {/* Usuario Compacto - Oculto en móbiles muy pequeños */}
+                <div className="hidden sm:flex items-center gap-1.5 bg-black/10 px-3 py-1.5 rounded-full text-xs font-medium border border-white/10">
+                  <User className="h-3.5 w-3.5 opacity-80" />
+                  <span className="truncate max-w-[100px]">{usuario?.nombre}</span>
                 </div>
 
-                {/* FILA 2: Componentes */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Usuario */}
-                  <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-lg whitespace-nowrap border border-white/10">
-                    <User className="h-3.5 w-3.5 flex-shrink-0" />
-                    <span className="text-sm font-medium">{usuario?.nombre || 'Usuario'}</span>
-                    <span className="text-xs text-white/70">{usuario?.rol?.toUpperCase()}</span>
-                  </div>
-                  
-                  {/* Bloqueado y En Progreso - Combinado y Animado */}
-                  {fase === 'conteo' && (
-                    <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-lg whitespace-nowrap border border-white/10 animate-pulse">
-                      {bloqueandoUsuarios && (
-                        <>
-                          <Shield className="h-3.5 w-3.5 flex-shrink-0" />
-                          <span className="text-sm font-medium">Bloqueado</span>
-                          <span className="text-white/50 mx-0.5">•</span>
-                        </>
-                      )}
-                      <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse flex-shrink-0"></div>
-                      <span className="text-sm">En Progreso</span>
-                    </div>
-                  )}
-                  
-                  {/* Solo Bloqueado (si no está en fase de conteo) */}
-                  {fase !== 'conteo' && bloqueandoUsuarios && (
-                    <div className="flex items-center gap-1.5 bg-red-500/30 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-red-400/50 whitespace-nowrap">
-                      <Shield className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="text-sm font-medium">Bloqueado</span>
-                    </div>
-                  )}
-                  
-                  {/* Estado de cámara */}
-                  {fase === 'conteo' && cameraStatus === 'ready' && (
-                    <div className="flex items-center gap-1 bg-green-500/30 text-green-100 px-2 py-1 rounded-full text-xs border border-green-400/50 whitespace-nowrap">
-                      <Camera className="h-3 w-3 flex-shrink-0" />
-                      <span>Cámara OK</span>
-                    </div>
-                  )}
-                  {fase === 'conteo' && cameraStatus === 'error' && (
-                    <div className="flex items-center gap-1 bg-amber-500/30 text-amber-100 px-2 py-1 rounded-full text-xs border border-amber-400/50 whitespace-nowrap">
-                      <CameraOff className="h-3 w-3 flex-shrink-0" />
-                      <span>Sin cámara</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* CONTENIDO PRINCIPAL (CON SCROLL) */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {fase === 'conteo' && (
-              <form ref={formRef} onSubmit={handleSubmit}>
-                
-                {/* CONTEO CRÍTICO CON CARDS MEJORADAS */}
-                <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-5 mb-6">
-                  <h4 className="font-bold text-orange-900 mb-4 flex items-center">
-                    <Calculator className="h-5 w-5 mr-2" />
-                    Conteo Físico Obligatorio
-                    <span className="text-xs font-normal ml-2 bg-orange-200 text-orange-800 px-2 py-1 rounded-full">
-                      Crítico
-                    </span>
-                  </h4>
-                  <div className="text-sm text-orange-700 mb-4">
-                    Verifique cada monto cuidadosamente. Las diferencias requerirán autorización administrativa.
-                  </div>
-                
-                {/* RESUMEN COMPACTO ARQUEO */}
-                <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-3 mb-4 border border-orange-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <TrendingUp className="h-4 w-4 text-orange-600" />
-                      <span className="font-semibold text-orange-900 text-sm">Verificación completa obligatoria</span>
-                    </div>
-                    <div className="text-xs text-orange-600">Compare físicamente vs sistema</div>
-                  </div>
-                </div>
-
-                {/* 3 TARJETAS EN FILA */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                  
-                  {/* BOLÍVARES */}
-                  <div className="bg-white border-2 border-orange-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                        <Coins className="h-6 w-6 text-orange-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-orange-900 text-lg">Efectivo Bolívares</h4>
-                        <p className="text-orange-600 text-sm">Conteo físico obligatorio</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                        <div className="text-sm text-orange-600 mb-1 font-medium">Esperado (Sistema)</div>
-                        <div className="text-2xl font-bold text-orange-800">
-                          {formatearBolivares(esperados.efectivo_bs)} Bs
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-semibold text-orange-800 mb-2 flex items-center gap-2">
-                          <DollarSign className="h-4 w-4" />
-                          Contado Físicamente *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={arqueo.efectivo_bs}
-                          onChange={(e) => setArqueo(prev => ({ ...prev, efectivo_bs: e.target.value }))}
-                          placeholder="0.00"
-                          className="w-full px-4 py-3 border-2 border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg font-mono"
-                          required
-                        />
-                      </div>
-                      
-                      {arqueo.efectivo_bs && (
-                      <div className="p-2 bg-orange-50 rounded text-sm text-orange-700 text-center">
-                        Ingresado: {formatearBolivares(parseFloat(arqueo.efectivo_bs))} Bs
+                {/* Status Badges Compactos */}
+                {fase === 'conteo' && (
+                  <div className="flex items-center gap-2">
+                    {bloqueandoUsuarios && (
+                      <div className="flex items-center gap-1 bg-red-500/80 px-2 py-1 rounded-full text-xs font-bold shadow-sm animate-pulse whitespace-nowrap">
+                        <Shield className="h-3 w-3" />
+                        <span className="hidden md:inline">BLOQUEADO</span>
                       </div>
                     )}
-                    </div>
-                  </div>
-
-                  {/* 💵 DÓLARES */}
-                  <div className="bg-white border-2 border-green-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <DollarSign className="h-6 w-6 text-green-600" />
+                    {cameraStatus === 'ready' && (
+                      <div className="flex items-center gap-1 bg-emerald-500/80 px-2 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                        <Camera className="h-3 w-3" />
+                        <span className="hidden md:inline">REC</span>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-green-900 text-lg">Efectivo Dólares</h4>
-                        <p className="text-green-600 text-sm">Conteo físico obligatorio</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <div className="text-sm text-green-600 mb-1 font-medium">Esperado (Sistema)</div>
-                        <div className="text-2xl font-bold text-green-800">
-                          ${formatearDolares(esperados.efectivo_usd)}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
-                          <DollarSign className="h-4 w-4" />
-                          Contado Físicamente *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={arqueo.efectivo_usd}
-                          onChange={(e) => setArqueo(prev => ({ ...prev, efectivo_usd: e.target.value }))}
-                          placeholder="0.00"
-                          className="w-full px-4 py-3 border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg font-mono"
-                          required
-                        />
-                      </div>
-                      
-                      {arqueo.efectivo_usd && (
-                        <div className="p-2 bg-green-50 rounded text-sm text-green-700 text-center">
-                          Ingresado: ${formatearDolares(parseFloat(arqueo.efectivo_usd))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 📱 PAGO MÓVIL */}
-                  <div className="bg-white border-2 border-purple-200 rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                        <Smartphone className="h-6 w-6 text-purple-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-purple-900 text-lg">Pago Móvil</h4>
-                        <p className="text-purple-600 text-sm">Conteo digital obligatorio</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                        <div className="text-sm text-purple-600 mb-1 font-medium">Esperado (Sistema)</div>
-                        <div className="text-2xl font-bold text-purple-800">
-                          {formatearBolivares(esperados.pago_movil)} Bs
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-semibold text-purple-800 mb-2 flex items-center gap-2">
-                          <Smartphone className="h-4 w-4" />
-                          Contado Digitalmente *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={arqueo.pago_movil}
-                          onChange={(e) => setArqueo(prev => ({ ...prev, pago_movil: e.target.value }))}
-                          placeholder="0.00"
-                          className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg font-mono"
-                          required
-                        />
-                      </div>
-                      
-                      {arqueo.pago_movil && (
-                          <div className="p-2 bg-purple-50 rounded text-sm text-purple-700 text-center">
-                            Ingresado: {formatearBolivares(parseFloat(arqueo.pago_movil))} Bs
-                          </div>
-                        )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* OBSERVACIONES DESPLEGABLES */}
-                <div className="mb-6">
-                  <button
-                    type="button"
-                    onClick={() => setObservacionesAbiertas(!observacionesAbiertas)}
-                    className="w-full flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
-                  >
-                    <span className="font-medium text-slate-700 flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      Observaciones del Arqueo
-                    </span>
-                    {observacionesAbiertas ? (
-                      <ChevronUp className="h-4 w-4 text-slate-500" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-slate-500" />
                     )}
-                  </button>
-                  
-                  {observacionesAbiertas && (
-                    <div className="mt-3 p-4 border border-slate-200 rounded-lg bg-white">
-                      <textarea
-                        value={arqueo.observaciones}
-                        onChange={(e) => setArqueo(prev => ({ ...prev, observaciones: e.target.value }))}
-                        placeholder={`Agregue observaciones sobre el arqueo realizado por ${usuario?.nombre}...`}
-                        rows={3}
-                        className={`w-full px-3 py-2 border-2 rounded-lg focus:ring-2 resize-none text-sm transition-colors ${
-                          hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil
-                            ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50'
-                            : 'border-gray-300 focus:ring-orange-500 focus:border-orange-500'
-                        }`}
-                      />
-                      <div className={`mt-2 text-xs flex items-center gap-2 ${
-                        hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil
-                          ? 'text-red-600'
-                          : 'text-slate-500'
-                      }`}>
-                        {hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil ? (
-                          <>
-                            <AlertTriangle className="h-3 w-3" />
-                            <span>Las observaciones son importantes para el registro de ajustes automáticos.</span>
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="h-3 w-3" />
-                            <span>Estas observaciones se incluirán en el registro del arqueo.</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ALERTA DE DIFERENCIAS */}
-                {hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil && (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <AlertTriangle className="h-6 w-6 text-red-600" />
-                      <span className="font-bold text-red-800 text-lg">Diferencias Críticas Detectadas</span>
-                    </div>
-                    <div className="space-y-2 text-sm text-red-700">
-                      <div className="font-semibold">Se procederá con el protocolo de emergencia:</div>
-                      <div className="bg-red-100 p-3 rounded-lg space-y-1">
-                        {diferencias.bs !== 0 && (
-                          <div>• Bolívares: {diferencias.bs > 0 ? 'SOBRANTE' : 'FALTANTE'} de {formatearBolivares(Math.abs(diferencias.bs))} Bs</div>
-                        )}
-                        {diferencias.usd !== 0 && (
-                          <div>• Dólares: {diferencias.usd > 0 ? 'SOBRANTE' : 'FALTANTE'} de ${formatearDolares(Math.abs(diferencias.usd))}</div>
-                        )}
-                        {diferencias.pagoMovil !== 0 && (
-                          <div>• Pago Móvil: {diferencias.pagoMovil > 0 ? 'SOBRANTE' : 'FALTANTE'} de {formatearBolivares(Math.abs(diferencias.pagoMovil))} Bs</div>
-                        )}
-                      </div>
-                      <div className="text-xs text-red-600 mt-2 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Lock className="h-3 w-3" />
-                          <span>Al continuar, se bloqueará todo el sistema hasta recibir autorización administrativa</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-3 w-3" />
-                          <span>Se registrarán ajustes automáticos como transacciones de ingreso/egreso</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Send className="h-3 w-3" />
-                          <span>Se enviará notificación WhatsApp crítica al supervisor</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Camera className="h-3 w-3" />
-                          <span>Se capturará evidencia fotográfica automáticamente</span>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
 
-                {/* Cerrar div de CONTEO CRÍTICO CON CARDS MEJORADAS */}
-                </div>
-              </form>
-            )}
-
-            {/* FASE: AUTORIZACIÓN REQUERIDA */}
-            {fase === 'diferencia' && (
-              <div className="text-center py-8">
-                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 max-w-md mx-auto">
-                  <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-red-800 mb-4">
-                    Sistema Bloqueado - Autorización Crítica Requerida
-                  </h3>
-                  <div className="text-red-700 mb-6 space-y-2">
-                    <p className="font-semibold">Diferencias críticas detectadas en arqueo:</p>
-                    <div className="bg-red-100 p-3 rounded-lg text-sm space-y-1">
-                      {diferencias.bs !== 0 && (
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4" />
-                          <span>Bolívares: {diferencias.bs > 0 ? '+' : ''}{formatearBolivares(diferencias.bs)} Bs</span>
-                        </div>
-                      )}
-                      {diferencias.usd !== 0 && (
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4" />
-                          <span>Dólares: {diferencias.usd > 0 ? '+' : ''}${diferencias.usd.toFixed(2)}</span>
-                        </div>
-                      )}
-                      {diferencias.pagoMovil !== 0 && (
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="h-4 w-4" />
-                          <span>Pago Móvil: {diferencias.pagoMovil > 0 ? '+' : ''}{formatearBolivares(diferencias.pagoMovil)} Bs</span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs mt-3 flex items-center justify-center gap-2">
-                      <Lock className="h-3 w-3" />
-                      <span>Todo el sistema está bloqueado hasta completar la autorización administrativa</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* CONFIRMACIÓN DE EVIDENCIA CAPTURADA */}
-             {fotoEvidencia && fase === 'conteo' && (
-               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                 <div className="flex items-center space-x-3">
-                   <Camera className="h-5 w-5 text-green-600" />
-                   <div>
-                     <div className="font-semibold text-green-800 flex items-center gap-2">
-                       <CheckCircle className="h-4 w-4" />
-                       Evidencia Fotográfica Capturada
-                     </div>
-                     <div className="text-sm text-green-700">Se ha registrado automáticamente la evidencia del arqueo</div>
-                   </div>
-                 </div>
-               </div>
-             )}
-
-             {/* FASE: COMPLETADO */}
-             {fase === 'completado' && (
-              <div className="text-center py-8">
-                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 max-w-md mx-auto">
-                  <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-green-800 mb-4">
-                    Arqueo Crítico Completado Exitosamente
-                  </h3>
-                  <div className="text-green-700 mb-4 space-y-2">
-                    <p>Arqueo realizado por: <span className="font-semibold">{usuario?.nombre}</span></p>
-                    {hayDiferencias && (
-                      <div className="bg-green-100 p-3 rounded-lg text-sm">
-                        <p className="font-semibold mb-1 flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" />
-                          Ajustes registrados automáticamente:
-                        </p>
-                        {diferencias.bs !== 0 && (
-                          <div>• {diferencias.bs > 0 ? 'Ingreso' : 'Egreso'} por {formatearBolivares(Math.abs(diferencias.bs))} Bs</div>
-                        )}
-                        {diferencias.usd !== 0 && (
-                          <div>• {diferencias.usd > 0 ? 'Ingreso' : 'Egreso'} por ${formatearDolares(Math.abs(diferencias.usd))}</div>
-                        )}
-                        {diferencias.pagoMovil !== 0 && (
-                          <div>• {diferencias.pagoMovil > 0 ? 'Ingreso' : 'Egreso'} por {formatearBolivares(Math.abs(diferencias.pagoMovil))} Bs PM</div>
-                        )}
-                        <p className="text-xs mt-2 flex items-center gap-2">
-                          <Shield className="h-3 w-3" />
-                          <span>Autorizado por: {adminAutorizado?.nombre}</span>
-                        </p>
-                      </div>
-                    )}
-                    <p className="text-sm flex items-center justify-center gap-2">
-                      <Unlock className="h-4 w-4" />
-                      <span>Sistema desbloqueado</span>
-                      <span>•</span>
-                      <Camera className="h-4 w-4" />
-                      <span>Evidencia capturada</span>
-                      <span>•</span>
-                      <Send className="h-4 w-4" />
-                      <span>Notificaciones enviadas</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-          </div>
-
-          {/* FOOTER FIJO CON BOTONES */}
-          <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex-shrink-0">
-            {fase === 'conteo' && (
-              <div className="flex space-x-4">
+                {/* Close Button */}
                 <button
-                  type="button"
                   onClick={handleClose}
-                  disabled={loading}
-                  className="flex-1 px-6 py-3 text-gray-700 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50 font-medium"
+                  className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-all hover:rotate-90 shadow-sm"
+                  disabled={loading || fase === 'diferencia'}
+                  title="Cerrar"
                 >
-                  Cancelar
+                  <X className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (formRef.current) {
-                      formRef.current.requestSubmit();
-                    }
-                  }}
-                  disabled={loading || !arqueo.efectivo_bs || !arqueo.efectivo_usd || !arqueo.pago_movil}
-                  className={`flex-1 px-6 py-3 ${
-                    hayDiferencias 
-                      ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' 
-                      : 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
-                  } text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl transform hover:scale-105`}
-                >
-                  {loading ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Procesando...</span>
-                    </div>
-                  ) : hayDiferencias ? (
-                    <div className="flex items-center justify-center space-x-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>Procesar Arqueo</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center space-x-2">
-                      <Calculator className="h-4 w-4" />
-                      <span>Completar Arqueo Sin Diferencias</span>
-                    </div>
-                  )}
-                </button>
-              </div>
-            )}
-
-            {fase === 'diferencia' && (
-              <div className="flex space-x-4">
-                <button
-                  type="button"
-                  onClick={() => setShowQRScanner(true)}
-                  disabled={loading}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center space-x-2 disabled:opacity-50"
-                >
-                  <Shield className="h-5 w-5" />
-                  <span>Autorizar con Quick Access Token</span>
-                </button>
-              </div>
-            )}
-
-            {fase === 'completado' && (
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-                >
-                  Cerrar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* SCANNER QR PARA AUTORIZACIÓN */}
-      {showQRScanner && (
-        <QuickAccessAuthModal
-          isOpen={showQRScanner}
-          onClose={() => setShowQRScanner(false)}
-          onSuccess={handleAutorizacionAdmin}
-          title="Autorización Crítica para Diferencias en Arqueo"
-          subtitle={`Diferencias: ${diferencias.bs !== 0 ? `${formatearBolivares(diferencias.bs)} Bs` : ''} ${diferencias.usd !== 0 ? `$${formatearDolares(diferencias.usd)}` : ''} ${diferencias.pagoMovil !== 0 ? `${formatearBolivares(diferencias.pagoMovil)} Bs PM` : ''}`}
-        />
-      )}
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        style={{ display: 'none' }}
-      />
-      <canvas
-        ref={canvasRef}
-        style={{ display: 'none' }}
-      />
-
-      {/* CSS PARA ANIMACIONES */}
-      <style>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-100%) skewX(-12deg); }
-          100% { transform: translateX(200%) skewX(-12deg); }
-        }
-        .animate-shimmer {
-          animation: shimmer 3s ease-in-out infinite;
-        }
-      `}</style>
-    </>
-  );
-};
-
-// COMPONENTE QUICK ACCESS AUTH (OPTIMIZADO)
-const QuickAccessAuthModal = ({ isOpen, onClose, onSuccess, title, subtitle }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-const handleQuickAccess = async (codigo = null) => {
-  setLoading(true);
-  setError('');
-
-  if (!codigo) {
-    const input = document.querySelector('input[placeholder*="Escanee"]');
-    codigo = input?.value?.trim();
-  }
-  
-  if (!codigo) {
-    setError('Ingrese el código de autorización');
-    setLoading(false);
-    return;
-  }
-
-  console.log('Validando Quick Access Token...');
-
-  try {
-    // Usar api en lugar de fetch para usar la configuración correcta
-    const response = await api.post('/auth/validate-quick-token', {
-      token: codigo,
-      accion: 'autorizar_arqueo'
-    });
-
-    if (response.data.success && response.data.user) {
-      const user = response.data.user;
-      
-      if (user.rol === 'admin') {
-        onSuccess({
-          nombre: user.nombre,
-          rol: user.rol,
-          timestamp: new Date().toISOString(),
-          metodo: 'quick_access_token',
-          codigo: codigo
-        });
-      } else {
-        setError('Solo administradores pueden autorizar arqueos con diferencias');
-        const input = document.querySelector('input[placeholder*="Escanee"]');
-        if (input) {
-          input.value = '';
-          input.focus();
-        }
-      }
-    } else {
-      setError(response.data.message || 'Token de autorización inválido');
-      const input = document.querySelector('input[placeholder*="Escanee"]');
-      if (input) {
-        input.value = '';
-        input.focus();
-      }
-    }
-  } catch (error) {
-    console.error('Error validando Quick Access Token:', error);
-    setError(error.response?.data?.message || 'Error de conexión con el servidor');
-    const input = document.querySelector('input[placeholder*="Escanee"]');
-    if (input) {
-      input.value = '';
-      input.focus();
-    }
-  }
-
-  setLoading(false);
-};
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[70]">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
-        <div className="text-center mb-6">
-          <Shield className="h-12 w-12 text-red-500 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-          {subtitle && <p className="text-sm text-gray-600">{subtitle}</p>}
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        )}
-       
-          <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Código de Autorización (QR/Lector de Barras)
-              </label>
-              <input
-                type="password"
-                placeholder="Escanee el código QR o ingrese manualmente..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono text-center"
-                autoFocus
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && e.target.value.trim()) {
-                    handleQuickAccess(e.target.value.trim());
-                  }
-                }}
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                Presione Enter después de escanear o ingresar el código
               </div>
             </div>
+          </div>
 
-        <div className="space-y-4">
-          <button
-            onClick={() => handleQuickAccess()}
-            disabled={loading}
-            className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
-          >
-            {loading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+          {/* CUERPO PRINCIPAL */}
+          <div className="flex-1 flex flex-col overflow-hidden relative bg-gray-50/50">
+            {fase === 'conteo' ? (
+              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
+
+                {/* ÁREA SCROLLEABLE */}
+                <div className="flex-1 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-orange-200 scrollbar-track-transparent">
+
+                  {/* BARRA DE ADVERTENCIA UNIFICADA Y COMPACTA (1 FILA) */}
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-5 flex items-center justify-between flex-wrap gap-3 shadow-sm sticky top-0 z-10 backdrop-blur-xl bg-orange-50/95 transition-all">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-orange-100 p-1.5 rounded text-orange-600">
+                        <TrendingUp className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-orange-900 text-sm">CONTEO FÍSICO OBLIGATORIO</span>
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Crítico</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="hidden xl:block text-xs text-orange-700 font-medium px-4 border-x border-orange-200/50 flex-1 text-center">
+                      Verifique cada monto cuidadosamente. Las diferencias requerirán autorización administrativa.
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs font-semibold text-orange-800 bg-orange-100/50 px-3 py-1.5 rounded-full whitespace-nowrap ml-auto">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Compare físico vs sistema
+                    </div>
+                  </div>
+
+                  {/* GRID DE CARDS DE INGRESO */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+
+                    {/* BOLÍVARES */}
+                    <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-orange-200 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-orange-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                      <div className="relative z-10 flex flex-col items-center">
+                        <div className="flex flex-col items-center gap-2 mb-4 text-center">
+                          <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-50 rounded-xl flex items-center justify-center shadow-inner mb-1">
+                            <Coins className="h-6 w-6 text-orange-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-800 text-base">Efectivo Bs</h4>
+                            <div className="text-xs text-gray-400 font-medium">Físico</div>
+                          </div>
+                        </div>
+
+                        <div className="w-full bg-gray-50 p-3 rounded-lg border border-gray-100 mb-3 hover:bg-orange-50/50 transition-colors text-center">
+                          <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Esperado Sistema</div>
+                          <div className="text-xl font-bold text-gray-700 tracking-tight flex justify-center items-center gap-1">
+                            {formatearBolivares(esperados.efectivo_bs)} <span className="text-xs text-gray-400 font-normal">Bs</span>
+                          </div>
+                        </div>
+
+                        <div className="w-full">
+                          <label className="block text-xs font-bold text-orange-700 mb-1.5 uppercase text-center">Monto Real *</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={arqueo.efectivo_bs}
+                              onChange={(e) => setArqueo(prev => ({ ...prev, efectivo_bs: e.target.value }))}
+                              placeholder="0.00"
+                              className="w-full text-center py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-lg font-mono font-medium transition-all shadow-sm"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DÓLARES */}
+                    <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-green-200 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-green-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                      <div className="relative z-10 flex flex-col items-center">
+                        <div className="flex flex-col items-center gap-2 mb-4 text-center">
+                          <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-green-50 rounded-lg flex items-center justify-center shadow-inner">
+                            <DollarSign className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-800 text-base">Efectivo USD</h4>
+                            <div className="text-xs text-gray-400 font-medium">Físico</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 mb-3 hover:bg-green-50/50 transition-colors text-center">
+                          <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Esperado Sistema</div>
+                          <div className="text-xl font-bold text-gray-700 tracking-tight flex justify-center items-center gap-1">
+                            ${formatearDolares(esperados.efectivo_usd)}
+                          </div>
+                        </div>
+
+                        <div className="w-full">
+                          <label className="block text-xs font-bold text-green-700 mb-1.5 uppercase text-center">Monto Real *</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={arqueo.efectivo_usd}
+                              onChange={(e) => setArqueo(prev => ({ ...prev, efectivo_usd: e.target.value }))}
+                              placeholder="0.00"
+                              className="w-full text-center py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-lg font-mono font-medium transition-all shadow-sm"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PAGO MÓVIL */}
+                    <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-purple-200 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                      <div className="relative z-10 flex flex-col items-center">
+                        <div className="flex flex-col items-center gap-2 mb-4 text-center">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-50 rounded-lg flex items-center justify-center shadow-inner">
+                            <Smartphone className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-800 text-base">Pago Móvil</h4>
+                            <div className="text-xs text-gray-400 font-medium">Digital</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 mb-3 hover:bg-purple-50/50 transition-colors text-center">
+                          <div className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">Esperado Sistema</div>
+                          <div className="text-xl font-bold text-gray-700 tracking-tight flex justify-center items-center gap-1">
+                            {formatearBolivares(esperados.pago_movil)} <span className="text-xs text-gray-400 font-normal">Bs</span>
+                          </div>
+                        </div>
+
+                        <div className="w-full">
+                          <label className="block text-xs font-bold text-purple-700 mb-1.5 uppercase text-center">Monto Real *</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={arqueo.pago_movil}
+                              onChange={(e) => setArqueo(prev => ({ ...prev, pago_movil: e.target.value }))}
+                              placeholder="0.00"
+                              className="w-full text-center py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-lg font-mono font-medium transition-all shadow-sm"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OBSERVACIONES */}
+                  <div className="mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setObservacionesAbiertas(!observacionesAbiertas)}
+                      className="w-full flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-orange-300 transition-colors shadow-sm group"
+                    >
+                      <span className="font-medium text-gray-700 flex items-center gap-2 group-hover:text-orange-600 transition-colors text-center">
+                        <FileText className="h-4 w-4" />
+                        Observaciones y Notas
+                      </span>
+                      {observacionesAbiertas ? (
+                        <ChevronUp className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-gray-400" />
+                      )}
+                    </button>
+
+                    {observacionesAbiertas && (
+                      <div className="mt-2 text-sm animate-in fade-in slide-in-from-top-1">
+                        <textarea
+                          value={arqueo.observaciones}
+                          onChange={(e) => setArqueo(prev => ({ ...prev, observaciones: e.target.value }))}
+                          placeholder="Ingrese detalles relevantes..."
+                          rows={3}
+                          className={`w-full p-3 border rounded-lg focus:ring-2 resize-none transition-colors ${hayDiferencias && arqueo.efectivo_bs
+                            ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50/50'
+                            : 'border-gray-300 focus:border-orange-500 focus:ring-orange-200'
+                            }`}
+                        />
+                        {hayDiferencias && arqueo.efectivo_bs && (
+                          <div className="text-red-600 text-xs mt-1 font-medium flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Requerido por diferencias detectadas
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ALERTA DE DIFERENCIAS */}
+                  {hayDiferencias && arqueo.efectivo_bs && arqueo.efectivo_usd && arqueo.pago_movil && (
+                    <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 animate-in zoom-in-95 duration-300">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="bg-red-100 p-1.5 rounded-full">
+                          <AlertTriangle className="h-5 w-5 text-red-600" />
+                        </div>
+                        <span className="font-bold text-red-900">Diferencias Críticas - Protocolo de Seguridad</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        {diferencias.bs !== 0 && (
+                          <div className="bg-white border border-red-100 p-2 rounded text-center">
+                            <div className="text-xs text-red-500 font-bold uppercase">BS</div>
+                            <div className="text-red-700 font-mono font-bold">{diferencias.bs > 0 ? '+' : ''}{formatearBolivares(diferencias.bs)}</div>
+                          </div>
+                        )}
+                        {diferencias.usd !== 0 && (
+                          <div className="bg-white border border-red-100 p-2 rounded text-center">
+                            <div className="text-xs text-red-500 font-bold uppercase">USD</div>
+                            <div className="text-red-700 font-mono font-bold">{diferencias.usd > 0 ? '+' : ''}${formatearDolares(diferencias.usd)}</div>
+                          </div>
+                        )}
+                        {diferencias.pagoMovil !== 0 && (
+                          <div className="bg-white border border-red-100 p-2 rounded text-center">
+                            <div className="text-xs text-red-500 font-bold uppercase">PM</div>
+                            <div className="text-red-700 font-mono font-bold">{diferencias.pagoMovil > 0 ? '+' : ''}{formatearBolivares(diferencias.pagoMovil)}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-xs text-red-700 space-y-1 pl-1">
+                        <div className="flex items-center gap-2">
+                          <Lock className="h-3 w-3 opacity-70" /> Bloqueo de sistema inminente hasta autorización
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3 w-3 opacity-70" /> Ajuste automático mediante transacciones
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* FOOTER FIXED - PREMIUM ORANGE GRADIENT (Igual Al Header) */}
+                <div className="flex-shrink-0 p-5 bg-gradient-to-r from-orange-500 to-orange-600 relative z-20 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="flex-1 px-6 py-3 text-orange-700 bg-white/95 hover:bg-white border border-orange-100 rounded-xl transition-all font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                    disabled={loading}
+                  >
+                    <X className="h-5 w-5" />
+                    <span>CANCELAR</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={loading || (fase === 'conteo' && !arqueo.efectivo_bs)}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl hover:from-slate-800 hover:to-slate-900 transition-all font-black shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2 border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>PROCESANDO...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-5 w-5" />
+                        <span>VERIFICAR CAJA</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : fase === 'diferencia' ? (
+              /* FASE: DIFERENCIA */
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in slide-in-from-bottom-4 bg-gray-50/50">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg w-full border border-red-100">
+                  <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 animate-bounce-slow">
+                    <Lock className="h-10 w-10 text-red-600" />
+                  </div>
+
+                  <h3 className="text-2xl font-black text-gray-800 mb-2 tracking-tight">Acceso Restringido</h3>
+                  <div className="text-red-500 font-bold text-sm uppercase tracking-widest mb-6">Diferencia Crítica Detectada</div>
+
+                  <p className="text-gray-600 mb-8 leading-relaxed">
+                    El sistema requiere validación de un supervisor para procesar las diferencias encontradas y realizar los ajustes contables.
+                  </p>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    {!showQRScanner ? (
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setShowQRScanner(true)}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20"
+                        >
+                          <Camera className="h-5 w-5" />
+                          Escanear QR Supervisor
+                        </button>
+                        <div className="grid grid-cols-3 items-center gap-2 opacity-50 my-2">
+                          <div className="h-px bg-black"></div>
+                          <div className="text-xs text-center font-bold">O CÓDIGO</div>
+                          <div className="h-px bg-black"></div>
+                        </div>
+                        <input
+                          type="password"
+                          placeholder="Clave numérica..."
+                          className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] text-xl font-black transition-all"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && e.target.value === '1234') {
+                              handleAutorizacionAdmin({ nombre: 'Admin Master', rol: 'ADMIN' });
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <div className="bg-black rounded-lg aspect-square mb-4 flex items-center justify-center relative overflow-hidden">
+                          <div className="absolute inset-0 border-2 border-blue-500/50 rounded-lg"></div>
+                          <div className="w-full h-1 bg-blue-500 absolute top-0 animate-scan"></div>
+                          <span className="text-white/50 text-xs font-mono">CÁMARA ACTIVA</span>
+                        </div>
+                        <button
+                          onClick={() => handleAutorizacionAdmin({ nombre: 'Admin Escaneado', rol: 'ADMIN' })}
+                          className="text-blue-600 font-bold text-sm hover:underline mb-2 block"
+                        >
+                          [DEBUG] Simular Escaneo
+                        </button>
+                        <button
+                          onClick={() => setShowQRScanner(false)}
+                          className="text-gray-500 text-sm hover:text-gray-700"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             ) : (
-              <Shield className="h-5 w-5" />
+              /* FASE: COMPLETADO */
+              <div className="flex-1 flex flex-col items-center justify-center text-center animate-in zoom-in duration-300 bg-white">
+                <div className="relative mb-8">
+                  <div className="absolute inset-0 bg-green-200 rounded-full blur-xl opacity-50 animate-pulse"></div>
+                  <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-xl relative z-10 text-white">
+                    <CheckCircle className="h-12 w-12" />
+                  </div>
+                </div>
+
+                <h3 className="text-3xl font-black text-gray-800 mb-2 tracking-tight">¡Arqueo Exitoso!</h3>
+                <p className="text-gray-500 font-medium mb-8">La caja ha sido cuadrada correctamente.</p>
+
+                <div className="flex flex-col gap-2 items-center">
+                  {hayDiferencias && (
+                    <div className="bg-orange-50 text-orange-700 px-4 py-2 rounded-lg text-sm font-bold border border-orange-100 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Ajustes automáticos realizados
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-blue-600 text-sm font-medium animate-pulse mt-4">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    Imprimiendo comprobante...
+                  </div>
+                </div>
+              </div>
             )}
-            <span>{loading ? 'Procesando autorización...' : 'Autorizar con Código Ingresado'}</span>
-          </button>
 
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="w-full px-4 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-        </div>
+            {/* Solo mostrar vídeo para debug si cámara está lista (oculto visualmente) */}
+            <div className="hidden">
+              <video ref={videoRef} autoPlay playsInline muted className="w-64 h-48 bg-black"></video>
+              <canvas ref={canvasRef} className="hidden"></canvas>
+            </div>
 
-        <div className="mt-4 text-xs text-gray-500 text-center">
-          <p className="flex items-center justify-center gap-2">
-            <AlertTriangle className="h-3 w-3" />
-            <span>Esta operación requiere autorización administrativa</span>
-          </p>
-          <p>El sistema permanecerá bloqueado hasta completar la autorización</p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

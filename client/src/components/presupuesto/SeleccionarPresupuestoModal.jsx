@@ -12,7 +12,7 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo }
   const [busqueda, setBusqueda] = useState('');
   const [paginaActual, setPaginaActual] = useState(1);
   const [eliminandoId, setEliminandoId] = useState(null);
-  const itemsPorPagina = 6;
+  const itemsPorPagina = 5;
 
   useEffect(() => {
     if (isOpen) {
@@ -40,11 +40,11 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo }
   };
 
   const presupuestosFiltrados = presupuestos.filter(p => {
-    const matchBusqueda = !busqueda || 
+    const matchBusqueda = !busqueda ||
       p.numero.toLowerCase().includes(busqueda.toLowerCase()) ||
       (p.clienteNombre && p.clienteNombre.toLowerCase().includes(busqueda.toLowerCase())) ||
       (p.clienteCedulaRif && p.clienteCedulaRif.toLowerCase().includes(busqueda.toLowerCase()));
-    
+
     return matchBusqueda;
   });
 
@@ -77,7 +77,7 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo }
   // Función para eliminar presupuesto
   const handleEliminarPresupuesto = async (presupuestoId, e) => {
     e.stopPropagation(); // Prevenir que se abra el modal al hacer clic
-    
+
     if (!window.confirm('¿Estás seguro de que deseas eliminar este presupuesto? Esta acción no se puede deshacer.')) {
       return;
     }
@@ -100,7 +100,7 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo }
 
   return (
     <div className="fixed inset-0 bg-emerald-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
         {/* Header - Verde/Emerald como PresupuestoModal */}
         <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-8 py-6 text-white flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -172,146 +172,154 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo }
             <>
               <div className="space-y-3">
                 {presupuestosPaginados.map((presupuesto) => (
-                <div
-                  key={presupuesto.id}
-                  className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all cursor-pointer"
-                  onClick={() => onSeleccionar(presupuesto)}
-                >
-                  <div className="flex items-center justify-between gap-3 min-w-0">
-                    {/* Número del presupuesto */}
-                    <div className="flex-shrink-0 min-w-[120px]">
-                      <h3 className="text-base font-bold text-gray-900 truncate">{presupuesto.numero}</h3>
-                    </div>
-                    
-                    {/* Cliente */}
-                    <div className="flex items-center space-x-2 text-gray-600 flex-shrink-0 min-w-[150px]">
-                      <User className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm truncate">{presupuesto.clienteNombre || 'Sin cliente'}</span>
-                    </div>
-                    
-                    {/* Fecha */}
-                    <div className="flex items-center space-x-2 text-gray-600 flex-shrink-0 min-w-[100px]">
-                      <Calendar className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm whitespace-nowrap">{formatearFecha(presupuesto.fecha)}</span>
-                    </div>
-                    
-                    {/* Total */}
-                    <div className="flex-shrink-0 min-w-[120px] text-right">
-                      <p className="text-sm text-gray-500">Total</p>
-                      <p className="text-lg font-bold text-gray-900 truncate">
-                        {formatearMonto(presupuesto.totalBs)} Bs
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        ${formatearMonto(presupuesto.totalUsd)} USD
-                      </p>
-                    </div>
-                    
-                    {/* Creado por */}
-                    <div className="flex-shrink-0 min-w-[100px] text-right">
-                      <p className="text-xs text-gray-500">Creado por</p>
-                      <p className="text-sm font-medium text-gray-700 truncate">
-                        {presupuesto.creadoPor?.nombre || 'N/A'}
-                      </p>
-                      <p className="text-xs text-gray-400 truncate">
-                        {formatearFecha(presupuesto.createdAt)}
-                      </p>
-                    </div>
-                    
-                    {/* Botones de acción */}
-                    <div className="flex-shrink-0 flex items-center space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSeleccionar(presupuesto);
-                        }}
-                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                        <span>Editar</span>
-                      </button>
-                      
-                      {/* Botón de borrar solo para admin */}
-                      {usuario?.rol === 'admin' && (
-                        <button
-                          onClick={(e) => handleEliminarPresupuesto(presupuesto.id, e)}
-                          disabled={eliminandoId === presupuesto.id}
-                          className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                          title="Eliminar presupuesto"
-                        >
-                          {eliminandoId === presupuesto.id ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                              <span>Eliminando...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Trash2 className="h-4 w-4" />
-                              <span>Borrar</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              </div>
+                  <div
+                    key={presupuesto.id}
+                    className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all cursor-pointer"
+                    onClick={() => onSeleccionar(presupuesto)}
+                  >
+                    <div className="flex items-center justify-between gap-3 min-w-0">
+                      {/* Número del presupuesto */}
+                      <div className="flex-shrink-0 min-w-[120px]">
+                        <h3 className="text-base font-bold text-gray-900 truncate">{presupuesto.numero}</h3>
+                      </div>
 
-              {/* Paginación */}
-              {totalPaginas > 1 && (
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 flex-shrink-0">
-                  <div className="text-sm text-gray-600">
-                    Mostrando <span className="font-semibold text-gray-900">{inicio + 1}</span> - <span className="font-semibold text-gray-900">{Math.min(fin, presupuestosFiltrados.length)}</span> de <span className="font-semibold text-gray-900">{presupuestosFiltrados.length}</span> presupuestos
-                  </div>
-                  <div className="flex items-center space-x-2 flex-wrap">
-                    <button
-                      onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
-                      disabled={paginaActual === 1}
-                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 font-medium"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span>Anterior</span>
-                    </button>
-                    <div className="flex items-center space-x-1 flex-wrap">
-                      {Array.from({ length: Math.min(totalPaginas, 5) }, (_, i) => {
-                        let pagina;
-                        if (totalPaginas <= 5) {
-                          pagina = i + 1;
-                        } else if (paginaActual <= 3) {
-                          pagina = i + 1;
-                        } else if (paginaActual >= totalPaginas - 2) {
-                          pagina = totalPaginas - 4 + i;
-                        } else {
-                          pagina = paginaActual - 2 + i;
-                        }
-                        return (
+                      {/* Cliente */}
+                      <div className="flex items-center space-x-2 text-gray-600 flex-shrink-0 min-w-[150px]">
+                        <User className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm truncate">{presupuesto.clienteNombre || 'Sin cliente'}</span>
+                      </div>
+
+                      {/* Fecha */}
+                      <div className="flex items-center space-x-2 text-gray-600 flex-shrink-0 min-w-[100px]">
+                        <Calendar className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm whitespace-nowrap">{formatearFecha(presupuesto.fecha)}</span>
+                      </div>
+
+                      {/* Total */}
+                      <div className="flex-shrink-0 min-w-[120px] text-right">
+                        <p className="text-sm text-gray-500">Total</p>
+                        <p className="text-lg font-bold text-gray-900 truncate">
+                          {formatearMonto(presupuesto.totalBs)} Bs
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          ${formatearMonto(presupuesto.totalUsd)} USD
+                        </p>
+                      </div>
+
+                      {/* Creado por */}
+                      <div className="flex-shrink-0 min-w-[100px] text-right">
+                        <p className="text-xs text-gray-500">Creado por</p>
+                        <p className="text-sm font-medium text-gray-700 truncate">
+                          {presupuesto.creadoPor?.nombre || 'N/A'}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {formatearFecha(presupuesto.createdAt)}
+                        </p>
+                      </div>
+
+                      {/* Botones de acción */}
+                      <div className="flex-shrink-0 flex items-center space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSeleccionar(presupuesto);
+                          }}
+                          className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          <span>Editar</span>
+                        </button>
+
+                        {/* Botón de borrar solo para admin */}
+                        {usuario?.rol === 'admin' && (
                           <button
-                            key={pagina}
-                            onClick={() => setPaginaActual(pagina)}
-                            className={`px-3 py-1 rounded-lg transition-colors font-medium min-w-[36px] ${
-                              pagina === paginaActual
-                                ? 'bg-emerald-600 text-white shadow-md'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            onClick={(e) => handleEliminarPresupuesto(presupuesto.id, e)}
+                            disabled={eliminandoId === presupuesto.id}
+                            className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            title="Eliminar presupuesto"
                           >
-                            {pagina}
+                            {eliminandoId === presupuesto.id ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>Eliminando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="h-4 w-4" />
+                                <span>Borrar</span>
+                              </>
+                            )}
                           </button>
-                        );
-                      })}
+                        )}
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setPaginaActual(prev => Math.min(totalPaginas, prev + 1))}
-                      disabled={paginaActual === totalPaginas}
-                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 font-medium"
-                    >
-                      <span>Siguiente</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
             </>
           )}
+        </div>
+
+        {/* Footer Paginación - Siempre Visible - Estilo Header */}
+        <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-4 py-2 grid grid-cols-3 items-center shrink-0 h-14 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+          {/* Izquierda: Contador */}
+          <div className="text-left">
+            <span className="text-xs text-white font-medium opacity-90">
+              Total: {presupuestosFiltrados.length} presupuestos
+            </span>
+          </div>
+
+          {/* Centro: Paginación */}
+          <div className="flex justify-center">
+            {totalPaginas > 0 && (
+              <div className="flex items-center space-x-2 rounded-lg p-1">
+                <button
+                  onClick={() => setPaginaActual(prev => Math.max(1, prev - 1))}
+                  disabled={paginaActual === 1}
+                  className="p-1.5 rounded-md hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="Anterior"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                <div className="flex items-center space-x-1 px-2 border-l border-r border-white/20 mx-1">
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(num => {
+                    // Lógica de visualización de páginas limitada
+                    if (totalPaginas > 7 && Math.abs(num - paginaActual) > 2 && num !== 1 && num !== totalPaginas) {
+                      if (num === paginaActual - 3 || num === paginaActual + 3) {
+                        return <span key={num} className="text-emerald-100 text-xs">...</span>;
+                      }
+                      return null;
+                    }
+                    return (
+                      <button
+                        key={num}
+                        onClick={() => setPaginaActual(num)}
+                        className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all ${paginaActual === num
+                          ? 'bg-white text-emerald-700 shadow-md transform scale-105'
+                          : 'text-emerald-50 hover:bg-white/10'
+                          }`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setPaginaActual(prev => Math.min(totalPaginas, prev + 1))}
+                  disabled={paginaActual === totalPaginas}
+                  className="p-1.5 rounded-md hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="Siguiente"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Derecha: Espacio vacío */}
+          <div></div>
         </div>
       </div>
     </div>
@@ -319,4 +327,3 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo }
 };
 
 export default SeleccionarPresupuestoModal;
-

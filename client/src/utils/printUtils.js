@@ -2303,3 +2303,160 @@ export const generarMensajeWhatsAppPedido = (pedido) => {
 
   return encodeURIComponent(mensaje);
 };
+
+
+
+//  NUEVO - IMPRIMIR TICKET DE ARQUEO
+export const imprimirTicketArqueo = async (data) => {
+  try {
+    console.log('🖨️ Generando ticket de arqueo 80mm...');
+
+    // Preparar el HTML del ticket de arqueo
+    const generarHTMLArqueo = (arqueo) => {
+      const fechaImpresion = new Date().toLocaleString('es-VE');
+      const { caja, usuario, esperados, reales, diferencias, observaciones, autorizadoPor } = arqueo;
+
+      // Estilos base
+      const styles = `
+            @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap');
+            body { font-family: 'Roboto Mono', monospace; width: 80mm; margin: 0; padding: 5px; font-size: 11px; color: #000; background: white; }
+            .header-logo { text-align: center; margin-bottom: 10px; }
+            .header-logo img { width: 60px; height: 60px; }
+            .title { font-size: 14px; font-weight: bold; text-align: center; margin: 5px 0; }
+            .subtitle { font-size: 11px; text-align: center; margin-bottom: 5px; }
+            .separator { border-top: 1px dashed #000; margin: 5px 0; }
+            .thick-separator { border-top: 2px solid #000; margin: 8px 0; }
+            .row { display: flex; justify-content: space-between; margin: 2px 0; }
+            .bold { font-weight: bold; }
+            .right { text-align: right; }
+            .center { text-align: center; }
+            .table-header { font-weight: bold; border-bottom: 1px solid #000; margin-bottom: 2px; font-size: 10px; display: flex; }
+            .col-concept { width: 40%; }
+            .col-val { width: 30%; text-align: right; }
+            .col-diff { width: 30%; text-align: right; font-weight: bold; }
+            .diff-pos { color: #000; }
+            .box { border: 1px solid #000; padding: 5px; margin: 5px 0; font-weight: bold; text-align: center; font-size: 12px; }
+            .signature-box { margin-top: 30px; border-top: 1px solid #000; text-align: center; padding-top: 5px; width: 80%; margin-left: auto; margin-right: auto; }
+        `;
+
+      return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Arqueo #${caja.id}</title>
+                <style>${styles}</style>
+            </head>
+            <body>
+                <div class="header-logo">
+                    <img src="/termico.png" alt="Logo" onerror="this.style.display='none'" />
+                    <div class="title">ELECTRO SHOP MORANDIN</div>
+                    <div class="subtitle">RIF: J-405903333</div>
+                </div>
+
+                <div class="thick-separator"></div>
+                <div class="title">COMPROBANTE DE ARQUEO</div>
+                <div class="center bold">Caja #${caja.id}</div>
+                <div class="center">${fechaImpresion}</div>
+
+                <div class="separator"></div>
+                
+                <div class="bold">DATOS DE APERTURA DE CAJA:</div>
+                <div class="row"><span>Fecha Ap.:</span> <span>${caja.fecha_apertura ? new Date(caja.fecha_apertura).toLocaleString('es-VE') : new Date().toLocaleString('es-VE')}</span></div>
+                <div class="row"><span>Apertura:</span> <span class="bold">${caja.usuario?.nombre || caja.usuario_nombre || usuario.nombre}</span></div>
+                
+                <div class="row" style="margin-top: 4px; font-size: 10px;"><span>Inicial Bs:</span> <span>${formatearVenezolano(caja.monto_inicial_bs || 0)}</span></div>
+                <div class="row" style="font-size: 10px;"><span>Inicial USD:</span> <span>$${(parseFloat(caja.monto_inicial_usd || 0)).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</span></div>
+                <div class="row" style="font-size: 10px;"><span>Inicial PM:</span> <span>${formatearVenezolano(caja.monto_inicial_pago_movil || 0)}</span></div>
+                
+                <div class="separator"></div>
+
+                <div class="bold center" style="margin-bottom: 5px;">DETALLE DE CONTEO</div>
+                
+                <div class="table-header">
+                    <div class="col-concept">CONCEPTO</div>
+                    <div class="col-val">REAL</div>
+                    <div class="col-diff">DIF</div>
+                </div>
+
+                <!-- EFECTIVO BS -->
+                <div class="row" style="font-size: 10px;">
+                    <div class="col-concept">Efectivo Bs</div>
+                    <div class="col-val">${formatearVenezolano(reales.efectivo_bs)}</div>
+                    <div class="col-diff">${Math.abs(diferencias.bs) < 0.005 ? 'OK' : formatearVenezolano(diferencias.bs)}</div>
+                </div>
+
+                <!-- EFECTIVO USD -->
+                <div class="row" style="font-size: 10px;">
+                    <div class="col-concept">Efectivo USD</div>
+                    <div class="col-val">$${reales.efectivo_usd.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+                    <div class="col-diff">${Math.abs(diferencias.usd) < 0.005 ? 'OK' : '$' + diferencias.usd.toFixed(2)}</div>
+                </div>
+
+                <!-- PAGO MÓVIL -->
+                <div class="row" style="font-size: 10px;">
+                    <div class="col-concept">Pago Móvil</div>
+                    <div class="col-val">${formatearVenezolano(reales.pago_movil)}</div>
+                    <div class="col-diff">${Math.abs(diferencias.pagoMovil) < 0.005 ? 'OK' : formatearVenezolano(diferencias.pagoMovil)}</div>
+                </div>
+
+                <div class="thick-separator"></div>
+
+                <div class="bold">RESUMEN DEL SISTEMA:</div>
+                <div class="row"><span>Esperado Bs:</span> <span>${formatearVenezolano(esperados.efectivo_bs)}</span></div>
+                <div class="row"><span>Esperado USD:</span> <span>$${esperados.efectivo_usd.toFixed(2)}</span></div>
+                <div class="row"><span>Esperado PM:</span> <span>${formatearVenezolano(esperados.pago_movil)}</span></div>
+
+                ${(Math.abs(diferencias.bs) > 0.005 || Math.abs(diferencias.usd) > 0.005 || Math.abs(diferencias.pagoMovil) > 0.005) ? `
+                    <div class="box">
+                        ⚠️ SE REGISTRARON DIFERENCIAS
+                    </div>
+                    ${autorizadoPor ? `<div class="center" style="font-size: 10px;">Autorizado por: ${autorizadoPor}</div>` : ''}
+                ` : `
+                    <div class="box" style="border: 1px solid #000;">
+                        ✅ ARQUEO PERFECTO
+                    </div>
+                `}
+
+                ${observaciones ? `
+                    <div class="separator"></div>
+                    <div class="bold">OBSERVACIONES:</div>
+                    <div style="font-size: 10px; text-align: justify;">${observaciones}</div>
+                ` : ''}
+
+                <div class="signature-box" style="margin-top: 60px;">
+                    Firma Responsable<br>
+                    ${usuario.nombre}
+                </div>
+
+                <div class="center" style="margin-top: 20px; font-size: 9px;">
+                    ElectroCaja Sistema de Control
+                </div>
+                
+                <script>
+                    window.onload = function() { window.print(); window.close(); }
+                </script>
+            </body>
+            </html>
+        `;
+    };
+
+    const contenidoHTML = generarHTMLArqueo(data);
+
+    // Abrir ventana
+    const ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
+    if (!ventanaImpresion) {
+      toast.error('Habilite ventanas emergentes para imprimir');
+      return;
+    }
+
+    ventanaImpresion.document.write(contenidoHTML);
+    ventanaImpresion.document.close();
+
+    console.log('✅ Ticket de arqueo enviado a impresión');
+
+  } catch (error) {
+    console.error('❌ Error imprimiendo arqueo:', error);
+    toast.error('Error al generar impresión');
+  }
+};

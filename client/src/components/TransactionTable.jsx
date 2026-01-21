@@ -767,31 +767,32 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
           )}
         </div>
 
-        {/* Paginación con Glassmorphism */}
+        {/* Footer Paginación - Estilo Azul Centrado Premium */}
         {sortedTransactions.length > 0 && (
-          <div className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 backdrop-blur-sm px-6 py-4 border-t border-white/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
-                <span>
-                  Mostrando <span className="font-semibold text-gray-900">{startIndex + 1}</span> a{' '}
-                  <span className="font-semibold text-gray-900">{Math.min(endIndex, sortedTransactions.length)}</span> de{' '}
-                  <span className="font-semibold text-gray-900">{sortedTransactions.length}</span> transacciones
-                </span>
-              </div>
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 border-t border-blue-500 px-4 py-2 grid grid-cols-3 items-center shrink-0 h-14 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10 rounded-b-xl">
+            {/* Izquierda: Contador */}
+            <div className="text-left">
+              <span className="text-xs text-blue-100 font-medium opacity-90">
+                Mostrando {startIndex + 1} - {Math.min(endIndex, sortedTransactions.length)} de {sortedTransactions.length}
+              </span>
+            </div>
 
+            {/* Centro: Paginación */}
+            <div className="flex justify-center">
               {totalPages > 1 && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 rounded-lg p-1">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white/60 backdrop-blur-sm border border-white/30 rounded-lg hover:bg-gray-50/80 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/60 transition-all duration-200 shadow-sm"
+                    className="p-1.5 rounded-md hover:bg-white/10 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                    title="Anterior"
                   >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Anterior
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
 
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center space-x-1 px-2 border-l border-r border-blue-400/30 mx-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      // Mostrar primera, última, actual y adyacentes
                       if (
                         page === 1 ||
                         page === totalPages ||
@@ -801,9 +802,9 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
                           <button
                             key={page}
                             onClick={() => setCurrentPage(page)}
-                            className={`inline-flex items-center px-3 py-2 text-sm font-medium border rounded-lg transition-all duration-200 shadow-sm backdrop-blur-sm ${currentPage === page
-                              ? 'z-10 bg-blue-600/90 border-blue-600 text-white shadow-lg transform scale-105'
-                              : 'bg-white/60 border-white/30 text-gray-500 hover:bg-gray-50/80 hover:text-gray-700 hover:border-gray-400/50'
+                            className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all ${currentPage === page
+                              ? 'bg-white text-blue-700 shadow-md transform scale-105'
+                              : 'text-blue-100 hover:bg-white/10'
                               }`}
                           >
                             {page}
@@ -814,7 +815,7 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
                         page === currentPage + 2
                       ) {
                         return (
-                          <span key={page} className="inline-flex items-center px-2 py-2 text-sm font-medium text-gray-400">
+                          <span key={page} className="text-blue-300 text-xs px-1 font-medium">
                             ...
                           </span>
                         );
@@ -826,14 +827,17 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white/60 backdrop-blur-sm border border-white/30 rounded-lg hover:bg-gray-50/80 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white/60 transition-all duration-200 shadow-sm"
+                    className="p-1.5 rounded-md hover:bg-white/10 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                    title="Siguiente"
                   >
-                    Siguiente
-                    <ChevronRight className="h-4 w-4 ml-1" />
+                    <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               )}
             </div>
+
+            {/* Derecha: Espacio vacío para balancear */}
+            <div></div>
           </div>
         )}
       </div>

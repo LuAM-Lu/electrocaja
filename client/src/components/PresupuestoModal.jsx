@@ -276,124 +276,124 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
     }
   };
 
-//  EJECUTOR PRINCIPAL - FUNCIÓN CORREGIDA CON GUARDADO EN BACKEND
-const handleCrearPresupuesto = async () => {
-  setLoadingCrear(true);
-  
-  try {
-    console.log(' Ejecutando creación de presupuesto...', presupuestoData.exportConfig);
-    
-    //  IMPORTAR FUNCIONES DESDE UTILS DIRECTAMENTE
-    const { 
-      ejecutarExportPresupuesto, 
-      validarPresupuesto, 
-      validarExportConfig 
-    } = await import('../utils/presupuestoUtils');
-    
-    // Validar datos del presupuesto
-    const validacionPresupuesto = validarPresupuesto(presupuestoData);
-    if (!validacionPresupuesto.valido) {
-      toast.error('' + validacionPresupuesto.errores.join('\n'));
-      return;
-    }
-    
-    // Validar configuración de export
-    const validacionConfig = validarExportConfig(presupuestoData.exportConfig, presupuestoData);
-    if (!validacionConfig.valido) {
-      toast.error('' + validacionConfig.errores.join('\n'));
-      setLoadingCrear(false);
-      return;
-    }
-    
-    // ✅ VALIDAR QUE HAYA AL MENOS UNA OPCIÓN SELECCIONADA
-    const tieneOpcionSeleccionada = Object.values(presupuestoData.exportConfig || {}).some(Boolean);
-    if (!tieneOpcionSeleccionada) {
-      toast.error('Debes seleccionar al menos una opción de exportación (PDF, WhatsApp, WhatsApp Simple o Email)');
-      setLoadingCrear(false);
-      return;
-    }
-    
-    // ✅ GUARDAR EN BACKEND PRIMERO
-    const presupuestoParaGuardar = {
-      numero: presupuestoData.numero,
-      fecha: presupuestoData.fecha,
-      fechaVencimiento: presupuestoData.fechaVencimiento,
-      validezDias: presupuestoData.validezDias,
-      clienteId: presupuestoData.cliente?.id || null,
-      clienteNombre: presupuestoData.cliente?.nombre || null,
-      clienteCedulaRif: presupuestoData.cliente?.cedula_rif || null,
-      clienteTelefono: presupuestoData.cliente?.telefono || null,
-      clienteEmail: presupuestoData.cliente?.email || null,
-      items: presupuestoData.items,
-      subtotal: presupuestoData.subtotal,
-      descuentoGlobal: presupuestoData.descuentoGlobal,
-      tipoDescuento: presupuestoData.tipoDescuento,
-      impuestos: presupuestoData.impuestos,
-      totalUsd: presupuestoData.totalUsd,
-      totalBs: presupuestoData.totalUsd * tasaCambio,
-      tasaCambio: tasaCambio,
-      observaciones: presupuestoData.observaciones || [],
-      exportConfig: presupuestoData.exportConfig,
-      estado: 'ENVIADO'
-    };
+  //  EJECUTOR PRINCIPAL - FUNCIÓN CORREGIDA CON GUARDADO EN BACKEND
+  const handleCrearPresupuesto = async () => {
+    setLoadingCrear(true);
 
-    let presupuestoGuardado;
-    if (presupuestoData.id) {
-      // Actualizar presupuesto existente
-      const { default: api } = await import('../config/api');
-      const response = await api.put(`/presupuestos/${presupuestoData.id}`, presupuestoParaGuardar);
-      presupuestoGuardado = response.data.data;
-    } else {
-      // Crear nuevo presupuesto
-      const { default: api } = await import('../config/api');
-      const response = await api.post('/presupuestos', presupuestoParaGuardar);
-      presupuestoGuardado = response.data.data;
-    }
-    
-    // Ejecutar exports según configuración
-    const resultado = await ejecutarExportPresupuesto(presupuestoData, tasaCambio, presupuestoData.exportConfig);
-    
-    if (resultado.success) {
-      const exitosos = resultado.resultados.filter(r => !r.includes('')).length;
-      const fallidos = resultado.errores;
-      
-      let mensaje = ` Presupuesto ${presupuestoData.numero} ${presupuestoData.id ? 'actualizado' : 'creado'} exitosamente:\n\n`;
-      
-      resultado.resultados.forEach(r => {
-        if (!r.includes('')) {
-          mensaje += r + '\n';
-        }
-      });
-      
-      toast.success(mensaje, {
-        duration: 6000,
-        style: {
-          background: '#ECFDF5',
-          border: '1px solid #10B981',
-          color: '#047857'
-        }
-      });
-      
-      // Mostrar errores si los hay
-      if (fallidos > 0) {
+    try {
+      console.log(' Ejecutando creación de presupuesto...', presupuestoData.exportConfig);
+
+      //  IMPORTAR FUNCIONES DESDE UTILS DIRECTAMENTE
+      const {
+        ejecutarExportPresupuesto,
+        validarPresupuesto,
+        validarExportConfig
+      } = await import('../utils/presupuestoUtils');
+
+      // Validar datos del presupuesto
+      const validacionPresupuesto = validarPresupuesto(presupuestoData);
+      if (!validacionPresupuesto.valido) {
+        toast.error('' + validacionPresupuesto.errores.join('\n'));
+        return;
+      }
+
+      // Validar configuración de export
+      const validacionConfig = validarExportConfig(presupuestoData.exportConfig, presupuestoData);
+      if (!validacionConfig.valido) {
+        toast.error('' + validacionConfig.errores.join('\n'));
+        setLoadingCrear(false);
+        return;
+      }
+
+      // ✅ VALIDAR QUE HAYA AL MENOS UNA OPCIÓN SELECCIONADA
+      const tieneOpcionSeleccionada = Object.values(presupuestoData.exportConfig || {}).some(Boolean);
+      if (!tieneOpcionSeleccionada) {
+        toast.error('Debes seleccionar al menos una opción de exportación (PDF, WhatsApp, WhatsApp Simple o Email)');
+        setLoadingCrear(false);
+        return;
+      }
+
+      // ✅ GUARDAR EN BACKEND PRIMERO
+      const presupuestoParaGuardar = {
+        numero: presupuestoData.numero,
+        fecha: presupuestoData.fecha,
+        fechaVencimiento: presupuestoData.fechaVencimiento,
+        validezDias: presupuestoData.validezDias,
+        clienteId: presupuestoData.cliente?.id || null,
+        clienteNombre: presupuestoData.cliente?.nombre || null,
+        clienteCedulaRif: presupuestoData.cliente?.cedula_rif || null,
+        clienteTelefono: presupuestoData.cliente?.telefono || null,
+        clienteEmail: presupuestoData.cliente?.email || null,
+        items: presupuestoData.items,
+        subtotal: presupuestoData.subtotal,
+        descuentoGlobal: presupuestoData.descuentoGlobal,
+        tipoDescuento: presupuestoData.tipoDescuento,
+        impuestos: presupuestoData.impuestos,
+        totalUsd: presupuestoData.totalUsd,
+        totalBs: presupuestoData.totalUsd * tasaCambio,
+        tasaCambio: tasaCambio,
+        observaciones: presupuestoData.observaciones || [],
+        exportConfig: presupuestoData.exportConfig,
+        estado: 'ENVIADO'
+      };
+
+      let presupuestoGuardado;
+      if (presupuestoData.id) {
+        // Actualizar presupuesto existente
+        const { default: api } = await import('../config/api');
+        const response = await api.put(`/presupuestos/${presupuestoData.id}`, presupuestoParaGuardar);
+        presupuestoGuardado = response.data.data;
+      } else {
+        // Crear nuevo presupuesto
+        const { default: api } = await import('../config/api');
+        const response = await api.post('/presupuestos', presupuestoParaGuardar);
+        presupuestoGuardado = response.data.data;
+      }
+
+      // Ejecutar exports según configuración
+      const resultado = await ejecutarExportPresupuesto(presupuestoData, tasaCambio, presupuestoData.exportConfig);
+
+      if (resultado.success) {
+        const exitosos = resultado.resultados.filter(r => !r.includes('')).length;
+        const fallidos = resultado.errores;
+
+        let mensaje = ` Presupuesto ${presupuestoData.numero} ${presupuestoData.id ? 'actualizado' : 'creado'} exitosamente:\n\n`;
+
         resultado.resultados.forEach(r => {
-          if (r.includes('')) {
-            toast.error(r, { duration: 6000 });
+          if (!r.includes('')) {
+            mensaje += r + '\n';
           }
         });
+
+        toast.success(mensaje, {
+          duration: 6000,
+          style: {
+            background: '#ECFDF5',
+            border: '1px solid #10B981',
+            color: '#047857'
+          }
+        });
+
+        // Mostrar errores si los hay
+        if (fallidos > 0) {
+          resultado.resultados.forEach(r => {
+            if (r.includes('')) {
+              toast.error(r, { duration: 6000 });
+            }
+          });
+        }
       }
+
+      setHasUnsavedChanges(false);
+      onClose();
+
+    } catch (error) {
+      console.error(' Error creando presupuesto:', error);
+      toast.error('Error creando presupuesto: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoadingCrear(false);
     }
-    
-    setHasUnsavedChanges(false);
-    onClose();
-    
-  } catch (error) {
-    console.error(' Error creando presupuesto:', error);
-    toast.error('Error creando presupuesto: ' + (error.response?.data?.message || error.message));
-  } finally {
-    setLoadingCrear(false);
-  }
-};
+  };
 
   //  MANEJADORES DE SALIDA
   const handleClose = () => {
@@ -415,59 +415,45 @@ const handleCrearPresupuesto = async () => {
   };
 
   //  NUEVA: Función para cancelar y limpiar todo
-const handleCancelar = () => {
-  // Limpiar todo el estado del presupuesto
-  const numero = `PRES-${Date.now().toString().slice(-6)}`;
-  setPresupuestoData({
-    id: null,
-    numero,
-    fecha: new Date().toISOString().split('T')[0],
-    fechaVencimiento: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    cliente: null,
-    items: [],
-    subtotal: 0,
-    descuentoGlobal: 0,
-    tipoDescuento: 'porcentaje',
-    impuestos: 16,
-    totalUsd: 0,
-    observaciones: [],
-    validezDias: 1,
-    exportConfig: {
-      pdf: false,
-      whatsapp: false,
-      email: false,
-      vistaPrevia: false
-    },
-    creadoPor: usuario?.id,
-    fechaCreacion: new Date().toISOString(),
-    version: 1
-  });
-  
-  // Resetear tab activo
-  setActiveTab('cliente');
-  
-  // Limpiar cambios sin guardar
-  setHasUnsavedChanges(false);
-  
-  toast.success('Presupuesto cancelado y limpiado');
-  onClose();
-};
+  const handleCancelar = () => {
+    // Limpiar todo el estado del presupuesto
+    const numero = `PRES-${Date.now().toString().slice(-6)}`;
+    setPresupuestoData({
+      id: null,
+      numero,
+      fecha: new Date().toISOString().split('T')[0],
+      fechaVencimiento: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      cliente: null,
+      items: [],
+      subtotal: 0,
+      descuentoGlobal: 0,
+      tipoDescuento: 'porcentaje',
+      impuestos: 16,
+      totalUsd: 0,
+      observaciones: [],
+      validezDias: 1,
+      exportConfig: {
+        pdf: false,
+        whatsapp: false,
+        email: false,
+        vistaPrevia: false
+      },
+      creadoPor: usuario?.id,
+      fechaCreacion: new Date().toISOString(),
+      version: 1
+    });
 
-  //  ALTURAS AMPLIADAS PARA 720PX
-  const getContentHeight = () => {
-    switch (activeTab) {
-      case 'cliente':
-        return 'h-[320px]'; // CLIENTE: Mantener 480px como está bien
-      case 'items':
-        return 'h-[720px]'; // ITEMS: Ampliar a 720px
-      case 'totales':
-        return 'h-[720px]'; // TOTALES: Ampliar a 720px
-      case 'exportar':
-        return 'h-[720px]'; // EXPORTAR: Ampliar a 720px
-      default:
-        return 'h-[720px]';
-    }
+    // Resetear tab activo
+    setActiveTab('cliente');
+
+    // Limpiar cambios sin guardar
+    setHasUnsavedChanges(false);
+
+    toast.success('Presupuesto cancelado y limpiado');
+    onClose();
   };
+
+
 
   if (!isOpen) return null;
 
@@ -521,19 +507,19 @@ const handleCancelar = () => {
                         />
 
                         {/*  NUEVO: Botones de acceso rápido */}
-  <div className="flex items-center space-x-1">
-    <button
-      type="button"
-      onClick={() => {
-        const fechaRapida = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        setPresupuestoData(prev => ({ ...prev, fechaVencimiento: fechaRapida }));
-        setHasUnsavedChanges(true);
-      }}
-      className="bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-xs transition-colors"
-    >
-      7d
-    </button>
-  </div>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fechaRapida = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                              setPresupuestoData(prev => ({ ...prev, fechaVencimiento: fechaRapida }));
+                              setHasUnsavedChanges(true);
+                            }}
+                            className="bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-xs transition-colors"
+                          >
+                            7d
+                          </button>
+                        </div>
                       </span>
                       <span className="flex items-center space-x-1">
                         <User className="h-4 w-4" />
@@ -589,8 +575,8 @@ const handleCancelar = () => {
             />
           </div>
 
-          {/*  CONTENIDO DE TABS CON ALTURA AMPLIADA (FLEX) */}
-          <div className={`flex-1 overflow-y-auto p-8 ${getContentHeight()}`}>
+          {/*  CONTENIDO DE TABS CON ALTURA AUTOMÁTICA (FLEX) */}
+          <div className="flex-1 overflow-y-auto p-8 flex flex-col min-h-0 bg-gray-50/50">
 
             {activeTab === 'cliente' && (
               <div className="space-y-4">
@@ -614,7 +600,7 @@ const handleCancelar = () => {
                 tasaCambio={tasaCambio}
                 title="Productos y Servicios del Presupuesto"
                 showAddCustom={true}
-                maxVisibleItems={12} //  AUMENTADO para más espacio
+                itemsPerPage={5} // Paginación de 5 elementos
               />
             )}
 
@@ -666,54 +652,54 @@ const handleCancelar = () => {
               </div>
 
               {/* CENTRO: Botones de Acción */}
-<div className="flex items-center justify-center space-x-3">
-  <button
-    type="button"  //  AGREGAR
-    onClick={handleCancelar}
-    className="px-6 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium flex items-center space-x-2"
-  >
-    <X className="h-4 w-4" />
-    <span>Cancelar</span>
-  </button>
-  
-  <button
-    type="button"  //  AGREGAR
-    onClick={handleGuardarPresupuesto}
-    disabled={loadingGuardar}
-    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center space-x-2"
-  >
-    {loadingGuardar  ? (
-      <>
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-        <span>Guardando...</span>
-      </>
-    ) : (
-      <>
-        <Save className="h-4 w-4" />
-        <span>Pendiente</span>
-      </>
-    )}
-  </button>
-  
-  <button
-    type="button"  //  AGREGAR
-    onClick={handleCrearPresupuesto}
-    disabled={loadingCrear  || !allValid}
-    className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center space-x-2"
-  >
-    {loadingCrear ? (
-      <>
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-        <span>Creando...</span>
-      </>
-    ) : (
-      <>
-        <Send className="h-4 w-4" />
-        <span>Generar</span>
-      </>
-    )}
-  </button>
-</div>
+              <div className="flex items-center justify-center space-x-3">
+                <button
+                  type="button"  //  AGREGAR
+                  onClick={handleCancelar}
+                  className="px-6 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium flex items-center space-x-2"
+                >
+                  <X className="h-4 w-4" />
+                  <span>Cancelar</span>
+                </button>
+
+                <button
+                  type="button"  //  AGREGAR
+                  onClick={handleGuardarPresupuesto}
+                  disabled={loadingGuardar}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {loadingGuardar ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      <span>Pendiente</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"  //  AGREGAR
+                  onClick={handleCrearPresupuesto}
+                  disabled={loadingCrear || !allValid}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {loadingCrear ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Creando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      <span>Generar</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
               {/* DERECHA: Botón Siguiente (oculto en Exportar) */}
               <div className="flex justify-end">

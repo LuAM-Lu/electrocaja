@@ -921,541 +921,559 @@ _Reporte de cierre - Electro Caja_`;
   return (
     <>
       <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden max-h-[95vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-gray-500/30 backdrop-blur-sm modal-backdrop flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full mx-4 overflow-hidden h-[90vh] flex flex-col">
 
-          {/* Header elegante */}
-          <div className="bg-gradient-to-r from-red-500 to-red-600 relative">
-            <div className="px-6 py-4 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-white/20 p-2 rounded-lg">
-                    <Lock className="h-6 w-6" />
+            {/* Header elegante */}
+            <div className="bg-gradient-to-r from-red-500 to-red-600 relative">
+              <div className="px-5 py-3 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-white/20 p-2 rounded-lg">
+                      <Lock className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">
+                        {esCajaPendiente ? '🚨 Cerrar Caja Pendiente' : 'Cerrar Caja'}
+                      </h2>
+                      <div className="text-sm text-red-100 flex items-center space-x-4">
+                        <span>
+                          {esCajaPendiente
+                            ? `Completar cierre del ${cajaPendiente.fecha}`
+                            : 'Finalizar operaciones del día'
+                          }
+                        </span>
+                        {cameraStatus === 'ready' && (
+                          <div className="flex items-center space-x-1 bg-green-500/20 text-green-200 px-2 py-0.5 rounded-full text-xs">
+                            <Camera className="h-3 w-3" />
+                            <span>Cámara conectada</span>
+                          </div>
+                        )}
+                        {cameraStatus === 'error' && (
+                          <div className="flex items-center space-x-1 bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded-full text-xs">
+                            <CameraOff className="h-3 w-3" />
+                            <span>Sin cámara</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {esCajaPendiente ? '🚨 Cerrar Caja Pendiente' : 'Cerrar Caja'}
-                    </h2>
-                    <div className="text-sm text-red-100 flex items-center space-x-4">
-                      <span>
-                        {esCajaPendiente
-                          ? `Completar cierre del ${cajaPendiente.fecha}`
-                          : 'Finalizar operaciones del día'
-                        }
-                      </span>
-                      {cameraStatus === 'ready' && (
-                        <div className="flex items-center space-x-1 bg-green-500/20 text-green-200 px-2 py-0.5 rounded-full text-xs">
-                          <Camera className="h-3 w-3" />
-                          <span>Cámara conectada</span>
-                        </div>
-                      )}
-                      {cameraStatus === 'error' && (
-                        <div className="flex items-center space-x-1 bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded-full text-xs">
-                          <CameraOff className="h-3 w-3" />
-                          <span>Sin cámara</span>
-                        </div>
-                      )}
+
+                  <button
+                    onClick={handleClose}
+                    disabled={loading || showProgreso}
+                    className="text-white/70 hover:text-white transition-colors p-1 disabled:opacity-50"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Notificación de bloqueo - Centrada en el header */}
+              {bloqueandoUsuarios && (
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                  <div className="relative">
+                    {/* Efecto de pulso */}
+                    <div className="absolute inset-0 bg-white/30 rounded-full animate-ping"></div>
+                    <div className="relative bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full border border-white/30 flex items-center space-x-2">
+                      <Shield className="h-4 w-4 animate-pulse" />
+                      <span className="text-xs font-semibold tracking-wide">SISTEMA BLOQUEADO</span>
                     </div>
                   </div>
                 </div>
-
-                <button
-                  onClick={handleClose}
-                  disabled={loading || showProgreso}
-                  className="text-white/70 hover:text-white transition-colors p-1 disabled:opacity-50"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
+              )}
             </div>
 
-            {/* Notificación de bloqueo - Centrada en el header */}
-            {bloqueandoUsuarios && (
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="relative">
-                  {/* Efecto de pulso */}
-                  <div className="absolute inset-0 bg-white/30 rounded-full animate-ping"></div>
-                  <div className="relative bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full border border-white/30 flex items-center space-x-2">
-                    <Shield className="h-4 w-4 animate-pulse" />
-                    <span className="text-xs font-semibold tracking-wide">SISTEMA BLOQUEADO</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Información compacta del usuario */}
-          <div className="bg-red-50 border-b border-red-100 px-6 py-3 relative">
-            <div className="grid grid-cols-4 gap-4 text-sm">
-              {/* Columna 1: Abierta por */}
-              <div>
-                <div className="text-red-600 text-xs mb-1">Abierta por:</div>
-                <div className="font-bold text-red-900">{cajaActual.usuario_apertura || usuario?.nombre}</div>
-              </div>
-
-              {/* Columna 2: Fecha */}
-              <div>
-                <div className="text-red-600 text-xs mb-1">Fecha:</div>
-                <div className="font-bold text-red-900">{cajaActual.fecha_apertura}</div>
-              </div>
-
-              {/* Columna 3: Hora */}
-              <div>
-                <div className="text-red-600 text-xs mb-1">Hora:</div>
-                <div className="font-bold text-red-900">{cajaActual.hora_apertura}</div>
-              </div>
-
-              {/* Columna 4: Cerrando */}
-              <div>
-                <div className="text-red-600 text-xs mb-1">Cerrando:</div>
-                <div className="font-bold text-red-900">{usuario?.nombre}</div>
-              </div>
-            </div>
-
-          </div>
-
-          <div className="p-6">
-            {/* Resumen más compacto */}
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 mb-6 border border-slate-200">
-              <h3 className="font-bold text-slate-900 mb-3 flex items-center">
-                <TrendingUp className="h-4 w-4 mr-2 text-blue-600" />
-                Resumen del Día
-                <span className="ml-auto text-sm font-normal text-slate-600">
-                  {resumen.transacciones} transacciones
-                </span>
-              </h3>
-
-              {/* Grid 3 columnas: Bs, USD, Pago Móvil */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                {/* BOLÍVARES */}
-                <div className="bg-white rounded-lg p-3 border-2 border-orange-200 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <Coins className="h-4 w-4 text-orange-600" />
-                      <span className="font-semibold text-orange-900">Bolívares</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Inicial:</span>
-                      <span className="font-medium">{formatearBolivares(resumen.inicialBs)} Bs</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-green-600">Ingresos:</span>
-                      <span className="font-medium text-green-700">+{formatearBolivares(resumen.ingresosBs)} Bs</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-red-600">Egresos:</span>
-                      <span className="font-medium text-red-700">-{formatearBolivares(resumen.egresosBs)} Bs</span>
-                    </div>
-                    <hr className="border-orange-200" />
-                    <div className="flex justify-between font-bold">
-                      <span>Esperado:</span>
-                      <span className="text-orange-800">{formatearBolivares(resumen.esperadoBs)} Bs</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* DÓLARES */}
-                <div className="bg-white rounded-lg p-4 border border-green-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="h-4 w-4 text-green-600" />
-                      <span className="font-semibold text-green-900">Dólares</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Inicial:</span>
-                      <span className="font-medium">${formatearDolares(resumen.inicialUsd)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-green-600">Ingresos:</span>
-                      <span className="font-medium text-green-700">+${formatearDolares(resumen.ingresosUsd)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-red-600">Egresos:</span>
-                      <span className="font-medium text-red-700">-${formatearDolares(resumen.egresosUsd)}</span>
-                    </div>
-                    <hr className="border-slate-200" />
-                    <div className="flex justify-between font-bold">
-                      <span>Esperado:</span>
-                      <span className="text-green-800">${formatearDolares(resumen.esperadoUsd)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* PAGO MÓVIL */}
-                <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <Smartphone className="h-4 w-4 text-purple-600" />
-                      <span className="font-semibold text-purple-900">Pago Móvil</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Inicial:</span>
-                      <span className="font-medium">{formatearBolivares(resumen.inicialPagoMovil)} Bs</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-green-600">Recibidos:</span>
-                      <span className="font-medium text-green-700">+{formatearBolivares(resumen.totalPagoMovil)} Bs</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-red-600">Egresos:</span>
-                      <span className="font-medium text-red-700">-{formatearBolivares(resumen.egresosPagoMovil || 0)} Bs</span>
-                    </div>
-                    <hr className="border-slate-200" />
-                    <div className="flex justify-between font-bold">
-                      <span>Esperado:</span>
-                      <span className="text-purple-800">{formatearBolivares(resumen.esperadoPagoMovil)} Bs</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* 🔥 CONTEO FINAL OBLIGATORIO CON INPUTS MEJORADOS (BUG #1 SOLUCIONADO) */}
-            <form onSubmit={handleSubmit}>
-              <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5 mb-6">
-                <h4 className="font-bold text-red-900 mb-4 flex items-center">
-                  <Coins className="h-5 w-5 mr-2" />
-                  Conteo Final Obligatorio
-                  <span className="text-xs font-normal ml-2 bg-red-200 text-red-800 px-2 py-1 rounded-full">
-                    Crítico
+            {/* Información compacta del usuario - MEJORADA CON ICONOS Y FALLBACKS */}
+            <div className="bg-red-50 border-b border-red-100 px-6 py-2 flex flex-wrap items-center justify-between text-xs transition-all">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-red-500" />
+                  <span className="text-red-500 font-medium">Abierta por:</span>
+                  <span className="font-bold text-red-900 uppercase">
+                    {cajaActual.usuarioApertura?.nombre || cajaActual.usuario_apertura || cajaActual.usuario?.nombre || 'Sistema'}
                   </span>
-                </h4>
+                </div>
+                <div className="w-px h-3 bg-red-200"></div>
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-red-500" />
+                  <span className="text-red-500 font-medium">Fecha:</span>
+                  <span className="font-bold text-red-900">
+                    {cajaActual.fecha ? new Date(cajaActual.fecha).toLocaleDateString('es-VE') : (cajaActual.fecha_apertura || new Date().toLocaleDateString('es-VE'))}
+                  </span>
+                </div>
+                <div className="w-px h-3 bg-red-200"></div>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-red-500" />
+                  <span className="text-red-500 font-medium">Hora:</span>
+                  <span className="font-bold text-red-900">
+                    {cajaActual.horaApertura || cajaActual.hora_apertura || 'N/A'}
+                  </span>
+                </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-1.5 border-l border-red-200 pl-4 ml-4">
+                <User className="h-3.5 w-3.5 text-red-500" />
+                <span className="text-red-500 font-medium">Cerrando:</span>
+                <span className="font-bold text-red-900 uppercase">{usuario?.nombre}</span>
+              </div>
+            </div>
 
-                  {/* 🔥 CONTEO BOLÍVARES CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
-                  <div>
-                    <label className="block text-sm font-semibold text-amber-800 mb-2 flex items-center">
-                      <Banknote className="h-4 w-4 mr-1" /> Efectivo Bolívares *
-                    </label>
-                    <input
-                      type="text"
-                      value={montoFinalBs}
-                      onChange={handleMontoChange(setMontoFinalBs)}
-                      placeholder={`Esperado: ${formatearBolivares(resumen.esperadoBs)}`}
-                      className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg font-mono"
-                      required
-                      // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
-                      onKeyDown={(e) => {
-                        // Permitir teclas de navegación y edición
-                        if (
-                          e.key === 'Backspace' ||
-                          e.key === 'Delete' ||
-                          e.key === 'Tab' ||
-                          e.key === 'Escape' ||
-                          e.key === 'Enter' ||
-                          e.key === 'ArrowLeft' ||
-                          e.key === 'ArrowRight' ||
-                          e.key === 'ArrowUp' ||
-                          e.key === 'ArrowDown' ||
-                          (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
-                        ) {
-                          return;
-                        }
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              {/* Resumen más compacto */}
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-3 mb-4 border border-slate-200">
+                {/* HEADER "Resumen del Día" */}
+                <h3 className="font-bold text-slate-900 mb-2 flex items-center px-1">
+                  <TrendingUp className="h-5 w-5 mr-2 text-blue-600" />
+                  Resumen del Día
+                  <span className="ml-auto text-xs font-semibold bg-blue-50 text-blue-700 px-3 py-0.5 rounded-full border border-blue-100">
+                    {resumen.transacciones} transacciones
+                  </span>
+                </h3>
 
-                        // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
-                        if (
-                          e.key === '-' ||
-                          e.key === '+' ||
-                          e.key === 'e' ||
-                          e.key === 'E' ||
-                          (e.key === ',' && montoFinalBs.includes(',')) || // Solo una coma
-                          (e.key === '.' && montoFinalBs.includes(',')) || // No punto si ya hay coma
-                          (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
-                        ) {
-                          e.preventDefault();
-                        }
+                {/* GRID DE CARDS RESUMEN - ESTILO PREMIUM */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
 
-                        // 🔄 CONVERTIR PUNTO A COMA
-                        if (e.key === '.') {
-                          e.preventDefault();
-                          const newValue = sanitizarNumero(montoFinalBs + ',');
-                          setMontoFinalBs(newValue);
-                        }
-                      }}
-                    />
-                    {montoFinalBs && (
-                      <div className={`mt-1 text-xs font-medium ${Math.abs(diferenciasActuales.bs) < 0.01 ? 'text-green-600' :
-                        diferenciasActuales.bs > 0 ? 'text-blue-600' : 'text-red-600'
-                        }`}>
-                        {Math.abs(diferenciasActuales.bs) < 0.01 ? '✓ Exacto' :
-                          diferenciasActuales.bs > 0 ? `+${formatearBolivares(diferenciasActuales.bs)} Bs (sobrante)` :
-                            `${formatearBolivares(Math.abs(diferenciasActuales.bs))} Bs (faltante)`
-                        }
+                  {/* BOLÍVARES */}
+                  <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-orange-200 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-orange-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                    <div className="relative z-10">
+
+                      {/* Header Card */}
+                      <div className="flex flex-col items-center gap-1 mb-2 text-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-orange-100 to-orange-50 rounded-xl flex items-center justify-center shadow-inner mb-0.5">
+                          <Coins className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800 text-sm">Bolívares</h4>
+                        </div>
                       </div>
-                    )}
+
+                      {/* Body Details */}
+                      <div className="space-y-1.5 mb-2">
+                        <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-1.5">
+                          <span className="text-gray-500 font-medium">Inicial</span>
+                          <span className="font-mono font-medium text-gray-700">{formatearBolivares(resumen.inicialBs)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-1.5">
+                          <span className="text-gray-500 font-medium">Ingresos</span>
+                          <span className="font-mono font-medium text-green-600">+{formatearBolivares(resumen.ingresosBs)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs pb-1">
+                          <span className="text-gray-500 font-medium">Egresos</span>
+                          <span className="font-mono font-medium text-red-500">-{formatearBolivares(resumen.egresosBs)}</span>
+                        </div>
+                      </div>
+
+                      {/* Footer Total */}
+                      <div className="bg-gray-50 p-1.5 rounded-lg border border-gray-100 text-center">
+                        <div className="text-[9px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">Esperado en Caja</div>
+                        <div className="text-lg font-bold text-gray-700 tracking-tight font-mono">
+                          {formatearBolivares(resumen.esperadoBs)} <span className="text-[10px] text-gray-400 font-sans">Bs</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* 🔥 CONTEO DÓLARES CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
-                  <div>
-                    <label className="block text-sm font-semibold text-amber-800 mb-2 flex items-center">
-                      <DollarSign className="h-4 w-4 mr-1" /> Efectivo Dólares *
-                    </label>
-                    <input
-                      type="text"
-                      value={montoFinalUsd}
-                      onChange={handleMontoChange(setMontoFinalUsd)}
-                      placeholder={`Esperado: $${formatearDolares(resumen.esperadoUsd)}`}
-                      className="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-lg font-mono"
-                      required
-                      // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
-                      onKeyDown={(e) => {
-                        // Permitir teclas de navegación y edición
-                        if (
-                          e.key === 'Backspace' ||
-                          e.key === 'Delete' ||
-                          e.key === 'Tab' ||
-                          e.key === 'Escape' ||
-                          e.key === 'Enter' ||
-                          e.key === 'ArrowLeft' ||
-                          e.key === 'ArrowRight' ||
-                          e.key === 'ArrowUp' ||
-                          e.key === 'ArrowDown' ||
-                          (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
-                        ) {
-                          return;
-                        }
+                  {/* DÓLARES */}
+                  <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-green-200 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-green-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                    <div className="relative z-10">
 
-                        // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
-                        if (
-                          e.key === '-' ||
-                          e.key === '+' ||
-                          e.key === 'e' ||
-                          e.key === 'E' ||
-                          (e.key === ',' && montoFinalUsd.includes(',')) || // Solo una coma
-                          (e.key === '.' && montoFinalUsd.includes(',')) || // No punto si ya hay coma
-                          (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
-                        ) {
-                          e.preventDefault();
-                        }
-
-                        // 🔄 CONVERTIR PUNTO A COMA
-                        if (e.key === '.') {
-                          e.preventDefault();
-                          const newValue = sanitizarNumero(montoFinalUsd + ',');
-                          setMontoFinalUsd(newValue);
-                        }
-                      }}
-                    />
-                    {montoFinalUsd && (
-                      <div className={`mt-1 text-xs font-medium ${Math.abs(diferenciasActuales.usd) < 0.01 ? 'text-green-600' :
-                        diferenciasActuales.usd > 0 ? 'text-blue-600' : 'text-red-600'
-                        }`}>
-                        {Math.abs(diferenciasActuales.usd) < 0.01 ? '✓ Exacto' :
-                          diferenciasActuales.usd > 0 ? `+$${formatearDolares(diferenciasActuales.usd)} (sobrante)` :
-                            `$${formatearDolares(Math.abs(diferenciasActuales.usd))} (faltante)`
-                        }
+                      {/* Header Card */}
+                      <div className="flex flex-col items-center gap-1 mb-2 text-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-green-100 to-green-50 rounded-xl flex items-center justify-center shadow-inner mb-0.5">
+                          <DollarSign className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800 text-sm">Dólares</h4>
+                        </div>
                       </div>
-                    )}
+
+                      {/* Body Details */}
+                      <div className="space-y-1.5 mb-2">
+                        <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-1.5">
+                          <span className="text-gray-500 font-medium">Inicial</span>
+                          <span className="font-mono font-medium text-gray-700">${formatearDolares(resumen.inicialUsd)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-1.5">
+                          <span className="text-gray-500 font-medium">Ingresos</span>
+                          <span className="font-mono font-medium text-green-600">+${formatearDolares(resumen.ingresosUsd)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs pb-1">
+                          <span className="text-gray-500 font-medium">Egresos</span>
+                          <span className="font-mono font-medium text-red-500">-${formatearDolares(resumen.egresosUsd)}</span>
+                        </div>
+                      </div>
+
+                      {/* Footer Total */}
+                      <div className="bg-gray-50 p-1.5 rounded-lg border border-gray-100 text-center">
+                        <div className="text-[9px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">Esperado en Caja</div>
+                        <div className="text-lg font-bold text-gray-700 tracking-tight font-mono">
+                          ${formatearDolares(resumen.esperadoUsd)}
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* 🔥 CONTEO PAGO MÓVIL CON INPUT MEJORADO (BUG #1 SOLUCIONADO) */}
-                  <div>
-                    <label className="block text-sm font-semibold text-purple-800 mb-2 flex items-center">
-                      <Smartphone className="h-4 w-4 mr-1" /> Total Pago Móvil *
-                    </label>
-                    <input
-                      type="text"
-                      value={montoFinalPagoMovil}
-                      onChange={handleMontoChange(setMontoFinalPagoMovil)}
-                      placeholder={`Esperado: ${formatearBolivares(resumen.esperadoPagoMovil)}`}
-                      className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg font-mono"
-                      required
-                      // 🔥 PREVENIR TECLAS NO VÁLIDAS (BUG #1 SOLUCIONADO)
-                      onKeyDown={(e) => {
-                        // Permitir teclas de navegación y edición
-                        if (
-                          e.key === 'Backspace' ||
-                          e.key === 'Delete' ||
-                          e.key === 'Tab' ||
-                          e.key === 'Escape' ||
-                          e.key === 'Enter' ||
-                          e.key === 'ArrowLeft' ||
-                          e.key === 'ArrowRight' ||
-                          e.key === 'ArrowUp' ||
-                          e.key === 'ArrowDown' ||
-                          (e.ctrlKey && (e.key === 'a' || e.key === 'c' || e.key === 'v' || e.key === 'x'))
-                        ) {
-                          return;
-                        }
+                  {/* PAGO MÓVIL */}
+                  <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-purple-200 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                    <div className="relative z-10">
 
-                        // 🚫 BLOQUEAR NÚMEROS NEGATIVOS Y CARACTERES INVÁLIDOS
-                        if (
-                          e.key === '-' ||
-                          e.key === '+' ||
-                          e.key === 'e' ||
-                          e.key === 'E' ||
-                          (e.key === ',' && montoFinalPagoMovil.includes(',')) || // Solo una coma
-                          (e.key === '.' && montoFinalPagoMovil.includes(',')) || // No punto si ya hay coma
-                          (!/[\d,.]/.test(e.key)) // Solo dígitos, coma y punto
-                        ) {
-                          e.preventDefault();
-                        }
-
-                        // 🔄 CONVERTIR PUNTO A COMA
-                        if (e.key === '.') {
-                          e.preventDefault();
-                          const newValue = sanitizarNumero(montoFinalPagoMovil + ',');
-                          setMontoFinalPagoMovil(newValue);
-                        }
-                      }}
-                    />
-                    {montoFinalPagoMovil && (
-                      <div className={`mt-1 text-xs font-medium ${Math.abs(diferenciasActuales.pagoMovil) < 0.01 ? 'text-green-600' :
-                        diferenciasActuales.pagoMovil > 0 ? 'text-purple-600' : 'text-red-600'
-                        }`}>
-                        {Math.abs(diferenciasActuales.pagoMovil) < 0.01 ? '✓ Exacto' :
-                          diferenciasActuales.pagoMovil > 0 ? `+${formatearBolivares(diferenciasActuales.pagoMovil)} Bs (sobrante)` :
-                            `${formatearBolivares(Math.abs(diferenciasActuales.pagoMovil))} Bs (faltante)`
-                        }
+                      {/* Header Card */}
+                      <div className="flex flex-col items-center gap-1 mb-2 text-center">
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-50 rounded-xl flex items-center justify-center shadow-inner mb-0.5">
+                          <Smartphone className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800 text-sm">Pago Móvil</h4>
+                        </div>
                       </div>
-                    )}
+
+                      {/* Body Details */}
+                      <div className="space-y-1.5 mb-2">
+                        <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-1.5">
+                          <span className="text-gray-500 font-medium">Inicial</span>
+                          <span className="font-mono font-medium text-gray-700">{formatearBolivares(resumen.inicialPagoMovil)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-1.5">
+                          <span className="text-gray-500 font-medium">Recibidos</span>
+                          <span className="font-mono font-medium text-green-600">+{formatearBolivares(resumen.totalPagoMovil)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs pb-1">
+                          <span className="text-gray-500 font-medium">Egresos</span>
+                          <span className="font-mono font-medium text-red-500">-{formatearBolivares(resumen.egresosPagoMovil || 0)}</span>
+                        </div>
+                      </div>
+
+                      {/* Footer Total */}
+                      <div className="bg-gray-50 p-1.5 rounded-lg border border-gray-100 text-center">
+                        <div className="text-[9px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">Esperado en Cuentas</div>
+                        <div className="text-lg font-bold text-gray-700 tracking-tight font-mono">
+                          {formatearBolivares(resumen.esperadoPagoMovil)} <span className="text-[10px] text-gray-400 font-sans">Bs</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* 🔥 CONTEO FINAL OBLIGATORIO CON INPUTS MEJORADOS (BUG #1 SOLUCIONADO) */}
+              <form id="form-cierre-caja" onSubmit={handleSubmit}>
+
+                {/* BARRA DE ADVERTENCIA COMPACTA */}
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 mb-3 flex items-center justify-between flex-wrap gap-2 shadow-sm relative z-10 backdrop-blur-xl bg-orange-50/95 sticky top-0 transition-all">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-orange-100 p-1.5 rounded text-orange-600">
+                      <TrendingUp className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-orange-900 text-sm">CONTEO FÍSICO OBLIGATORIO</span>
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Crítico</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="hidden xl:block text-xs text-orange-700 font-medium px-4 border-x border-orange-200/50 flex-1 text-center">
+                    Verifique cada monto cuidadosamente. Las diferencias requerirán autorización administrativa.
                   </div>
                 </div>
 
-                {/* Alerta de diferencias globales */}
-                {(montoFinalBs && montoFinalUsd && montoFinalPagoMovil) &&
-                  (diferenciasActuales.bs !== 0 || diferenciasActuales.usd !== 0 || diferenciasActuales.pagoMovil !== 0) && (
-                    <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <AlertTriangle className="h-4 w-4 text-red-600" />
-                        <span className="font-semibold text-red-800">Diferencias Detectadas</span>
+                {/* GRID DE CARDS DE CONTEO */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+
+                  {/* EFECTIVO BS */}
+                  <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-orange-200 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-orange-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div className="flex flex-col items-center gap-1 mb-2 text-center relative w-full">
+                        {/* WARNING BADGE - FLOTANTE */}
+                        {montoFinalBs && diferenciasActuales.bs !== 0 && (
+                          <div className="absolute -top-1 left-0 transform -translate-x-2 -translate-y-2 z-20 animate-in zoom-in duration-300">
+                            <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span>{diferenciasActuales.bs > 0 ? '+' : ''}{formatearBolivares(diferenciasActuales.bs)}</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="w-9 h-9 bg-gradient-to-br from-orange-100 to-orange-50 rounded-xl flex items-center justify-center shadow-inner mb-0.5">
+                          <Coins className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800 text-base">Efectivo Bs</h4>
+                        </div>
                       </div>
-                      <div className="text-sm text-red-700">
-                        Se requerirá autorización del CEO Andrés Morandín para proceder con el cierre.
+
+
+
+                      <div className="w-full">
+                        <label className="block text-xs font-bold text-orange-700 mb-1.5 uppercase text-center">Monto Contado</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={montoFinalBs}
+                            onChange={handleMontoChange(setMontoFinalBs)}
+                            placeholder="0,00"
+                            className="w-full text-center py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-lg font-mono font-medium transition-all shadow-sm"
+                            required
+                            onKeyDown={(e) => {
+                              if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) || (e.ctrlKey)) return;
+                              if (!/[\d,.]/.test(e.key) || (e.key === ',' && montoFinalBs.includes(',')) || (e.key === '.' && montoFinalBs.includes(','))) e.preventDefault();
+                              if (e.key === '.') {
+                                e.preventDefault();
+                                setMontoFinalBs(sanitizarNumero(montoFinalBs + ','));
+                              }
+                            }}
+                          />
+                        </div>
+                        {montoFinalBs && (
+                          <div className={`mt-2 text-center text-xs font-bold ${Math.abs(diferenciasActuales.bs) < 0.01 ? 'text-green-600' : diferenciasActuales.bs > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                            {Math.abs(diferenciasActuales.bs) < 0.01 ? '✓ EXACTO' : diferenciasActuales.bs > 0 ? `+${formatearBolivares(diferenciasActuales.bs)} Bs` : `${formatearBolivares(diferenciasActuales.bs)} Bs`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* EFECTIVO USD */}
+                  <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-green-200 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-green-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div className="flex flex-col items-center gap-1 mb-2 text-center relative w-full">
+                        {/* WARNING BADGE - FLOTANTE */}
+                        {montoFinalUsd && diferenciasActuales.usd !== 0 && (
+                          <div className="absolute -top-1 left-0 transform -translate-x-2 -translate-y-2 z-20 animate-in zoom-in duration-300">
+                            <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span>{diferenciasActuales.usd > 0 ? '+' : ''}${formatearDolares(diferenciasActuales.usd)}</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="w-9 h-9 bg-gradient-to-br from-green-100 to-green-50 rounded-lg flex items-center justify-center shadow-inner">
+                          <DollarSign className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800 text-base">Efectivo USD</h4>
+                        </div>
+                      </div>
+
+
+
+                      <div className="w-full">
+                        <label className="block text-xs font-bold text-green-700 mb-1.5 uppercase text-center">Monto Contado</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={montoFinalUsd}
+                            onChange={handleMontoChange(setMontoFinalUsd)}
+                            placeholder="0,00"
+                            className="w-full text-center py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-lg font-mono font-medium transition-all shadow-sm"
+                            required
+                            onKeyDown={(e) => {
+                              if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) || (e.ctrlKey)) return;
+                              if (!/[\d,.]/.test(e.key) || (e.key === ',' && montoFinalUsd.includes(',')) || (e.key === '.' && montoFinalUsd.includes(','))) e.preventDefault();
+                              if (e.key === '.') {
+                                e.preventDefault();
+                                setMontoFinalUsd(sanitizarNumero(montoFinalUsd + ','));
+                              }
+                            }}
+                          />
+                        </div>
+                        {montoFinalUsd && (
+                          <div className={`mt-2 text-center text-xs font-bold ${Math.abs(diferenciasActuales.usd) < 0.01 ? 'text-green-600' : diferenciasActuales.usd > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                            {Math.abs(diferenciasActuales.usd) < 0.01 ? '✓ EXACTO' : diferenciasActuales.usd > 0 ? `+$${formatearDolares(diferenciasActuales.usd)}` : `$${formatearDolares(diferenciasActuales.usd)}`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PAGO MÓVIL */}
+                  <div className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm hover:shadow-md transition-all group ring-1 ring-transparent hover:ring-purple-200 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-150 z-0"></div>
+                    <div className="relative z-10 flex flex-col items-center">
+                      <div className="flex flex-col items-center gap-1 mb-2 text-center relative w-full">
+                        {/* WARNING BADGE - FLOTANTE */}
+                        {montoFinalPagoMovil && diferenciasActuales.pagoMovil !== 0 && (
+                          <div className="absolute -top-1 left-0 transform -translate-x-2 -translate-y-2 z-20 animate-in zoom-in duration-300">
+                            <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white">
+                              <AlertTriangle className="h-3 w-3" />
+                              <span>{diferenciasActuales.pagoMovil > 0 ? '+' : ''}{formatearBolivares(diferenciasActuales.pagoMovil)}</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="w-9 h-9 bg-gradient-to-br from-purple-100 to-purple-50 rounded-lg flex items-center justify-center shadow-inner">
+                          <Smartphone className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800 text-base">Pago Móvil</h4>
+                        </div>
+                      </div>
+
+
+
+                      <div className="w-full">
+                        <label className="block text-xs font-bold text-purple-700 mb-1.5 uppercase text-center">Monto Contado</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={montoFinalPagoMovil}
+                            onChange={handleMontoChange(setMontoFinalPagoMovil)}
+                            placeholder="0,00"
+                            className="w-full text-center py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-lg font-mono font-medium transition-all shadow-sm"
+                            required
+                            onKeyDown={(e) => {
+                              if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) || (e.ctrlKey)) return;
+                              if (!/[\d,.]/.test(e.key) || (e.key === ',' && montoFinalPagoMovil.includes(',')) || (e.key === '.' && montoFinalPagoMovil.includes(','))) e.preventDefault();
+                              if (e.key === '.') {
+                                e.preventDefault();
+                                setMontoFinalPagoMovil(sanitizarNumero(montoFinalPagoMovil + ','));
+                              }
+                            }}
+                          />
+                        </div>
+                        {montoFinalPagoMovil && (
+                          <div className={`mt-2 text-center text-xs font-bold ${Math.abs(diferenciasActuales.pagoMovil) < 0.01 ? 'text-green-600' : diferenciasActuales.pagoMovil > 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                            {Math.abs(diferenciasActuales.pagoMovil) < 0.01 ? '✓ EXACTO' : diferenciasActuales.pagoMovil > 0 ? `+${formatearBolivares(diferenciasActuales.pagoMovil)} Bs` : `${formatearBolivares(diferenciasActuales.pagoMovil)} Bs`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+
+
+                {/* Observaciones desplegables */}
+                <div className="mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setObservacionesAbiertas(!observacionesAbiertas)}
+                    className="w-full flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+                  >
+                    <span className="font-medium text-slate-700">Observaciones del Cierre</span>
+                    {observacionesAbiertas ? (
+                      <ChevronUp className="h-4 w-4 text-slate-500" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-slate-500" />
+                    )}
+                  </button>
+
+                  {observacionesAbiertas && (
+                    <div className="mt-3 p-3 border border-slate-200 rounded-lg bg-white">
+                      <textarea
+                        value={observacionesCierre}
+                        onChange={(e) => setObservacionesCierre(e.target.value)}
+                        placeholder="Observaciones sobre el cierre..."
+                        rows={1}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                      />
+                      <div className="mt-1 text-xs text-slate-500">
+                        {/* 🔥 TEXTO CORREGIDO SOBRE OBSERVACIONES AUTOMÁTICAS (BUG #2 SOLUCIONADO) */}
+                        {observacionesCierre.trim() ?
+                          'Las diferencias se registrarán automáticamente si requieren autorización CEO.' :
+                          'Si no agrega observaciones, se generará automáticamente "CIERRE EJECUTADO".'
+                        }
                       </div>
                     </div>
                   )}
-              </div>
+                </div>
 
-              {/* Observaciones desplegables */}
-              <div className="mb-6">
-                <button
-                  type="button"
-                  onClick={() => setObservacionesAbiertas(!observacionesAbiertas)}
-                  className="w-full flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  <span className="font-medium text-slate-700">Observaciones del Cierre</span>
-                  {observacionesAbiertas ? (
-                    <ChevronUp className="h-4 w-4 text-slate-500" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-slate-500" />
-                  )}
-                </button>
-
-                {observacionesAbiertas && (
-                  <div className="mt-3 p-3 border border-slate-200 rounded-lg bg-white">
-                    <textarea
-                      value={observacionesCierre}
-                      onChange={(e) => setObservacionesCierre(e.target.value)}
-                      placeholder="Observaciones sobre el cierre..."
-                      rows={1}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                    />
-                    <div className="mt-1 text-xs text-slate-500">
-                      {/* 🔥 TEXTO CORREGIDO SOBRE OBSERVACIONES AUTOMÁTICAS (BUG #2 SOLUCIONADO) */}
-                      {observacionesCierre.trim() ?
-                        'Las diferencias se registrarán automáticamente si requieren autorización CEO.' :
-                        'Si no agrega observaciones, se generará automáticamente "CIERRE EJECUTADO".'
-                      }
+                {/* Indicador de progreso */}
+                {loading && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                      <div className="text-sm text-red-700">
+                        Procesando cierre de caja...
+                      </div>
                     </div>
                   </div>
                 )}
-              </div>
 
-              {/* Indicador de progreso */}
-              {loading && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
-                    <div className="text-sm text-red-700">
-                      Procesando cierre de caja...
+                {/* Confirmación de evidencia capturada */}
+                {fotoEvidencia && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center space-x-3">
+                      <Camera className="h-5 w-5 text-green-600" />
+                      <div>
+                        <div className="font-semibold text-green-800">Evidencia Fotográfica Capturada</div>
+                        <div className="text-sm text-green-700">Se ha registrado automáticamente la evidencia del cierre</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Confirmación de evidencia capturada */}
-              {fotoEvidencia && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                  <div className="flex items-center space-x-3">
-                    <Camera className="h-5 w-5 text-green-600" />
-                    <div>
-                      <div className="font-semibold text-green-800">Evidencia Fotográfica Capturada</div>
-                      <div className="text-sm text-green-700">Se ha registrado automáticamente la evidencia del cierre</div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                {/* Botones de acción */}
+              </form>
+            </div>
 
-              {/* Botones de acción */}
-              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+            <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 border-t border-red-700 shadow-inner z-20">
+              {/* Botón Cancelar */}
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={loading || showProgreso}
+                className="flex-1 px-6 py-3 text-red-700 bg-white border border-red-100 rounded-xl hover:bg-red-50 transition-all disabled:opacity-50 font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+              >
+                <X className="h-5 w-5" />
+                <span>CANCELAR OPERACIÓN</span>
+              </button>
 
-                {/* Botón Cancelar */}
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  disabled={loading || showProgreso}
-                  className="flex-1 px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
-                >
-                  Cancelar
-                </button>
-
-                {/* Botón Cerrar Caja */}
-                <button
-                  type="submit"
-                  disabled={loading || showProgreso || !montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
-                  {loading || showProgreso ? (
-                    <span className="flex items-center justify-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Cerrando...</span>
-                    </span>
-                  ) : (
-                    'Cerrar Caja'
-                  )}
-                </button>
-              </div>
-            </form>
+              {/* Botón Cerrar Caja */}
+              <button
+                type="submit"
+                form="form-cierre-caja"
+                disabled={loading || showProgreso || !montoFinalBs || !montoFinalUsd || !montoFinalPagoMovil}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl hover:from-slate-800 hover:to-slate-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 border border-slate-700 flex items-center justify-center gap-2"
+              >
+                {loading || showProgreso ? (
+                  <span className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>PROCESANDO CIERRE...</span>
+                  </span>
+                ) : (
+                  <>
+                    <Lock className="h-5 w-5" />
+                    <span>CONFIRMAR CIERRE DE CAJA</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Modal CEO para diferencias */}
+          <ModalCEO
+            isOpen={showModalCEO}
+            diferencias={diferenciasCalculadas}
+            onAutorizar={handleAutorizacionCEO}
+            usuarioActual={usuario}
+          />
+
+          {/* Modal de progreso de cierre MEJORADO */}
+          <ModalProgresoCierre
+            isOpen={showProgreso}
+            pasoActual={pasoActual}
+            pasos={pasos}
+            mensajePaso={mensajePaso}
+          />
+
+          {/* Elementos ocultos para cámara */}
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            style={{ display: 'none' }}
+          />
+          <canvas
+            ref={canvasRef}
+            style={{ display: 'none' }}
+          />
         </div>
-
-        {/* Modal CEO para diferencias */}
-        <ModalCEO
-          isOpen={showModalCEO}
-          diferencias={diferenciasCalculadas}
-          onAutorizar={handleAutorizacionCEO}
-          usuarioActual={usuario}
-        />
-
-        {/* Modal de progreso de cierre MEJORADO */}
-        <ModalProgresoCierre
-          isOpen={showProgreso}
-          pasoActual={pasoActual}
-          pasos={pasos}
-          mensajePaso={mensajePaso}
-        />
-
-        {/* Elementos ocultos para cámara */}
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{ display: 'none' }}
-        />
-        <canvas
-          ref={canvasRef}
-          style={{ display: 'none' }}
-        />
       </div>
     </>
   );
