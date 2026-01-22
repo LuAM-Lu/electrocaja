@@ -19,15 +19,15 @@ const errorResponse = (res, message = 'Error interno', status = 500) => {
 };
 
 class ReportesController {
-  
+
   // 📊 RESUMEN GENERAL - Dashboard Ejecutivo
   static async getResumenGeneral(req, res) {
     try {
       const { periodo = 'mes' } = req.query;
-      
+
       // Calcular fechas según período
       const fechas = calcularFechasPeriodo(periodo);
-      
+
       // 1. Estado de cajas
       const cajas = await prisma.caja.groupBy({
         by: ['estado'],
@@ -104,17 +104,19 @@ class ReportesController {
 
       // Obtener nombres de usuarios
       const usuariosConNombres = await Promise.all(
-        usuariosActivos.map(async (ua) => {
-          const usuario = await prisma.user.findUnique({
-            where: { id: ua.usuarioId },
-            select: { nombre: true }
-          });
-          return {
-            nombre: usuario?.nombre || 'Usuario eliminado',
-            transacciones: ua._count.id,
-            ventasTotal: Number(ua._sum.totalBs || 0)
-          };
-        })
+        usuariosActivos
+          .filter(ua => ua.usuarioId !== null)
+          .map(async (ua) => {
+            const usuario = await prisma.user.findUnique({
+              where: { id: ua.usuarioId },
+              select: { nombre: true }
+            });
+            return {
+              nombre: usuario?.nombre || 'Usuario eliminado',
+              transacciones: ua._count.id,
+              ventasTotal: Number(ua._sum.totalBs || 0)
+            };
+          })
       );
 
       // 4. Top productos (productos más vendidos)
@@ -142,17 +144,19 @@ class ReportesController {
       });
 
       const productosConNombres = await Promise.all(
-        topProductos.map(async (tp) => {
-          const producto = await prisma.product.findUnique({
-            where: { id: tp.productoId },
-            select: { descripcion: true }
-          });
-          return {
-            descripcion: producto?.descripcion || 'Producto eliminado',
-            ventas: tp._sum.cantidad || 0,
-            ingresos: Number(tp._sum.subtotal || 0)
-          };
-        })
+        topProductos
+          .filter(tp => tp.productoId !== null) // Filtramos nulos para evitar errores
+          .map(async (tp) => {
+            const producto = await prisma.product.findUnique({
+              where: { id: tp.productoId },
+              select: { descripcion: true }
+            });
+            return {
+              descripcion: producto?.descripcion || 'Producto eliminado',
+              ventas: tp._sum.cantidad || 0,
+              ingresos: Number(tp._sum.subtotal || 0)
+            };
+          })
       );
 
       // 5. Actividad reciente (últimas 10 transacciones)
@@ -211,7 +215,7 @@ class ReportesController {
   static async getReportesFinancieros(req, res) {
     try {
       const { periodo = 'mes', moneda = 'bs' } = req.query;
-      
+
       const fechas = calcularFechasPeriodo(periodo);
 
       // 1. Flujo de efectivo
@@ -286,12 +290,12 @@ class ReportesController {
   // 📉 REPORTES DE EGRESOS - Búsqueda por personas
   static async getReportesEgresos(req, res) {
     try {
-      const { 
-        busqueda = '', 
-        tipoPersona = '', 
-        persona = '', 
-        fechaInicio, 
-        fechaFin 
+      const {
+        busqueda = '',
+        tipoPersona = '',
+        persona = '',
+        fechaInicio,
+        fechaFin
       } = req.query;
 
       let whereClause = {
@@ -339,11 +343,11 @@ class ReportesController {
 
       // Aplicar filtros de persona
       let egresosFiltrados = egresosConPersonas;
-      
+
       if (tipoPersona) {
         egresosFiltrados = egresosFiltrados.filter(e => e.tipo_persona === tipoPersona);
       }
-      
+
       if (persona) {
         egresosFiltrados = egresosFiltrados.filter(e => e.persona_relacionada === persona);
       }
@@ -359,11 +363,11 @@ class ReportesController {
   // 📦 REPORTES DE CAJAS - Historial con evidencias
   static async getReportesCajas(req, res) {
     try {
-      const { 
-        fechaInicio, 
-        fechaFin, 
-        usuario = '', 
-        estado = '' 
+      const {
+        fechaInicio,
+        fechaFin,
+        usuario = '',
+        estado = ''
       } = req.query;
 
       let whereClause = {};
@@ -398,7 +402,7 @@ class ReportesController {
 
       // Filtro por usuario (aplicado después debido a la relación)
       if (usuario) {
-        cajas = cajas.filter(caja => 
+        cajas = cajas.filter(caja =>
           caja.usuarioApertura?.nombre?.toLowerCase().includes(usuario.toLowerCase()) ||
           caja.usuarioCierre?.nombre?.toLowerCase().includes(usuario.toLowerCase())
         );
@@ -447,7 +451,7 @@ class ReportesController {
   static async getTasasHistoricas(req, res) {
     try {
       const { fechaInicio, fechaFin, tipo = 'todas' } = req.query;
-      
+
       const ahora = new Date();
       const inicio = fechaInicio ? new Date(fechaInicio) : new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
       const fin = fechaFin ? new Date(fechaFin) : ahora;
@@ -477,10 +481,10 @@ class ReportesController {
 
       // Agrupar por fecha (puede haber múltiples cajas por día)
       const tasasAgrupadas = {};
-      
+
       tasasPorDia.forEach(caja => {
         const fechaKey = caja.fecha.toISOString().split('T')[0];
-        
+
         if (!tasasAgrupadas[fechaKey]) {
           tasasAgrupadas[fechaKey] = {
             fecha: fechaKey,
@@ -505,7 +509,7 @@ class ReportesController {
   static async getDetalleCaja(req, res) {
     try {
       const { id } = req.params;
-      
+
       const cajaCompleta = await prisma.caja.findUnique({
         where: { id: parseInt(id) },
         include: {
@@ -516,7 +520,7 @@ class ReportesController {
           usuarioCierre: {
             select: { nombre: true, email: true, rol: true }
           },
-          
+
           // 💰 TODAS las transacciones de esa caja
           transacciones: {
             include: {
@@ -531,7 +535,7 @@ class ReportesController {
             },
             orderBy: { fechaHora: 'asc' }
           },
-          
+
           // 🧮 Arqueos realizados
           arqueos: {
             orderBy: { createdAt: 'asc' }
@@ -558,13 +562,13 @@ class ReportesController {
       // Procesar transacciones para métricas
       cajaCompleta.transacciones.forEach(t => {
         const totalBs = Number(t.totalBs);
-        
+
         // Por categoría
         if (t.tipo === 'INGRESO') {
-          metricas.ingresosPorCategoria[t.categoria] = 
+          metricas.ingresosPorCategoria[t.categoria] =
             (metricas.ingresosPorCategoria[t.categoria] || 0) + totalBs;
         } else {
-          metricas.egresosPorCategoria[t.categoria] = 
+          metricas.egresosPorCategoria[t.categoria] =
             (metricas.egresosPorCategoria[t.categoria] || 0) + totalBs;
         }
 
@@ -591,7 +595,7 @@ class ReportesController {
         // Métodos de pago
         t.pagos?.forEach(pago => {
           const metodo = `${pago.metodo} (${pago.moneda})`;
-          metricas.metodosDepago[metodo] = 
+          metricas.metodosDepago[metodo] =
             (metricas.metodosDepago[metodo] || 0) + Number(pago.monto);
         });
 
@@ -638,11 +642,11 @@ class ReportesController {
   // 🔍 BUSCAR TRANSACCIONES ESPECÍFICAS
   static async buscarTransacciones(req, res) {
     try {
-      const { 
-        cajaId, 
-        tipo, 
-        categoria, 
-        usuario, 
+      const {
+        cajaId,
+        tipo,
+        categoria,
+        usuario,
         cliente,
         montoMin,
         montoMax,
@@ -660,7 +664,7 @@ class ReportesController {
       if (tipo) whereClause.tipo = tipo;
       if (categoria) whereClause.categoria = { contains: categoria, mode: 'insensitive' };
       if (codigoVenta) whereClause.codigoVenta = { contains: codigoVenta, mode: 'insensitive' };
-      
+
       // Filtro por rango de monto
       if (montoMin || montoMax) {
         whereClause.totalBs = {};
@@ -742,13 +746,13 @@ class ReportesController {
       return errorResponse(res, 'Error al buscar transacciones', 500);
     }
   }
-// 👤 REPORTE POR EMPLEADO/USUARIO ESPECÍFICO - MAPEO CORRECTO SEGÚN SCHEMA
+  // 👤 REPORTE POR EMPLEADO/USUARIO ESPECÍFICO - MAPEO CORRECTO SEGÚN SCHEMA
   static async getReporteEmpleado(req, res) {
     try {
-      const { 
+      const {
         usuarioId,           // ⚡ CRÍTICO - Usuario específico
-        fechaInicio, 
-        fechaFin 
+        fechaInicio,
+        fechaFin
       } = req.query;
 
       // Validación crítica del usuarioId
@@ -790,23 +794,23 @@ class ReportesController {
         totalTransacciones: transacciones.length,
         totalVentas: transacciones.filter(t => t.tipo === 'INGRESO').length,
         totalEgresos: transacciones.filter(t => t.tipo === 'EGRESO').length,
-        
+
         // Montos
         montoVentasBs: 0,
         montoVentasUsd: 0,
         montoEgresosBs: 0,
         montoEgresosUsd: 0,
-        
+
         // 💳 MÉTODOS DE PAGO VENEZUELA 2025 - BASADO EN SCHEMA REAL
         metodosPago: {
           // Efectivo tradicional
           'Efectivo Bs': 0,
           'Efectivo USD': 0,
-          
+
           // Transferencias bancarias nacionales
           'Pago Móvil': 0,
           'Transferencia Bancaria': 0,
-          
+
           // Bancos específicos (usando campo 'banco')
           'Banco del Tesoro': 0,
           'Banco Mercantil': 0,
@@ -814,11 +818,11 @@ class ReportesController {
           'BNC': 0,
           'Banesco': 0,
           'Provincial': 0,
-          
+
           // Métodos internacionales
           'Zelle': 0,
           'PayPal': 0,
-          
+
           // Criptomonedas y P2P
           'Binance Pay': 0,
           'Binance P2P': 0,
@@ -826,47 +830,47 @@ class ReportesController {
           'USDC': 0,
           'BUSD': 0,
           'Bitcoin': 0,
-          
+
           // Billeteras digitales
           'Reserve': 0,
           'Zinli': 0,
           'AirTM': 0,
-          
+
           // Tarjetas
           'Tarjeta Crédito': 0,
           'Tarjeta Débito': 0,
           'Biopago': 0,
-          
+
           // Otros
           'Otros': 0
         },
-        
+
         // Estadísticas por moneda (basado en campo 'moneda' del schema)
         montosPorMoneda: {
           'BS': 0,    // Bolívares
           'USD': 0,   // Dólares
           'EUR': 0    // Euros
         },
-        
+
         // Productos vendidos
         productosVendidos: {},
         topProductos: [],
-        
+
         // Categorías
         ventasPorCategoria: {},
         egresosPorCategoria: {},
-        
+
         // Estadísticas temporales
         ventasPorDia: {},
         ventasPorHora: {},
         promedioVentaDiaria: 0,
         diaConMasVentas: null,
         horaConMasVentas: null,
-        
+
         // Clientes atendidos
         clientesUnicos: new Set(),
         clientesFrecuentes: {},
-        
+
         // Rendimiento
         tiempoPromedioAtencion: 0,
         transaccionMasAlta: 0,
@@ -885,23 +889,23 @@ class ReportesController {
         if (transaccion.tipo === 'INGRESO') {
           metricas.montoVentasBs += totalBs;
           metricas.montoVentasUsd += totalUsd;
-          
+
           // Ventas por categoría
           const categoria = transaccion.categoria || 'Sin categoría';
           metricas.ventasPorCategoria[categoria] = (metricas.ventasPorCategoria[categoria] || 0) + totalBs;
-          
+
           // Ventas por día y hora
           metricas.ventasPorDia[fecha] = (metricas.ventasPorDia[fecha] || 0) + totalBs;
           metricas.ventasPorHora[hora] = (metricas.ventasPorHora[hora] || 0) + totalBs;
-          
+
           // Transacciones máximas y mínimas
           if (totalBs > metricas.transaccionMasAlta) metricas.transaccionMasAlta = totalBs;
           if (totalBs < metricas.transaccionMasBaja && totalBs > 0) metricas.transaccionMasBaja = totalBs;
-          
+
         } else {
           metricas.montoEgresosBs += totalBs;
           metricas.montoEgresosUsd += totalUsd;
-          
+
           // Egresos por categoría
           const categoria = transaccion.categoria || 'Sin categoría';
           metricas.egresosPorCategoria[categoria] = (metricas.egresosPorCategoria[categoria] || 0) + totalBs;
@@ -920,23 +924,23 @@ class ReportesController {
           const metodo = (pago.metodo || '').toLowerCase().trim();
           const moneda = (pago.moneda || 'BS').toUpperCase();
           const banco = (pago.banco || '').toLowerCase().trim();
-          
+
           // Acumular por moneda
           metricas.montosPorMoneda[moneda] = (metricas.montosPorMoneda[moneda] || 0) + monto;
-          
+
           // Clasificación inteligente por método
           let metodoKey = 'Otros';
-          
+
           // EFECTIVO
           if (metodo.includes('efectivo')) {
             metodoKey = moneda === 'USD' ? 'Efectivo USD' : 'Efectivo Bs';
           }
-          
+
           // PAGO MÓVIL
           else if (metodo.includes('pago móvil') || metodo.includes('pago movil') || metodo.includes('movil')) {
             metodoKey = 'Pago Móvil';
           }
-          
+
           // TRANSFERENCIAS - Clasificar por banco específico
           else if (metodo.includes('transferencia') || metodo.includes('transfer')) {
             if (banco.includes('tesoro') || banco.includes('bt ')) {
@@ -955,14 +959,14 @@ class ReportesController {
               metodoKey = 'Transferencia Bancaria';
             }
           }
-          
+
           // MÉTODOS INTERNACIONALES
           else if (metodo.includes('zelle')) {
             metodoKey = 'Zelle';
           } else if (metodo.includes('paypal')) {
             metodoKey = 'PayPal';
           }
-          
+
           // CRIPTOMONEDAS Y BINANCE
           else if (metodo.includes('binance pay')) {
             metodoKey = 'Binance Pay';
@@ -977,7 +981,7 @@ class ReportesController {
           } else if (metodo.includes('bitcoin') || metodo.includes('btc')) {
             metodoKey = 'Bitcoin';
           }
-          
+
           // BILLETERAS DIGITALES
           else if (metodo.includes('reserve')) {
             metodoKey = 'Reserve';
@@ -986,7 +990,7 @@ class ReportesController {
           } else if (metodo.includes('airtm')) {
             metodoKey = 'AirTM';
           }
-          
+
           // TARJETAS
           else if (metodo.includes('tarjeta crédito') || metodo.includes('credito') || metodo.includes('visa') || metodo.includes('mastercard')) {
             metodoKey = 'Tarjeta Crédito';
@@ -995,7 +999,7 @@ class ReportesController {
           } else if (metodo.includes('biopago')) {
             metodoKey = 'Biopago';
           }
-          
+
           // Acumular monto por método
           metricas.metodosPago[metodoKey] += monto;
         });
@@ -1015,7 +1019,7 @@ class ReportesController {
                 vecesVendido: 0
               };
             }
-            
+
             const producto = metricas.productosVendidos[productoKey];
             producto.cantidad += item.cantidad;
             producto.montoTotal += Number(item.subtotal);
@@ -1043,13 +1047,13 @@ class ReportesController {
       if (diasConVentas.length > 0) {
         metricas.promedioVentaDiaria = metricas.montoVentasBs / diasConVentas.length;
         metricas.diaConMasVentas = Object.entries(metricas.ventasPorDia)
-          .sort(([,a], [,b]) => b - a)[0];
+          .sort(([, a], [, b]) => b - a)[0];
       }
 
       // Hora con más ventas
       if (Object.keys(metricas.ventasPorHora).length > 0) {
         metricas.horaConMasVentas = Object.entries(metricas.ventasPorHora)
-          .sort(([,a], [,b]) => b - a)[0];
+          .sort(([, a], [, b]) => b - a)[0];
       }
 
       // Ticket promedio
@@ -1059,7 +1063,7 @@ class ReportesController {
 
       // 👥 CLIENTES MÁS FRECUENTES
       const clientesFrecuentesArray = Object.entries(metricas.clientesFrecuentes)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 10)
         .map(([nombre, visitas]) => ({ nombre, visitas }));
 
@@ -1067,7 +1071,7 @@ class ReportesController {
       const balance = {
         neto: metricas.montoVentasBs - metricas.montoEgresosBs,
         netoUsd: metricas.montoVentasUsd - metricas.montoEgresosUsd,
-        margenOperativo: metricas.montoVentasBs > 0 ? 
+        margenOperativo: metricas.montoVentasBs > 0 ?
           ((metricas.montoVentasBs - metricas.montoEgresosBs) / metricas.montoVentasBs * 100) : 0
       };
 
@@ -1125,7 +1129,7 @@ class ReportesController {
         transacciones: transaccionesFormateadas,
         resumen: {
           totalOperaciones: metricas.totalTransacciones,
-          eficienciaVentas: metricas.totalTransacciones > 0 ? 
+          eficienciaVentas: metricas.totalTransacciones > 0 ?
             ((metricas.totalVentas / metricas.totalTransacciones) * 100) : 0,
           ticketPromedio: metricas.ticketPromedio
         }
@@ -1212,128 +1216,128 @@ async function calcularFlujoEfectivo(fechas) {
   return {
     ingresos: {
       bs: Number(ingresos._sum.totalBs || 0),
-     usd: Number(ingresos._sum.totalUsd || 0)
-   },
-   egresos: {
-     bs: Number(egresos._sum.totalBs || 0),
-     usd: Number(egresos._sum.totalUsd || 0)
-   },
-   balance: {
-     bs: Number(ingresos._sum.totalBs || 0) - Number(egresos._sum.totalBs || 0),
-     usd: Number(ingresos._sum.totalUsd || 0) - Number(egresos._sum.totalUsd || 0)
-   }
- };
+      usd: Number(ingresos._sum.totalUsd || 0)
+    },
+    egresos: {
+      bs: Number(egresos._sum.totalBs || 0),
+      usd: Number(egresos._sum.totalUsd || 0)
+    },
+    balance: {
+      bs: Number(ingresos._sum.totalBs || 0) - Number(egresos._sum.totalBs || 0),
+      usd: Number(ingresos._sum.totalUsd || 0) - Number(egresos._sum.totalUsd || 0)
+    }
+  };
 }
 
 async function calcularRentabilidad(fechas, flujoEfectivo) {
- // Obtener costos reales de productos vendidos
- const costosVentas = await prisma.transactionItem.aggregate({
-   where: {
-     transaccion: {
-       tipo: 'INGRESO',
-       fechaHora: {
-         gte: fechas.inicio,
-         lte: fechas.fin
-       }
-     }
-   },
-   _sum: {
-     precioCosto: true,
-     subtotal: true
-   }
- });
+  // Obtener costos reales de productos vendidos
+  const costosVentas = await prisma.transactionItem.aggregate({
+    where: {
+      transaccion: {
+        tipo: 'INGRESO',
+        fechaHora: {
+          gte: fechas.inicio,
+          lte: fechas.fin
+        }
+      }
+    },
+    _sum: {
+      precioCosto: true,
+      subtotal: true
+    }
+  });
 
- const ingresosBs = flujoEfectivo.ingresos.bs;
- const egresosBs = flujoEfectivo.egresos.bs;
- const costoProductos = Number(costosVentas._sum.precioCosto || 0);
- 
- // Cálculos más precisos
- const margenBruto = ingresosBs > 0 ? ((ingresosBs - costoProductos) / ingresosBs * 100) : 0;
- const margenNeto = ingresosBs > 0 ? ((ingresosBs - egresosBs) / ingresosBs * 100) : 0;
- const roi = ingresosBs > 0 ? (((ingresosBs - egresosBs) / egresosBs) * 100) : 0;
+  const ingresosBs = flujoEfectivo.ingresos.bs;
+  const egresosBs = flujoEfectivo.egresos.bs;
+  const costoProductos = Number(costosVentas._sum.precioCosto || 0);
 
- return {
-   margenBruto: Math.round(margenBruto * 100) / 100,
-   margenNeto: Math.round(margenNeto * 100) / 100,
-   roi: Math.round(roi * 100) / 100
- };
+  // Cálculos más precisos
+  const margenBruto = ingresosBs > 0 ? ((ingresosBs - costoProductos) / ingresosBs * 100) : 0;
+  const margenNeto = ingresosBs > 0 ? ((ingresosBs - egresosBs) / ingresosBs * 100) : 0;
+  const roi = ingresosBs > 0 ? (((ingresosBs - egresosBs) / egresosBs) * 100) : 0;
+
+  return {
+    margenBruto: Math.round(margenBruto * 100) / 100,
+    margenNeto: Math.round(margenNeto * 100) / 100,
+    roi: Math.round(roi * 100) / 100
+  };
 }
 
 function detectarPersonaEnEgreso(egreso) {
- const texto = (egreso.observaciones + ' ' + egreso.categoria).toLowerCase();
- 
- // Patrones para accionistas
- const patronesAccionista = [
-   'accionista', 'dividendo', 'préstamo accionista', 'retiro accionista',
-   'pago accionista', 'distribución', 'utilidades'
- ];
- 
- // Patrones para trabajadores
- const patronesTrabajador = [
-   'trabajador', 'empleado', 'salario', 'sueldo', 'prestación', 
-   'bonificación', 'aguinaldo', 'vacaciones', 'pago trabajador',
-   'adelanto salario', 'liquidación'
- ];
- 
- // Detectar tipo
- let tipo = 'otro';
- if (patronesAccionista.some(patron => texto.includes(patron))) {
-   tipo = 'accionista';
- } else if (patronesTrabajador.some(patron => texto.includes(patron))) {
-   tipo = 'trabajador';
- }
- 
- // Extraer nombre
- const nombre = extraerNombreDeTexto(egreso.observaciones);
- 
- return { nombre, tipo };
+  const texto = (egreso.observaciones + ' ' + egreso.categoria).toLowerCase();
+
+  // Patrones para accionistas
+  const patronesAccionista = [
+    'accionista', 'dividendo', 'préstamo accionista', 'retiro accionista',
+    'pago accionista', 'distribución', 'utilidades'
+  ];
+
+  // Patrones para trabajadores
+  const patronesTrabajador = [
+    'trabajador', 'empleado', 'salario', 'sueldo', 'prestación',
+    'bonificación', 'aguinaldo', 'vacaciones', 'pago trabajador',
+    'adelanto salario', 'liquidación'
+  ];
+
+  // Detectar tipo
+  let tipo = 'otro';
+  if (patronesAccionista.some(patron => texto.includes(patron))) {
+    tipo = 'accionista';
+  } else if (patronesTrabajador.some(patron => texto.includes(patron))) {
+    tipo = 'trabajador';
+  }
+
+  // Extraer nombre
+  const nombre = extraerNombreDeTexto(egreso.observaciones);
+
+  return { nombre, tipo };
 }
 
 function extraerNombreDeTexto(texto) {
- if (!texto) return 'No especificado';
- 
- // Buscar patrones comunes: "Pago a Juan Pérez", "Salario María González"
- const patronesNombre = [
-   /(?:pago\s+a|salario|sueldo\s+a|para)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)/i,
-   /([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/i
- ];
- 
- for (const patron of patronesNombre) {
-   const match = texto.match(patron);
-   if (match) {
-     return match[1];
-   }
- }
- 
- // Buscar palabras que empiecen con mayúscula (posibles nombres)
- const palabras = texto.split(' ');
- const posiblesNombres = palabras.filter(palabra => 
-   palabra.length > 2 && 
-   palabra[0] === palabra[0].toUpperCase() &&
-   !/^\d/.test(palabra) && // No números
-   !['Bs', 'USD', 'Pago', 'Salario'].includes(palabra)
- );
- 
- if (posiblesNombres.length >= 2) {
-   return posiblesNombres.slice(0, 2).join(' ');
- } else if (posiblesNombres.length === 1) {
-   return posiblesNombres[0];
- }
- 
- return 'No especificado';
+  if (!texto) return 'No especificado';
+
+  // Buscar patrones comunes: "Pago a Juan Pérez", "Salario María González"
+  const patronesNombre = [
+    /(?:pago\s+a|salario|sueldo\s+a|para)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)/i,
+    /([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/i
+  ];
+
+  for (const patron of patronesNombre) {
+    const match = texto.match(patron);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  // Buscar palabras que empiecen con mayúscula (posibles nombres)
+  const palabras = texto.split(' ');
+  const posiblesNombres = palabras.filter(palabra =>
+    palabra.length > 2 &&
+    palabra[0] === palabra[0].toUpperCase() &&
+    !/^\d/.test(palabra) && // No números
+    !['Bs', 'USD', 'Pago', 'Salario'].includes(palabra)
+  );
+
+  if (posiblesNombres.length >= 2) {
+    return posiblesNombres.slice(0, 2).join(' ');
+  } else if (posiblesNombres.length === 1) {
+    return posiblesNombres[0];
+  }
+
+  return 'No especificado';
 }
 
 function formatearDistribucion(datos, total) {
- return datos.map(item => ({
-   categoria: item.categoria,
-   monto: Number(item._sum.totalBs || 0),
-   porcentaje: total > 0 ? Math.round((Number(item._sum.totalBs || 0) / total) * 100 * 100) / 100 : 0
- }));
+  return datos.map(item => ({
+    categoria: item.categoria,
+    monto: Number(item._sum.totalBs || 0),
+    porcentaje: total > 0 ? Math.round((Number(item._sum.totalBs || 0) / total) * 100 * 100) / 100 : 0
+  }));
 }
 
 function calcularDiferenciaCaja(caja, moneda) {
   let inicial, ingresos, egresos, final;
-  
+
   switch (moneda) {
     case 'bs':
       inicial = Number(caja.montoInicialBs || 0);
@@ -1356,155 +1360,155 @@ function calcularDiferenciaCaja(caja, moneda) {
     default:
       return 0;
   }
-  
+
   const esperado = inicial + ingresos - egresos;
   return final - esperado;
 }
 
 async function calcularTendenciaMensual() {
- const ahora = new Date();
- const meses = [];
- 
- // Últimos 3 meses
- for (let i = 2; i >= 0; i--) {
-   const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
-   const inicioMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
-   const finMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0, 23, 59, 59);
-   
-   const flujo = await calcularFlujoEfectivo({ inicio: inicioMes, fin: finMes });
-   
-   meses.push({
-     mes: fecha.toLocaleDateString('es-VE', { month: 'short' }),
-     ingresos: flujo.ingresos.bs,
-     egresos: flujo.egresos.bs
-   });
- }
- 
- return meses;
+  const ahora = new Date();
+  const meses = [];
+
+  // Últimos 3 meses
+  for (let i = 2; i >= 0; i--) {
+    const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    const inicioMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+    const finMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0, 23, 59, 59);
+
+    const flujo = await calcularFlujoEfectivo({ inicio: inicioMes, fin: finMes });
+
+    meses.push({
+      mes: fecha.toLocaleDateString('es-VE', { month: 'short' }),
+      ingresos: flujo.ingresos.bs,
+      egresos: flujo.egresos.bs
+    });
+  }
+
+  return meses;
 }
 
 async function calcularComparativoAnual() {
- const añoActual = new Date().getFullYear();
- const añoAnterior = añoActual - 1;
- 
- // Año actual
- const inicioActual = new Date(añoActual, 0, 1);
- const finActual = new Date(añoActual, 11, 31, 23, 59, 59);
- const flujoActual = await calcularFlujoEfectivo({ inicio: inicioActual, fin: finActual });
- 
- // Año anterior
- const inicioAnterior = new Date(añoAnterior, 0, 1);
- const finAnterior = new Date(añoAnterior, 11, 31, 23, 59, 59);
- const flujoAnterior = await calcularFlujoEfectivo({ inicio: inicioAnterior, fin: finAnterior });
- 
- return {
-   añoActual: {
-     ingresos: flujoActual.ingresos.bs,
-     egresos: flujoActual.egresos.bs
-   },
-   añoAnterior: {
-     ingresos: flujoAnterior.ingresos.bs,
-     egresos: flujoAnterior.egresos.bs
-   }
- };
+  const añoActual = new Date().getFullYear();
+  const añoAnterior = añoActual - 1;
+
+  // Año actual
+  const inicioActual = new Date(añoActual, 0, 1);
+  const finActual = new Date(añoActual, 11, 31, 23, 59, 59);
+  const flujoActual = await calcularFlujoEfectivo({ inicio: inicioActual, fin: finActual });
+
+  // Año anterior
+  const inicioAnterior = new Date(añoAnterior, 0, 1);
+  const finAnterior = new Date(añoAnterior, 11, 31, 23, 59, 59);
+  const flujoAnterior = await calcularFlujoEfectivo({ inicio: inicioAnterior, fin: finAnterior });
+
+  return {
+    añoActual: {
+      ingresos: flujoActual.ingresos.bs,
+      egresos: flujoActual.egresos.bs
+    },
+    añoAnterior: {
+      ingresos: flujoAnterior.ingresos.bs,
+      egresos: flujoAnterior.egresos.bs
+    }
+  };
 }
 
 function calcularTiempoOperacion(caja) {
- if (!caja.horaApertura || !caja.horaCierre) return null;
- 
- try {
-   const apertura = new Date(`${caja.fecha.toISOString().split('T')[0]}T${caja.horaApertura}`);
-   const cierre = new Date(`${caja.fecha.toISOString().split('T')[0]}T${caja.horaCierre}`);
-   
-   const diffMs = cierre - apertura;
-   if (diffMs <= 0) return null;
-   
-   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-   const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-   
-   return `${diffHours}h ${diffMinutes}m`;
- } catch (error) {
-   return null;
- }
+  if (!caja.horaApertura || !caja.horaCierre) return null;
+
+  try {
+    const apertura = new Date(`${caja.fecha.toISOString().split('T')[0]}T${caja.horaApertura}`);
+    const cierre = new Date(`${caja.fecha.toISOString().split('T')[0]}T${caja.horaCierre}`);
+
+    const diffMs = cierre - apertura;
+    if (diffMs <= 0) return null;
+
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    return `${diffHours}h ${diffMinutes}m`;
+  } catch (error) {
+    return null;
+  }
 }
 
 function calcularEfectividad(caja) {
- const transacciones = caja.transacciones || [];
- const tiempoOperacion = calcularTiempoOperacion(caja);
- 
- if (!tiempoOperacion || transacciones.length === 0) return 'N/A';
- 
- try {
-   const horas = parseFloat(tiempoOperacion.split('h')[0]);
-   if (horas <= 0) return 'N/A';
-   
-   const transaccionesPorHora = transacciones.length / horas;
-   return `${transaccionesPorHora.toFixed(1)} trans/hora`;
- } catch (error) {
-   return 'N/A';
- }
+  const transacciones = caja.transacciones || [];
+  const tiempoOperacion = calcularTiempoOperacion(caja);
+
+  if (!tiempoOperacion || transacciones.length === 0) return 'N/A';
+
+  try {
+    const horas = parseFloat(tiempoOperacion.split('h')[0]);
+    if (horas <= 0) return 'N/A';
+
+    const transaccionesPorHora = transacciones.length / horas;
+    return `${transaccionesPorHora.toFixed(1)} trans/hora`;
+  } catch (error) {
+    return 'N/A';
+  }
 }
 
 function generarAlertas(caja, metricas) {
- const alertas = [];
- 
- // Alerta por diferencias significativas
- const difBs = calcularDiferenciaCaja(caja, 'bs');
- const difUsd = calcularDiferenciaCaja(caja, 'usd');
- 
- if (Math.abs(difBs) > 10000) {
-   alertas.push({
-     tipo: 'diferencia',
-     severidad: Math.abs(difBs) > 50000 ? 'alta' : 'media',
-     mensaje: `Diferencia en Bs: ${difBs > 0 ? '+' : ''}${difBs.toLocaleString('es-VE')} Bs`,
-     valor: difBs
-   });
- }
- 
- if (Math.abs(difUsd) > 5) {
-   alertas.push({
-     tipo: 'diferencia',
-     severidad: Math.abs(difUsd) > 20 ? 'alta' : 'media',
-     mensaje: `Diferencia en USD: ${difUsd > 0 ? '+' : ''}$${difUsd.toFixed(2)}`,
-     valor: difUsd
-   });
- }
- 
- // Alerta por alto volumen
- if (metricas.totalTransacciones > 100) {
-   alertas.push({
-     tipo: 'volumen',
-     severidad: 'info',
-     mensaje: `Alto volumen: ${metricas.totalTransacciones} transacciones`,
-     valor: metricas.totalTransacciones
-   });
- }
- 
- // Alerta por tiempo de operación largo
- const tiempoOperacion = metricas.tiempoOperacion;
- if (tiempoOperacion && tiempoOperacion.includes('h')) {
-   const horas = parseInt(tiempoOperacion.split('h')[0]);
-   if (horas > 12) {
-     alertas.push({
-       tipo: 'tiempo',
-       severidad: 'media',
-       mensaje: `Operación extendida: ${tiempoOperacion}`,
-       valor: horas
-     });
-   }
- }
- 
- // Alerta por falta de evidencias
- if (!caja.imagenApertura || !caja.imagenCierre) {
-   alertas.push({
-     tipo: 'evidencia',
-     severidad: 'media',
-     mensaje: 'Evidencias fotográficas incompletas',
-     valor: null
-   });
- }
- 
- return alertas;
+  const alertas = [];
+
+  // Alerta por diferencias significativas
+  const difBs = calcularDiferenciaCaja(caja, 'bs');
+  const difUsd = calcularDiferenciaCaja(caja, 'usd');
+
+  if (Math.abs(difBs) > 10000) {
+    alertas.push({
+      tipo: 'diferencia',
+      severidad: Math.abs(difBs) > 50000 ? 'alta' : 'media',
+      mensaje: `Diferencia en Bs: ${difBs > 0 ? '+' : ''}${difBs.toLocaleString('es-VE')} Bs`,
+      valor: difBs
+    });
+  }
+
+  if (Math.abs(difUsd) > 5) {
+    alertas.push({
+      tipo: 'diferencia',
+      severidad: Math.abs(difUsd) > 20 ? 'alta' : 'media',
+      mensaje: `Diferencia en USD: ${difUsd > 0 ? '+' : ''}$${difUsd.toFixed(2)}`,
+      valor: difUsd
+    });
+  }
+
+  // Alerta por alto volumen
+  if (metricas.totalTransacciones > 100) {
+    alertas.push({
+      tipo: 'volumen',
+      severidad: 'info',
+      mensaje: `Alto volumen: ${metricas.totalTransacciones} transacciones`,
+      valor: metricas.totalTransacciones
+    });
+  }
+
+  // Alerta por tiempo de operación largo
+  const tiempoOperacion = metricas.tiempoOperacion;
+  if (tiempoOperacion && tiempoOperacion.includes('h')) {
+    const horas = parseInt(tiempoOperacion.split('h')[0]);
+    if (horas > 12) {
+      alertas.push({
+        tipo: 'tiempo',
+        severidad: 'media',
+        mensaje: `Operación extendida: ${tiempoOperacion}`,
+        valor: horas
+      });
+    }
+  }
+
+  // Alerta por falta de evidencias
+  if (!caja.imagenApertura || !caja.imagenCierre) {
+    alertas.push({
+      tipo: 'evidencia',
+      severidad: 'media',
+      mensaje: 'Evidencias fotográficas incompletas',
+      valor: null
+    });
+  }
+
+  return alertas;
 }
 
 module.exports = ReportesController;
