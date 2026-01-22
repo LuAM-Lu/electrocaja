@@ -5,7 +5,7 @@ import {
   X, Package, Plus, Edit2, Trash2, Search,
   Eye, DollarSign, AlertCircle, Hash, Image, Camera,
   Folder, Phone, CheckCircle, XCircle, BarChart3,
-  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, ChevronUp, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin
+  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, ChevronUp, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin, Clock
 } from 'lucide-react';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
@@ -65,6 +65,17 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
 
       // Actualizar inventario normalmente si no hay modales activos
       await obtenerInventario();
+      const actionMap = {
+        'CREAR': 'Nuevo producto',
+        'EDITAR': 'Edición de producto',
+        'ELIMINAR': 'Producto eliminado',
+        'VENTA_PROCESADA': 'Venta procesada',
+        'STOCK_DEVUELTO': 'Devolución de stock'
+      };
+      setLastInventoryUpdate({
+        date: new Date(),
+        action: actionMap[data.operacion] || 'Actualización remota'
+      });
 
       // Toast solo si es de otro usuario
       if (data.usuario !== usuario?.nombre) {
@@ -115,6 +126,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
   const [filterType, setFilterType] = useState('todos');
   const [hideInactive, setHideInactive] = useState(false);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const [lastInventoryUpdate, setLastInventoryUpdate] = useState({ date: new Date(), action: 'Carga inicial' });
 
   // Estados para modales
   const [showItemForm, setShowItemForm] = useState(false);
@@ -1421,16 +1433,54 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                       </tbody>
                     </table>
 
-                    {/* Footer con estadísticas */}
-                    <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-center">
-                      <div className="text-xs text-gray-500 flex items-center justify-center space-x-1">
-                        <BarChart3 className="h-3 w-3" />
-                        <span>Mostrando {filteredItems.length} de {inventario.length} items</span>
-                      </div>
-                    </div>
                   </div>
                 </>
               )}
+            </div>
+
+            {/* Footer Premium Estilo PedidosModal (Sin Paginación) - FUERA DE LA LISTA */}
+            {/* Footer Premium Unificado y Centrado */}
+            <div className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 border-t border-indigo-500 px-4 py-2 flex items-center justify-center shrink-0 h-14 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10 sticky bottom-0">
+
+              <div className="flex items-center gap-4 bg-indigo-900/30 px-6 py-1.5 rounded-full border border-indigo-400/20 backdrop-blur-md shadow-lg group hover:border-indigo-400/40 transition-all">
+
+                {/* Total Items */}
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-indigo-200" />
+                  <span className="text-xs text-indigo-100 font-medium whitespace-nowrap">
+                    Total: <span className="font-bold text-white">{inventario.length}</span>
+                  </span>
+                </div>
+
+                {/* Separador */}
+                <div className="h-4 w-px bg-indigo-400/30"></div>
+
+                {/* Último Movimiento */}
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-indigo-200" />
+                  <div className="flex flex-col leading-none">
+                    <span className="text-[9px] text-indigo-300 uppercase font-bold tracking-wider">{lastInventoryUpdate.action}</span>
+                    <span className="text-xs text-white font-mono font-medium">{lastInventoryUpdate.date?.toLocaleTimeString()}</span>
+                  </div>
+                </div>
+
+                {/* Separador */}
+                <div className="h-4 w-px bg-indigo-400/30"></div>
+
+                {/* Sync API */}
+                <div className="flex items-center gap-2.5 pl-1">
+                  <div className="relative flex items-center justify-center">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-20"></span>
+                    <Globe className="h-3.5 w-3.5 text-green-400 animate-pulse" />
+                  </div>
+                  <div className="flex flex-col leading-none">
+                    <span className="text-[9px] text-indigo-300 font-bold tracking-wider">En línea</span>
+                    <span className="text-[10px] text-green-300 font-medium whitespace-nowrap">www.electroshopve.com</span>
+                  </div>
+                </div>
+
+              </div>
+
             </div>
           </div>
         </div>

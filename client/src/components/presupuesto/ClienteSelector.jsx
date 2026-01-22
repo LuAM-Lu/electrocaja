@@ -1,8 +1,8 @@
 // components/presupuesto/ClienteSelector.jsx - VERSIÓN COMPLETA ACTUALIZADA 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, UserPlus, X, User, Building, Phone, 
-  Mail, MapPin, AlertTriangle, CheckCircle, 
+import {
+  Search, UserPlus, X, User, Building, Phone,
+  Mail, MapPin, AlertTriangle, CheckCircle,
   CreditCard, Globe, UserCheck, Building2, Landmark
 } from 'lucide-react';
 import toast from '../../utils/toast.jsx';
@@ -52,12 +52,12 @@ const cargarClientesDesdeBackend = async () => {
 };
 
 //  MODAL REGISTRO CLIENTE
-const ModalRegistroCliente = ({ 
-  isOpen, 
-  onClose, 
-  onClienteCreado, 
-  cedulaInicial = '', 
-  theme = 'light' 
+const ModalRegistroCliente = ({
+  isOpen,
+  onClose,
+  onClienteCreado,
+  cedulaInicial = '',
+  theme = 'light'
 }) => {
   const [formData, setFormData] = useState({
     tipo: '',
@@ -88,7 +88,7 @@ const ModalRegistroCliente = ({
         pillInactive: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
       };
     }
-    
+
     return {
       modal: 'bg-white border-gray-200',
       header: 'bg-gradient-to-r from-emerald-500 to-emerald-600',
@@ -110,13 +110,13 @@ const ModalRegistroCliente = ({
     if (isOpen && cedulaInicial.trim()) {
       const cedulaFormateada = cedulaInicial.trim().toUpperCase();
       const tipoDetectado = detectarTipoCliente(cedulaFormateada);
-      
-      setFormData(prev => ({ 
-        ...prev, 
+
+      setFormData(prev => ({
+        ...prev,
         cedula: cedulaFormateada,
         tipo: tipoDetectado
       }));
-      
+
       // Auto-focus al nombre si ya hay cédula
       setTimeout(() => {
         if (nombreInputRef.current) {
@@ -136,7 +136,7 @@ const ModalRegistroCliente = ({
       erroresTemp.cedula = 'Formato de cédula/RIF inválido';
     } else {
       // Verificar duplicados
-      const existe = CLIENTES_CACHE.find(c => 
+      const existe = CLIENTES_CACHE.find(c =>
         c.cedula_rif.toLowerCase() === formData.cedula.toLowerCase()
       );
       if (existe) {
@@ -165,7 +165,7 @@ const ModalRegistroCliente = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validarFormulario()) return;
 
     setLoading(true);
@@ -184,10 +184,10 @@ const ModalRegistroCliente = ({
 
       // Agregar al cache local
       CLIENTES_CACHE.push(nuevoCliente);
-      
+
       // Callback al padre
       onClienteCreado(nuevoCliente);
-      
+
       // Limpiar y cerrar
       setFormData({
         tipo: '',
@@ -198,10 +198,10 @@ const ModalRegistroCliente = ({
         direccion: ''
       });
       setErrores({});
-      
+
       toast.success(`Cliente ${formData.tipo === 'empresa' ? 'empresa' : 'persona'} creado exitosamente`);
       onClose();
-      
+
     } catch (error) {
       toast.error('Error al crear cliente');
     } finally {
@@ -227,7 +227,7 @@ const ModalRegistroCliente = ({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
       <div className={`${styles.modal} rounded-xl shadow-2xl max-w-md w-full border`}>
-        
+
         {/* Header */}
         <div className={`${styles.header} px-6 py-4 rounded-t-xl`}>
           <div className="flex items-center justify-between text-white">
@@ -253,7 +253,7 @@ const ModalRegistroCliente = ({
                 <p className={`text-xs ${styles.textSecondary}`}>¿Qué tipo de documento es <span className="font-mono font-bold">{cedulaInicial.padStart(8, '0')}</span>?</p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-5 gap-2">
               {/* Persona Natural */}
               <button
@@ -266,7 +266,9 @@ const ModalRegistroCliente = ({
                 className="group relative overflow-hidden bg-white hover:bg-green-50 border border-green-200 hover:border-green-300 rounded-lg p-3 transition-all duration-200 hover:scale-105 hover:shadow-md"
               >
                 <div className="text-center">
-                  <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-1 font-bold text-sm">V</div>
+                  <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-1 shadow-sm">
+                    <User className="h-3.5 w-3.5" />
+                  </div>
                   <div className="text-xs font-medium text-green-700">Persona</div>
                   <div className="text-xs text-green-600">Natural</div>
                 </div>
@@ -345,7 +347,7 @@ const ModalRegistroCliente = ({
 
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          
+
           {/* Tipo de cliente */}
           <div>
             <label className={`block text-sm font-medium ${styles.textSecondary} mb-2`}>
@@ -355,13 +357,12 @@ const ModalRegistroCliente = ({
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, tipo: 'persona' }))}
-                className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                  formData.tipo === 'persona'
+                className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${formData.tipo === 'persona'
                     ? `${styles.pillActive} border-current`
-                    : formData.tipo === '' 
-                    ? `${styles.pillInactive} border-gray-300 hover:border-current`
-                    : `${styles.pillInactive} border-gray-200 hover:border-gray-300`
-                }`}
+                    : formData.tipo === ''
+                      ? `${styles.pillInactive} border-gray-300 hover:border-current`
+                      : `${styles.pillInactive} border-gray-200 hover:border-gray-300`
+                  }`}
               >
                 <User className="h-4 w-4 mx-auto mb-1" />
                 Persona Natural
@@ -369,13 +370,12 @@ const ModalRegistroCliente = ({
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, tipo: 'empresa' }))}
-                className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${
-                  formData.tipo === 'empresa'
+                className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${formData.tipo === 'empresa'
                     ? `${styles.pillActive} border-current`
-                    : formData.tipo === '' 
-                    ? `${styles.pillInactive} border-gray-300 hover:border-current`
-                    : `${styles.pillInactive} border-gray-200 hover:border-gray-300`
-                }`}
+                    : formData.tipo === ''
+                      ? `${styles.pillInactive} border-gray-300 hover:border-current`
+                      : `${styles.pillInactive} border-gray-200 hover:border-gray-300`
+                  }`}
               >
                 <Building className="h-4 w-4 mx-auto mb-1" />
                 Empresa
@@ -405,36 +405,36 @@ const ModalRegistroCliente = ({
               onChange={(e) => {
                 const valor = e.target.value;
                 let valorProcesado = '';
-                
+
                 if (valor.length === 0) {
                   setFormData(prev => ({ ...prev, cedula: '' }));
                   return;
                 }
-                
+
                 // Primera letra: Solo V, E, J, G (automáticamente mayúscula)
                 const primeraLetra = valor.charAt(0).toUpperCase();
                 if (['V', 'E', 'J', 'G'].includes(primeraLetra)) {
                   valorProcesado = primeraLetra;
-                  
+
                   // Resto: Solo números
                   const restoNumeros = valor.slice(1).replace(/[^0-9]/g, '');
                   valorProcesado += restoNumeros;
-                  
+
                   // Limitar longitud
                   if (['V', 'E'].includes(primeraLetra)) {
                     valorProcesado = valorProcesado.substring(0, 9); // V + 8 dígitos máximo
                   } else {
                     valorProcesado = valorProcesado.substring(0, 10); // J/G + 9 dígitos máximo
                   }
-                  
+
                   setFormData(prev => ({ ...prev, cedula: valorProcesado }));
-                  
+
                   // Auto-detectar tipo SOLO si no hay tipo seleccionado
                   if (formData.tipo === '') {
                     const tipoDetectado = detectarTipoCliente(valorProcesado);
                     setFormData(prev => ({ ...prev, tipo: tipoDetectado }));
                   }
-                  
+
                 } else if (/^\d/.test(valor.charAt(0))) {
                   // Si empieza con número, mostrar error
                   toast.error('Debe comenzar con una letra: V, E, J o G', { duration: 2000 });
@@ -444,9 +444,8 @@ const ModalRegistroCliente = ({
                 }
               }}
               placeholder={formData.tipo === 'persona' ? 'V12345678' : 'J123456789'}
-              className={`w-full px-3 py-2 border rounded-lg ${styles.input} ${
-                errores.cedula ? 'border-red-300 bg-red-50' : ''
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg ${styles.input} ${errores.cedula ? 'border-red-300 bg-red-50' : ''
+                }`}
             />
             {errores.cedula && (
               <p className="text-red-600 text-xs mt-1 flex items-center">
@@ -469,9 +468,8 @@ const ModalRegistroCliente = ({
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
               placeholder={formData.tipo === 'persona' ? 'María González' : 'Empresa ABC C.A.'}
-              className={`w-full px-3 py-2 border rounded-lg ${styles.input} ${
-                errores.nombre ? 'border-red-300 bg-red-50' : ''
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg ${styles.input} ${errores.nombre ? 'border-red-300 bg-red-50' : ''
+                }`}
             />
             {errores.nombre && (
               <p className="text-red-600 text-xs mt-1 flex items-center">
@@ -503,9 +501,8 @@ const ModalRegistroCliente = ({
                   setFormData(prev => ({ ...prev, telefono: valor }));
                 }}
                 placeholder="04141234567"
-                className={`w-full pl-10 pr-3 py-2 border rounded-lg ${styles.input} ${
-                  errores.telefono ? 'border-red-300 bg-red-50' : ''
-                }`}
+                className={`w-full pl-10 pr-3 py-2 border rounded-lg ${styles.input} ${errores.telefono ? 'border-red-300 bg-red-50' : ''
+                  }`}
               />
             </div>
             {errores.telefono && (
@@ -534,9 +531,8 @@ const ModalRegistroCliente = ({
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value.toLowerCase() }))}
                 placeholder="cliente@email.com"
-                className={`w-full pl-10 pr-3 py-2 border rounded-lg ${styles.input} ${
-                  errores.email ? 'border-red-300 bg-red-50' : ''
-                }`}
+                className={`w-full pl-10 pr-3 py-2 border rounded-lg ${styles.input} ${errores.email ? 'border-red-300 bg-red-50' : ''
+                  }`}
               />
             </div>
             {errores.email && (
@@ -567,9 +563,8 @@ const ModalRegistroCliente = ({
             <div className={`${styles.card} border rounded-lg p-3`}>
               <div className={`text-xs font-medium ${styles.textSecondary} mb-1`}>Información Detectada:</div>
               <div className="flex items-center space-x-2 text-sm">
-                <span className={`w-2 h-2 rounded-full ${
-                  formData.tipo === 'empresa' ? 'bg-purple-500' : 'bg-emerald-500'
-                }`}></span>
+                <span className={`w-2 h-2 rounded-full ${formData.tipo === 'empresa' ? 'bg-purple-500' : 'bg-emerald-500'
+                  }`}></span>
                 <span className={`font-medium ${styles.text} flex items-center gap-1`}>
                   {formData.tipo === 'empresa' ? (
                     <>
@@ -621,8 +616,8 @@ const ModalRegistroCliente = ({
 };
 
 //  COMPONENTE PRINCIPAL - SELECTOR DE CLIENTE
-const ClienteSelector = ({ 
-  clienteSeleccionado, 
+const ClienteSelector = ({
+  clienteSeleccionado,
   onClienteSeleccionado,
   isEditable = true,
   label = "Cliente",
@@ -654,338 +649,335 @@ const ClienteSelector = ({
         textMuted: 'text-gray-400'
       };
     }
-    
+
     return {
       container: 'bg-white border-gray-200',
       input: 'bg-white border-gray-300 text-gray-900 focus:ring-emerald-500 focus:border-emerald-500',
-     dropdown: 'bg-white border-gray-200',
-     option: 'hover:bg-emerald-50 text-gray-900',
-     selectedCard: 'bg-emerald-50 border-emerald-200',
-     label: 'text-gray-700',
-     labelIcon: 'text-emerald-600',
-     button: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-     buttonSecondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
-     text: 'text-gray-900',
-     textSecondary: 'text-gray-600',
-     textMuted: 'text-gray-500'
-   };
- };
+      dropdown: 'bg-white border-gray-200',
+      option: 'hover:bg-emerald-50 text-gray-900',
+      selectedCard: 'bg-emerald-50 border-emerald-200',
+      label: 'text-gray-700',
+      labelIcon: 'text-emerald-600',
+      button: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+      buttonSecondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
+      text: 'text-gray-900',
+      textSecondary: 'text-gray-600',
+      textMuted: 'text-gray-500'
+    };
+  };
 
- const styles = getThemeStyles();
+  const styles = getThemeStyles();
 
- // Filtrar clientes con validación de cache
- const clientesFiltrados = Array.isArray(CLIENTES_CACHE) ? CLIENTES_CACHE.filter(cliente => {
-   if (!cliente) return false;
-   const cedulaMatch = cliente.cedula_rif?.toLowerCase().includes(busqueda.toLowerCase()) || false;
-   const nombreMatch = cliente.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || false;
-   const emailMatch = cliente.email?.toLowerCase().includes(busqueda.toLowerCase()) || false;
-   return cedulaMatch || nombreMatch || emailMatch;
- }) : [];
+  // Filtrar clientes con validación de cache
+  const clientesFiltrados = Array.isArray(CLIENTES_CACHE) ? CLIENTES_CACHE.filter(cliente => {
+    if (!cliente) return false;
+    const cedulaMatch = cliente.cedula_rif?.toLowerCase().includes(busqueda.toLowerCase()) || false;
+    const nombreMatch = cliente.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || false;
+    const emailMatch = cliente.email?.toLowerCase().includes(busqueda.toLowerCase()) || false;
+    return cedulaMatch || nombreMatch || emailMatch;
+  }) : [];
 
- // Manejar selección
- const handleSeleccionar = (cliente) => {
-   onClienteSeleccionado(cliente);
-   setBusqueda('');
-   setMostrarOpciones(false);
- };
+  // Manejar selección
+  const handleSeleccionar = (cliente) => {
+    onClienteSeleccionado(cliente);
+    setBusqueda('');
+    setMostrarOpciones(false);
+  };
 
- // Limpiar selección
- const handleLimpiar = () => {
-   onClienteSeleccionado(null);
-   setBusqueda('');
-   setMostrarOpciones(false);
- };
+  // Limpiar selección
+  const handleLimpiar = () => {
+    onClienteSeleccionado(null);
+    setBusqueda('');
+    setMostrarOpciones(false);
+  };
 
- // Manejar cliente creado
- const handleClienteCreado = (nuevoCliente) => {
-   handleSeleccionar(nuevoCliente);
-   toast.success(`Cliente ${nuevoCliente.nombre} asignado`);
- };
+  // Manejar cliente creado
+  const handleClienteCreado = (nuevoCliente) => {
+    handleSeleccionar(nuevoCliente);
+    toast.success(`Cliente ${nuevoCliente.nombre} asignado`);
+  };
 
- // Valor mostrado en el input
- const displayValue = clienteSeleccionado 
-   ? `${clienteSeleccionado.cedula_rif} - ${clienteSeleccionado.nombre}`
-   : '';
+  // Valor mostrado en el input
+  const displayValue = clienteSeleccionado
+    ? `${clienteSeleccionado.cedula_rif} - ${clienteSeleccionado.nombre}`
+    : '';
 
- // Cargar clientes al montar componente Y cuando se abre el modal
- useEffect(() => {
-   const cargarClientesInicial = async () => {
-     try {
-       await cargarClientesDesdeBackend();
-     } catch (error) {
-       console.error('Error cargando clientes inicial:', error);
-     }
-   };
-   
-   cargarClientesInicial();
- }, []);
+  // Cargar clientes al montar componente Y cuando se abre el modal
+  useEffect(() => {
+    const cargarClientesInicial = async () => {
+      try {
+        await cargarClientesDesdeBackend();
+      } catch (error) {
+        console.error('Error cargando clientes inicial:', error);
+      }
+    };
 
- return (
-   <>
-     <div className="space-y-4">
-       {/* Input principal */}
-       <div className="relative" ref={dropdownRef}>
-         <label className={`block text-sm font-medium ${styles.label} mb-2 flex items-center`}>
-           <User className={`h-4 w-4 mr-2 ${styles.labelIcon}`} />
-           {label} {required && '*'}
-         </label>
-         
-         <div className="relative">
-           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-           <input
-             id="cliente-search-input"
-             name="clienteSearch"
-             type="text"
-             value={busqueda || displayValue}
-             onChange={(e) => {
-               setBusqueda(e.target.value);
-               setMostrarOpciones(true);
-             }}
-             onFocus={async () => {
-               // Si no hay clientes cargados o el cache está vacío, cargarlos
-               if (CLIENTES_CACHE.length === 0) {
-                 try {
-                   await cargarClientesDesdeBackend();
-                 } catch (error) {
-                   console.error('Error cargando clientes en focus:', error);
-                 }
-               }
-               
-               // Mostrar opciones después de asegurar que hay datos
-               setMostrarOpciones(true);
-             }}
-             onClick={async () => {
-               // Si ya está abierto, no hacer nada
-               if (mostrarOpciones) {
-                 return;
-               }
-               
-               // Si no hay clientes, cargarlos primero
-               if (CLIENTES_CACHE.length === 0) {
-                 try {
-                   await cargarClientesDesdeBackend();
-                 } catch (error) {
-                   console.error('Error cargando clientes en click:', error);
-                 }
-               }
-               
-               // Mostrar dropdown
-               setMostrarOpciones(true);
-             }}
-             onBlur={(e) => {
-               // No cerrar si el usuario hizo clic dentro del dropdown
-               const relatedTarget = e.relatedTarget;
-               if (relatedTarget && relatedTarget.closest('.dropdown-container')) {
-                 return;
-               }
-               
-               // Reset búsqueda cuando se pierde el foco
-               setTimeout(() => {
-                 setMostrarOpciones(false);
-                 if (!clienteSeleccionado) {
-                   setBusqueda('');
-                 }
-               }, 150);
-             }}
-             placeholder={placeholder}
-             disabled={!isEditable}
-             className={`w-full pl-10 pr-20 py-3 border rounded-lg transition-colors ${styles.input} ${
-               !isEditable ? 'opacity-50 cursor-not-allowed' : ''
-             }`}
-           />
-           
-           {/* Botones de la derecha */}
-           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-             {/* Limpiar selección */}
-             {clienteSeleccionado && isEditable && (
-               <button
-                 onClick={handleLimpiar}
-                 className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-                 title="Limpiar selección"
-               >
-                 <X className="h-4 w-4" />
-               </button>
-             )}
-             
-             {/* Nuevo cliente */}
-             {isEditable && (
-               <button
-                 onClick={() => setShowRegistroModal(true)}
-                 className={`${styles.labelIcon} hover:bg-opacity-10 hover:bg-current p-1 rounded transition-colors`}
-                 title="Nuevo cliente"
-               >
-                 <UserPlus className="h-4 w-4" />
-               </button>
-             )}
-           </div>
-         </div>
+    cargarClientesInicial();
+  }, []);
 
-         {/* Dropdown de opciones */}
-         {mostrarOpciones && isEditable && (
-           <>
-             <div 
-               className="fixed inset-0 z-40" 
-               onClick={() => setMostrarOpciones(false)}
-             />
-             
-             <div className={`dropdown-container absolute z-50 w-full mt-1 ${styles.dropdown} border rounded-lg shadow-xl max-h-96 overflow-y-auto`}>
-               {clientesFiltrados.length === 0 ? (
-                 <div className="p-4">
-                   <div className={`text-center ${styles.textMuted} text-sm mb-3`}>
-                     No se encontraron clientes
-                   </div>
-                   <button
-                     onClick={() => {
-                       setBusquedaParaRegistro(busqueda);
-                       setShowRegistroModal(true);
-                       setMostrarOpciones(false);
-                     }}
-                     className={`w-full flex items-center justify-center space-x-2 px-3 py-2 ${styles.button} rounded-lg transition-colors text-sm font-medium`}
-                   >
-                     <UserPlus className="h-4 w-4" />
-                     <span>Crear Cliente</span>
-                   </button>
-                 </div>
-               ) : (
-                 <div className="py-1">
-                   {/* Opción crear nuevo */}
-                   <button
-                     onClick={() => {
-                       setShowRegistroModal(true);
-                       setMostrarOpciones(false);
-                     }}
-                     className={`w-full px-4 py-3 text-left ${styles.option} transition-colors text-sm border-b border-gray-100 font-medium flex items-center space-x-2`}
-                   >
-                     <UserPlus className="h-4 w-4" />
-                     <span>Crear Nuevo Cliente</span>
-                   </button>
-                   
-                   {/* Lista de clientes */}
-                   {clientesFiltrados.map((cliente) => (
-                     <button
-                       key={cliente.id}
-                       onClick={() => handleSeleccionar(cliente)}
-                       className={`w-full px-4 py-3 text-left ${styles.option} transition-colors text-sm`}
-                     >
-                       <div className="flex items-center justify-between">
-                         <div className="flex-1">
-                           <div className={`font-medium ${styles.text}`}>{cliente.cedula_rif}</div>
-                           <div className={styles.textSecondary}>{cliente.nombre}</div>
-                           <div className={`flex items-center space-x-2 text-xs ${styles.textMuted} mt-1`}>
-                             {cliente.telefono && (
-                               <span className="flex items-center space-x-1">
-                                 <Phone className="h-3 w-3" />
-                                 <span>{cliente.telefono}</span>
-                               </span>
-                             )}
-                             {cliente.email && (
-                               <span className="flex items-center space-x-1">
-                                 <Mail className="h-3 w-3" />
-                                 <span>{cliente.email}</span>
-                               </span>
-                             )}
-                           </div>
-                         </div>
-                         <span className={`px-2 py-1 text-xs font-medium rounded-full ml-2 ${
-                           cliente.tipo === 'empresa' 
-                             ? 'bg-purple-100 text-purple-700' 
-                             : cliente.tipo === 'directo'
-                             ? 'bg-gray-100 text-gray-700'
-                             : 'bg-emerald-100 text-emerald-700'
-                         }`}>
-                           {cliente.tipo === 'empresa' ? (
-                             <Building2 className="h-3 w-3" />
-                           ) : cliente.tipo === 'directo' ? (
-                             <CreditCard className="h-3 w-3" />
-                           ) : (
-                             <User className="h-3 w-3" />
-                           )}
-                         </span>
-                       </div>
-                     </button>
-                   ))}
-                 </div>
-               )}
-             </div>
-           </>
-         )}
-       </div>
+  return (
+    <>
+      <div className="space-y-4">
+        {/* Input principal */}
+        <div className="relative" ref={dropdownRef}>
+          <label className={`block text-sm font-medium ${styles.label} mb-2 flex items-center`}>
+            <User className={`h-4 w-4 mr-2 ${styles.labelIcon}`} />
+            {label} {required && '*'}
+          </label>
 
-       {/* Cliente seleccionado - VERSIÓN GRANDE */}
-       {clienteSeleccionado && (
-         <div className={`${styles.selectedCard} border rounded-xl p-6 shadow-lg`}>
-           <div className="flex items-start justify-between">
-             <div className="flex items-center space-x-4">
-               <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                 clienteSeleccionado.tipo === 'persona' ? 'bg-emerald-100 text-emerald-600' :
-                 clienteSeleccionado.tipo === 'empresa' ? 'bg-purple-100 text-purple-600' :
-                 'bg-gray-100 text-gray-600'
-               }`}>
-                 {clienteSeleccionado.tipo === 'persona' ? (
-                   <User className="h-8 w-8" />
-                 ) : clienteSeleccionado.tipo === 'empresa' ? (
-                   <Building className="h-8 w-8" />
-                 ) : (
-                   <User className="h-8 w-8" />
-                 )}
-               </div>
-               <div>
-                 <h4 className={`text-xl font-bold ${styles.text} mb-2`}>{clienteSeleccionado.nombre}</h4>
-                 <div className={`text-base ${styles.textSecondary} space-y-1`}>
-                   <div className="flex items-center space-x-2">
-                     <CreditCard className="h-4 w-4" />
-                     <span className="font-medium">{clienteSeleccionado.cedula_rif}</span>
-                   </div>
-                   {clienteSeleccionado.telefono && (
-                     <div className="flex items-center space-x-2">
-                       <Phone className="h-4 w-4" />
-                       <span>{clienteSeleccionado.telefono}</span>
-                     </div>
-                   )}
-                   {clienteSeleccionado.email && (
-                     <div className="flex items-center space-x-2">
-                       <Mail className="h-4 w-4" />
-                       <span>{clienteSeleccionado.email}</span>
-                     </div>
-                   )}
-                   {clienteSeleccionado.direccion && (
-                     <div className="flex items-center space-x-2">
-                       <MapPin className="h-4 w-4" />
-                       <span>{clienteSeleccionado.direccion}</span>
-                     </div>
-                   )}
-                 </div>
-               </div>
-             </div>
-             
-             {/* Botón limpiar */}
-             {isEditable && (
-               <button
-                 onClick={handleLimpiar}
-                 className={`${styles.textMuted} hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors`}
-                 title="Limpiar selección"
-               >
-                 <X className="h-5 w-5" />
-               </button>
-             )}
-           </div>
-         </div>
-       )}
-     </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              id="cliente-search-input"
+              name="clienteSearch"
+              type="text"
+              value={busqueda || displayValue}
+              onChange={(e) => {
+                setBusqueda(e.target.value);
+                setMostrarOpciones(true);
+              }}
+              onFocus={async () => {
+                // Si no hay clientes cargados o el cache está vacío, cargarlos
+                if (CLIENTES_CACHE.length === 0) {
+                  try {
+                    await cargarClientesDesdeBackend();
+                  } catch (error) {
+                    console.error('Error cargando clientes en focus:', error);
+                  }
+                }
 
-     {/* Modal Registro Cliente */}
-     <ModalRegistroCliente
-       isOpen={showRegistroModal}
-       onClose={() => {
-         setShowRegistroModal(false);
-         setBusquedaParaRegistro('');
-       }}
-       onClienteCreado={handleClienteCreado}
-       cedulaInicial={busquedaParaRegistro}
-       theme={theme}
-     />
-   </>
- );
+                // Mostrar opciones después de asegurar que hay datos
+                setMostrarOpciones(true);
+              }}
+              onClick={async () => {
+                // Si ya está abierto, no hacer nada
+                if (mostrarOpciones) {
+                  return;
+                }
+
+                // Si no hay clientes, cargarlos primero
+                if (CLIENTES_CACHE.length === 0) {
+                  try {
+                    await cargarClientesDesdeBackend();
+                  } catch (error) {
+                    console.error('Error cargando clientes en click:', error);
+                  }
+                }
+
+                // Mostrar dropdown
+                setMostrarOpciones(true);
+              }}
+              onBlur={(e) => {
+                // No cerrar si el usuario hizo clic dentro del dropdown
+                const relatedTarget = e.relatedTarget;
+                if (relatedTarget && relatedTarget.closest('.dropdown-container')) {
+                  return;
+                }
+
+                // Reset búsqueda cuando se pierde el foco
+                setTimeout(() => {
+                  setMostrarOpciones(false);
+                  if (!clienteSeleccionado) {
+                    setBusqueda('');
+                  }
+                }, 150);
+              }}
+              placeholder={placeholder}
+              disabled={!isEditable}
+              className={`w-full pl-10 pr-20 py-3 border rounded-lg transition-colors ${styles.input} ${!isEditable ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+            />
+
+            {/* Botones de la derecha */}
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+              {/* Limpiar selección */}
+              {clienteSeleccionado && isEditable && (
+                <button
+                  onClick={handleLimpiar}
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                  title="Limpiar selección"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+
+              {/* Nuevo cliente */}
+              {isEditable && (
+                <button
+                  onClick={() => setShowRegistroModal(true)}
+                  className={`${styles.labelIcon} hover:bg-opacity-10 hover:bg-current p-1 rounded transition-colors`}
+                  title="Nuevo cliente"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Dropdown de opciones */}
+          {mostrarOpciones && isEditable && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setMostrarOpciones(false)}
+              />
+
+              <div className={`dropdown-container absolute z-50 w-full mt-1 ${styles.dropdown} border rounded-lg shadow-xl max-h-96 overflow-y-auto`}>
+                {clientesFiltrados.length === 0 ? (
+                  <div className="p-4">
+                    <div className={`text-center ${styles.textMuted} text-sm mb-3`}>
+                      No se encontraron clientes
+                    </div>
+                    <button
+                      onClick={() => {
+                        setBusquedaParaRegistro(busqueda);
+                        setShowRegistroModal(true);
+                        setMostrarOpciones(false);
+                      }}
+                      className={`w-full flex items-center justify-center space-x-2 px-3 py-2 ${styles.button} rounded-lg transition-colors text-sm font-medium`}
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      <span>Crear Cliente</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="py-1">
+                    {/* Opción crear nuevo */}
+                    <button
+                      onClick={() => {
+                        setShowRegistroModal(true);
+                        setMostrarOpciones(false);
+                      }}
+                      className={`w-full px-4 py-3 text-left ${styles.option} transition-colors text-sm border-b border-gray-100 font-medium flex items-center space-x-2`}
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      <span>Crear Nuevo Cliente</span>
+                    </button>
+
+                    {/* Lista de clientes */}
+                    {clientesFiltrados.map((cliente) => (
+                      <button
+                        key={cliente.id}
+                        onClick={() => handleSeleccionar(cliente)}
+                        className={`w-full px-4 py-3 text-left ${styles.option} transition-colors text-sm`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className={`font-medium ${styles.text}`}>{cliente.cedula_rif}</div>
+                            <div className={styles.textSecondary}>{cliente.nombre}</div>
+                            <div className={`flex items-center space-x-2 text-xs ${styles.textMuted} mt-1`}>
+                              {cliente.telefono && (
+                                <span className="flex items-center space-x-1">
+                                  <Phone className="h-3 w-3" />
+                                  <span>{cliente.telefono}</span>
+                                </span>
+                              )}
+                              {cliente.email && (
+                                <span className="flex items-center space-x-1">
+                                  <Mail className="h-3 w-3" />
+                                  <span>{cliente.email}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ml-2 ${cliente.tipo === 'empresa'
+                              ? 'bg-purple-100 text-purple-700'
+                              : cliente.tipo === 'directo'
+                                ? 'bg-gray-100 text-gray-700'
+                                : 'bg-emerald-100 text-emerald-700'
+                            }`}>
+                            {cliente.tipo === 'empresa' ? (
+                              <Building2 className="h-3 w-3" />
+                            ) : cliente.tipo === 'directo' ? (
+                              <CreditCard className="h-3 w-3" />
+                            ) : (
+                              <User className="h-3 w-3" />
+                            )}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Cliente seleccionado - VERSIÓN GRANDE */}
+        {clienteSeleccionado && (
+          <div className={`${styles.selectedCard} border rounded-xl p-6 shadow-lg`}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${clienteSeleccionado.tipo === 'persona' ? 'bg-emerald-100 text-emerald-600' :
+                    clienteSeleccionado.tipo === 'empresa' ? 'bg-purple-100 text-purple-600' :
+                      'bg-gray-100 text-gray-600'
+                  }`}>
+                  {clienteSeleccionado.tipo === 'persona' ? (
+                    <User className="h-8 w-8" />
+                  ) : clienteSeleccionado.tipo === 'empresa' ? (
+                    <Building className="h-8 w-8" />
+                  ) : (
+                    <User className="h-8 w-8" />
+                  )}
+                </div>
+                <div>
+                  <h4 className={`text-xl font-bold ${styles.text} mb-2`}>{clienteSeleccionado.nombre}</h4>
+                  <div className={`text-base ${styles.textSecondary} space-y-1`}>
+                    <div className="flex items-center space-x-2">
+                      <CreditCard className="h-4 w-4" />
+                      <span className="font-medium">{clienteSeleccionado.cedula_rif}</span>
+                    </div>
+                    {clienteSeleccionado.telefono && (
+                      <div className="flex items-center space-x-2">
+                        <Phone className="h-4 w-4" />
+                        <span>{clienteSeleccionado.telefono}</span>
+                      </div>
+                    )}
+                    {clienteSeleccionado.email && (
+                      <div className="flex items-center space-x-2">
+                        <Mail className="h-4 w-4" />
+                        <span>{clienteSeleccionado.email}</span>
+                      </div>
+                    )}
+                    {clienteSeleccionado.direccion && (
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-4 w-4" />
+                        <span>{clienteSeleccionado.direccion}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón limpiar */}
+              {isEditable && (
+                <button
+                  onClick={handleLimpiar}
+                  className={`${styles.textMuted} hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors`}
+                  title="Limpiar selección"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Modal Registro Cliente */}
+      <ModalRegistroCliente
+        isOpen={showRegistroModal}
+        onClose={() => {
+          setShowRegistroModal(false);
+          setBusquedaParaRegistro('');
+        }}
+        onClienteCreado={handleClienteCreado}
+        cedulaInicial={busquedaParaRegistro}
+        theme={theme}
+      />
+    </>
+  );
 };
 
 export default ClienteSelector;

@@ -1205,30 +1205,30 @@ const ItemsTable = ({
 
       {/*  RESUMEN RÁPIDO */}
       {items.length > 0 && (
-        <div className={`${styles.summaryCard} border rounded-lg p-4`}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <div className={`text-sm ${styles.summaryText} font-medium`}>Total Items</div>
+        <div className={`mt-4 border-t-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-100'} pt-6 px-4 md:px-12`}>
+          <div className="flex justify-between items-center">
+            <div className="flex flex-col items-center">
+              <div className={`text-sm ${styles.summaryText} font-medium mb-1`}>Total Items</div>
               <div className={`text-2xl font-bold ${styles.summaryValue}`}>
                 {items.reduce((sum, item) => sum + item.cantidad, 0)}
               </div>
             </div>
-            <div>
-              <div className={`text-sm ${styles.summaryText} font-medium`}>Productos Únicos</div>
+            <div className="flex flex-col items-center">
+              <div className={`text-sm ${styles.summaryText} font-medium mb-1`}>Productos Únicos</div>
               <div className={`text-2xl font-bold ${styles.summaryValue}`}>
                 {items.length}
               </div>
             </div>
-            <div>
-              <div className={`text-sm ${styles.summaryText} font-medium`}>Subtotal Bs</div>
-              <div className={`text-xl font-bold ${styles.summaryValue}`}>
+            <div className="flex flex-col items-center">
+              <div className={`text-sm ${styles.summaryText} font-medium mb-1`}>Subtotal Bs</div>
+              <div className={`text-2xl font-bold ${styles.summaryValue}`}>
                 {formatearVenezolano(items.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0) * tasaCambio)} Bs
               </div>
             </div>
-            <div>
-              <div className={`text-sm ${styles.summaryText} font-medium`}>Subtotal USD</div>
-              <div className={`text-lg font-bold ${styles.summaryValue}`}>
-                ${items.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0).toFixed(2)}
+            <div className="flex flex-col items-center">
+              <div className={`text-sm ${styles.summaryText} font-medium mb-1`}>Subtotal USD</div>
+              <div className={`text-2xl font-bold ${styles.summaryValue}`}>
+                ${formatearVenezolano(items.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0))}
               </div>
             </div>
           </div>

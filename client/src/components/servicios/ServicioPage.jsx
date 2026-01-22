@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   PlusCircle, Eye, Pencil, Trash2, Inbox, Stethoscope, Clock,
-  Wrench, CheckCircle, PackageCheck, Flag, Info, History, Search, X, Lock, ClipboardList
+  Wrench, CheckCircle, PackageCheck, Flag, Info, History, Search, X, Lock, ClipboardList,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useServiciosStore } from '../../store/serviciosStore';
@@ -10,35 +11,35 @@ import toast from '../../utils/toast.jsx'; //  IMPORT AGREGADO
 import TokenAccesoModal from './TokenAccesoModal';
 
 const estadoConfig = {
-  'Recibido': { 
+  'Recibido': {
     color: 'bg-gradient-to-r from-purple-400 to-purple-600',
     textColor: 'text-slate-100',
-    icon: <Inbox size={14} /> 
+    icon: <Inbox size={14} />
   },
-  'En Diagnóstico': { 
+  'En Diagnóstico': {
     color: 'bg-gradient-to-r from-amber-600 to-yellow-700',
     textColor: 'text-amber-100',
-    icon: <Stethoscope size={14} /> 
+    icon: <Stethoscope size={14} />
   },
-  'Esperando Aprobación': { 
+  'Esperando Aprobación': {
     color: 'bg-gradient-to-r from-orange-600 to-red-600',
     textColor: 'text-orange-100',
-    icon: <Clock size={14} /> 
+    icon: <Clock size={14} />
   },
-  'En Reparación': { 
+  'En Reparación': {
     color: 'bg-gradient-to-r from-blue-600 to-indigo-700',
     textColor: 'text-blue-100',
-    icon: <Wrench size={14} /> 
+    icon: <Wrench size={14} />
   },
-  'Listo para Retiro': { 
+  'Listo para Retiro': {
     color: 'bg-gradient-to-r from-emerald-600 to-green-700',
     textColor: 'text-emerald-100',
-    icon: <CheckCircle size={14} /> 
+    icon: <CheckCircle size={14} />
   },
-  'Entregado': { 
+  'Entregado': {
     color: 'bg-gradient-to-r from-gray-600 to-gray-700',
     textColor: 'text-gray-200',
-    icon: <PackageCheck size={14} /> 
+    icon: <PackageCheck size={14} />
   },
   'Cancelado': {
     color: 'bg-gradient-to-r from-red-600 to-red-700',
@@ -50,7 +51,7 @@ const estadoConfig = {
 // Función para normalizar estados de la API al formato del componente
 const normalizarEstado = (estado) => {
   if (!estado) return 'Recibido';
-  
+
   const estadoMap = {
     'RECIBIDO': 'Recibido',
     'EN_DIAGNOSTICO': 'En Diagnóstico',
@@ -60,21 +61,21 @@ const normalizarEstado = (estado) => {
     'ENTREGADO': 'Entregado',
     'CANCELADO': 'Cancelado'
   };
-  
+
   return estadoMap[estado] || estado;
 };
 
 // Función para mapear datos de la API al formato esperado por el componente
 const mapearServicio = (servicio) => {
   if (!servicio) return null;
-  
+
   // Extraer campos que necesitamos mapear
   const clienteNombre = servicio.clienteNombre || servicio.cliente?.nombre || 'Sin nombre';
   const dispositivoTexto = `${servicio.dispositivoMarca || ''} ${servicio.dispositivoModelo || ''}`.trim() || 'Sin dispositivo';
   const estadoNormalizado = normalizarEstado(servicio.estado);
   const fechaEntrega = servicio.fechaEntregaEstimada || servicio.fechaEntrega;
   const totalFormateado = servicio.totalEstimado ? `$${parseFloat(servicio.totalEstimado).toFixed(2)}` : '$0.00';
-  
+
   return {
     // Mantener datos originales primero
     ...servicio,
@@ -117,25 +118,25 @@ const encontrarFechaListoRetiro = (servicio) => {
   if (!servicio.notas || !Array.isArray(servicio.notas)) {
     return null;
   }
-  
+
   // Buscar la nota más reciente donde el estado cambió a LISTO_RETIRO
   const notaListoRetiro = servicio.notas
     .filter(nota => {
       const tipo = nota.tipo?.toUpperCase() || '';
       const estadoNuevo = nota.estadoNuevo?.toUpperCase() || '';
-      return tipo === 'CAMBIO_ESTADO' && 
-             (estadoNuevo === 'LISTO_RETIRO' || estadoNuevo === 'LISTO RETIRO');
+      return tipo === 'CAMBIO_ESTADO' &&
+        (estadoNuevo === 'LISTO_RETIRO' || estadoNuevo === 'LISTO RETIRO');
     })
     .sort((a, b) => {
       const fechaA = new Date(a.fecha || a.createdAt || 0);
       const fechaB = new Date(b.fecha || b.createdAt || 0);
       return fechaB - fechaA; // Más reciente primero
     })[0];
-  
+
   if (notaListoRetiro) {
     return notaListoRetiro.fecha || notaListoRetiro.createdAt;
   }
-  
+
   return null;
 };
 
@@ -148,7 +149,7 @@ export default function ServicioPage({
 }) {
   const { usuario } = useAuthStore();
   const { servicios, loading, cargarServicios } = useServiciosStore();
-  
+
   // Estados para el modal de token
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [accionPendiente, setAccionPendiente] = useState(null);
@@ -342,35 +343,35 @@ export default function ServicioPage({
 
   // Calcular paginación con servicios mapeados y filtrados por búsqueda
   const serviciosMapeados = servicios.map(mapearServicio).filter(Boolean);
-  
+
   // Filtrar por estado y búsqueda
   const itemsFiltrados = serviciosMapeados.filter((s) => {
     // Filtro por estado
     const cumpleEstado = !filtroEstado || s.estado === filtroEstado;
-    
+
     // Filtro por búsqueda inteligente
     if (!busqueda.trim()) {
       return cumpleEstado;
     }
-    
+
     const busquedaLower = busqueda.toLowerCase().trim();
-    
+
     // Buscar por número de orden (ID o numeroServicio)
-    const coincideOrden = 
+    const coincideOrden =
       s.id?.toString().includes(busquedaLower) ||
       s.numeroServicio?.toLowerCase().includes(busquedaLower);
-    
+
     // Buscar por cliente
-    const coincideCliente = 
+    const coincideCliente =
       s.cliente?.toLowerCase().includes(busquedaLower) ||
       s.clienteNombre?.toLowerCase().includes(busquedaLower);
-    
+
     // Buscar por dispositivo
-    const coincideDispositivo = 
+    const coincideDispositivo =
       s.dispositivo?.toLowerCase().includes(busquedaLower) ||
       s.dispositivoMarca?.toLowerCase().includes(busquedaLower) ||
       s.dispositivoModelo?.toLowerCase().includes(busquedaLower);
-    
+
     return cumpleEstado && (coincideOrden || coincideCliente || coincideDispositivo);
   });
 
@@ -409,7 +410,7 @@ export default function ServicioPage({
 
   return (
     <div className="space-y-6">
-      
+
       {/* HEADER DE LA SECCIÓN CON BÚSQUEDA */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -418,7 +419,7 @@ export default function ServicioPage({
             Órdenes de Servicio
           </h2>
         </div>
-        
+
         {/* BARRA DE BÚSQUEDA INTELIGENTE */}
         <div className="relative w-full sm:w-auto sm:min-w-[400px]">
           <div className="relative">
@@ -449,7 +450,7 @@ export default function ServicioPage({
 
       {/* TABLA DE SERVICIOS MEJORADA */}
       <div className="bg-gray-800/70 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 overflow-hidden">
-        
+
         {/* Header de la tabla - Compacto */}
         {(filtroEstado || busqueda) && (
           <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-4 py-2 border-b border-gray-600/50">
@@ -506,11 +507,11 @@ export default function ServicioPage({
                         {busqueda
                           ? `No se encontraron servicios que coincidan con "${busqueda}"`
                           : filtroEstado
-                          ? `No hay servicios en estado "${filtroEstado}"`
-                          : 'No hay servicios registrados'}
+                            ? `No hay servicios en estado "${filtroEstado}"`
+                            : 'No hay servicios registrados'}
                       </p>
                       <p className="text-gray-500 text-sm">
-                        {busqueda 
+                        {busqueda
                           ? 'Intenta con otros términos de búsqueda'
                           : 'Crea una nueva orden de servicio para comenzar'}
                       </p>
@@ -523,12 +524,12 @@ export default function ServicioPage({
               {!loading && currentItems.map((s) => {
                 const estadoNormalizado = normalizarEstado(s.estado);
                 const estado = estadoConfig[estadoNormalizado] || estadoConfig['Recibido'];
-                
+
                 // 🆕 Si está en "Listo para Retiro", calcular días desde que cambió a ese estado
                 let diasTranscurridos;
                 let fechaReferencia;
                 let esListoRetiro = estadoNormalizado === 'Listo para Retiro';
-                
+
                 if (esListoRetiro) {
                   const fechaListoRetiro = encontrarFechaListoRetiro(s);
                   if (fechaListoRetiro) {
@@ -543,7 +544,7 @@ export default function ServicioPage({
                   fechaReferencia = s.fechaEntrega || s.fechaEntregaEstimada;
                   diasTranscurridos = calcularDiasTranscurridos(fechaReferencia);
                 }
-                
+
                 const estaVencido = diasTranscurridos > 5 && estadoNormalizado === 'Recibido';
 
                 let diasTexto = '—';
@@ -671,15 +672,14 @@ export default function ServicioPage({
                         >
                           <Eye size={18} className="text-gray-400 group-hover:text-white" />
                         </button>
-                        
+
                         {/*  Botón Editar */}
                         <button
                           onClick={() => handleAccionConToken(s, 'editar')}
-                          className={`p-2.5 rounded-md border transition-all duration-200 group ${
-                            requiereTokenAcceso(s.estado)
-                              ? 'bg-slate-700/30 border-slate-600/50 hover:bg-slate-700/50'
-                              : 'bg-slate-700/50 border-slate-600 hover:bg-amber-600 hover:border-amber-500'
-                          }`}
+                          className={`p-2.5 rounded-md border transition-all duration-200 group ${requiereTokenAcceso(s.estado)
+                            ? 'bg-slate-700/30 border-slate-600/50 hover:bg-slate-700/50'
+                            : 'bg-slate-700/50 border-slate-600 hover:bg-amber-600 hover:border-amber-500'
+                            }`}
                           title={requiereTokenAcceso(s.estado) ? 'Requiere autorización de administrador' : 'Editar servicio'}
                         >
                           {requiereTokenAcceso(s.estado) ? (
@@ -692,11 +692,10 @@ export default function ServicioPage({
                         {/*  Botón Historial */}
                         <button
                           onClick={() => handleAccionConToken(s, 'historial')}
-                          className={`p-2.5 rounded-md border transition-all duration-200 group ${
-                            requiereTokenAcceso(s.estado)
-                              ? 'bg-slate-700/30 border-slate-600/50 hover:bg-slate-700/50'
-                              : 'bg-slate-700/50 border-slate-600 hover:bg-purple-600 hover:border-purple-500'
-                          }`}
+                          className={`p-2.5 rounded-md border transition-all duration-200 group ${requiereTokenAcceso(s.estado)
+                            ? 'bg-slate-700/30 border-slate-600/50 hover:bg-slate-700/50'
+                            : 'bg-slate-700/50 border-slate-600 hover:bg-purple-600 hover:border-purple-500'
+                            }`}
                           title={requiereTokenAcceso(s.estado) ? 'Requiere autorización de administrador' : 'Ver historial técnico completo'}
                         >
                           {requiereTokenAcceso(s.estado) ? (
@@ -705,7 +704,7 @@ export default function ServicioPage({
                             <History size={18} className="text-gray-400 group-hover:text-white" />
                           )}
                         </button>
-                        
+
                         {/* Botón Eliminar - Solo para admin */}
                         {usuario?.rol === 'admin' && (
                           <button
@@ -725,52 +724,60 @@ export default function ServicioPage({
           </table>
         </div>
 
-        {/* Footer de la tabla con paginación */}
-        <div className="bg-gradient-to-r from-gray-700 to-gray-800 px-6 py-4 border-t border-gray-600/50">
-          <div className="flex justify-between items-center">
-            
-            {/* Info de páginas */}
-            <div className="text-sm text-gray-400">
-              Mostrando {startIndex + 1} - {Math.min(startIndex + itemsPerPage, itemsFiltrados.length)} de {itemsFiltrados.length} servicios
+        {/* Footer de la tabla con paginación PREMIUM (Estilo Gray/Dark para Servicios) */}
+        {!loading && (
+          <div className="bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 border-t border-gray-700 px-4 py-2 grid grid-cols-3 items-center shrink-0 h-14 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] relative z-10">
+            {/* Izquierda: Contador */}
+            <div className="text-left">
+              <span className="text-xs text-gray-400 font-medium opacity-90">
+                Total: {itemsFiltrados.length} servicios
+              </span>
             </div>
 
-            {/* Controles de paginación */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                className="px-4 py-2 text-sm font-medium bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-gray-500"
-                disabled={currentPage === 1}
-              >
-                 Anterior
-              </button>
-
-              {/* Números de página */}
-              <div className="flex gap-1">
-                {Array.from({ length: totalPages }, (_, i) => (
+            {/* Centro: Paginación */}
+            <div className="flex justify-center">
+              {totalPages > 1 && (
+                <div className="flex items-center space-x-2 rounded-lg p-1">
                   <button
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors border ${
-                      currentPage === i + 1 
-                        ? 'bg-blue-600 text-white border-blue-500' 
-                        : 'bg-gray-600 hover:bg-gray-500 text-gray-200 border-gray-500'
-                    }`}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 rounded-md hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                    title="Anterior"
                   >
-                    {i + 1}
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
-                ))}
-              </div>
 
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                className="px-4 py-2 text-sm font-medium bg-gray-600 hover:bg-gray-500 text-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-gray-500"
-                disabled={currentPage === totalPages}
-              >
-                Siguiente 
-              </button>
+                  <div className="flex items-center space-x-1 px-2 border-l border-r border-gray-700/50 mx-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+                      <button
+                        key={num}
+                        onClick={() => setCurrentPage(num)}
+                        className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all ${currentPage === num
+                            ? 'bg-gray-200 text-gray-900 shadow-md transform scale-105'
+                            : 'text-gray-400 hover:bg-white/10'
+                          }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1.5 rounded-md hover:bg-white/10 text-gray-300 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                    title="Siguiente"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Derecha: Espacio vacío para balancear */}
+            <div></div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modal de Token de Acceso */}

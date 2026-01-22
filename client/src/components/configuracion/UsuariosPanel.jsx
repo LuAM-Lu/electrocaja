@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Users, ChevronDown, ChevronUp, UserPlus, UserX, Shield, Crown, RefreshCw, UserCheck,
-  Monitor, Activity, Globe, Trash2, X, AlertCircle, Eye, Edit, QrCode
+  Monitor, Activity, Globe, Trash2, X, AlertCircle, Eye, Edit, QrCode, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
@@ -489,398 +489,325 @@ _Generado por: ${usuario?.nombre}_`
         </div>
       )}
 
-      {/* Resumen del Sistema */}
-      <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4 border border-slate-200">
-        <h3 className="font-bold text-slate-900 mb-3 flex items-center text-base">
-          <Activity className="h-4 w-4 mr-2 text-blue-600" />
-          Estado del Sistema
-        </h3>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white rounded-lg p-3 border border-blue-200 shadow-sm">
-            <div className="flex items-center space-x-2 mb-1">
-              <Monitor className="h-3 w-3 text-blue-600" />
-              <span className="font-medium text-blue-900 text-xs">Sesiones</span>
-            </div>
-            <div className="text-xl font-bold text-blue-800" aria-live="polite">
-              {estadisticas.sesiones}
-            </div>
+      {/* Resumen del Sistema - Premium Compacto */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 px-4 py-2.5 rounded-xl border border-blue-200 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+          <div>
+            <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Sesiones</p>
+            <p className="text-xl font-bold text-blue-900 leading-tight group-hover:scale-105 transition-transform">{estadisticas.sesiones}</p>
           </div>
-
-          <div className="bg-white rounded-lg p-3 border border-green-200 shadow-sm">
-            <div className="flex items-center space-x-2 mb-1">
-              <Users className="h-3 w-3 text-green-600" />
-              <span className="font-medium text-green-900 text-xs">Activos</span>
-            </div>
-            <div className="text-xl font-bold text-green-800">{estadisticas.activos}</div>
+          <div className="bg-white p-2 rounded-lg shadow-sm">
+            <Monitor className="h-4 w-4 text-blue-600" />
           </div>
+        </div>
 
-          <div className="bg-white rounded-lg p-3 border border-purple-200 shadow-sm">
-            <div className="flex items-center space-x-2 mb-1">
-              <Shield className="h-3 w-3 text-purple-600" />
-              <span className="font-medium text-purple-900 text-xs">Admins</span>
-            </div>
-            <div className="text-xl font-bold text-purple-800">{estadisticas.admins}</div>
+        <div className="bg-gradient-to-br from-green-50 to-green-100/50 px-4 py-2.5 rounded-xl border border-green-200 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+          <div>
+            <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider">Activos</p>
+            <p className="text-xl font-bold text-green-900 leading-tight group-hover:scale-105 transition-transform">{estadisticas.activos}</p>
           </div>
+          <div className="bg-white p-2 rounded-lg shadow-sm">
+            <UserCheck className="h-4 w-4 text-green-600" />
+          </div>
+        </div>
 
-          <div className="bg-white rounded-lg p-3 border border-orange-200 shadow-sm">
-            <div className="flex items-center space-x-2 mb-1">
-              <Globe className="h-3 w-3 text-orange-600" />
-              <span className="font-medium text-orange-900 text-xs">Total</span>
-            </div>
-            <div className="text-xl font-bold text-orange-800">{estadisticas.total}</div>
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 px-4 py-2.5 rounded-xl border border-purple-200 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+          <div>
+            <p className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Admins</p>
+            <p className="text-xl font-bold text-purple-900 leading-tight group-hover:scale-105 transition-transform">{estadisticas.admins}</p>
+          </div>
+          <div className="bg-white p-2 rounded-lg shadow-sm">
+            <Shield className="h-4 w-4 text-purple-600" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 px-4 py-2.5 rounded-xl border border-orange-200 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+          <div>
+            <p className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">Total</p>
+            <p className="text-xl font-bold text-orange-900 leading-tight group-hover:scale-105 transition-transform">{estadisticas.total}</p>
+          </div>
+          <div className="bg-white p-2 rounded-lg shadow-sm">
+            <Globe className="h-4 w-4 text-orange-600" />
           </div>
         </div>
       </div>
 
-      {/* Sesiones Activas */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <button
-          onClick={() => updateState({ sesionesAbiertas: !state.sesionesAbiertas })}
-          className="w-full px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between hover:bg-blue-100 transition-colors"
-          aria-expanded={state.sesionesAbiertas}
-          aria-controls="sesiones-activas-content"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+      {/* Sesiones Activas (Siempre visible si hay contenido) */}
+      {state.sesionesActivas.length > 0 && (
+        <div className="bg-white border border-blue-100 rounded-xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 bg-blue-50/50 border-b border-blue-100 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
               <Monitor className="h-4 w-4 text-blue-600" />
+              <h3 className="font-bold text-blue-900 text-sm">Sesiones Activas en Tiempo Real</h3>
             </div>
-            <div className="text-left">
-              <h3 className="font-bold text-blue-900 text-sm">Sesiones Activas</h3>
-              <p className="text-xs text-blue-700">
-                {estadisticas.sesiones} activa{estadisticas.sesiones !== 1 ? 's' : ''}
-              </p>
-            </div>
+            <div className={`w-2 h-2 rounded-full ${state.loading ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`} />
           </div>
-          <div className="flex items-center space-x-2">
-            <div
-              className={`w-2 h-2 rounded-full ${state.loading ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}
-              role="status"
-              aria-label={state.loading ? 'Cargando' : 'Conectado'}
-            />
-            {state.sesionesAbiertas ? (
-              <ChevronUp className="h-4 w-4 text-blue-600" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-blue-600" />
-            )}
-          </div>
-        </button>
-
-        {state.sesionesAbiertas && (
-          <div id="sesiones-activas-content" className="p-4">
-            {state.sesionesActivas.length === 0 ? (
-              <div className="text-center py-6 text-gray-500">
-                <Monitor className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="font-medium text-sm">No hay sesiones activas</p>
-              </div>
-            ) : (
-              <div className="space-y-2" role="list" aria-label="Lista de sesiones activas">
-                {state.sesionesActivas.map((sesion, index) => (
-                  <div
-                    key={sesion.socket_id || index}
-                    className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between"
-                    role="listitem"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold text-xs">
-                          {(sesion.usuario || sesion.nombre)?.charAt(0)?.toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">
-                          {sesion.usuario || sesion.nombre}
-                        </div>
-                        <div className="flex items-center space-x-2 text-xs">
-                          <span className={`inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full font-medium border ${getRoleColor(sesion.rol)}`}>
-                            {getRoleIcon(sesion.rol)}
-                            <span>{sesion.rol?.toUpperCase()}</span>
-                          </span>
-                          <span className="text-gray-500">
-                            {calcularTiempo(sesion.timestamp_conexion || sesion.timestamp)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {sesion.email !== usuario?.email && sesion.rol !== 'admin' ? (
-                      <button
-                        onClick={() => kickearUsuario(sesion)}
-                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium flex items-center space-x-1 transition-colors"
-                        aria-label={`Desconectar a ${sesion.usuario || sesion.nombre}`}
-                      >
-                        <UserX className="h-3 w-3" />
-                        <span>Kick</span>
-                      </button>
-                    ) : (
-                      <div className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs font-medium">
-                        {sesion.email === usuario?.email ? 'Tú' : 'Admin'}
-                      </div>
-                    )}
+          <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {state.sesionesActivas.map((sesion, index) => (
+              <div
+                key={sesion.socket_id || index}
+                className="bg-gray-50 border border-gray-200 rounded-lg p-2 flex items-center justify-between hover:border-blue-300 transition-colors"
+                title={`${sesion.usuario || sesion.nombre} - ${sesion.rol}`}
+              >
+                <div className="flex items-center space-x-2 overflow-hidden">
+                  <div className="w-7 h-7 flex-shrink-0 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-[10px] font-bold text-blue-700 shadow-sm">
+                    {(sesion.usuario || sesion.nombre)?.charAt(0)?.toUpperCase()}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Tabla de Usuarios con Paginación */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <button
-          onClick={() => updateState({ usuariosAbiertas: !state.usuariosAbiertas })}
-          className="w-full px-4 py-3 bg-green-50 border-b border-green-100 flex items-center justify-between hover:bg-green-100 transition-colors"
-          aria-expanded={state.usuariosAbiertas}
-          aria-controls="usuarios-content"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-              <Users className="h-4 w-4 text-green-600" />
-            </div>
-            <div className="text-left">
-              <h3 className="font-bold text-green-900 text-sm">Gestión de Usuarios</h3>
-              <p className="text-xs text-green-700">
-                {estadisticas.total} usuario{estadisticas.total !== 1 ? 's' : ''} • Página {state.paginaActual} de {totalPaginas}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                updateState({
-                  usuarioEditando: null,
-                  showFormularioUsuario: true
-                });
-              }}
-              className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors flex items-center space-x-1"
-              aria-label="Crear nuevo usuario"
-            >
-              <UserPlus className="h-3 w-3" />
-              <span>Crear</span>
-            </button>
-            {state.usuariosAbiertas ? (
-              <ChevronUp className="h-4 w-4 text-green-600" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-green-600" />
-            )}
-          </div>
-        </button>
-
-        {state.usuariosAbiertas && (
-          <div id="usuarios-content">
-            {state.loadingUsuarios ? (
-              <div className="p-6 text-center" role="status" aria-live="polite">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
-                <p className="text-gray-600 text-sm">Cargando usuarios...</p>
-              </div>
-            ) : state.usuarios.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
-                <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="font-medium text-sm">No hay usuarios registrados</p>
-              </div>
-            ) : (
-              <>
-                {/* Tabla Compacta */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs" role="table" aria-label="Tabla de usuarios">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
-                          Usuario
-                        </th>
-                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
-                          Rol
-                        </th>
-                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
-                          Estado
-                        </th>
-                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
-                          Fecha
-                        </th>
-                        <th scope="col" className="px-3 py-2 text-center font-medium text-gray-500 uppercase tracking-wider">
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {usuariosPaginados.map((user) => (
-                        <tr key={user.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs ${
-                                user.activo
-                                  ? 'bg-gradient-to-br from-green-500 to-green-600'
-                                  : 'bg-gradient-to-br from-gray-400 to-gray-500'
-                              }`}>
-                                {user.nombre.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900 text-xs flex items-center space-x-1">
-                                  <span>{user.nombre}</span>
-                                  {user.rol === 'admin' && user.id === 1 && (
-                                    <Crown className="h-3 w-3 text-yellow-500" aria-label="Administrador principal" />
-                                  )}
-                                </div>
-                                <div className="text-xs text-gray-500">{user.sucursal}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-xs text-gray-900">{user.email}</div>
-                            <div className="text-xs text-gray-500">{user.turno}</div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <span className={`inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full text-xs font-medium border ${getRoleColor(user.rol)}`}>
-                              {getRoleIcon(user.rol)}
-                              <span>{user.rol.toUpperCase()}</span>
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${
-                              user.activo
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {user.activo ? 'Activo' : 'Inactivo'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                            {formatearFecha(user.createdAt)}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              {user.rol === 'admin' && user.id === 1 ? (
-                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                                  Protegido
-                                </span>
-                              ) : user.email === usuario?.email ? (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                                  Tú
-                                </span>
-                              ) : (
-                                <>
-                                  {/* Ver QR Token */}
-                                  {user.quickAccessToken && (
-                                    <button
-                                      onClick={() => verQRToken(user)}
-                                      className="w-7 h-7 bg-purple-100 hover:bg-purple-200 text-purple-600 rounded-full transition-colors flex items-center justify-center"
-                                      aria-label={`Ver código QR de ${user.nombre}`}
-                                      title="Ver código QR"
-                                    >
-                                      <QrCode className="h-3 w-3" />
-                                    </button>
-                                  )}
-
-                                  {/* Editar Usuario */}
-                                  <button
-                                    onClick={() => editarUsuario(user)}
-                                    className="w-7 h-7 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full transition-colors flex items-center justify-center"
-                                    aria-label={`Editar ${user.nombre}`}
-                                    title="Editar usuario"
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </button>
-
-                                  {/* Resetear Password */}
-                                  <button
-                                    onClick={() => resetearPassword(user)}
-                                    className="w-7 h-7 bg-cyan-100 hover:bg-cyan-200 text-cyan-600 rounded-full transition-colors flex items-center justify-center"
-                                    aria-label={`Resetear contraseña de ${user.nombre}`}
-                                    title="Resetear contraseña"
-                                  >
-                                    <RefreshCw className="h-3 w-3" />
-                                  </button>
-
-                                  {/* Activar/Desactivar */}
-                                  <button
-                                    onClick={() => desactivarUsuario(user)}
-                                    className={`w-7 h-7 rounded-full transition-colors flex items-center justify-center ${
-                                      user.activo
-                                        ? 'bg-orange-100 hover:bg-orange-200 text-orange-600'
-                                        : 'bg-green-100 hover:bg-green-200 text-green-600'
-                                    }`}
-                                    aria-label={user.activo ? `Desactivar ${user.nombre}` : `Activar ${user.nombre}`}
-                                    title={user.activo ? 'Desactivar usuario' : 'Activar usuario'}
-                                  >
-                                    {user.activo ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
-                                  </button>
-
-                                  {/* Borrar */}
-                                  <button
-                                    onClick={() => borrarUsuario(user)}
-                                    className="w-7 h-7 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors flex items-center justify-center"
-                                    aria-label={`Borrar ${user.nombre}`}
-                                    title="Borrar usuario"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="min-w-0">
+                    <div className="font-medium text-gray-900 text-[10px] truncate">
+                      {sesion.usuario || sesion.nombre}
+                    </div>
+                    <div className="flex items-center space-x-1 text-[9px] text-gray-500">
+                      <span>{calcularTiempo(sesion.timestamp_conexion || sesion.timestamp)}</span>
+                      <span>•</span>
+                      <span className={`truncate ${getRoleColor(sesion.rol).replace('bg-', 'text-').split(' ')[1]}`}>{sesion.rol}</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Paginación */}
-                {totalPaginas > 1 && (
-                  <div
-                    className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between"
-                    role="navigation"
-                    aria-label="Paginación de usuarios"
+                {sesion.email !== usuario?.email && sesion.rol !== 'admin' && (
+                  <button
+                    onClick={() => kickearUsuario(sesion)}
+                    className="flex-shrink-0 p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="Desconectar"
                   >
-                    <div className="text-xs text-gray-700">
-                      Mostrando {indiceInicio + 1} a {indiceFin} de {state.usuarios.length} usuarios
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => cambiarPagina(state.paginaActual - 1)}
-                        disabled={state.paginaActual === 1}
-                        className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        aria-label="Página anterior"
-                      >
-                        Anterior
-                      </button>
-
-                      <div className="flex space-x-1">
-                        {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((pagina) => (
-                          <button
-                            key={pagina}
-                            onClick={() => cambiarPagina(pagina)}
-                            className={`px-2 py-1 text-xs rounded transition-colors ${
-                              pagina === state.paginaActual
-                                ? 'bg-green-600 text-white'
-                                : 'bg-white border border-gray-300 hover:bg-gray-50'
-                            }`}
-                            aria-label={`Página ${pagina}`}
-                            aria-current={pagina === state.paginaActual ? 'page' : undefined}
-                          >
-                            {pagina}
-                          </button>
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() => cambiarPagina(state.paginaActual + 1)}
-                        disabled={state.paginaActual === totalPaginas}
-                        className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        aria-label="Página siguiente"
-                      >
-                        Siguiente
-                      </button>
-                    </div>
-                  </div>
+                    <UserX className="h-3 w-3" />
+                  </button>
                 )}
-              </>
-            )}
+              </div>
+            ))}
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Tabla de Usuarios (Siempre Visible) */}
+      <div className="bg-white border border-emerald-100 rounded-xl shadow-md overflow-hidden flex flex-col h-full">
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+          <div className="flex items-center space-x-3">
+            <div className="bg-emerald-100 p-2 rounded-lg">
+              <Users className="h-5 w-5 text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800">Gestión de Usuarios</h3>
+          </div>
+
+          <button
+            onClick={() => {
+              updateState({
+                usuarioEditando: null,
+                showFormularioUsuario: true
+              });
+            }}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm hover:shadow transition-all text-sm font-medium flex items-center space-x-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>Nuevo Usuario</span>
+          </button>
+        </div>
+
+        <div id="usuarios-content" className="flex-1 flex flex-col">
+          {state.loadingUsuarios ? (
+            <div className="p-6 text-center" role="status" aria-live="polite">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600 mx-auto mb-2"></div>
+              <p className="text-gray-600 text-sm">Cargando usuarios...</p>
+            </div>
+          ) : state.usuarios.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">
+              <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+              <p className="font-medium text-sm">No hay usuarios registrados</p>
+            </div>
+          ) : (
+            <>
+              {/* Tabla Compacta */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs" role="table" aria-label="Tabla de usuarios">
+                  <thead className="bg-gradient-to-r from-gray-800 to-gray-900 text-white">
+                    <tr>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold tracking-wider first:rounded-tl-lg">
+                        Usuario
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold tracking-wider">
+                        Email
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold tracking-wider">
+                        Rol
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold tracking-wider">
+                        Estado
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-left font-semibold tracking-wider">
+                        Fecha
+                      </th>
+                      <th scope="col" className="px-4 py-3 text-center font-semibold tracking-wider last:rounded-tr-lg">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {usuariosPaginados.map((user) => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs ${user.activo
+                              ? 'bg-gradient-to-br from-green-500 to-green-600'
+                              : 'bg-gradient-to-br from-gray-400 to-gray-500'
+                              }`}>
+                              {user.nombre.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900 text-xs flex items-center space-x-1">
+                                <span>{user.nombre}</span>
+                                {user.rol === 'admin' && user.id === 1 && (
+                                  <Crown className="h-3 w-3 text-yellow-500" aria-label="Administrador principal" />
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-500">{user.sucursal}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="text-xs text-gray-900">{user.email}</div>
+                          <div className="text-xs text-gray-500">{user.turno}</div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className={`inline-flex items-center space-x-1 px-1.5 py-0.5 rounded-full text-xs font-medium border ${getRoleColor(user.rol)}`}>
+                            {getRoleIcon(user.rol)}
+                            <span>{user.rol.toUpperCase()}</span>
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded-full ${user.activo
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                            }`}>
+                            {user.activo ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
+                          {formatearFecha(user.createdAt)}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center space-x-1">
+                            {user.rol === 'admin' && user.id === 1 ? (
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                                Protegido
+                              </span>
+                            ) : user.email === usuario?.email ? (
+                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                Tú
+                              </span>
+                            ) : (
+                              <>
+                                {/* Ver QR Token */}
+                                {user.quickAccessToken && (
+                                  <button
+                                    onClick={() => verQRToken(user)}
+                                    className="w-7 h-7 bg-purple-100 hover:bg-purple-200 text-purple-600 rounded-full transition-colors flex items-center justify-center"
+                                    aria-label={`Ver código QR de ${user.nombre}`}
+                                    title="Ver código QR"
+                                  >
+                                    <QrCode className="h-3 w-3" />
+                                  </button>
+                                )}
+
+                                {/* Editar Usuario */}
+                                <button
+                                  onClick={() => editarUsuario(user)}
+                                  className="w-7 h-7 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full transition-colors flex items-center justify-center"
+                                  aria-label={`Editar ${user.nombre}`}
+                                  title="Editar usuario"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </button>
+
+                                {/* Resetear Password */}
+                                <button
+                                  onClick={() => resetearPassword(user)}
+                                  className="w-7 h-7 bg-cyan-100 hover:bg-cyan-200 text-cyan-600 rounded-full transition-colors flex items-center justify-center"
+                                  aria-label={`Resetear contraseña de ${user.nombre}`}
+                                  title="Resetear contraseña"
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                </button>
+
+                                {/* Activar/Desactivar */}
+                                <button
+                                  onClick={() => desactivarUsuario(user)}
+                                  className={`w-7 h-7 rounded-full transition-colors flex items-center justify-center ${user.activo
+                                    ? 'bg-orange-100 hover:bg-orange-200 text-orange-600'
+                                    : 'bg-green-100 hover:bg-green-200 text-green-600'
+                                    }`}
+                                  aria-label={user.activo ? `Desactivar ${user.nombre}` : `Activar ${user.nombre}`}
+                                  title={user.activo ? 'Desactivar usuario' : 'Activar usuario'}
+                                >
+                                  {user.activo ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+                                </button>
+
+                                {/* Borrar */}
+                                <button
+                                  onClick={() => borrarUsuario(user)}
+                                  className="w-7 h-7 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors flex items-center justify-center"
+                                  aria-label={`Borrar ${user.nombre}`}
+                                  title="Borrar usuario"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Paginación Premium */}
+              {totalPaginas > 1 && (
+                <div className="bg-emerald-50 border-t border-emerald-100 px-4 py-3 flex items-center justify-between">
+                  <div className="text-xs text-emerald-700 font-medium">
+                    Mostrando <span className="font-bold">{indiceInicio + 1}</span> - <span className="font-bold">{indiceFin}</span> de <span className="font-bold">{state.usuarios.length}</span> resultados
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => cambiarPagina(state.paginaActual - 1)}
+                      disabled={state.paginaActual === 1}
+                      className="p-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                      title="Anterior"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((pagina) => (
+                        <button
+                          key={pagina}
+                          onClick={() => cambiarPagina(pagina)}
+                          className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all shadow-sm ${pagina === state.paginaActual
+                            ? 'bg-emerald-600 text-white shadow-emerald-200 transform scale-105'
+                            : 'bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                            }`}
+                        >
+                          {pagina}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => cambiarPagina(state.paginaActual + 1)}
+                      disabled={state.paginaActual === totalPaginas}
+                      className="p-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                      title="Siguiente"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
       </div>
 
       {/* Modales */}

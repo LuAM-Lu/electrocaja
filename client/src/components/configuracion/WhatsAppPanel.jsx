@@ -1,8 +1,8 @@
 // components/configuracion/WhatsAppPanel.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Smartphone, Wifi, WifiOff, QrCode as QrCodeIcon, Check, 
-  Trash2, AlertTriangle, RefreshCw, Settings
+import {
+  Smartphone, Wifi, WifiOff, QrCode as QrCodeIcon, Check,
+  Trash2, AlertTriangle, RefreshCw, Settings, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
@@ -18,6 +18,8 @@ const WhatsAppPanel = () => {
     intentandoConectar: false,
     limpiandoSesion: false
   });
+
+  const [showHelp, setShowHelp] = useState(false);
 
   //  REFS PARA CONTROL
   const pollingIntervalRef = useRef(null);
@@ -37,7 +39,7 @@ const WhatsAppPanel = () => {
       console.log('ESTRUCTURA COMPLETA API:', JSON.stringify(response.data, null, 2));
       console.log('DATA EXTRAIDO:', JSON.stringify(data, null, 2));
       console.log(' Estado inicial WhatsApp (solo lectura):', data);
-     
+
       if (isMountedRef.current) {
         setEstadoWhatsApp(prev => ({
           ...prev,
@@ -64,7 +66,7 @@ const WhatsAppPanel = () => {
   //  Polling inteligente SOLO cuando se necesita QR
   const iniciarPollingQR = () => {
     console.log(' Iniciando polling SOLO para QR...');
-    
+
     // Limpiar interval anterior por seguridad
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
@@ -72,11 +74,11 @@ const WhatsAppPanel = () => {
 
     let attempts = 0;
     const maxAttempts = 40; // 40 x 3s = 2 minutos max
-    
+
     pollingIntervalRef.current = setInterval(async () => {
       attempts++;
       console.log(` Polling QR attempt ${attempts}/${maxAttempts}`);
-      
+
       try {
         const response = await api.get('/whatsapp/estado');
         const { data } = response.data;
@@ -84,7 +86,7 @@ const WhatsAppPanel = () => {
         // AGREGAR ESTO TEMPORALMENTE:
         console.log('ESTRUCTURA COMPLETA API:', JSON.stringify(response.data, null, 2));
         console.log('DATA EXTRAIDO:', JSON.stringify(data, null, 2));
-        
+
         //  Generar imagen QR si hay código y no está conectado
         let qrCodeImage = '';
         if (data.qrCode && !data.conectado) {
@@ -102,7 +104,7 @@ const WhatsAppPanel = () => {
             console.error('Error generando imagen QR:', error);
           }
         }
-        
+
         if (isMountedRef.current) {
           setEstadoWhatsApp(prev => ({
             ...prev,
@@ -119,7 +121,7 @@ const WhatsAppPanel = () => {
           console.log(' WhatsApp conectado - Deteniendo polling');
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
-          
+
           if (isMountedRef.current) {
             toast.success('WhatsApp conectado exitosamente');
           }
@@ -131,10 +133,10 @@ const WhatsAppPanel = () => {
           console.log(' Polling timeout - Deteniendo');
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
-          
+
           if (isMountedRef.current) {
-            setEstadoWhatsApp(prev => ({ 
-              ...prev, 
+            setEstadoWhatsApp(prev => ({
+              ...prev,
               intentandoConectar: false,
               qrCode: '',
               qrCodeImage: ''
@@ -142,15 +144,15 @@ const WhatsAppPanel = () => {
             toast.error('Tiempo de conexión agotado. Intenta limpiar sesión.');
           }
         }
-        
+
       } catch (error) {
         console.error('Error en polling QR:', error);
         attempts++; // Contar errores como intentos
-        
+
         if (attempts >= maxAttempts) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
-          
+
           if (isMountedRef.current) {
             setEstadoWhatsApp(prev => ({ ...prev, intentandoConectar: false }));
             toast.error('Error de conexión. Intenta limpiar sesión.');
@@ -181,37 +183,37 @@ const WhatsAppPanel = () => {
       return;
     }
 
-    setEstadoWhatsApp(prev => ({ 
-      ...prev, 
+    setEstadoWhatsApp(prev => ({
+      ...prev,
       intentandoConectar: true,
       qrCode: '',
-      qrCodeImage: '' 
+      qrCodeImage: ''
     }));
-    
+
     try {
       console.log(' Iniciando conexión WhatsApp BAJO DEMANDA...');
-      
+
       // 1. Llamar backend para inicializar (AHORA SÍ se generará QR)
       console.log(' Verificando estado antes de conectar...');
-        const estadoActual = await api.get('/whatsapp/estado');
-        console.log(' Estado actual:', estadoActual.data);
+      const estadoActual = await api.get('/whatsapp/estado');
+      console.log(' Estado actual:', estadoActual.data);
 
-        if (estadoActual.data?.data?.conectado) {
-          toast.success('WhatsApp ya está conectado');
-          return;
-        }
+      if (estadoActual.data?.data?.conectado) {
+        toast.success('WhatsApp ya está conectado');
+        return;
+      }
 
-        const response = await api.post('/whatsapp/conectar');
+      const response = await api.post('/whatsapp/conectar');
       console.log(' Backend iniciado:', response.data);
-      
+
       // 2. Esperar que el backend genere QR e iniciar polling
       setTimeout(() => {
         console.log(' Iniciando polling QR tras inicialización...');
         iniciarPollingQR();
       }, 2000); // 2s delay para que backend inicialice completamente
-      
+
       toast.success('Iniciando WhatsApp... Generando QR...', { duration: 4000 });
-      
+
     } catch (error) {
       console.error('Error conectando WhatsApp:', error);
       if (isMountedRef.current) {
@@ -225,12 +227,12 @@ const WhatsAppPanel = () => {
   const desconectarWhatsApp = async () => {
     try {
       console.log(' Desconectando WhatsApp...');
-      
+
       // Detener polling si está activo
       detenerPolling();
 
       const response = await api.post('/whatsapp/desconectar');
-        
+
       if (isMountedRef.current) {
         setEstadoWhatsApp({
           conectado: false,
@@ -240,10 +242,10 @@ const WhatsAppPanel = () => {
           intentandoConectar: false,
           limpiandoSesion: false
         });
-        
+
         toast.success('WhatsApp desconectado');
       }
-      
+
     } catch (error) {
       console.error('Error desconectando WhatsApp:', error);
       toast.error('Error al desconectar WhatsApp');
@@ -264,18 +266,18 @@ const WhatsAppPanel = () => {
     }
 
     setEstadoWhatsApp(prev => ({ ...prev, limpiandoSesion: true }));
-    
+
     try {
       console.log(' Limpiando sesión WhatsApp...');
-      
+
       // Detener polling si está activo
       detenerPolling();
 
       const response = await api.post('/whatsapp/limpiar-sesion');
-      
+
       if (response.data.success) {
         console.log(' Sesión limpiada exitosamente:', response.data.data);
-        
+
         if (isMountedRef.current) {
           setEstadoWhatsApp({
             conectado: false,
@@ -285,13 +287,13 @@ const WhatsAppPanel = () => {
             intentandoConectar: false,
             limpiandoSesion: false
           });
-          
+
           toast.success('Sesión de WhatsApp limpiada completamente', { duration: 5000 });
         }
       } else {
         throw new Error(response.data.message || 'Error limpiando sesión');
       }
-      
+
     } catch (error) {
       console.error('Error limpiando sesión WhatsApp:', error);
       if (isMountedRef.current) {
@@ -308,14 +310,14 @@ const WhatsAppPanel = () => {
   //  Cleanup optimizado
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     // SOLO verificar estado inicial - NO auto-conectar
     verificarEstadoInicial();
-    
+
     return () => {
       console.log(' Limpiando WhatsAppPanel...');
       isMountedRef.current = false;
-      
+
       // Limpiar polling al desmontar
       detenerPolling();
     };
@@ -327,9 +329,8 @@ const WhatsAppPanel = () => {
 
   //  Indicador de estado
   const EstadoIndicador = () => (
-    <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-      estadoWhatsApp.conectado ? 'bg-green-100' : 'bg-red-100'
-    }`}>
+    <div className={`flex items-center justify-center w-10 h-10 rounded-full ${estadoWhatsApp.conectado ? 'bg-green-100' : 'bg-red-100'
+      }`}>
       {estadoWhatsApp.conectado ? (
         <Wifi className="h-5 w-5 text-green-600" />
       ) : (
@@ -347,7 +348,7 @@ const WhatsAppPanel = () => {
         Preparando conexión y generando código QR
       </p>
       <div className="text-xs text-blue-600 mt-2">
-         Esto puede tomar hasta 15 segundos
+        Esto puede tomar hasta 15 segundos
       </div>
     </div>
   );
@@ -357,9 +358,9 @@ const WhatsAppPanel = () => {
     <div className="bg-white border-2 border-dashed border-green-300 rounded-lg p-6 shadow-md">
       {estadoWhatsApp.qrCodeImage ? (
         <>
-          <img 
-            src={estadoWhatsApp.qrCodeImage} 
-            alt="WhatsApp QR Code" 
+          <img
+            src={estadoWhatsApp.qrCodeImage}
+            alt="WhatsApp QR Code"
             className="mx-auto mb-4 rounded-lg shadow-lg border-2 border-gray-200"
           />
           {/*  Indicador de que está esperando escaneo */}
@@ -374,16 +375,16 @@ const WhatsAppPanel = () => {
           <p className="text-gray-500">Generando QR...</p>
         </div>
       )}
-      
+
       <h4 className="font-semibold text-gray-900 mb-2">Escanea el código QR</h4>
       <div className="text-sm text-gray-600 space-y-1">
         <p>1.  Abre WhatsApp en tu teléfono</p>
         <p>2.  Ve a Configuración → Dispositivos vinculados</p>
         <p>3.  Toca "Vincular un dispositivo" y escanea</p>
       </div>
-      
+
       <div className="text-xs text-orange-600 mt-4 bg-orange-50 p-2 rounded border">
-         El código expira en 2 minutos. Si no funciona, usa "Limpiar Sesión"
+        El código expira en 2 minutos. Si no funciona, usa "Limpiar Sesión"
       </div>
 
       {/* Botón limpiar aquí también */}
@@ -406,28 +407,28 @@ const WhatsAppPanel = () => {
 
   return (
     <div className="space-y-6">
-      
+
       {/* ===== ESTADO ACTUAL ===== */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-center space-x-3 mb-3">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex flex-col items-center justify-center text-center">
+        <div className="flex flex-col items-center space-y-3 mb-4">
           <EstadoIndicador />
           <div>
-            <h3 className="font-semibold text-gray-900">
+            <h3 className="font-semibold text-gray-900 text-lg">
               Estado WhatsApp: {estadoWhatsApp.conectado ? 'Conectado' : 'Desconectado'}
             </h3>
-            <p className="text-sm text-gray-600">
-              {estadoWhatsApp.conectado 
+            <p className="text-sm text-gray-600 mt-1">
+              {estadoWhatsApp.conectado
                 ? `Número vinculado: ${estadoWhatsApp.numero || '+584120552931'}`
                 : 'No hay número vinculado'
               }
             </p>
           </div>
         </div>
-        
-        <div className="text-xs text-blue-700 space-y-1">
+
+        <div className="text-sm text-blue-700 space-y-2 max-w-md mx-auto">
           <p>• Se enviarán notificaciones de apertura y cierre de caja</p>
           <p>• Alertas automáticas por diferencias significativas</p>
-          <p>• Requerido: WhatsApp instalado en este dispositivo</p>
+          <div className="pt-2 font-medium">Requerido: WhatsApp instalado en este dispositivo</div>
         </div>
       </div>
 
@@ -439,7 +440,7 @@ const WhatsAppPanel = () => {
             <h4 className="font-semibold">WhatsApp no conectado</h4>
             <p className="text-sm">Haz clic en "Conectar" para generar el código QR</p>
           </div>
-          
+
           <div className="flex justify-center space-x-3">
             <button
               onClick={iniciarConexionWhatsApp}
@@ -448,7 +449,7 @@ const WhatsAppPanel = () => {
               <QrCodeIcon className="h-4 w-4" />
               <span>Conectar WhatsApp</span>
             </button>
-            
+
             {/* Botón Limpiar Sesión */}
             <button
               onClick={limpiarSesionWhatsApp}
@@ -498,7 +499,7 @@ const WhatsAppPanel = () => {
               Las notificaciones se enviarán automáticamente al número: +584120552931
             </div>
           </div>
-          
+
           <div className="flex space-x-3">
             <button
               onClick={desconectarWhatsApp}
@@ -506,7 +507,7 @@ const WhatsAppPanel = () => {
             >
               Desconectar WhatsApp
             </button>
-            
+
             {/* Limpiar sesión también disponible cuando conectado */}
             <button
               onClick={limpiarSesionWhatsApp}
@@ -521,23 +522,39 @@ const WhatsAppPanel = () => {
       )}
 
       {/* ===== ADVERTENCIA SI HAY PROBLEMAS ===== */}
+      {/* ===== ADVERTENCIA SI HAY PROBLEMAS ===== */}
       {!estadoWhatsApp.conectado && !estadoWhatsApp.intentandoConectar && !estadoWhatsApp.qrCode && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-medium text-yellow-900 mb-1">¿Problemas de conexión?</h4>
-              <p className="text-sm text-yellow-700 mb-2">
-                Si WhatsApp no se conecta o el QR no aparece:
-              </p>
-              <ul className="text-xs text-yellow-600 space-y-1">
-                <li>• Usa el botón "Limpiar Sesión" para eliminar datos corruptos</li>
-                <li>• Asegúrate de tener WhatsApp instalado en tu teléfono</li>
-                <li>• Verifica que tu red tenga acceso a internet</li>
-                <li>• Intenta cerrar otras sesiones de WhatsApp Web</li>
-              </ul>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="w-full flex items-center justify-between p-4 bg-yellow-50 hover:bg-yellow-100/50 transition-colors text-left"
+          >
+            <div className="flex items-center space-x-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              <h4 className="font-medium text-yellow-900">¿Problemas de conexión?</h4>
             </div>
-          </div>
+            {showHelp ? (
+              <ChevronUp className="h-4 w-4 text-yellow-700" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-yellow-700" />
+            )}
+          </button>
+
+          {showHelp && (
+            <div className="px-4 pb-4 animate-fadeIn">
+              <div className="pl-8">
+                <p className="text-sm text-yellow-700 mb-2 font-medium">
+                  Si WhatsApp no se conecta o el QR no aparece:
+                </p>
+                <ul className="text-xs text-yellow-600 space-y-2 list-disc pl-4">
+                  <li>Usa el botón "Limpiar Sesión" para eliminar datos corruptos</li>
+                  <li>Asegúrate de tener WhatsApp instalado en tu teléfono</li>
+                  <li>Verifica que tu red tenga acceso a internet</li>
+                  <li>Intenta cerrar otras sesiones de WhatsApp Web</li>
+                </ul>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
