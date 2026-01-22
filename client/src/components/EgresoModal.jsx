@@ -353,7 +353,7 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
 // ===========================
 //  COMPONENTE PRINCIPAL
 // ===========================
-const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
+const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
   const { agregarTransaccion, tasaCambio } = useCajaStore();
 
   const [descripcion, setDescripcion] = useState('');
@@ -592,7 +592,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg shadow-inner">
-                  <Minus className="h-6 w-6" />
+                  <CreditCard className="h-6 w-6" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold tracking-tight">Nuevo Egreso</h1>
@@ -611,12 +611,29 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento }) => {
                   tasaActual={tasaActualTransaccion}
                   onCambioTasa={handleCambioTasa}
                 />
-                <button
-                  onClick={onClose}
-                  className="bg-white/20 hover:bg-white/30 p-1.5 rounded-lg transition-all duration-200 backdrop-blur-sm shadow-sm group hover:scale-105"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+
+                {/* Separator */}
+                <div className="h-8 w-px bg-white/20 mx-1"></div>
+
+                {/* ✅ WINDOW CONTROLS (INLINE & LARGER) */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={onMinimize}
+                    className="p-2 bg-white/10 hover:bg-white/30 text-white rounded-lg transition-all backdrop-blur-sm shadow-sm hover:shadow-md active:scale-95 border border-white/10"
+                    title="Minimizar (Ocultar temporalmente)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="p-2 bg-white/20 hover:bg-white/40 text-white rounded-lg transition-all backdrop-blur-sm shadow-sm hover:shadow-md active:scale-95 group"
+                    title="Cerrar Ventana"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

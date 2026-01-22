@@ -5,7 +5,7 @@ import api from '../../config/api';
 import toast from '../../utils/toast.jsx';
 import { useAuthStore } from '../../store/authStore';
 
-const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo }) => {
+const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo, onMinimize }) => {
   const { usuario } = useAuthStore();
   const [presupuestos, setPresupuestos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -115,12 +115,22 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo }
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={onMinimize}
+                className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+                title="Minimizar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </button>
+              <button
+                onClick={onClose}
+                className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
+                title="Cerrar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
 

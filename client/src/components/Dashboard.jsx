@@ -71,6 +71,7 @@ const Dashboard = ({ emitirEvento }) => {
 
   // Ã°Å¸â€œâ€¹ ESTADOS PARA MODALES AGRUPADOS
   const [showIngresoModal, _setShowIngresoModal] = useState(false);
+  const [isIngresoModalMinimized, setIsIngresoModalMinimized] = useState(false); // ✅ Estado de minimización
 
   // 🐛 DEBUG: WRAPPER PARA INTERCEPTAR setShowIngresoModal
   const setShowIngresoModal = useCallback((value) => {
@@ -97,6 +98,9 @@ const Dashboard = ({ emitirEvento }) => {
       console.log('🔴 Stack trace completo:');
       console.log(stackTrace);
       console.log('🔴 ============================================');
+    } else {
+      // Al cerrar, resetear minimización
+      setIsIngresoModalMinimized(false);
     }
 
     _setShowIngresoModal(value);
@@ -109,21 +113,27 @@ const Dashboard = ({ emitirEvento }) => {
     }
   }, [showIngresoModal]);
   const [showEgresoModal, setShowEgresoModal] = useState(false);
+  const [isEgresoModalMinimized, setIsEgresoModalMinimized] = useState(false); // ✅ Estado minimizado Egreso
   const [showCerrarModal, setShowCerrarModal] = useState(false);
   const [showInventarioModal, setShowInventarioModal] = useState(false);
+  const [isInventarioModalMinimized, setIsInventarioModalMinimized] = useState(false); // ✅ Estado minimizado Inventario
   const [showArqueoModal, setShowArqueoModal] = useState(false);
   const [showConfiguracionModal, setShowConfiguracionModal] = useState(false);
   const [showPresupuestoModal, setShowPresupuestoModal] = useState(false);
+  const [isPresupuestoModalMinimized, setIsPresupuestoModalMinimized] = useState(false); // ✅ Estado minimizado Presupuesto
   const [showSeleccionarPresupuestoModal, setShowSeleccionarPresupuestoModal] = useState(false);
+  const [isSeleccionarPresupuestoModalMinimized, setIsSeleccionarPresupuestoModalMinimized] = useState(false); // ✅ Estado minimizado Seleccionar Presupuesto
   const [presupuestoSeleccionado, setPresupuestoSeleccionado] = useState(null);
   const [showActividadesModal, setShowActividadesModal] = useState(false);
   const [showReportesModal, setShowReportesModal] = useState(false);
   const [showPedidosModal, setShowPedidosModal] = useState(false);
+  const [isPedidosModalMinimized, setIsPedidosModalMinimized] = useState(false); // ✅ Estado minimizado Pedidos
   const [showScannerSidebar, setShowScannerSidebar] = useState(false);
 
   const [showTransactionDetail, setShowTransactionDetail] = useState(false);
   const [selectedTransactionDetail, setSelectedTransactionDetail] = useState(null);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showCloseAllConfirm, setShowCloseAllConfirm] = useState(false); // ✅ Modal confirmación cerrar todo
 
   // 💰 ESTADOS PARA SOLICITUDES DE DESCUENTO (SOLO ADMINS)
   const { solicitudesPendientes, loading: loadingSolicitudes } = useDescuentoRequests();
@@ -165,6 +175,25 @@ const Dashboard = ({ emitirEvento }) => {
     setTimeout(() => {
       procesandoSolicitudRef.current = false;
     }, 500);
+  };
+
+  // ✅ Handler para cierre de caja exitoso (Limpia todo el dashboard)
+  const handleCierreCajaExitoso = () => {
+    setShowCerrarModal(false);
+    setShowIngresoModal(false);
+    setIsIngresoModalMinimized(false);
+    setShowEgresoModal(false);
+    setIsEgresoModalMinimized(false);
+    setShowInventarioModal(false);
+    setIsInventarioModalMinimized(false);
+    setShowPresupuestoModal(false);
+    setIsPresupuestoModalMinimized(false);
+    setShowSeleccionarPresupuestoModal(false);
+    setIsSeleccionarPresupuestoModalMinimized(false);
+    setShowPedidosModal(false);
+    setIsPedidosModalMinimized(false);
+    setShowCloseAllConfirm(false);
+    toast.success('Caja cerrada exitosamente. Sistema restablecido.');
   };
 
   const handleCerrarAprobacionModal = () => {
@@ -528,6 +557,246 @@ const Dashboard = ({ emitirEvento }) => {
 
       {/* Ã°Å¸Å½Â¯ BOTONES FLOTANTES (z-50) */}
 
+      {/* ✅ BARRA DE TAREAS UNIFICADA (TASKBAR) */}
+      {((showIngresoModal && isIngresoModalMinimized) || (showEgresoModal && isEgresoModalMinimized) || (showInventarioModal && isInventarioModalMinimized) || (showSeleccionarPresupuestoModal && isSeleccionarPresupuestoModalMinimized) || (showPedidosModal && isPedidosModalMinimized)) && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center space-x-3 animate-in slide-in-from-bottom-5 fade-in duration-300 pointer-events-none p-2 rounded-full backdrop-blur-md bg-white/10 border border-white/20 shadow-2xl">
+
+          {/* BOTÓN INGRESO */}
+          {showIngresoModal && isIngresoModalMinimized && (
+            <button
+              onClick={() => setIsIngresoModalMinimized(false)}
+              className="
+                 pointer-events-auto flex-shrink-0
+                 flex items-center space-x-3 
+                 bg-gradient-to-r from-emerald-600 to-teal-600 
+                 text-white px-4 py-1.5 rounded-full 
+                 shadow-[0_0_20px_rgba(16,185,129,0.5)] 
+                 border border-emerald-400/50 
+                 hover:scale-105 hover:-translate-y-1 
+                 transition-all duration-300
+                 group backdrop-blur-md
+               "
+            >
+              <div className="bg-white/20 p-1.5 rounded-full animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-xs font-semibold text-emerald-100 uppercase tracking-wider">Venta</span>
+                <span className="text-sm font-bold">Restaurar</span>
+              </div>
+            </button>
+          )}
+
+          {/* BOTÓN EGRESO */}
+          {showEgresoModal && isEgresoModalMinimized && (
+            <button
+              onClick={() => setIsEgresoModalMinimized(false)}
+              className="
+                 pointer-events-auto flex-shrink-0
+                 flex items-center space-x-3 
+                 bg-gradient-to-r from-orange-600 to-red-600 
+                 text-white px-4 py-1.5 rounded-full 
+                 shadow-[0_0_20px_rgba(249,115,22,0.5)] 
+                 border border-orange-400/50 
+                 hover:scale-105 hover:-translate-y-1 
+                 transition-all duration-300
+                 group backdrop-blur-md
+               "
+            >
+              <div className="bg-white/20 p-1.5 rounded-full animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-xs font-semibold text-orange-100 uppercase tracking-wider">Egreso</span>
+                <span className="text-sm font-bold">Restaurar</span>
+              </div>
+            </button>
+          )}
+
+          {/* BOTÓN INVENTARIO */}
+          {showInventarioModal && isInventarioModalMinimized && (
+            <button
+              onClick={() => setIsInventarioModalMinimized(false)}
+              className="
+                 pointer-events-auto flex-shrink-0
+                 flex items-center space-x-3 
+                 bg-gradient-to-r from-indigo-600 to-purple-600 
+                 text-white px-4 py-1.5 rounded-full 
+                 shadow-[0_0_20px_rgba(99,102,241,0.5)] 
+                 border border-indigo-400/50 
+                 hover:scale-105 hover:-translate-y-1 
+                 transition-all duration-300
+                 group backdrop-blur-md
+               "
+            >
+              <div className="bg-white/20 p-1.5 rounded-full animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-xs font-semibold text-indigo-100 uppercase tracking-wider">Inventario</span>
+                <span className="text-sm font-bold">Restaurar</span>
+              </div>
+            </button>
+          )}
+
+          {/* BOTÓN PRESUPUESTOS (LISTA) */}
+          {showSeleccionarPresupuestoModal && isSeleccionarPresupuestoModalMinimized && (
+            <button
+              onClick={() => setIsSeleccionarPresupuestoModalMinimized(false)}
+              className="
+                 pointer-events-auto flex-shrink-0
+                 flex items-center space-x-3 
+                 bg-gradient-to-r from-teal-500 to-cyan-600 
+                 text-white px-4 py-1.5 rounded-full 
+                 shadow-[0_0_20px_rgba(45,212,191,0.5)] 
+                 border border-teal-400/50 
+                 hover:scale-105 hover:-translate-y-1 
+                 transition-all duration-300
+                 group backdrop-blur-md
+               "
+            >
+              <div className="bg-white/20 p-1.5 rounded-full animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="8" y1="18" x2="8.01" y2="18"></line><line x1="16" y1="18" x2="16.01" y2="18"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line></svg>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-xs font-semibold text-teal-100 uppercase tracking-wider">Presupuestos</span>
+                <span className="text-sm font-bold">Restaurar</span>
+              </div>
+            </button>
+          )}
+
+          {/* BOTÓN PEDIDOS */}
+          {showPedidosModal && isPedidosModalMinimized && (
+            <button
+              onClick={() => setIsPedidosModalMinimized(false)}
+              className="
+                 pointer-events-auto flex-shrink-0
+                 flex items-center space-x-3 
+                 bg-gradient-to-r from-blue-600 to-indigo-700 
+                 text-white px-4 py-1.5 rounded-full 
+                 shadow-[0_0_20px_rgba(59,130,246,0.5)] 
+                 border border-blue-400/50 
+                 hover:scale-105 hover:-translate-y-1 
+                 transition-all duration-300
+                 group backdrop-blur-md
+               "
+            >
+              <div className="bg-white/20 p-1.5 rounded-full animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider">Pedidos</span>
+                <span className="text-sm font-bold">Restaurar</span>
+              </div>
+            </button>
+          )}
+
+          {/* 🔴 BOTÓN CERRAR TODO (SI HAY >= 2 MINIMIZADOS - Se suma 1 por cada activo) */}
+          {((showIngresoModal && isIngresoModalMinimized ? 1 : 0) +
+            (showEgresoModal && isEgresoModalMinimized ? 1 : 0) +
+            (showInventarioModal && isInventarioModalMinimized ? 1 : 0) +
+            (showSeleccionarPresupuestoModal && isSeleccionarPresupuestoModalMinimized ? 1 : 0) +
+            (showPedidosModal && isPedidosModalMinimized ? 1 : 0)
+          ) >= 2 && (
+              <>
+                {/* Separador Vertical */}
+                <div className="h-8 w-px bg-gray-400/50 mx-1 flex-shrink-0"></div>
+
+                <button
+                  onClick={() => setShowCloseAllConfirm(true)}
+                  className="
+                   pointer-events-auto flex-shrink-0
+                   p-2 bg-red-600 text-white rounded-full 
+                   shadow-lg hover:bg-red-700 hover:scale-110 
+                   transition-all duration-200 border border-red-500
+                   group relative
+                "
+                  title="Cerrar todas las ventanas"
+                >
+                  <div className="relative z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </div>
+                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Cerrar Todo
+                  </span>
+                </button>
+              </>
+            )}
+
+        </div>
+      )}
+
+      {showCloseAllConfirm && (
+        <ModalBackdrop color="red">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-md w-full animate-modal-enter border border-red-200">
+            {/* Header de Alerta */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 flex justify-center">
+              <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm shadow-inner animate-pulse">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+            </div>
+
+            {/* Contenido */}
+            <div className="p-8 text-center space-y-4">
+              <h3 className="text-2xl font-bold text-gray-800">¿Cerrar todas las ventanas?</h3>
+
+              <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex flex-col items-center">
+                <div className="flex items-center space-x-2 mb-2 text-red-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                  <span className="font-medium text-sm">Atención: Info no guardada en</span>
+                </div>
+
+                <ul className="text-red-700 text-xs space-y-1 flex flex-col items-center">
+                  <li>Ventas en curso (Ingreso)</li>
+                  <li>Registros de Egreso</li>
+                  <li>Gestión de Inventario</li>
+                  <li>Presupuestos</li>
+                  <li>Pedidos</li>
+                </ul>
+              </div>
+
+              <div className="text-gray-500 text-sm w-full flex flex-col items-center">
+                <span>Esta acción no se puede deshacer.</span>
+                <span>¿Está seguro que desea continuar?</span>
+              </div>
+            </div>
+
+            {/* Footer de Botones */}
+            <div className="bg-gray-50 p-4 flex gap-3 border-t border-gray-100">
+              <button
+                onClick={() => setShowCloseAllConfirm(false)}
+                className="flex-1 py-3 px-4 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all shadow-sm"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowIngresoModal(false);
+                  setIsIngresoModalMinimized(false);
+                  setShowEgresoModal(false);
+                  setIsEgresoModalMinimized(false);
+                  setShowInventarioModal(false);
+                  setIsInventarioModalMinimized(false);
+                  setShowPresupuestoModal(false);
+                  setIsPresupuestoModalMinimized(false);
+                  setShowSeleccionarPresupuestoModal(false);
+                  setIsSeleccionarPresupuestoModalMinimized(false);
+                  setShowPedidosModal(false);
+                  setIsPedidosModalMinimized(false);
+                  setShowCloseAllConfirm(false);
+                  toast.success('Todas las ventanas han sido cerradas correctamente.');
+                }}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 font-bold shadow-lg hover:shadow-red-500/30 transition-all flex items-center justify-center gap-2 group"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                Cerrar Todo
+              </button>
+            </div>
+          </div>
+        </ModalBackdrop>
+      )}
+
       {/* FloatingActions - Esquina inferior derecha */}
       <FloatingActions
         onNewTransaction={handleNewTransaction}
@@ -543,7 +812,7 @@ const Dashboard = ({ emitirEvento }) => {
         cajaActual={cajaActual}
       />
 
-      {/* Ã°Å¸â€Â§ BotÃƒÂ³n flotante para servicios - Lado izquierdo - RESPONSIVE */}
+      {/* Ã°Å¸â€ Â§ BotÃƒÂ³n flotante para servicios - Lado izquierdo - RESPONSIVE */}
       <button
         onClick={handleOpenServicios}
         className="
@@ -588,25 +857,33 @@ const Dashboard = ({ emitirEvento }) => {
       <>
         {/* MODALES DE TRANSACCIONES */}
         {tienePermiso('REALIZAR_VENTAS') && showIngresoModal && (
-          <ModalBackdrop color="green">
-            <IngresoModal
-              className="animate-modal-enter w-full"
-              isOpen={showIngresoModal}
-              onClose={() => setShowIngresoModal(false)}
-              emitirEvento={emitirEvento}
-            />
-          </ModalBackdrop>
+          <div className={isIngresoModalMinimized ? 'hidden' : 'block'}>
+            <ModalBackdrop color="green">
+              <IngresoModal
+                className="animate-modal-enter w-full"
+                isOpen={showIngresoModal}
+                onClose={() => setShowIngresoModal(false)}
+                emitirEvento={emitirEvento}
+                onMinimize={() => setIsIngresoModalMinimized(true)} // ✅ Handler Minimizar
+                isMinimized={isIngresoModalMinimized} // ✅ Prop Estado
+              />
+            </ModalBackdrop>
+          </div>
         )}
 
         {tienePermiso('REALIZAR_VENTAS') && showEgresoModal && (
-          <ModalBackdrop color="orange">
-            <EgresoModal
-              className="animate-modal-enter w-full"
-              isOpen={showEgresoModal}
-              onClose={() => setShowEgresoModal(false)}
-              emitirEvento={emitirEvento}
-            />
-          </ModalBackdrop>
+          <div className={isEgresoModalMinimized ? 'hidden' : 'block'}>
+            <ModalBackdrop color="orange">
+              <EgresoModal
+                className="animate-modal-enter w-full"
+                isOpen={showEgresoModal}
+                onClose={() => setShowEgresoModal(false)}
+                emitirEvento={emitirEvento}
+                onMinimize={() => setIsEgresoModalMinimized(true)} // ✅ Handler Minimizar
+                isMinimized={isEgresoModalMinimized} // ✅ Prop Estado
+              />
+            </ModalBackdrop>
+          </div>
         )}
 
         {/* MODALES DE CAJA */}
@@ -616,6 +893,7 @@ const Dashboard = ({ emitirEvento }) => {
               className="animate-modal-enter w-full"
               isOpen={showCerrarModal}
               onClose={() => setShowCerrarModal(false)}
+              onSuccess={handleCierreCajaExitoso}
             />
           </ModalBackdrop>
         )}
@@ -632,14 +910,18 @@ const Dashboard = ({ emitirEvento }) => {
 
         {/* MODALES DE GESTION */}
         {showInventarioModal && (
-          <ModalBackdrop color="indigo">
-            <InventoryManagerModal
-              className="animate-modal-enter w-full"
-              isOpen={showInventarioModal}
-              onClose={() => setShowInventarioModal(false)}
-            />
-          </ModalBackdrop>
+          <div className={isInventarioModalMinimized ? 'hidden' : 'block'}>
+            <ModalBackdrop color="indigo">
+              <InventoryManagerModal
+                className="animate-modal-enter w-full"
+                isOpen={showInventarioModal}
+                onClose={() => setShowInventarioModal(false)}
+                onMinimize={() => setIsInventarioModalMinimized(true)}
+              />
+            </ModalBackdrop>
+          </div>
         )}
+
 
         {showConfiguracionModal && (
           <ModalBackdrop color="gray">
@@ -652,26 +934,32 @@ const Dashboard = ({ emitirEvento }) => {
         )}
 
         {showSeleccionarPresupuestoModal && (
-          <SeleccionarPresupuestoModal
-            isOpen={showSeleccionarPresupuestoModal}
-            onClose={() => setShowSeleccionarPresupuestoModal(false)}
-            onSeleccionar={handleSeleccionarPresupuesto}
-            onNuevo={handleNuevoPresupuesto}
-          />
+          <div className={isSeleccionarPresupuestoModalMinimized ? 'hidden' : 'block'}>
+            <SeleccionarPresupuestoModal
+              isOpen={showSeleccionarPresupuestoModal}
+              onClose={() => setShowSeleccionarPresupuestoModal(false)}
+              onSeleccionar={handleSeleccionarPresupuesto}
+              onNuevo={handleNuevoPresupuesto}
+              onMinimize={() => setIsSeleccionarPresupuestoModalMinimized(true)}
+            />
+          </div>
         )}
 
         {showPresupuestoModal && (
-          <ModalBackdrop color="emerald">
-            <PresupuestoModal
-              className="animate-modal-enter w-full"
-              isOpen={showPresupuestoModal}
-              onClose={() => {
-                setShowPresupuestoModal(false);
-                setPresupuestoSeleccionado(null);
-              }}
-              presupuesto={presupuestoSeleccionado}
-            />
-          </ModalBackdrop>
+          <div className={isPresupuestoModalMinimized ? 'hidden' : 'block'}>
+            <ModalBackdrop color="emerald">
+              <PresupuestoModal
+                className="animate-modal-enter w-full"
+                isOpen={showPresupuestoModal}
+                onClose={() => {
+                  setShowPresupuestoModal(false);
+                  setPresupuestoSeleccionado(null);
+                }}
+                presupuesto={presupuestoSeleccionado}
+                onMinimize={() => setIsPresupuestoModalMinimized(true)}
+              />
+            </ModalBackdrop>
+          </div>
         )}
 
         {/* MODALES DE REPORTES Y ACTIVIDADES */}
@@ -697,10 +985,13 @@ const Dashboard = ({ emitirEvento }) => {
 
         {/* MODAL DE PEDIDOS */}
         {showPedidosModal && (
-          <PedidosModal
-            isOpen={showPedidosModal}
-            onClose={() => setShowPedidosModal(false)}
-          />
+          <div className={isPedidosModalMinimized ? 'hidden' : 'block'}>
+            <PedidosModal
+              isOpen={showPedidosModal}
+              onClose={() => setShowPedidosModal(false)}
+              onMinimize={() => setIsPedidosModalMinimized(true)}
+            />
+          </div>
         )}
 
         {/* MODAL DE DETALLE DE TRANSACCION */}
@@ -733,7 +1024,7 @@ const Dashboard = ({ emitirEvento }) => {
           />
         )}
       </>
-    </div>
+    </div >
   );
 };
 

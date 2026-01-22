@@ -241,7 +241,7 @@ const ModalProgresoCierre = ({ isOpen, pasoActual, pasos, mensajePaso }) => {
   );
 };
 
-const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
+const CerrarCajaModal = ({ isOpen, onClose, onSuccess, cajaPendiente = null }) => {
   const { cerrarCaja, cajaActual, loading } = useCajaStore();
   const montosReales = useMontosEnCaja();
   const { usuario, tienePermiso } = useAuthStore();
@@ -471,7 +471,7 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
 
       observacionAuto = `AUTORIZADO POR CEO ANDRÉS MORANDÍN - ${diferenciasTexto.join(', ')} - Usuario: ${usuarioNombre} - Fecha: ${fechaActual} - Hora: ${horaActual}`;
     } else {
-      // Si no hay diferencias, observación estándar
+      // Si no hay observaciones, observación estándar
       observacionAuto = `CIERRE EJECUTADO - Sin diferencias detectadas - Usuario: ${usuarioNombre} - Fecha: ${fechaActual} - Hora: ${horaActual}`;
     }
 
@@ -650,7 +650,11 @@ const CerrarCajaModal = ({ isOpen, onClose, cajaPendiente = null }) => {
       // Esperar un momento antes de cerrar
       setTimeout(() => {
         setShowProgreso(false);
-        onClose();
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          onClose();
+        }
       }, 2000);
 
     } catch (error) {

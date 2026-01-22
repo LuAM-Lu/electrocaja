@@ -85,7 +85,7 @@ const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
 };
 
 //  COMPONENTE PRINCIPAL CON ALTURAS AMPLIADAS
-const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
+const PresupuestoModal = ({ isOpen, onClose, presupuesto = null, onMinimize }) => {
   const { usuario } = useAuthStore();
   const { tasaCambio } = useCajaStore();
 
@@ -559,6 +559,16 @@ const PresupuestoModal = ({ isOpen, onClose, presupuesto = null }) => {
                       </button>
                     </div>
                   )}
+                  {/* Botones de Ventana */}
+                  <div className="flex items-center space-x-2 border-l border-white/20 pl-4 ml-2">
+                    <button
+                      onClick={handleClose}
+                      className="bg-white/20 hover:bg-red-500/80 p-2 rounded-lg transition-colors group"
+                      title="Cerrar"
+                    >
+                      <X className="h-5 w-5 text-white" />
+                    </button>
+                  </div>
                 </div>
 
               </div>

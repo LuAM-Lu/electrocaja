@@ -20,7 +20,7 @@ import ConexionApiModal from './inventario/ConexionApiModal';
 import PrintInventarioModal from './inventario/PrintInventarioModal';
 import { getImageUrl, API_CONFIG, api } from '../config/api';
 
-const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
+const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) => {
   const {
     inventario,
     loading,
@@ -763,13 +763,23 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '' }) => {
                   </div>
                 </div>
 
-                {/* Lado derecho: Botón cerrar */}
-                <button
-                  onClick={handleClose}
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-2 sm:p-2.5 rounded-xl transition-all group border border-white/10 shadow-lg hover:shadow-xl"
-                >
-                  <X className="h-5 w-5 group-hover:rotate-90 transition-transform" />
-                </button>
+                {/* Lado derecho: Botones de ventana */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={onMinimize}
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-2 sm:p-2.5 rounded-xl transition-all group border border-white/10 shadow-lg hover:shadow-xl hover:scale-105"
+                    title="Minimizar"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-2 sm:p-2.5 rounded-xl transition-all group border border-white/10 shadow-lg hover:shadow-xl hover:scale-105"
+                    title="Cerrar"
+                  >
+                    <X className="h-5 w-5 group-hover:rotate-90 transition-transform" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

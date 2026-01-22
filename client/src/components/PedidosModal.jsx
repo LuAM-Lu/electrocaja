@@ -30,7 +30,7 @@ const ESTADOS_CONFIG = {
 const ESTADOS_FISICO = ['PENDIENTE', 'ANTICIPO', 'PAGADO', 'CONFIRMADO', 'EN_CAMINO', 'RECIBIDO', 'ENTREGADO'];
 const ESTADOS_DIGITAL = ['PENDIENTE', 'ANTICIPO', 'PAGADO', 'CONFIRMADO', 'LISTO', 'ENTREGADO'];
 
-const PedidosModal = ({ isOpen, onClose }) => {
+const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [estadisticas, setEstadisticas] = useState(null);
@@ -166,12 +166,22 @@ const PedidosModal = ({ isOpen, onClose }) => {
                                 <p className="text-blue-100 text-sm">Gestión de solicitudes y seguimiento</p>
                             </div>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
-                        >
-                            <X className="h-6 w-6" />
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={onMinimize}
+                                className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+                                title="Minimizar"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+                                title="Cerrar"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Estadísticas Premium */}
@@ -500,8 +510,8 @@ const PedidosModal = ({ isOpen, onClose }) => {
                                                 key={num}
                                                 onClick={() => setPaginaActual(num)}
                                                 className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all ${paginaActual === num
-                                                        ? 'bg-white text-blue-700 shadow-md transform scale-105'
-                                                        : 'text-blue-100 hover:bg-white/10'
+                                                    ? 'bg-white text-blue-700 shadow-md transform scale-105'
+                                                    : 'text-blue-100 hover:bg-white/10'
                                                     }`}
                                             >
                                                 {num}

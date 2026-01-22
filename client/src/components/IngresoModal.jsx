@@ -269,7 +269,7 @@ const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
 
 
 // 🎯 COMPONENTE PRINCIPAL
-const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
+const IngresoModalV2 = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
   const { usuario } = useAuthStore();
 
   // 🐛 DEBUG: INTERCEPTAR CAMBIOS EN isOpen PARA RASTREAR QUIÉN LO ABRE
@@ -1887,7 +1887,7 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
 
             {/* 🎨 HEADER ELEGANTE (FIJO) */}
             <div className="relative bg-gradient-to-r from-green-600 via-green-500 to-green-600 overflow-hidden flex-shrink-0 shadow-md">
-              <div className="absolute inset-0 opacity-10">
+              <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="absolute inset-0" style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
                 }}></div>
@@ -1925,6 +1925,29 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
                     {/* Indicador de conexión */}
                     <div className="flex items-center space-x-3 bg-black/20 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-sm">
                       <ConexionIndicador socket={socket} />
+                    </div>
+
+                    {/* Separator */}
+                    <div className="h-8 w-px bg-white/20 mx-2"></div>
+
+                    {/* ✅ WINDOW CONTROLS (INLINE & LARGER) */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={onMinimize}
+                        className="p-2 bg-white/10 hover:bg-white/30 text-white rounded-lg transition-all backdrop-blur-sm shadow-sm hover:shadow-md active:scale-95 border border-white/10"
+                        title="Minimizar (Ocultar temporalmente)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleCancelar}
+                        className="p-2 bg-red-500/50 hover:bg-red-600 text-white rounded-lg transition-all backdrop-blur-sm shadow-sm hover:shadow-md active:scale-95 border border-red-400/50"
+                        title="Cerrar Ventana"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
                     </div>
 
                   </div>
@@ -1984,87 +2007,93 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
                 </div>
               )}
 
-              {activeTab === 'items' && (
-                <div className="space-y-4">
-                  <ItemsTable
-                    items={ventaData.items}
-                    onItemsChange={handleItemsChange}
-                    isEditable={true}
+              {
+                activeTab === 'items' && (
+                  <div className="space-y-4">
+                    <ItemsTable
+                      items={ventaData.items}
+                      onItemsChange={handleItemsChange}
+                      isEditable={true}
+                      tasaCambio={tasaCambio}
+                      title="Productos de la Venta"
+                      showAddCustom={false} // ✅ Solo productos del inventario para ventas
+                      maxVisibleItems={10}
+                      // 🆕 Props específicos para ventas - ACTIVAR VALIDACIONES
+                      reservarStock={true}
+                      mostrarStockDisponible={true}
+                      validarStockAntes={true}
+                      sesionId={sesionId} // 🆕 PASAR SESIÓN ID
+                    />
+
+                  </div>
+                )
+              }
+
+              {
+                activeTab === 'pagos' && (
+                  <PagosPanel
+                    pagos={ventaData.pagos}
+                    vueltos={ventaData.vueltos}
+                    onPagosChange={handlePagosChange}
+                    totalVenta={ventaData.totalBs}
                     tasaCambio={tasaCambio}
-                    title="Productos de la Venta"
-                    showAddCustom={false} // ✅ Solo productos del inventario para ventas
-                    maxVisibleItems={10}
-                    // 🆕 Props específicos para ventas - ACTIVAR VALIDACIONES
-                    reservarStock={true}
-                    mostrarStockDisponible={true}
-                    validarStockAntes={true}
-                    sesionId={sesionId} // 🆕 PASAR SESIÓN ID
+                    title="Métodos de Pago de la Venta"
+                    descuento={descuento}
+                    onDescuentoChange={() => setShowDescuentoModal(true)}
+                    onDescuentoLimpiar={async () => {
+                      // 🧹 Cancelar solicitud pendiente en la base de datos si existe
+                      try {
+                        await api.delete(`/discount-requests/sesion/${sesionId}`);
+                      } catch (error) {
+                        // Si no existe la solicitud (404) o ya fue procesada, no es crítico - silenciar el error
+                      }
+
+                      // 🧹 Limpiar pagos si hay descuento y pagos configurados
+                      if (hayPagosConfigurados && descuento > 0) {
+                        setVentaData(prev => ({
+                          ...prev,
+                          descuentoAutorizado: 0,
+                          motivoDescuento: '',
+                          pagos: [{
+                            id: 1,
+                            metodo: 'efectivo_bs',
+                            monto: '',
+                            banco: '',
+                            referencia: ''
+                          }],
+                          vueltos: []
+                        }));
+                        setHayPagosConfigurados(false);
+                        setPagosValidos(false);
+                        toast.success('Pagos limpiados - Descuento eliminado');
+                      } else {
+                        toast.success('Descuento eliminado');
+                      }
+                      setDescuento(0);
+                    }}
+                    onValidationChange={handlePagosValidationChange}
                   />
+                )
+              }
 
-                </div>
-              )}
+              {
+                activeTab === 'finalizar' && (
+                  <FinalizarVentaPanel
+                    ventaData={ventaData}
+                    opcionesProcesamiento={opcionesProcesamiento}
+                    onOpcionesChange={handleOpcionesChange}
+                    loading={loading}
+                    codigoVenta={sesionId.slice(-6)} // Últimos 6 caracteres como código
+                    descuento={descuento}
+                    tasaCambio={tasaCambio}
+                  />
+                )
+              }
 
-              {activeTab === 'pagos' && (
-                <PagosPanel
-                  pagos={ventaData.pagos}
-                  vueltos={ventaData.vueltos}
-                  onPagosChange={handlePagosChange}
-                  totalVenta={ventaData.totalBs}
-                  tasaCambio={tasaCambio}
-                  title="Métodos de Pago de la Venta"
-                  descuento={descuento}
-                  onDescuentoChange={() => setShowDescuentoModal(true)}
-                  onDescuentoLimpiar={async () => {
-                    // 🧹 Cancelar solicitud pendiente en la base de datos si existe
-                    try {
-                      await api.delete(`/discount-requests/sesion/${sesionId}`);
-                    } catch (error) {
-                      // Si no existe la solicitud (404) o ya fue procesada, no es crítico - silenciar el error
-                    }
-
-                    // 🧹 Limpiar pagos si hay descuento y pagos configurados
-                    if (hayPagosConfigurados && descuento > 0) {
-                      setVentaData(prev => ({
-                        ...prev,
-                        descuentoAutorizado: 0,
-                        motivoDescuento: '',
-                        pagos: [{
-                          id: 1,
-                          metodo: 'efectivo_bs',
-                          monto: '',
-                          banco: '',
-                          referencia: ''
-                        }],
-                        vueltos: []
-                      }));
-                      setHayPagosConfigurados(false);
-                      setPagosValidos(false);
-                      toast.success('Pagos limpiados - Descuento eliminado');
-                    } else {
-                      toast.success('Descuento eliminado');
-                    }
-                    setDescuento(0);
-                  }}
-                  onValidationChange={handlePagosValidationChange}
-                />
-              )}
-
-              {activeTab === 'finalizar' && (
-                <FinalizarVentaPanel
-                  ventaData={ventaData}
-                  opcionesProcesamiento={opcionesProcesamiento}
-                  onOpcionesChange={handleOpcionesChange}
-                  loading={loading}
-                  codigoVenta={sesionId.slice(-6)} // Últimos 6 caracteres como código
-                  descuento={descuento}
-                  tasaCambio={tasaCambio}
-                />
-              )}
-
-            </div>
+            </div >
 
             {/* 🎮 BOTONES DE NAVEGACIÓN (PREMIUM & MATCHING HEADER) */}
-            <div className="flex-shrink-0 bg-gradient-to-r from-green-600 via-green-500 to-green-600 px-8 py-4 border-t border-green-400 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)] z-20">
+            < div className="flex-shrink-0 bg-gradient-to-r from-green-600 via-green-500 to-green-600 px-8 py-4 border-t border-green-400 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)] z-20" >
               <div className="flex items-center justify-between">
 
                 {/* Botón Anterior (oculto en Cliente) */}
@@ -2149,275 +2178,283 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
                 </div>
 
               </div>
-            </div>
+            </div >
 
-          </div>
-        </div>
+          </div >
+        </div >
       )}
 
       {/* ⚠️ MODAL DE ALERT DE EXCEDENTE */}
-      {showExcedenteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-xl">
-              <div className="flex items-center space-x-3 text-white">
-                <AlertTriangle className="h-6 w-6" />
-                <h3 className="text-lg font-bold">Excedente Significativo Detectado</h3>
+      {
+        showExcedenteModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-in fade-in zoom-in duration-200">
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 rounded-t-xl">
+                <div className="flex items-center space-x-3 text-white">
+                  <AlertTriangle className="h-6 w-6" />
+                  <h3 className="text-lg font-bold">Excedente Significativo Detectado</h3>
+                </div>
               </div>
-            </div>
 
-            <div className="p-6">
-              <div className="mb-4">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="bg-amber-100 rounded-full p-4">
-                    <DollarSign className="h-8 w-8 text-amber-600" />
+              <div className="p-6">
+                <div className="mb-4">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="bg-amber-100 rounded-full p-4">
+                      <DollarSign className="h-8 w-8 text-amber-600" />
+                    </div>
+                  </div>
+                  <p className="text-gray-700 text-center mb-2">
+                    El excedente es de{' '}
+                    <span className="font-bold text-amber-600 text-lg">
+                      {formatearVenezolano(excesoPendiente)} Bs
+                    </span>
+                  </p>
+                  <p className="text-gray-600 text-sm text-center mb-4">
+                    (Supera los 100 Bs)
+                  </p>
+                  <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
+                    <p className="text-sm text-amber-800">
+                      <strong>Nota:</strong> Este excedente deberá ser entregado como vuelto al cliente.
+                    </p>
                   </div>
                 </div>
-                <p className="text-gray-700 text-center mb-2">
-                  El excedente es de{' '}
-                  <span className="font-bold text-amber-600 text-lg">
-                    {formatearVenezolano(excesoPendiente)} Bs
-                  </span>
-                </p>
-                <p className="text-gray-600 text-sm text-center mb-4">
-                  (Supera los 100 Bs)
-                </p>
-                <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
-                  <p className="text-sm text-amber-800">
-                    <strong>Nota:</strong> Este excedente deberá ser entregado como vuelto al cliente.
-                  </p>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowExcedenteModal(false);
+                      toast.info('Operación cancelada. Revise el excedente antes de continuar.', {
+                        duration: 3000
+                      });
+                    }}
+                    className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowExcedenteModal(false);
+                      // Continuar con la navegación normal
+                      const currentIndex = TABS.findIndex(tab => tab.id === activeTab);
+                      if (currentIndex < TABS.length - 1) {
+                        setActiveTab(TABS[currentIndex + 1].id);
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center space-x-2"
+                  >
+                    <span>Continuar</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* 🚨 MODAL DE CONFIRMACIÓN DE SALIDA */}
+      {
+        showExitModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 rounded-t-xl">
+                <div className="flex items-center space-x-3 text-white">
+                  <AlertCircle className="h-6 w-6" />
+                  <h3 className="text-lg font-bold">Cambios sin guardar</h3>
                 </div>
               </div>
 
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => {
-                    setShowExcedenteModal(false);
-                    toast.info('Operación cancelada. Revise el excedente antes de continuar.', {
-                      duration: 3000
-                    });
-                  }}
-                  className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => {
-                    setShowExcedenteModal(false);
-                    // Continuar con la navegación normal
-                    const currentIndex = TABS.findIndex(tab => tab.id === activeTab);
-                    if (currentIndex < TABS.length - 1) {
-                      setActiveTab(TABS[currentIndex + 1].id);
-                    }
-                  }}
-                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center space-x-2"
-                >
-                  <span>Continuar</span>
-                  <ArrowRight className="h-4 w-4" />
-                </button>
+              <div className="p-6">
+                <p className="text-gray-700 mb-6">
+                  Tienes cambios sin guardar en la venta. ¿Estás seguro de que quieres salir?
+                </p>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleCancelExit}
+                    className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Continuar Editando
+                  </button>
+                  <button
+                    onClick={handleConfirmExit}
+                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+                  >
+                    Salir Sin Guardar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* 🚨 MODAL DE CONFIRMACIÓN DE SALIDA */}
-      {showExitModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4 rounded-t-xl">
-              <div className="flex items-center space-x-3 text-white">
-                <AlertCircle className="h-6 w-6" />
-                <h3 className="text-lg font-bold">Cambios sin guardar</h3>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <p className="text-gray-700 mb-6">
-                Tienes cambios sin guardar en la venta. ¿Estás seguro de que quieres salir?
-              </p>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleCancelExit}
-                  className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Continuar Editando
-                </button>
-                <button
-                  onClick={handleConfirmExit}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
-                >
-                  Salir Sin Guardar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        )
+      }
 
 
 
 
       {/* 💰 MODAL DE DESCUENTO REFACTORIZADO */}
-      {showDescuentoModal && (
-        <DescuentoModal
-          isOpen={showDescuentoModal}
-          onClose={() => setShowDescuentoModal(false)}
-          totalVenta={ventaData.totalBs}
-          tasaCambio={tasaCambio}
-          ventaData={ventaData}
-          items={ventaData.items || []}
-          cliente={ventaData.cliente || {}}
-          sesionId={sesionId}
-          onDescuentoAprobado={(montoDescuento, motivoDescuento = '') => {
-            // ✅ SIEMPRE ACTUALIZAR EL DESCUENTO PRIMERO
-            setDescuento(montoDescuento);
+      {
+        showDescuentoModal && (
+          <DescuentoModal
+            isOpen={showDescuentoModal}
+            onClose={() => setShowDescuentoModal(false)}
+            totalVenta={ventaData.totalBs}
+            tasaCambio={tasaCambio}
+            ventaData={ventaData}
+            items={ventaData.items || []}
+            cliente={ventaData.cliente || {}}
+            sesionId={sesionId}
+            onDescuentoAprobado={(montoDescuento, motivoDescuento = '') => {
+              // ✅ SIEMPRE ACTUALIZAR EL DESCUENTO PRIMERO
+              setDescuento(montoDescuento);
 
-            // 🧹 Limpiar pagos si hay descuento y pagos configurados
-            if (hayPagosConfigurados && montoDescuento > 0) {
-              setVentaData(prev => ({
-                ...prev,
-                descuentoAutorizado: montoDescuento,
-                motivoDescuento: motivoDescuento,
-                pagos: [{
-                  id: 1,
-                  metodo: 'efectivo_bs',
-                  monto: '',
-                  banco: '',
-                  referencia: ''
-                }],
-                vueltos: []
-              }));
-              setHayPagosConfigurados(false);
-              setPagosValidos(false);
-              toast.success(`Pagos limpiados - Se aplicó descuento de ${formatearVenezolano(montoDescuento)} Bs`);
-            } else {
-              setVentaData(prev => ({
-                ...prev,
-                descuentoAutorizado: montoDescuento,
-                motivoDescuento: motivoDescuento
-              }));
-              toast.success(`Descuento de ${formatearVenezolano(montoDescuento)} Bs aplicado`);
-            }
-            setShowDescuentoModal(false);
-          }}
-        />
-      )}
+              // 🧹 Limpiar pagos si hay descuento y pagos configurados
+              if (hayPagosConfigurados && montoDescuento > 0) {
+                setVentaData(prev => ({
+                  ...prev,
+                  descuentoAutorizado: montoDescuento,
+                  motivoDescuento: motivoDescuento,
+                  pagos: [{
+                    id: 1,
+                    metodo: 'efectivo_bs',
+                    monto: '',
+                    banco: '',
+                    referencia: ''
+                  }],
+                  vueltos: []
+                }));
+                setHayPagosConfigurados(false);
+                setPagosValidos(false);
+                toast.success(`Pagos limpiados - Se aplicó descuento de ${formatearVenezolano(montoDescuento)} Bs`);
+              } else {
+                setVentaData(prev => ({
+                  ...prev,
+                  descuentoAutorizado: montoDescuento,
+                  motivoDescuento: motivoDescuento
+                }));
+                toast.success(`Descuento de ${formatearVenezolano(montoDescuento)} Bs aplicado`);
+              }
+              setShowDescuentoModal(false);
+            }}
+          />
+        )
+      }
 
       {/* 🎈 MODAL DE CONFLICTOS DE STOCK */}
-      {showStockConflictsModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+      {
+        showStockConflictsModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
 
-            <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4">
-              <div className="flex items-center justify-between text-white">
-                <div className="flex items-center space-x-3">
-                  <AlertTriangle className="h-6 w-6" />
-                  <h3 className="text-lg font-bold">📦 Stock Reservado por Otros Usuarios</h3>
-                </div>
-                <button
-                  onClick={() => setShowStockConflictsModal(false)}
-                  className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 max-h-96 overflow-y-auto">
-              <div className="space-y-4">
-                {Array.isArray(stockConflicts) && stockConflicts.map((conflicto, index) => (
-                  <div key={index} className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{conflicto.producto}</h4>
-                        <p className="text-sm text-gray-600">Stock total: {conflicto.stockTotal}</p>
-                      </div>
-                      <div className="text-right space-y-1">
-                        <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
-                          Solicitado: {conflicto.stockSolicitado}
-                        </div>
-                        <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                          Disponible: {conflicto.stockDisponible}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Info de quién tiene reservado */}
-                    {conflicto.reservadoPor && conflicto.reservadoPor.length > 0 && (
-                      <div className="mb-3 bg-blue-50 p-3 rounded text-sm">
-                        <h5 className="font-medium text-blue-900 mb-2">👥 Reservado por:</h5>
-                        {conflicto.reservadoPor.map((reserva, idx) => (
-                          <div key={idx} className="flex justify-between text-blue-700">
-                            <span>{reserva.usuario}</span>
-                            <span>{reserva.cantidad} unidades</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Opciones de resolución */}
-                    <div className="flex flex-wrap gap-2">
-                      {conflicto.stockDisponible > 0 && (
-                        <button
-                          onClick={() => {
-                            resolverAjustarCantidad(conflicto.productoId, conflicto.stockDisponible);
-                            reintentarReservasDespuesResolver();
-                          }}
-                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-full transition-colors"
-                        >
-                          Ajustar a {conflicto.stockDisponible}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          resolverEliminarProducto(conflicto.productoId);
-                          reintentarReservasDespuesResolver();
-                        }}
-                        className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-full transition-colors"
-                      >
-                        Eliminar producto
-                      </button>
-                    </div>
-
-                    {/* Info de coordinación física */}
-                    <div className="mt-3 bg-blue-50 p-3 rounded text-xs">
-                      <h6 className="font-medium text-blue-900">💬 Coordinación Física:</h6>
-                      <p className="text-blue-700 mt-1">
-                        Habla con {conflicto.reservadoPor?.[0]?.usuario || 'el usuario'} para coordinar la liberación de stock si es necesario
-                      </p>
-                    </div>
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4">
+                <div className="flex items-center justify-between text-white">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="h-6 w-6" />
+                    <h3 className="text-lg font-bold">📦 Stock Reservado por Otros Usuarios</h3>
                   </div>
-                ))}
-              </div>
-
-              {/* Opciones globales */}
-              <div className="mt-6 bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-sm mb-3">🤝 Opciones Adicionales:</h4>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      setShowStockConflictsModal(false);
-                      handleGuardarEnEspera();
-                    }}
-                    className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm transition-colors"
-                  >
-                    💾 Guardar mi venta en espera y continuar después
-                  </button>
                   <button
                     onClick={() => setShowStockConflictsModal(false)}
-                    className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm transition-colors"
+                    className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
                   >
-                    ✏️ Modificar cantidades manualmente y reintentar
+                    <X className="h-4 w-4" />
                   </button>
+                </div>
+              </div>
+
+              <div className="p-6 max-h-96 overflow-y-auto">
+                <div className="space-y-4">
+                  {Array.isArray(stockConflicts) && stockConflicts.map((conflicto, index) => (
+                    <div key={index} className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="font-medium text-gray-900">{conflicto.producto}</h4>
+                          <p className="text-sm text-gray-600">Stock total: {conflicto.stockTotal}</p>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+                            Solicitado: {conflicto.stockSolicitado}
+                          </div>
+                          <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                            Disponible: {conflicto.stockDisponible}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Info de quién tiene reservado */}
+                      {conflicto.reservadoPor && conflicto.reservadoPor.length > 0 && (
+                        <div className="mb-3 bg-blue-50 p-3 rounded text-sm">
+                          <h5 className="font-medium text-blue-900 mb-2">👥 Reservado por:</h5>
+                          {conflicto.reservadoPor.map((reserva, idx) => (
+                            <div key={idx} className="flex justify-between text-blue-700">
+                              <span>{reserva.usuario}</span>
+                              <span>{reserva.cantidad} unidades</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Opciones de resolución */}
+                      <div className="flex flex-wrap gap-2">
+                        {conflicto.stockDisponible > 0 && (
+                          <button
+                            onClick={() => {
+                              resolverAjustarCantidad(conflicto.productoId, conflicto.stockDisponible);
+                              reintentarReservasDespuesResolver();
+                            }}
+                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-full transition-colors"
+                          >
+                            Ajustar a {conflicto.stockDisponible}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            resolverEliminarProducto(conflicto.productoId);
+                            reintentarReservasDespuesResolver();
+                          }}
+                          className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-full transition-colors"
+                        >
+                          Eliminar producto
+                        </button>
+                      </div>
+
+                      {/* Info de coordinación física */}
+                      <div className="mt-3 bg-blue-50 p-3 rounded text-xs">
+                        <h6 className="font-medium text-blue-900">💬 Coordinación Física:</h6>
+                        <p className="text-blue-700 mt-1">
+                          Habla con {conflicto.reservadoPor?.[0]?.usuario || 'el usuario'} para coordinar la liberación de stock si es necesario
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Opciones globales */}
+                <div className="mt-6 bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-sm mb-3">🤝 Opciones Adicionales:</h4>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setShowStockConflictsModal(false);
+                        handleGuardarEnEspera();
+                      }}
+                      className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm transition-colors"
+                    >
+                      💾 Guardar mi venta en espera y continuar después
+                    </button>
+                    <button
+                      onClick={() => setShowStockConflictsModal(false)}
+                      className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm transition-colors"
+                    >
+                      ✏️ Modificar cantidades manualmente y reintentar
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Modal de Confirmación de Venta */}
       <ConfirmacionVentaModal
@@ -2428,23 +2465,25 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento }) => {
       />
 
       {/* Modal de Procesamiento de Venta - SIEMPRE VISIBLE CUANDO SE ESTÁ PROCESANDO */}
-      {showProcesandoModal && (
-        <VentaProcesandoModal
-          ref={procesandoModalRef}
-          isOpen={showProcesandoModal}
-          opcionesProcesamiento={opcionesProcesamientoParaModal || opcionesProcesamiento}
-          onCompletado={() => {
-            // ✅ NO HACER NADA - La redirección al dashboard se maneja en procesarVentaConfirmada
-            // ✅ PROTECCIÓN: No permitir que onCompletado cause efectos secundarios
-            if (ventaProcesadaRef.current) {
-              console.log('🔵 [INGRESO MODAL] onCompletado llamado pero venta ya procesada - ignorando');
-              return;
-            }
-          }}
-          onNuevaVenta={null}
-          onIrDashboard={null}
-        />
-      )}
+      {
+        showProcesandoModal && (
+          <VentaProcesandoModal
+            ref={procesandoModalRef}
+            isOpen={showProcesandoModal}
+            opcionesProcesamiento={opcionesProcesamientoParaModal || opcionesProcesamiento}
+            onCompletado={() => {
+              // ✅ NO HACER NADA - La redirección al dashboard se maneja en procesarVentaConfirmada
+              // ✅ PROTECCIÓN: No permitir que onCompletado cause efectos secundarios
+              if (ventaProcesadaRef.current) {
+                console.log('🔵 [INGRESO MODAL] onCompletado llamado pero venta ya procesada - ignorando');
+                return;
+              }
+            }}
+            onNuevaVenta={null}
+            onIrDashboard={null}
+          />
+        )
+      }
     </>
   );
 };
