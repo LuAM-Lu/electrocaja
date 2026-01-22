@@ -59,9 +59,6 @@ const ClientesManager = () => {
       }
 
       const response = await apiRequest(`/clientes?${params.toString()}`);
-      console.log(' DEBUG - response.data:', response.data);
-      console.log(' DEBUG - response.data.data:', response.data.data);
-      console.log(' DEBUG - Todas las propiedades de data.data:', Object.keys(response.data.data || {}));
       setClientes(response.data?.data?.data?.clientes || []);
     } catch (error) {
       console.error('Error cargando clientes:', error);

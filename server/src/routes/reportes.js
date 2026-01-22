@@ -94,6 +94,30 @@ router.get('/transacciones/buscar', ReportesController.buscarTransacciones);
  */
 router.get('/empleado', ReportesController.getReporteEmpleado);
 
+/**
+ * @route   GET /api/reportes/pago-vendedor/calculo
+ * @desc    Cálculo de pago/comisiones de vendedor
+ * @params  ?usuarioId=number&fechaInicio=date&fechaFin=date
+ * @access  Admin only
+ */
+router.get('/pago-vendedor/calculo', ReportesController.getPagoVendedorCalculo);
+
+/**
+ * @route   GET /api/reportes/pago-tecnico/calculo
+ * @desc    Cálculo de pago/comisiones de técnico
+ * @params  ?usuarioId=number&fechaInicio=date&fechaFin=date
+ * @access  Admin only
+ */
+router.get('/pago-tecnico/calculo', ReportesController.getPagoTecnicoCalculo);
+
+/**
+ * @route   GET /api/reportes/tecnico
+ * @desc    Reporte de servicios entregados por técnico
+ * @params  ?usuarioId=number&fechaInicio=date&fechaFin=date
+ * @access  Admin only
+ */
+router.get('/tecnico', ReportesController.getReporteTecnico);
+
 // 🔍 RUTAS DE UTILIDAD Y DEBUG
 
 /**
@@ -114,7 +138,7 @@ router.get('/test', (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints_disponibles: [
       'GET /api/reportes/resumen-general',
-      'GET /api/reportes/financieros', 
+      'GET /api/reportes/financieros',
       'GET /api/reportes/egresos',
       'GET /api/reportes/cajas',
       'GET /api/reportes/tasas-historicas',
@@ -143,7 +167,7 @@ router.get('/test', (req, res) => {
 router.get('/estadisticas', async (req, res) => {
   try {
     const prisma = require('../config/database');
-    
+
     // Contar datos principales
     const [totalCajas, totalTransacciones, totalUsuarios, totalProductos] = await Promise.all([
       prisma.caja.count(),

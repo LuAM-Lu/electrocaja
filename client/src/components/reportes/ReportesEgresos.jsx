@@ -1,8 +1,20 @@
 // components/reportes/ReportesEgresos.jsx
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, TrendingDown, User, Calendar, DollarSign, FileText, Eye, Download } from 'lucide-react';
+import {
+  Search, Filter, TrendingDown, User, Calendar, DollarSign,
+  FileText, ArrowDownRight, Wallet, PieChart, Users, ArrowRight
+} from 'lucide-react';
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
+
+// Helper for currency formatting
+const formatCurrency = (amount, currency = 'Bs') => {
+  const locale = currency === 'Bs' ? 'es-VE' : 'en-US';
+  const options = currency === 'Bs'
+    ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+    : { style: 'currency', currency: 'USD' };
+  return new Intl.NumberFormat(locale, options).format(Number(amount) || 0) + (currency === 'Bs' ? ' Bs' : '');
+};
 
 const ReportesEgresos = () => {
   const [loading, setLoading] = useState(false);
@@ -20,396 +32,286 @@ const ReportesEgresos = () => {
     porPersona: {}
   });
 
-  // Lista de accionistas y trabajadores (esto vendría del backend eventualmente)
+  // Lista de ejemplo (idealmente vendría de backend)
   const personas = {
     accionistas: ['Juan Pérez', 'María González', 'Carlos Rodríguez'],
     trabajadores: ['Ana López', 'Pedro Martínez', 'Luis Fernández', 'Carmen Silva']
   };
 
-  // Cargar egresos desde el backend
   const cargarEgresos = async () => {
     setLoading(true);
     try {
-      console.log(' Cargando egresos...', filtros);
-      
       const response = await api.get('/reportes/egresos', { params: filtros });
-      
-      console.log(' Egresos cargados:', response.data);
-      
       if (response.data.success) {
         const egresosData = response.data.data || [];
         setEgresos(egresosData);
         calcularTotales(egresosData);
-        toast.success(`${egresosData.length} egresos encontrados`);
+        toast.success(`Datos actualizados`);
       } else {
         throw new Error(response.data.message || 'Error al cargar egresos');
       }
-      
     } catch (error) {
-      console.error(' Error cargando egresos:', error);
-      
-      const errorMessage = error.response?.data?.message || error.message || 'Error al cargar egresos';
-      toast.error(`Error: ${errorMessage}`);
-      
-      // Datos de ejemplo como fallback
-      console.log(' Usando datos de ejemplo debido al error');
+      console.error('Error cargando egresos:', error);
+      // Fallback data
       const egresosEjemplo = [
         {
-          id: 1,
-          descripcion: 'Pago accionista Juan Pérez - Dividendos Q4',
-          categoria: 'Pago accionista',
-          total_bs: 500000,
-          total_usd: 250,
-          fecha_hora: '2025-01-15T10:30:00Z',
-          usuario: { nombre: 'Admin' },
-          persona_relacionada: 'Juan Pérez',
-          tipo_persona: 'accionista'
+          id: 1, descripcion: 'Pago accionista Juan Pérez - Dividendos Q4', categoria: 'Pago accionista',
+          total_bs: 500000, total_usd: 250, fecha_hora: new Date().toISOString(),
+          usuario: { nombre: 'Admin' }, persona_relacionada: 'Juan Pérez', tipo_persona: 'accionista'
         },
         {
-          id: 2,
-          descripcion: 'Salario Ana López - Enero 2025',
-          categoria: 'Pago trabajador',
-          total_bs: 300000,
-          total_usd: 150,
-          fecha_hora: '2025-01-10T14:00:00Z',
-          usuario: { nombre: 'Supervisor' },
-          persona_relacionada: 'Ana López',
-          tipo_persona: 'trabajador'
+          id: 2, descripcion: 'Salario Ana López', categoria: 'Pago trabajador',
+          total_bs: 150000, total_usd: 50, fecha_hora: new Date(Date.now() - 86400000).toISOString(),
+          usuario: { nombre: 'Admin' }, persona_relacionada: 'Ana López', tipo_persona: 'trabajador'
         }
       ];
       setEgresos(egresosEjemplo);
       calcularTotales(egresosEjemplo);
+      toast.error('Modo offline: mostrando datos de ejemplo');
     } finally {
       setLoading(false);
     }
   };
 
-  // Calcular totales por tipo y persona
-  const calcularTotales = (datosEgresos) => {
-    const totalBs = datosEgresos.reduce((sum, egreso) => sum + (egreso.total_bs || 0), 0);
-    const totalUsd = datosEgresos.reduce((sum, egreso) => sum + (egreso.total_usd || 0), 0);
-    
+  const calcularTotales = (datos) => {
+    // Totales se calculan sumando los valores que ya vienen "reales" del backend
+    const totalBs = datos.reduce((sum, e) => sum + Number(e.total_bs || e.totalBs || 0), 0);
+    const totalUsd = datos.reduce((sum, e) => sum + Number(e.total_usd || e.totalUsd || 0), 0);
+
     const porPersona = {};
-    datosEgresos.forEach(egreso => {
-      const persona = egreso.persona_relacionada;
+    datos.forEach(e => {
+      const persona = e.persona_relacionada;
       if (persona) {
         if (!porPersona[persona]) {
-          porPersona[persona] = { bs: 0, usd: 0, count: 0, tipo: egreso.tipo_persona };
+          porPersona[persona] = { bs: 0, usd: 0, count: 0, tipo: e.tipo_persona || e.tipoPersona };
         }
-        porPersona[persona].bs += egreso.total_bs || 0;
-        porPersona[persona].usd += egreso.total_usd || 0;
+        porPersona[persona].bs += Number(e.total_bs || e.totalBs || 0);
+        porPersona[persona].usd += Number(e.total_usd || e.totalUsd || 0);
         porPersona[persona].count += 1;
       }
     });
-
     setTotales({ totalBs, totalUsd, porPersona });
   };
 
-  // Filtrar egresos según criterios (aplicado localmente después de recibir del backend)
-  const egresosFiltrados = egresos.filter(egreso => {
-    const matchBusqueda = !filtros.busqueda || 
-      egreso.descripcion?.toLowerCase().includes(filtros.busqueda.toLowerCase()) ||
-      egreso.categoria?.toLowerCase().includes(filtros.busqueda.toLowerCase()) ||
-      egreso.persona_relacionada?.toLowerCase().includes(filtros.busqueda.toLowerCase());
-
-    const matchTipoPersona = !filtros.tipoPersona || egreso.tipo_persona === filtros.tipoPersona;
-    const matchPersona = !filtros.persona || egreso.persona_relacionada === filtros.persona;
-
-    return matchBusqueda && matchTipoPersona && matchPersona;
+  const egresosFiltrados = egresos.filter(e => {
+    const q = filtros.busqueda.toLowerCase();
+    const matchBusqueda = !q ||
+      e.descripcion?.toLowerCase().includes(q) ||
+      e.categoria?.toLowerCase().includes(q) ||
+      e.persona_relacionada?.toLowerCase().includes(q);
+    const matchTipo = !filtros.tipoPersona || (e.tipo_persona || e.tipoPersona) === filtros.tipoPersona;
+    const matchPersona = !filtros.persona || e.persona_relacionada === filtros.persona;
+    return matchBusqueda && matchTipo && matchPersona;
   });
 
-  // Formatear moneda venezolana
-  const formatearBs = (amount) => {
-    return Math.round(amount || 0).toLocaleString('es-VE');
+  const handleFiltroChange = (f, v) => {
+    const nuevos = { ...filtros, [f]: v };
+    if (f === 'tipoPersona') nuevos.persona = '';
+    setFiltros(nuevos);
   };
 
-  // Formatear fecha
-  const formatearFecha = (fecha) => {
-    return new Date(fecha).toLocaleDateString('es-VE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  // Manejar cambio de filtros
-  const handleFiltroChange = (campo, valor) => {
-    const nuevosFiltros = { ...filtros, [campo]: valor };
-    
-    // Si cambia tipo de persona, limpiar persona específica
-    if (campo === 'tipoPersona') {
-      nuevosFiltros.persona = '';
-    }
-    
-    setFiltros(nuevosFiltros);
-  };
-
-  // Limpiar todos los filtros
-  const limpiarFiltros = () => {
-    setFiltros({
-      busqueda: '',
-      tipoPersona: '',
-      persona: '',
-      fechaInicio: '',
-      fechaFin: ''
-    });
-  };
-
-  useEffect(() => {
-    cargarEgresos();
-  }, [filtros.fechaInicio, filtros.fechaFin]); // Solo recargar del backend con cambios de fecha
+  useEffect(() => { cargarEgresos(); }, [filtros.fechaInicio, filtros.fechaFin]);
 
   return (
     <div className="space-y-6">
-      {/*  FILTROS Y BÚSQUEDA */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <TrendingDown className="h-5 w-5 text-red-500 mr-2" />
-            Búsqueda de Egresos por Personas
-          </h3>
-          <button
-            onClick={cargarEgresos}
-            disabled={loading}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
-          >
-            <Search className="h-4 w-4" />
-            <span>{loading ? 'Cargando...' : 'Actualizar'}</span>
+
+      {/* FILTROS PREMIUM */}
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-rose-500" /> Control de Gastos y Egresos
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">Gestión de pagos a personal, accionistas y operativos.</p>
+          </div>
+          <button onClick={cargarEgresos} className="bg-rose-50 text-rose-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-rose-100 transition-colors flex items-center gap-2">
+            {loading ? <div className="animate-spin h-3 w-3 border-2 border-rose-600 rounded-full border-t-transparent"></div> : <Search className="h-3 w-3" />}
+            Actualizar
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {/* Búsqueda general */}
-          <div className="relative md:col-span-2">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por descripción, categoría o persona..."
-              value={filtros.busqueda}
-              onChange={(e) => handleFiltroChange('busqueda', e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <input type="text" placeholder="Buscar egreso..." value={filtros.busqueda} onChange={e => handleFiltroChange('busqueda', e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none" />
           </div>
-
-          {/* Tipo de persona */}
-          <select
-            value={filtros.tipoPersona}
-            onChange={(e) => handleFiltroChange('tipoPersona', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Todos los tipos</option>
-            <option value="accionista">Accionistas</option>
-            <option value="trabajador">Trabajadores</option>
-          </select>
-
-          {/* Persona específica */}
-          <select
-            value={filtros.persona}
-            onChange={(e) => handleFiltroChange('persona', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            disabled={!filtros.tipoPersona}
-          >
-            <option value="">Todas las personas</option>
-            {filtros.tipoPersona && personas[filtros.tipoPersona + 's']?.map(persona => (
-              <option key={persona} value={persona}>{persona}</option>
-            ))}
-          </select>
-
-          {/* Botón limpiar filtros */}
-          <button
-            onClick={limpiarFiltros}
-            className="flex items-center justify-center space-x-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <Filter className="h-4 w-4" />
-            <span>Limpiar</span>
-          </button>
-        </div>
-
-        {/* Filtros de fecha */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
-            <input
-              type="date"
-              value={filtros.fechaInicio}
-              onChange={(e) => handleFiltroChange('fechaInicio', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+          <div className="relative">
+            <Filter className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <select value={filtros.tipoPersona} onChange={e => handleFiltroChange('tipoPersona', e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none appearance-none cursor-pointer">
+              <option value="">Todos los tipos</option>
+              <option value="accionista">Accionistas</option>
+              <option value="trabajador">Trabajadores</option>
+            </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
-            <input
-              type="date"
-              value={filtros.fechaFin}
-              onChange={(e) => handleFiltroChange('fechaFin', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+          <div className="relative">
+            <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <select value={filtros.persona} onChange={e => handleFiltroChange('persona', e.target.value)} disabled={!filtros.tipoPersona}
+              className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-rose-500 outline-none appearance-none cursor-pointer disabled:opacity-50">
+              <option value="">Todas las personas</option>
+              {filtros.tipoPersona && personas[filtros.tipoPersona + 's']?.map(p => (<option key={p} value={p}>{p}</option>))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <input type="date" value={filtros.fechaInicio} onChange={e => handleFiltroChange('fechaInicio', e.target.value)} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-rose-500" />
+            <input type="date" value={filtros.fechaFin} onChange={e => handleFiltroChange('fechaFin', e.target.value)} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-rose-500" />
           </div>
         </div>
       </div>
 
-      {/*  RESUMEN DE TOTALES */}
+      {/* DASHBOARD SUMMARY */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-red-100 text-sm">Total Egresos (Bs)</p>
-              <p className="text-2xl font-bold">{formatearBs(totales.totalBs)}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Total Egresado (Bs)</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{formatCurrency(totales.totalBs)}</p>
             </div>
-            <DollarSign className="h-8 w-8 text-red-200" />
+            <div className="bg-rose-50 p-2 rounded-lg text-rose-600"><TrendingDown className="h-6 w-6" /></div>
+          </div>
+          <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div className="bg-rose-500 h-full rounded-full" style={{ width: '70%' }}></div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-green-100 text-sm">Total Egresos (USD)</p>
-              <p className="text-2xl font-bold">${totales.totalUsd.toFixed(2)}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Total Egresado (USD)</p>
+              <p className="text-2xl font-bold text-emerald-600 mt-1">{formatCurrency(totales.totalUsd, 'USD')}</p>
             </div>
-            <DollarSign className="h-8 w-8 text-green-200" />
+            <div className="bg-emerald-50 p-2 rounded-lg text-emerald-600"><DollarSign className="h-6 w-6" /></div>
+          </div>
+          <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div className="bg-emerald-500 h-full rounded-full" style={{ width: '45%' }}></div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
+        <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-blue-100 text-sm">Transacciones</p>
-              <p className="text-2xl font-bold">{egresosFiltrados.length}</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Movimientos</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">{egresosFiltrados.length}</p>
             </div>
-            <FileText className="h-8 w-8 text-blue-200" />
+            <div className="bg-blue-50 p-2 rounded-lg text-blue-600"><FileText className="h-6 w-6" /></div>
           </div>
+          <p className="text-xs text-gray-400 mt-4">Transacciones registradas</p>
         </div>
       </div>
 
-      {/*  TABLA DE EGRESOS */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-semibold text-gray-900">
-            Detalle de Egresos ({egresosFiltrados.length} registros)
+      {/* TABLE SECTION */}
+      <div className="bg-white border boundary-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+          <h4 className="font-bold text-gray-800 flex items-center gap-2">
+            <ArrowDownRight className="h-5 w-5 text-rose-500" />
+            Detalle de Movimientos
           </h4>
+          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-medium">{egresosFiltrados.length} registros</span>
         </div>
-
         <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Cargando egresos...</span>
-            </div>
-          ) : egresosFiltrados.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <TrendingDown className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>No se encontraron egresos con los filtros aplicados</p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Descripción
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Persona
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tipo
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Monto (Bs)
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Monto (USD)
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Usuario
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {egresosFiltrados.map((egreso) => (
-                  <tr key={egreso.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatearFecha(egreso.fecha_hora || egreso.fechaHora)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div className="max-w-xs truncate" title={egreso.descripcion}>
-                        {egreso.descripcion || egreso.observaciones}
+          <table className="w-full">
+            <thead className="bg-gray-50/50 border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Descripción</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Beneficiario</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Monto</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pl-8">Registrado Por</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {loading ? (
+                <tr><td colSpan="5" className="py-12 text-center"><div className="animate-spin h-8 w-8 border-2 border-rose-500 rounded-full border-t-transparent mx-auto"></div></td></tr>
+              ) : egresosFiltrados.length === 0 ? (
+                <tr><td colSpan="5" className="py-12 text-center text-gray-400 text-sm">No se encontraron egresos</td></tr>
+              ) : (
+                egresosFiltrados.map(e => (
+                  <tr key={e.id} className="hover:bg-gray-50/80 transition-colors group">
+                    <td className="px-6 py-4 align-top whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-sm text-gray-900 font-medium">
+                        <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                        {new Date(e.fecha_hora || e.fechaHora).toLocaleDateString('es-VE')}
                       </div>
-                      <div className="text-xs text-gray-500">{egreso.categoria}</div>
+                      <p className="text-[10px] text-gray-400 pl-5.5 mt-0.5">{new Date(e.fecha_hora || e.fechaHora).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</p>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center">
-                        <User className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="font-medium text-gray-900">
-                          {egreso.persona_relacionada || 'No especificado'}
-                        </span>
+                    <td className="px-6 py-4 align-top">
+                      <p className="text-sm font-medium text-gray-800 line-clamp-2" title={e.descripcion}>{e.descripcion || e.observaciones}</p>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500 uppercase mt-1">{e.categoria}</span>
+                    </td>
+                    <td className="px-6 py-4 align-top">
+                      <div className="flex items-center gap-2">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm ${(e.tipo_persona || e.tipoPersona) === 'accionista' ? 'bg-purple-500' : 'bg-blue-500'}`}>
+                          {(e.persona_relacionada || 'U').charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{e.persona_relacionada || 'No especificado'}</p>
+                          <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">{(e.tipo_persona || e.tipoPersona)}</p>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        egreso.tipo_persona === 'accionista' 
-                          ? 'bg-purple-100 text-purple-800'
-                          : egreso.tipo_persona === 'trabajador'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {egreso.tipo_persona === 'accionista' ? 'Accionista' : 
-                         egreso.tipo_persona === 'trabajador' ? 'Trabajador' : 'Otro'}
-                      </span>
+                    <td className="px-6 py-4 align-top text-right text-sm">
+                      {(!e.total_usd && e.total_bs > 0) && (
+                        <span className="font-mono font-medium text-gray-800">{formatCurrency(e.total_bs)}</span>
+                      )}
+                      {(e.total_usd > 0 && !e.total_bs) && (
+                        <span className="font-mono font-bold text-emerald-600">{formatCurrency(e.total_usd, 'USD')}</span>
+                      )}
+                      {(e.total_usd > 0 && e.total_bs > 0) && (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-mono font-medium text-gray-800">{formatCurrency(e.total_bs)}</span>
+                          <span className="font-mono font-bold text-emerald-600 text-xs">{formatCurrency(e.total_usd, 'USD')}</span>
+                        </div>
+                      )}
+                      {(!e.total_bs && !e.total_usd) && <span className="text-gray-400">0,00</span>}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
-                      {formatearBs(egreso.total_bs || egreso.totalBs)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
-                      ${(egreso.total_usd || egreso.totalUsd || 0).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {egreso.usuario?.nombre || 'Sistema'}
+                    <td className="px-6 py-4 align-top pl-8">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <User className="h-3 w-3" /> {e.usuario?.nombre || 'Sistema'}
+                      </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/*  RESUMEN POR PERSONA */}
+      {/* SUMMARY BY PERSON */}
       {Object.keys(totales.porPersona).length > 0 && (
-        <div className="bg-white rounded-xl p-6 shadow-sm border">
-          <h4 className="text-lg font-semibold text-gray-900 mb-4">
-            Resumen por Persona
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h4 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <Users className="h-5 w-5 text-indigo-500" /> Resumen por Beneficiario
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(totales.porPersona).map(([persona, datos]) => (
-              <div key={persona} className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h5 className="font-medium text-gray-900">{persona}</h5>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    datos.tipo === 'accionista' 
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {datos.tipo === 'accionista' ? 'Accionista' : 'Trabajador'}
-                  </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(totales.porPersona).map(([persona, d]) => (
+              <div key={persona} className="bg-gray-50 p-4 rounded-xl border border-gray-200 hover:border-indigo-200 transition-colors group">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ${d.tipo === 'accionista' ? 'bg-purple-500' : 'bg-blue-500'}`}>
+                      {persona.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900 text-sm">{persona}</p>
+                      <p className="text-xs text-gray-500 font-medium capitalize">{d.tipo}</p>
+                    </div>
+                  </div>
+                  <span className="bg-white px-2 py-1 rounded text-xs font-bold text-gray-600 border shadow-sm">{d.count} Tx</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div>
-                    <p className="text-gray-500">Transacciones</p>
-                    <p className="font-semibold">{datos.count}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Total Bs</p>
-                    <p className="font-semibold">{formatearBs(datos.bs)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Total USD</p>
-                    <p className="font-semibold">${datos.usd.toFixed(2)}</p>
-                  </div>
+                <div className="space-y-1">
+                  {d.bs > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Total Bs</span>
+                      <span className="font-bold text-gray-800">{formatCurrency(d.bs)}</span>
+                    </div>
+                  )}
+                  {d.usd > 0 && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-500">Total USD</span>
+                      <span className="font-bold text-emerald-600">{formatCurrency(d.usd, 'USD')}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

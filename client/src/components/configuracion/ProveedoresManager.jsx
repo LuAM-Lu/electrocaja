@@ -62,7 +62,6 @@ const ProveedoresManager = () => {
       }
 
       const response = await apiRequest(`/proveedores?${params.toString()}`);
-      console.log(' DEBUG - Respuesta proveedores:', response);
       setProveedores(response.data?.data?.proveedores || response.data?.proveedores || response.proveedores || []);
     } catch (error) {
       console.error('Error cargando proveedores:', error);

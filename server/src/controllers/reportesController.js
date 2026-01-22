@@ -140,7 +140,7 @@ class ReportesController {
             subtotal: 'desc'
           }
         },
-        take: 5
+        take: 3
       });
 
       const productosConNombres = await Promise.all(
@@ -322,7 +322,8 @@ class ReportesController {
         include: {
           usuario: {
             select: { nombre: true }
-          }
+          },
+          pagos: true
         },
         orderBy: {
           fechaHora: 'desc'
@@ -331,13 +332,32 @@ class ReportesController {
 
       // Procesar y clasificar egresos
       const egresosConPersonas = egresos.map(egreso => {
-        const personaDetectada = detectarPersonaEnEgreso(egreso);
+        // Calcular montos reales basados en pagos (sin conversiones)
+        let realBs = 0;
+        let realUsd = 0;
+
+        if (egreso.pagos && egreso.pagos.length > 0) {
+          realBs = egreso.pagos.filter(p => !p.moneda || p.moneda === 'bs').reduce((acc, p) => acc + Number(p.monto), 0);
+          realUsd = egreso.pagos.filter(p => p.moneda === 'usd').reduce((acc, p) => acc + Number(p.monto), 0);
+        } else {
+          // Fallback
+          realBs = Number(egreso.totalBs || 0);
+          realUsd = Number(egreso.totalUsd || 0);
+        }
+
+        // Define persona logic
+        const personaDetectada = {
+          nombre: egreso.clienteNombre || egreso.observaciones || 'Desconocido',
+          tipo: 'OTROS'
+        };
+
         return {
           ...egreso,
-          total_bs: Number(egreso.totalBs),
-          total_usd: Number(egreso.totalUsd),
+          total_bs: realBs,
+          total_usd: realUsd,
           persona_relacionada: personaDetectada.nombre,
-          tipo_persona: personaDetectada.tipo
+          tipo_persona: personaDetectada.tipo,
+          pagos: egreso.pagos
         };
       });
 
@@ -393,7 +413,8 @@ class ReportesController {
           usuarioCierre: {
             select: { nombre: true }
           },
-          arqueos: true
+          arqueos: true,
+          transacciones: { select: { tipo: true, categoria: true } }
         },
         orderBy: {
           fecha: 'desc'
@@ -436,7 +457,10 @@ class ReportesController {
         tasaBcv: Number(caja.tasaBcv || 0),
         tasaParalelo: Number(caja.tasaParalelo || 0),
         horaApertura: caja.horaApertura,
-        horaCierre: caja.horaCierre
+        horaCierre: caja.horaCierre,
+        cantidadTransacciones: caja.transacciones?.length || 0,
+        cantidadServicios: caja.transacciones?.filter(t => t.tipo === 'INGRESO' && t.categoria?.toUpperCase().includes('SERVICIO')).length || 0,
+        cantidadPedidos: caja.transacciones?.filter(t => t.tipo === 'INGRESO' && (t.categoria?.toUpperCase().includes('VENTA') || t.categoria?.toUpperCase().includes('PEDIDO'))).length || 0
       }));
 
       return successResponse(res, cajasFormateadas, 'Reportes de cajas obtenidos exitosamente');
@@ -1140,6 +1164,322 @@ class ReportesController {
     } catch (error) {
       console.error('Error en getReporteEmpleado:', error);
       return errorResponse(res, 'Error al generar reporte del empleado', 500);
+    }
+  }
+
+  // 🔧 REPORTE TÉCNICO - Servicios entregados
+  static async getReporteTecnico(req, res) {
+    try {
+      const { usuarioId, fechaInicio, fechaFin } = req.query;
+
+      if (!usuarioId) return errorResponse(res, 'Usuario ID es requerido', 400);
+
+      const whereClause = {
+        tecnicoId: parseInt(usuarioId),
+        estado: 'ENTREGADO'
+      };
+
+      if (fechaInicio || fechaFin) {
+        whereClause.updatedAt = {};
+        if (fechaInicio) whereClause.updatedAt.gte = new Date(fechaInicio);
+        if (fechaFin) whereClause.updatedAt.lte = new Date(fechaFin);
+      }
+
+      const servicios = await prisma.servicioTecnico.findMany({
+        where: whereClause,
+        include: {
+          cliente: { select: { nombre: true, cedula_rif: true } },
+          pagos: {
+            include: {
+              transaccion: true
+            }
+          }
+        },
+        orderBy: { updatedAt: 'desc' }
+      });
+
+      // Formatear servicios y calcular totales reales
+      const serviciosFormatted = servicios.map(s => {
+        let totalBs = 0;
+        let totalUsd = 0;
+        let pagosDetalle = [];
+
+        if (s.pagos && s.pagos.length > 0) {
+          s.pagos.forEach(p => {
+            if (p.transaccion) {
+              // Sumar totales de las transacciones asociadas (ingresos reales)
+              totalBs += Number(p.transaccion.totalBs || 0);
+              totalUsd += Number(p.transaccion.totalUsd || 0);
+
+              // Recolectar detalle de pagos
+              if (p.pagos && Array.isArray(p.pagos)) {
+                pagosDetalle.push(...p.pagos);
+              } else if (p.transaccion.pagos && Array.isArray(p.transaccion.pagos)) {
+                // Si la transacción tiene pagos populados (no en este include, pero por si acaso)
+              }
+            }
+          });
+        }
+
+        return {
+          id: s.id,
+          numeroServicio: s.numeroServicio,
+          fechaEntrega: s.updatedAt,
+          cliente: s.cliente?.nombre || s.clienteNombre || 'Sin Cliente',
+          dispositivo: `${s.dispositivoMarca} ${s.dispositivoModelo}`,
+          falla: Array.isArray(s.problemas) ? s.problemas.join(', ') : (s.problemas || 'N/A'),
+          diagnostico: s.observaciones || 'Sin diagnóstico',
+          totalBs,
+          totalUsd,
+          estado: s.estado
+        };
+      });
+
+      const totalServicios = serviciosFormatted.length;
+      const montoTotalBs = serviciosFormatted.reduce((acc, s) => acc + s.totalBs, 0);
+      const montoTotalUsd = serviciosFormatted.reduce((acc, s) => acc + s.totalUsd, 0);
+
+      const resultado = {
+        usuario: { id: parseInt(usuarioId) },
+        periodo: { fechaInicio, fechaFin },
+        metricas: {
+          totalServicios,
+          montoTotalBs,
+          montoTotalUsd
+        },
+        servicios: serviciosFormatted
+      };
+
+      return successResponse(res, resultado, 'Reporte técnico generado exitosamente');
+
+    } catch (error) {
+      console.error('Error en getReporteTecnico:', error);
+      return errorResponse(res, 'Error al generar reporte técnico', 500);
+    }
+  }
+
+  // 💰 PAGO VENDEDOR - Cálculo detallado
+  static async getPagoVendedorCalculo(req, res) {
+    try {
+      const { usuarioId, fechaInicio, fechaFin } = req.query;
+
+      if (!usuarioId) return errorResponse(res, 'Usuario ID es requerido', 400);
+
+      const fechaStart = fechaInicio ? new Date(fechaInicio) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const fechaEnd = fechaFin ? new Date(fechaFin) : new Date();
+      // Ajustar fin del día
+      const endOfDay = new Date(fechaEnd);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const usuario = await prisma.user.findUnique({
+        where: { id: parseInt(usuarioId) },
+        select: { id: true, nombre: true, rol: true }
+      });
+
+      if (!usuario) return errorResponse(res, 'Usuario no encontrado', 404);
+
+      // 1. BUSCAR VENTAS (INGRESOS DE ESTE USUARIO)
+      const ventas = await prisma.transaccion.findMany({
+        where: {
+          tipo: 'INGRESO',
+          usuarioId: parseInt(usuarioId),
+          fechaHora: { gte: fechaStart, lte: endOfDay }
+        },
+        include: {
+          pagos: true,
+          items: true,
+          cliente: { select: { nombre: true } }
+        },
+        orderBy: { fechaHora: 'desc' }
+      });
+
+      // 2. BUSCAR EGRESOS RELACIONADOS (NOMBRE EN DESCRIPCIÓN O PERSONA RELACIONADA)
+      const egresos = await prisma.transaccion.findMany({
+        where: {
+          tipo: 'EGRESO',
+          fechaHora: { gte: fechaStart, lte: endOfDay },
+          OR: [
+            { observaciones: { contains: usuario.nombre, mode: 'insensitive' } },
+            { clienteNombre: { contains: usuario.nombre, mode: 'insensitive' } },
+            { items: { some: { descripcion: { contains: usuario.nombre, mode: 'insensitive' } } } }
+          ]
+        },
+        include: { pagos: true, usuario: { select: { nombre: true } } },
+        orderBy: { fechaHora: 'desc' }
+      });
+
+      // Helper para sumar real (sin conversiones)
+      const sumPayments = (txs) => {
+        let bs = 0;
+        let usd = 0;
+        txs.forEach(t => {
+          if (t.pagos && t.pagos.length > 0) {
+            bs += t.pagos.filter(p => !p.moneda || p.moneda === 'bs').reduce((a, b) => a + Number(b.monto), 0);
+            usd += t.pagos.filter(p => p.moneda === 'usd').reduce((a, b) => a + Number(b.monto), 0);
+          } else {
+            bs += Number(t.totalBs || 0);
+            usd += Number(t.totalUsd || 0);
+          }
+        });
+        return { bs, usd };
+      };
+
+      const totalVentas = sumPayments(ventas);
+      const totalEgresos = sumPayments(egresos);
+
+      const resultado = {
+        usuario,
+        periodo: { inicio: fechaStart, fin: endOfDay },
+        ventas: {
+          count: ventas.length,
+          totalBs: totalVentas.bs,
+          totalUsd: totalVentas.usd,
+          lista: ventas
+        },
+        egresos: {
+          count: egresos.length,
+          totalBs: totalEgresos.bs,
+          totalUsd: totalEgresos.usd,
+          lista: egresos
+        },
+        neto: {
+          bs: totalVentas.bs - totalEgresos.bs,
+          usd: totalVentas.usd - totalEgresos.usd
+        }
+      };
+
+      return successResponse(res, resultado, 'Cálculo generado exitosamente');
+
+    } catch (error) {
+      console.error('Error en getPagoVendedorCalculo:', error);
+      return errorResponse(res, 'Error al calcular pago', 500);
+    }
+  }
+
+  // 💰 PAGO TECNICO - Cálculo detallado
+  static async getPagoTecnicoCalculo(req, res) {
+    try {
+      const { usuarioId, fechaInicio, fechaFin } = req.query;
+
+      if (!usuarioId) return errorResponse(res, 'Usuario ID es requerido', 400);
+
+      const fechaStart = fechaInicio ? new Date(fechaInicio) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const fechaEnd = fechaFin ? new Date(fechaFin) : new Date();
+      const endOfDay = new Date(fechaEnd);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const usuario = await prisma.user.findUnique({
+        where: { id: parseInt(usuarioId) },
+        select: { id: true, nombre: true, rol: true }
+      });
+
+      if (!usuario) return errorResponse(res, 'Usuario no encontrado', 404);
+
+      // 1. BUSCAR SERVICIOS ENTREGADOS (EQUIVALENTE A VENTAS)
+      const servicios = await prisma.servicioTecnico.findMany({
+        where: {
+          tecnicoId: parseInt(usuarioId),
+          estado: 'ENTREGADO',
+          updatedAt: { gte: fechaStart, lte: endOfDay }
+        },
+        include: {
+          pagos: { include: { transaccion: true } },
+          items: { include: { producto: true } },
+          cliente: { select: { nombre: true } }
+        },
+        orderBy: { updatedAt: 'desc' }
+      });
+
+      // 2. BUSCAR EGRESOS RELACIONADOS
+      const egresos = await prisma.transaccion.findMany({
+        where: {
+          tipo: 'EGRESO',
+          fechaHora: { gte: fechaStart, lte: endOfDay },
+          OR: [
+            { observaciones: { contains: usuario.nombre, mode: 'insensitive' } },
+            // También buscar por usuarioId si el técnico hizo el egreso (ej. vale)
+            { usuarioId: parseInt(usuarioId) }
+          ]
+        },
+        include: { pagos: true, usuario: { select: { nombre: true } } },
+        orderBy: { fechaHora: 'desc' }
+      });
+
+      // Formatear servicios como "Ventas" para compatibilidad frontend
+      const serviciosFormatted = servicios.map(s => {
+        let totalBs = 0;
+        let totalUsd = 0;
+
+        if (s.pagos) {
+          s.pagos.forEach(p => {
+            if (p.transaccion) {
+              totalBs += Number(p.transaccion.totalBs || 0);
+              totalUsd += Number(p.transaccion.totalUsd || 0);
+            }
+          });
+        }
+
+        return {
+          id: s.id,
+          fechaHora: s.updatedAt,
+          codigoVenta: s.numeroServicio,
+          totalBs,
+          totalUsd,
+          descripcion: `${s.dispositivoMarca} ${s.dispositivoModelo}`,
+          items: s.items.map(i => ({ descripcion: i.descripcion })),
+          pagos: s.pagos
+        };
+      });
+
+      // Totales Servicios
+      const totalServicios = serviciosFormatted.reduce((acc, s) => ({
+        bs: acc.bs + s.totalBs,
+        usd: acc.usd + s.totalUsd
+      }), { bs: 0, usd: 0 });
+
+      // Totales Egresos
+      const sumEgresos = (txs) => {
+        let bs = 0, usd = 0;
+        txs.forEach(t => {
+          if (t.pagos && t.pagos.length > 0) {
+            bs += t.pagos.filter(p => !p.moneda || p.moneda === 'bs').reduce((a, b) => a + Number(b.monto), 0);
+            usd += t.pagos.filter(p => p.moneda === 'usd').reduce((a, b) => a + Number(b.monto), 0);
+          } else {
+            bs += Number(t.totalBs || 0);
+            usd += Number(t.totalUsd || 0);
+          }
+        });
+        return { bs, usd };
+      };
+
+      const totalEgresos = sumEgresos(egresos);
+
+      const resultado = {
+        usuario,
+        periodo: { inicio: fechaStart, fin: endOfDay },
+        ventas: {
+          count: serviciosFormatted.length,
+          totalBs: totalServicios.bs,
+          totalUsd: totalServicios.usd,
+          lista: serviciosFormatted
+        },
+        egresos: {
+          count: egresos.length,
+          totalBs: totalEgresos.bs,
+          totalUsd: totalEgresos.usd,
+          lista: egresos
+        },
+        neto: {
+          bs: totalServicios.bs - totalEgresos.bs,
+          usd: totalServicios.usd - totalEgresos.usd
+        }
+      };
+
+      return successResponse(res, resultado, 'Cálculo técnico generado exitosamente');
+
+    } catch (error) {
+      console.error('Error en getPagoTecnicoCalculo:', error);
+      return errorResponse(res, 'Error al calcular pago técnico', 500);
     }
   }
 

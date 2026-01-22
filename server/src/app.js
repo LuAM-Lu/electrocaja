@@ -21,6 +21,7 @@ const auditoriaRoutes = require('./routes/auditoria');
 const cronRoutes = require('./routes/cronRoutes');
 const serviciosRoutes = require('./routes/servicios');
 const discountRequestsRoutes = require('./routes/discountRequests');
+const filesRoutes = require('./routes/files'); // 🆕 RUTAS DE ARCHIVOS
 
 const app = express();
 
@@ -431,6 +432,7 @@ app.use('/api/presupuestos', require('./routes/presupuestos')); // 🆕 RUTAS DE
 app.use('/api/pedidos', require('./routes/pedidos')); // 🆕 RUTAS DE PEDIDOS
 app.use('/api/servicios', serviciosRoutes); // 🔧 RUTAS DE SERVICIOS TÉCNICOS
 app.use('/api/cron', cronRoutes); // 🕐 RUTAS DE CRON JOBS (ADMIN)
+app.use('/api/files', filesRoutes); // 📂 RUTAS DE GESTIÓN DE ARCHIVOS
 
 
 // 🔧 SOCKET.IO - EVENTOS COMPLETOS CON BLOQUEOS

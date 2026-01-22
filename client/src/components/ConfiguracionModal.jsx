@@ -1,11 +1,12 @@
 // components/ConfiguracionModal.jsx (MODULAR Y CORREGIDO)
 import React, { useState } from 'react';
-import { X, Settings, Building } from 'lucide-react';
+import { X, Settings, Building, Folder } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import WhatsAppPanel from './configuracion/WhatsAppPanel';
 import UsuariosPanel from './configuracion/UsuariosPanel';
 import GeneralPanel from './configuracion/GeneralPanel';
 import AdministracionPanel from './configuracion/AdministracionPanel';
+import ArchivosPanel from './configuracion/ArchivosPanel';
 
 const ConfiguracionModal = ({ isOpen, onClose }) => {
   const { usuario } = useAuthStore();
@@ -15,6 +16,7 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
 
   // Si es supervisor, solo mostrar la pestaña de WhatsApp
   const esSupervisor = usuario?.rol === 'supervisor';
+  const isAdmin = usuario?.rol === 'admin';
 
   const tabs = esSupervisor
     ? [
@@ -24,6 +26,7 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
       { id: 'whatsapp', label: 'WhatsApp', icono: 'Smartphone' },
       { id: 'cuentas', label: 'Cuentas', icono: 'Users' },
       { id: 'administracion', label: 'Administración', icono: 'Building' },
+      ...(isAdmin ? [{ id: 'archivos', label: 'Archivos', icono: 'Folder' }] : []),
       { id: 'general', label: 'General', icono: 'Settings' }
     ];
 
@@ -81,6 +84,7 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
           {tabActiva === 'whatsapp' && <WhatsAppPanel />}
           {!esSupervisor && tabActiva === 'cuentas' && <UsuariosPanel usuario={usuario} />}
           {!esSupervisor && tabActiva === 'administracion' && <AdministracionPanel />}
+          {isAdmin && tabActiva === 'archivos' && <ArchivosPanel />}
           {!esSupervisor && tabActiva === 'general' && <GeneralPanel />}
         </div>
 
