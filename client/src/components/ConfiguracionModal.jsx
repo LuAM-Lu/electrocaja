@@ -1,5 +1,5 @@
 // components/ConfiguracionModal.jsx (MODULAR Y CORREGIDO)
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Settings, Building, Folder } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import WhatsAppPanel from './configuracion/WhatsAppPanel';
@@ -12,7 +12,34 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
   const { usuario } = useAuthStore();
   const [tabActiva, setTabActiva] = useState('whatsapp');
 
-  if (!isOpen) return null;
+  /* ----------------------------------------------------
+     Manejo de Animación de Cierre
+  ---------------------------------------------------- */
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    } else {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 200);
+  };
+
+  if (!shouldRender && !isOpen) return null;
 
   // Si es supervisor, solo mostrar la pestaña de WhatsApp
   const esSupervisor = usuario?.rol === 'supervisor';
@@ -31,8 +58,8 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
     ];
 
   return (
-    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden">
+    <div className={`fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${isClosing ? 'animate-modal-backdrop-exit' : 'animate-modal-backdrop-enter'}`}>
+      <div className={`bg-white rounded-xl shadow-2xl max-w-5xl w-full h-[90vh] flex flex-col overflow-hidden ${isClosing ? 'animate-modal-exit' : 'animate-modal-enter'}`}>
 
         {/* Header */}
         <div className="bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 flex-shrink-0">
@@ -52,7 +79,7 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-all duration-200 border border-white/10 hover:scale-105"
               >
                 <X className="h-5 w-5 text-white" />
@@ -91,7 +118,7 @@ const ConfiguracionModal = ({ isOpen, onClose }) => {
         {/* Footer */}
         <div className="bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 border-t border-gray-600 px-6 py-2 flex-shrink-0 flex justify-end">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-6 py-1.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg transition-all duration-200 font-medium flex items-center space-x-2 hover:shadow-lg backdrop-blur-sm"
           >
             <X className="h-4 w-4" />

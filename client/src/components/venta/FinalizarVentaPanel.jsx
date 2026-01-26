@@ -1,18 +1,12 @@
-// components/venta/FinalizarVentaPanel.jsx - PANEL FINAL DE VENTA 
+// components/venta/FinalizarVentaPanel.jsx - PANEL FINAL DE VENTA (DISEÑO PREMIUM)
 import React, { useState } from 'react';
-import { 
+import {
   CheckCircle, Receipt, Send, FileText, Printer,
   Mail, MessageCircle, AlertTriangle, Info,
-  User, Package, DollarSign, Clock, ShoppingCart, FileDown, Phone
+  User, Package, DollarSign, Clock, ShoppingCart, FileDown,
+  Store, MapPin, ChevronDown, ChevronUp, Check, Smartphone, RefreshCw
 } from 'lucide-react';
-import toast from '../../utils/toast.jsx';
-import { 
-  generarPDFFactura, 
-  generarImagenWhatsApp, 
-  imprimirFacturaTermica,
-  descargarPDF 
-} from '../../utils/printUtils';
-import { api } from '../../config/api';
+import { useAuthStore } from '../../store/authStore';
 
 //  FUNCIONES HELPER
 const formatearVenezolano = (valor) => {
@@ -24,64 +18,37 @@ const formatearVenezolano = (valor) => {
   });
 };
 
-//  COMPONENTE TOGGLE DE OPCIÓN
-const OpcionToggle = ({ 
-  id, 
-  label, 
-  descripcion, 
-  icon: Icon, 
-  enabled, 
-  onToggle,
-  color = "emerald",
-  disabled = false,
-  warning = null
-}) => {
-  const colors = {
-    emerald: enabled ? 'bg-emerald-500' : 'bg-gray-300',
-    blue: enabled ? 'bg-blue-500' : 'bg-gray-300',
-    purple: enabled ? 'bg-purple-500' : 'bg-gray-300',
-    amber: enabled ? 'bg-amber-500' : 'bg-gray-300'
-  };
-
-  return (
-    <div className={`bg-white border rounded-lg p-4 transition-all ${
-      enabled ? 'border-' + color + '-200 bg-' + color + '-50' : 'border-gray-200'
-    } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'}`}
-    onClick={() => !disabled && onToggle(id, !enabled)}
-    >
-      <div className="flex items-start space-x-3">
-        {/* Toggle Switch */}
-        <div className={`flex-shrink-0 w-12 h-6 rounded-full transition-colors ${colors[color]} relative`}>
-          <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform absolute top-0.5 ${
-            enabled ? 'translate-x-6' : 'translate-x-0.5'
-          }`}></div>
-        </div>
-
-        {/* Contenido */}
-        <div className="flex-1">
-          <div className="flex items-center space-x-2 mb-1">
-            <Icon className={`h-5 w-5 ${enabled ? 'text-' + color + '-600' : 'text-gray-400'}`} />
-            <h4 className={`font-medium ${enabled ? 'text-' + color + '-900' : 'text-gray-700'}`}>
-              {label}
-            </h4>
-          </div>
-          <p className={`text-sm ${enabled ? 'text-' + color + '-700' : 'text-gray-500'}`}>
-            {descripcion}
-          </p>
-          {warning && enabled && (
-            <div className="mt-2 flex items-center space-x-1 text-amber-600">
-              <AlertTriangle className="h-3 w-3" />
-              <span className="text-xs">{warning}</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+const limpiarNumero = (valor) => {
+  if (!valor && valor !== 0) return 0;
+  if (typeof valor === 'number' && valor > 0) return valor;
+  let valorLimpio = valor.toString().replace(/[^\d.,]/g, '');
+  if (valorLimpio.includes(',')) {
+    const partes = valorLimpio.split(',');
+    const entero = partes[0].replace(/\./g, '');
+    const decimal = partes[1] || '00';
+    return parseFloat(entero + '.' + decimal);
+  } else if (valorLimpio.includes('.')) {
+    return parseFloat(valorLimpio);
+  }
+  return parseFloat(valorLimpio) || 0;
 };
 
-//  COMPONENTE PRINCIPAL
-const FinalizarVentaPanel = ({ 
+const calcularMontoPagado = (pagos, tasaCambio) => {
+  return pagos.reduce((total, pago) => {
+    const monto = limpiarNumero(pago.monto);
+    // Asumimos que si el método incluye 'usd', 'zelle' o 'binance' es en dólares
+    const esDolares = pago.metodo.includes('usd') || pago.metodo === 'zelle' || pago.metodo === 'binance';
+
+    // Convertir todo a Bs para el total
+    if (esDolares) {
+      return total + (monto * tasaCambio);
+    } else {
+      return total + monto;
+    }
+  }, 0);
+};
+
+const FinalizarVentaPanel = ({
   ventaData,
   opcionesProcesamiento,
   onOpcionesChange,
@@ -91,9 +58,8 @@ const FinalizarVentaPanel = ({
   tasaCambio = 1
 }) => {
 
-  const [mostrarDetalles, setMostrarDetalles] = useState(false);
-
-  //  SOLO VALIDAR OPCIONES - SIN CÁLCULOS NI VALIDACIONES DE PAGOS
+  const { usuario } = useAuthStore();
+  const [mostrarDetalles, setMostrarDetalles] = useState(true);
   const alMenosUnaOpcion = Object.values(opcionesProcesamiento).some(Boolean);
   const clienteTieneWhatsApp = ventaData.cliente?.telefono;
   const clienteTieneEmail = ventaData.cliente?.email;
@@ -102,628 +68,367 @@ const FinalizarVentaPanel = ({
     onOpcionesChange({ [opcion]: valor });
   };
 
-  //  FUNCIONES DE PROCESAMIENTO MEJORADAS
-  const handleGenerarPDF = async () => {
-    try {
-      console.log(' FinalizarVentaPanel - handleGenerarPDF:', { 
-        descuento, 
-        ventaDataDescuento: ventaData.descuentoAutorizado,
-        totalBs: ventaData.totalBs,
-        codigoVenta 
-      });
-      
-      //  AGREGAR USUARIO ACTUAL
-      const ventaDataConUsuario = {
-        ...ventaData,
-        usuario: ventaData.usuario || { nombre: 'Sistema' }
-      };
-      
-      await descargarPDF(ventaDataConUsuario, codigoVenta, tasaCambio, descuento);
-      toast.success('PDF descargado exitosamente');
-    } catch (error) {
-      toast.error('Error al generar PDF: ' + error.message);
-      console.error('Error PDF:', error);
-    }
-  };
+  // Receipt Preview Data Calculation
+  const fechaActual = new Date().toLocaleString('es-VE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  }).replace(/\./g, '').toUpperCase();
 
-  const handleImprimirTermica = async () => {
-    try {
-      console.log(' FinalizarVentaPanel - handleImprimirTermica:', { 
-        descuento, 
-        ventaDataDescuento: ventaData.descuentoAutorizado,
-        motivoDescuento: ventaData.motivoDescuento,
-        totalBs: ventaData.totalBs,
-        codigoVenta 
-      });
-      
-      //  AGREGAR USUARIO ACTUAL
-      const ventaDataConUsuario = {
-        ...ventaData,
-        usuario: ventaData.usuario || { nombre: 'Sistema' }
-      };
-      
-      await imprimirFacturaTermica(ventaDataConUsuario, codigoVenta, tasaCambio, descuento);
-      toast.success('Enviando a impresora térmica...');
-    } catch (error) {
-      toast.error('Error al imprimir en térmica: ' + error.message);
-      console.error('Error impresión térmica:', error);
-    }
-  };
+  const itemsRecibo = ventaData.items || [];
 
-  const handleEnviarWhatsApp = async () => {
-    try {
-      if (!ventaData.cliente?.telefono) {
-        toast.error('El cliente no tiene teléfono registrado');
-        return;
-      }
+  // Total logic
+  const totalPagar = ventaData.totalBs;
 
-      console.log(' ===== INICIANDO ENVÍO WHATSAPP =====');
-      console.log(' ventaData completa:', ventaData);
-      console.log(' codigoVenta:', codigoVenta);
-      console.log(' tasaCambio:', tasaCambio);
-      console.log(' descuento:', descuento);
-
-      toast.loading('Generando imagen para WhatsApp...', { id: 'whatsapp-sending' });
-      
-      //  AGREGAR USUARIO ACTUAL
-      const ventaDataConUsuario = {
-        ...ventaData,
-        usuario: ventaData.usuario || { nombre: 'Sistema' }
-      };
-      
-      const imagenBase64 = await generarImagenWhatsApp(ventaDataConUsuario, codigoVenta, tasaCambio, descuento);
-      
-      console.log(' Imagen generada exitosamente, enviando...');
-      console.log(' Tamaño imagen:', Math.round(imagenBase64.length / 1024), 'KB');
-      
-      toast.loading('Enviando por WhatsApp...', { id: 'whatsapp-sending' });
-      
-      const response = await api.post('/whatsapp/enviar-factura', {
-        numero: ventaData.cliente.telefono,
-        clienteNombre: ventaData.cliente.nombre,
-        codigoVenta: codigoVenta,
-        imagen: imagenBase64,
-        mensaje: `Hola ${ventaData.cliente.nombre || 'Cliente'}, aquí tienes tu comprobante de compra #${codigoVenta}. ¡Gracias por su compra! `
-      });
-      
-      if (response.data.success) {
-        if (response.data.data?.tipo_fallback === 'simple_sin_imagen') {
-          toast.success('Comprobante enviado por WhatsApp (sin imagen)', {
-            id: 'whatsapp-sending',
-            duration: 6000,
-          });
-        } else if (response.data.data?.fallback) {
-          toast.success('Mensaje enviado (imagen falló, pero texto OK)', {
-            id: 'whatsapp-sending',
-            duration: 5000,
-          });
-        } else {
-          toast.success('Comprobante con imagen enviado exitosamente', {
-            id: 'whatsapp-sending',
-            duration: 5000,
-          });
-        }
-      } else {
-        throw new Error(response.data.message || 'Error enviando WhatsApp');
-      }
-    } catch (error) {
-      console.error(' Error enviando WhatsApp:', error);
-      
-      const errorData = error.response?.data;
-      
-      if (errorData?.tipo === 'desconectado') {
-        toast.error('WhatsApp no está conectado\n\n Ve a Configuración → WhatsApp', {
-          id: 'whatsapp-sending',
-          duration: 8000
-        });
-      } else if (errorData?.tipo === 'error_total') {
-        toast.error('WhatsApp no pudo enviar el mensaje\n\n Verifica la conexión en Configuración', {
-          id: 'whatsapp-sending',
-          duration: 8000
-        });
-      } else {
-        toast.error('Error enviando por WhatsApp: ' + (errorData?.message || error.message), {
-          id: 'whatsapp-sending',
-          duration: 5000
-        });
-      }
-    }
-  };
-
-  //  NUEVA FUNCIÓN - Enviar por Email
-  const handleEnviarEmail = async () => {
-    try {
-      if (!ventaData.cliente?.email) {
-        toast.error('El cliente no tiene email registrado');
-        return;
-      }
-
-      toast.loading('Generando PDF para email...', { id: 'email-sending' });
-      
-      //  AGREGAR USUARIO ACTUAL
-      const ventaDataConUsuario = {
-        ...ventaData,
-        usuario: ventaData.usuario || { nombre: 'Sistema' }
-      };
-      
-      const pdfBlob = await generarPDFFactura(ventaDataConUsuario, codigoVenta, tasaCambio, descuento);
-      
-      // Convertir blob a base64 para enviar al backend
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const pdfBase64 = reader.result.split(',')[1]; // Remover prefijo data:application/pdf;base64,
-          
-          toast.loading('Enviando por email...', { id: 'email-sending' });
-          
-          const response = await api.post('/email/enviar-factura', {
-            destinatario: ventaData.cliente.email,
-            clienteNombre: ventaData.cliente.nombre,
-            codigoVenta: codigoVenta,
-            pdfBase64: pdfBase64,
-            asunto: `Comprobante #${codigoVenta} - Electro Shop Morandín`,
-            mensaje: `Estimado(a) ${ventaData.cliente.nombre || 'Cliente'},\n\nAdjunto encontrará su comprobante de compra #${codigoVenta}.\n\nGracias por su compra.\n\nSaludos cordiales,\nElectro Shop Morandín C.A.`
-          });
-          
-          if (response.data.success) {
-            toast.success('Comprobante enviado por email exitosamente', {
-              id: 'email-sending',
-              duration: 5000
-            });
-          } else {
-            throw new Error(response.data.message || 'Error enviando email');
-          }
-        } catch (error) {
-          console.error('Error enviando email:', error);
-          toast.error('Error enviando email: ' + (error.response?.data?.message || error.message), {
-            id: 'email-sending'
-          });
-        }
-      };
-      
-      reader.readAsDataURL(pdfBlob);
-      
-    } catch (error) {
-      console.error('Error preparando email:', error);
-      toast.error('Error preparando email: ' + error.message, {
-        id: 'email-sending'
-      });
-    }
-  };
+  // Calcular total pagado REAL sumando los pagos
+  const totalPagadoBs = calcularMontoPagado(ventaData.pagos || [], tasaCambio);
+  const totalPagadoUsd = totalPagadoBs / tasaCambio;
 
   return (
-    <div className="space-y-6">
-      
-      {/*  RESUMEN FINAL DE LA VENTA - PREMIUM COMPACTO */}
-      <div className="relative bg-gradient-to-br from-emerald-50 via-blue-50 to-emerald-50 border-2 border-emerald-300/50 rounded-2xl p-4 shadow-lg backdrop-blur-sm overflow-hidden">
-        {/* Efecto de brillo sutil */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50"></div>
-        
-        <div className="relative">
-          {/* Header compacto */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-1.5 rounded-lg shadow-md">
-                <ShoppingCart className="h-4 w-4 text-white" />
+    <main className="flex-grow w-full h-full overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start h-full p-1 overflow-y-auto">
+
+        {/* LEFT COLUMN: RECEIPT PREVIEW (Compact Design) */}
+        <div className="lg:col-span-3 xl:col-span-3 flex justify-center lg:justify-start">
+          <div
+            className="bg-white text-black p-2 font-mono text-[10px] leading-tight relative border border-slate-200"
+            style={{
+              width: '310px',
+              minHeight: '380px',
+              fontFamily: "'Courier New', Courier, monospace"
+            }}
+          >
+            {/* Header Recibo */}
+            <div className="text-center mb-2">
+              <div className="flex justify-center mb-2">
+                <img src="/termico.png" alt="Logo" className="w-16 h-12 object-contain" />
               </div>
-              <h3 className="text-base font-bold bg-gradient-to-r from-emerald-900 to-blue-900 bg-clip-text text-transparent">
-                Resumen Final
-              </h3>
-            </div>
-          </div>
-          
-          {/* Grid compacto horizontal */}
-          <div className="grid grid-cols-3 gap-2">
-            {/* Cliente compacto */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2.5 border border-emerald-200/50 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center space-x-1.5 mb-1.5">
-                <div className="bg-blue-100 p-1 rounded-lg">
-                  <User className="h-3 w-3 text-blue-600" />
-                </div>
-                <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Cliente</span>
-              </div>
-              <div className="space-y-0.5">
-                <div className="font-bold text-gray-900 text-xs truncate leading-tight">
-                  {ventaData.cliente?.nombre || 'Sin cliente'}
-                </div>
-                {ventaData.cliente?.cedula_rif && (
-                  <div className="text-[10px] text-gray-500 truncate">{ventaData.cliente.cedula_rif}</div>
-              )}
-                <div className="flex items-center space-x-1 flex-wrap gap-y-0.5">
-              {ventaData.cliente?.telefono && (
-                    <div className="flex items-center space-x-0.5 text-[10px] text-gray-500">
-                      <Phone className="h-2.5 w-2.5" />
-                      <span className="truncate max-w-[60px]">{ventaData.cliente.telefono}</span>
-                </div>
-              )}
-              {ventaData.cliente?.email && (
-                    <div className="flex items-center space-x-0.5 text-[10px] text-gray-500">
-                      <Mail className="h-2.5 w-2.5" />
-                      <span className="truncate max-w-[60px]">{ventaData.cliente.email.split('@')[0]}</span>
-                </div>
-              )}
-            </div>
-          </div>
+              <h3 className="font-bold text-xs uppercase tracking-wide mb-0.5">ELECTRO SHOP MORANDIN C.A.</h3>
+              <p className="font-bold">RIF: J-405903333</p>
+              <p>Carrera 5ta, frente a la plaza Miranda</p>
+              <p>Instagram: @electroshopgre- WA +582572511282</p>
             </div>
 
-            {/* Productos compacto */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2.5 border border-emerald-200/50 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center space-x-1.5 mb-1.5">
-                <div className="bg-green-100 p-1 rounded-lg">
-                  <Package className="h-3 w-3 text-green-600" />
-                </div>
-                <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">Productos</span>
-              </div>
-              <div className="space-y-0.5">
-                <div className="font-bold text-gray-900 text-xs">
-                  {ventaData.items.reduce((sum, item) => sum + (item.cantidad || 0), 0)} items
-                </div>
-                <div className="text-[10px] text-gray-500">
-                  {ventaData.items.length} únicos
-              </div>
-              <button
-                onClick={() => setMostrarDetalles(!mostrarDetalles)}
-                  className="text-[10px] text-blue-600 hover:text-blue-800 font-medium mt-0.5 flex items-center space-x-0.5"
-              >
-                  <span>{mostrarDetalles ? '▲' : '▼'}</span>
-                  <span>{mostrarDetalles ? 'Ocultar' : 'Detalles'}</span>
-              </button>
-            </div>
+            <div className="border-b-2 border-black my-1.5"></div>
+
+            {/* Info Block */}
+            <div className="space-y-0.5 font-bold">
+              <p className="text-xs">Nro Recibo: #{codigoVenta}</p>
+              <p>Fecha: {fechaActual}</p>
+              <p>Cliente: {ventaData.cliente?.nombre || 'General'}</p>
+              <p>CI/RIF: {ventaData.cliente?.cedula_rif || 'V00000000'}</p>
+              <p>Vendedor: {usuario?.nombre || 'Admin'}</p>
+              <p>Tasa: {formatearVenezolano(tasaCambio)} Bs/$ - BCV</p>
             </div>
 
-            {/* Totales compacto */}
-            <div className="bg-gradient-to-br from-emerald-100 to-blue-100 rounded-xl p-2.5 border-2 border-emerald-300/50 shadow-sm">
-              <div className="flex items-center space-x-1.5 mb-1.5">
-                <div className="bg-emerald-500 p-1 rounded-lg">
-                  <DollarSign className="h-3 w-3 text-white" />
-                </div>
-                <span className="text-[10px] font-semibold text-emerald-800 uppercase tracking-wide">Totales</span>
-              </div>
-              <div className="space-y-0.5">
-                <div className="font-bold text-emerald-900 text-xs">
-                  {formatearVenezolano(ventaData.totalBs)} Bs
-                </div>
-                <div className="text-[10px] text-emerald-700">
-                  {formatearVenezolano(ventaData.totalUsd)} USD
-                </div>
-                {descuento > 0 && (
-                  <div className="text-[10px] text-orange-600 font-medium">
-                    -{formatearVenezolano(descuento)} Bs desc.
+            <div className="border-b border-dashed border-black my-1.5"></div>
+
+            {/* Items Table Header */}
+            <div className="flex font-bold mb-1 justify-between w-full">
+              <div className="w-5 text-center text-[9px]">Cnt</div>
+              <div className="flex-1 px-1 text-left min-w-0 text-[9px]">Descripción</div>
+              <div className="w-[50px] text-right text-[9px]">Total</div>
+            </div>
+
+            <div className="border-b border-dashed border-black mb-1.5"></div>
+
+            {/* Items List */}
+            <div className="space-y-2 mb-1.5">
+              {itemsRecibo.map((item, idx) => (
+                <div key={idx} className="flex flex-col border-b border-dashed border-slate-300 pb-1 mb-1 last:border-0">
+                  <div className="flex items-start justify-between w-full">
+                    <div className="w-5 font-bold text-center text-[9px] pt-0.5">{item.cantidad}</div>
+                    <div className="flex-1 px-1 min-w-0">
+                      <p className="font-bold uppercase leading-tight text-[9px] break-words line-clamp-2">{item.descripcion}</p>
+                      <p className="text-[8px] text-slate-500">{formatearVenezolano(item.precio_unitario * tasaCambio)} Bs c/u</p>
+                    </div>
+                    <div className="w-[50px] text-right font-bold text-[9px] whitespace-nowrap pt-0.5">
+                      {formatearVenezolano((item.cantidad * item.precio_unitario) * tasaCambio)} Bs
+                    </div>
                   </div>
-                )}
-              </div>
-          </div>
-        </div>
-
-          {/* Detalles expandibles compactos */}
-        {mostrarDetalles && (
-            <div className="mt-2 bg-white/90 backdrop-blur-sm rounded-xl p-2.5 border border-emerald-200/50 shadow-sm">
-              <h5 className="font-semibold text-gray-900 mb-1.5 text-xs flex items-center">
-                <Package className="h-3 w-3 mr-1 text-emerald-600" />
-                Detalle de Productos:
-              </h5>
-              <div className="space-y-1 max-h-20 overflow-y-auto">
-              {ventaData.items.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center text-[10px] py-0.5 border-b border-gray-100 last:border-0">
-                    <span className="text-gray-700 truncate flex-1 mr-2">
-                    {item.cantidad}× {item.descripcion}
-                  </span>
-                    <span className="font-semibold text-gray-900 whitespace-nowrap">
-                    {formatearVenezolano(item.subtotal * (ventaData.totalBs / ventaData.totalUsd))} Bs
-                  </span>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-        </div>
-      </div>
 
-      {/*  OPCIONES DE PROCESAMIENTO - PREMIUM */}
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <h4 className="text-xl font-bold text-gray-900 flex items-center">
-            <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-2 rounded-lg mr-3 shadow-lg">
-              <CheckCircle className="h-5 w-5 text-white" />
+            <div className="border-b-2 border-black my-2"></div>
+
+            {/* Totals Section */}
+            <div className="bg-slate-50/50 p-1.5 text-center mb-1.5">
+              {/* Mostrar SIEMPRE el TOTAL DE VENTA */}
+              <p className="font-extrabold text-base">TOTAL: {formatearVenezolano(totalPagar)} Bs</p>
+              <p className="text-[10px] font-bold text-slate-600">En USD: ${(totalPagar / tasaCambio).toFixed(2)}</p>
+              {descuento > 0 && (
+                <p className="text-[9px] mt-0.5">Descuento aplicado: -{formatearVenezolano(descuento)} Bs</p>
+              )}
             </div>
-            <span className="bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-          Opciones de Procesamiento
-            </span>
-        </h4>
-          <div className="flex items-center space-x-3">
-            {alMenosUnaOpcion && (
-              <div className="flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                <span className="text-xs font-semibold text-emerald-700">
-                  {Object.values(opcionesProcesamiento).filter(Boolean).length} activa{Object.values(opcionesProcesamiento).filter(Boolean).length > 1 ? 's' : ''}
-                </span>
+
+            <div className="border-b border-dashed border-black my-1.5"></div>
+
+            {/* Payments Section - Compacto */}
+            <div className="mb-1.5">
+              <p className="font-bold pt-0.5 uppercase mb-0.5">MÉTODOS DE PAGO:</p>
+              <div className="grid grid-cols-1 gap-0.5 ml-1">
+                {ventaData.pagos?.map((pago, i) => (
+                  pago.monto && (
+                    <div key={i} className="flex justify-between uppercase text-[9px] font-medium">
+                      <span>{pago.metodo.replace('_', ' ')}</span>
+                      <span>{pago.metodo.includes('usd') || pago.metodo === 'zelle' || pago.metodo === 'binance'
+                        ? parseFloat(pago.monto).toFixed(2) + ' $'
+                        : formatearVenezolano(pago.monto) + ' Bs'}</span>
+                    </div>
+                  )
+                ))}
               </div>
-            )}
-            {!alMenosUnaOpcion && (
-              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 rounded-xl px-3 py-2 shadow-lg border-2 border-white/50 backdrop-blur-sm animate-pulse">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-4 w-4 text-white" />
-                  <div>
-                    <div className="text-xs font-bold text-white leading-tight">Selecciona al menos una opción</div>
-                    <div className="text-[10px] text-white/90 leading-tight">Elige una forma de procesar la venta</div>
+            </div>
+
+            {ventaData.vueltos && ventaData.vueltos.length > 0 && (
+              <>
+                <div className="border-b border-dashed border-black my-1.5"></div>
+                <div className="mb-1.5">
+                  <p className="font-bold pt-0.5 uppercase mb-0.5 text-purple-700">VUELTOS:</p>
+                  <div className="grid grid-cols-1 gap-0.5 ml-1">
+                    {ventaData.vueltos.map((vuelto, i) => (
+                      vuelto.monto && (
+                        <div key={i} className="flex justify-between uppercase text-[9px] font-bold text-purple-600">
+                          <span>- {vuelto.metodo.replace('_', ' ')}</span>
+                          <span>{vuelto.metodo.includes('usd') || vuelto.metodo === 'zelle' || vuelto.metodo === 'binance'
+                            ? parseFloat(vuelto.monto).toFixed(2) + ' $'
+                            : formatearVenezolano(vuelto.monto) + ' Bs'}</span>
+                        </div>
+                      )
+                    ))}
                   </div>
                 </div>
-              </div>
+              </>
             )}
+
+            <div className="border-b border-dashed border-black my-1.5"></div>
+
+            {/* Footer */}
+            <div className="text-center font-bold space-y-0.5 mt-3">
+              <p>Gracias por su compra</p>
+              <p>ElectroCaja v1.0</p>
+              <p className="italic font-normal mt-1.5 text-[8px]">NO REPRESENTA UN DOCUMENTO FISCAL</p>
+            </div>
+
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
-          
-          {/*  PREMIUM TOGGLE: Generar PDF */}
-          <div 
-            className={`group relative rounded-2xl cursor-pointer transition-all duration-300 ${
-              opcionesProcesamiento.imprimirRecibo 
-                ? 'bg-gradient-to-br from-orange-50 via-orange-100 to-orange-50 border-2 border-orange-400 shadow-xl shadow-orange-200/50 transform scale-[1.02]' 
-                : 'bg-white border-2 border-gray-200 hover:border-orange-300 hover:shadow-lg'
-            }`}
-            onClick={() => handleToggleOpcion('imprimirRecibo', !opcionesProcesamiento.imprimirRecibo)}
-          >
-            {/* Badge de check premium - FUERA del overflow */}
-            {opcionesProcesamiento.imprimirRecibo && (
-              <div className="absolute -top-2 -right-2 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ring-4 ring-white z-50 animate-bounce">
-                <CheckCircle className="h-5 w-5" />
+        {/* RIGHT COLUMN: SUMMARY AND OPTIONS */}
+        <div className="lg:col-span-9 xl:col-span-9 flex flex-col gap-6">
+
+          {/* RESUMEN FINAL SECTION */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg">
+                <FileText className="h-5 w-5" />
+              </span>
+              <h2 className="font-bold text-lg text-slate-700">Resumen Final</h2>
+            </div>
+
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${ventaData.vueltos && ventaData.vueltos.length > 0 ? '5' : '4'} gap-4`}>
+              {/* CLIENTE CARD */}
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center relative overflow-hidden h-full">
+                <div className="relative z-10 w-full">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center justify-center gap-1">
+                    <User className="h-3 w-3" /> Cliente
+                  </p>
+                  <h3 className="font-bold text-base text-slate-800 truncate w-full">{ventaData.cliente?.nombre || 'Sin Cliente'}</h3>
+                  <p className="text-xs text-slate-500 truncate w-full">{ventaData.cliente?.cedula_rif || 'V00000000'}</p>
+                </div>
+              </div>
+
+              {/* PRODUCTOS CARD */}
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center relative overflow-hidden h-full">
+                <div className="relative z-10 w-full">
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center justify-center gap-1">
+                    <Package className="h-3 w-3" /> Productos
+                  </p>
+                  <h3 className="font-bold text-base text-slate-800">{itemsRecibo.length} Items</h3>
+                  <button
+                    onClick={() => setMostrarDetalles(!mostrarDetalles)}
+                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center justify-center gap-1 mt-1 mx-auto"
+                  >
+                    Detalles {mostrarDetalles ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* TOTAL VENTA CARD (NEW) */}
+              <div className="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-100 flex flex-col items-center justify-center text-center relative overflow-hidden h-full">
+                <div className="relative z-10 w-full">
+                  <p className="text-xs font-bold text-blue-600 uppercase mb-2 flex items-center justify-center gap-1">
+                    <DollarSign className="h-3 w-3" /> Total Venta
+                  </p>
+                  <p className="text-2xl font-black text-blue-700 tracking-tight">{formatearVenezolano(totalPagar)} Bs</p>
+                  <p className="text-xs font-bold text-blue-500/80">${(totalPagar / tasaCambio).toFixed(2)} USD</p>
+                </div>
+              </div>
+
+              {/* TOTALS CARD (PAGADO) */}
+              <div className="bg-emerald-50 p-4 rounded-xl shadow-sm border border-emerald-100 flex flex-col items-center justify-center text-center relative overflow-hidden h-full">
+                <div className="relative z-10 w-full">
+                  <p className="text-xs font-bold text-emerald-600 uppercase mb-2 flex items-center justify-center gap-1">
+                    <DollarSign className="h-3 w-3" /> Monto Pagado
+                  </p>
+                  {/* Mostrar TOTAL PAGADO REAL */}
+                  <p className="text-2xl font-black text-emerald-700 tracking-tight">{formatearVenezolano(totalPagadoBs)} Bs</p>
+                  <p className="text-xs font-bold text-emerald-500/80">${totalPagadoUsd.toFixed(2)} USD</p>
+                </div>
+              </div>
+
+              {/* VUELTO CARD - ACTUALIZADO CON DATA REAL DE VUELTOS */}
+              {ventaData.vueltos && ventaData.vueltos.length > 0 && (
+                <div className="bg-purple-50 p-4 rounded-xl shadow-sm border border-purple-100 flex flex-col items-center justify-center text-center relative overflow-hidden h-full">
+                  <div className="relative z-10 w-full">
+                    <p className="text-xs font-bold text-purple-600 uppercase mb-2 flex items-center justify-center gap-1">
+                      <RefreshCw className="h-3 w-3" /> Vuelto
+                    </p>
+                    <div className="flex flex-col gap-1 items-center">
+                      {/* Mostrar totales de vueltos sumados */}
+                      {(() => {
+                        const totalVueltoBs = ventaData.vueltos.reduce((total, v) => {
+                          const monto = limpiarNumero(v.monto);
+                          const esDolares = v.metodo.includes('usd') || v.metodo === 'zelle' || v.metodo === 'binance';
+                          return total + (esDolares ? monto * tasaCambio : monto);
+                        }, 0);
+                        const totalVueltoUsd = totalVueltoBs / tasaCambio;
+
+                        return (
+                          <>
+                            <p className="text-xl font-black text-purple-700 tracking-tight">{formatearVenezolano(totalVueltoBs)} Bs</p>
+                            <p className="text-xs font-bold text-purple-500/80">${totalVueltoUsd.toFixed(2)} USD</p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Collapsible Details - PREMIUM */}
+            {mostrarDetalles && (
+              <div className="mt-4 bg-white rounded-xl p-6 shadow-sm border border-slate-100 animate-in fade-in slide-in-from-top-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase mb-4 tracking-wider">Detalle del pedido</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  {itemsRecibo.map((item, i) => (
+                    <div key={i} className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs flex flex-col gap-1 hover:bg-slate-100 transition-colors">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-slate-700 line-clamp-2">{item.descripcion}</span>
+                        <span className="bg-white px-1.5 py-0.5 rounded text-[10px] border border-slate-200 font-mono">x{item.cantidad}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-slate-400">{formatearVenezolano(item.precio_unitario * tasaCambio)} c/u</span>
+                        <span className="font-bold text-emerald-600">{formatearVenezolano((item.cantidad * item.precio_unitario) * tasaCambio)} Bs</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-            
-            <div className="overflow-hidden rounded-2xl">
-              {/* Efecto de brillo cuando está activa */}
-              {opcionesProcesamiento.imprimirRecibo && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]"></div>
-              )}
-            
-            <div className="p-5 flex flex-col items-center text-center space-y-3">
-              {/* Icono premium con fondo degradado */}
-              <div className={`relative p-4 rounded-2xl transition-all duration-300 ${
-                opcionesProcesamiento.imprimirRecibo 
-                  ? 'bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg shadow-orange-500/30 scale-105' 
-                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-orange-50 group-hover:to-orange-100'
-              }`}>
-                <FileDown className={`h-7 w-7 transition-all duration-300 ${
-                  opcionesProcesamiento.imprimirRecibo ? 'text-white' : 'text-gray-500 group-hover:text-orange-600'
-                }`} />
+          </section>
+
+          {/* OPCIONES SECTION */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="bg-blue-500/10 text-blue-600 p-1.5 rounded-lg">
+                  <CheckCircle className="h-5 w-5" />
+                </span>
+                <h2 className="font-bold text-lg text-slate-700">Opciones de Procesamiento</h2>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+              {/* OPTION 1: PDF */}
+              <button
+                onClick={() => handleToggleOpcion('imprimirRecibo', !opcionesProcesamiento.imprimirRecibo)}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all h-32 relative ${opcionesProcesamiento.imprimirRecibo
+                  ? 'bg-blue-50 border-blue-500 shadow-md transform scale-[1.02]'
+                  : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
+                  }`}
+              >
                 {opcionesProcesamiento.imprimirRecibo && (
-                  <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
+                  <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-0.5 shadow-sm">
+                    <Check className="h-3 w-3" />
+                  </div>
                 )}
-              </div>
-              
-              <div className="space-y-1">
-                <h5 className={`text-sm font-bold transition-colors ${
-                  opcionesProcesamiento.imprimirRecibo ? 'text-orange-900' : 'text-gray-800 group-hover:text-orange-700'
-              }`}>
-                Generar PDF
-              </h5>
-                <p className={`text-xs transition-colors ${
-                  opcionesProcesamiento.imprimirRecibo ? 'text-orange-700' : 'text-gray-500'
-                }`}>
-                  Recibo digital
-                </p>
-              </div>
-              
-              {opcionesProcesamiento.imprimirRecibo && (
-                <div className="mt-1 px-2 py-1 bg-orange-100 rounded-full">
-                  <span className="text-xs text-orange-700 font-semibold">
-                    ✓ Descarga automática
-                  </span>
+                <div className={`p-2 rounded-lg mb-2 ${opcionesProcesamiento.imprimirRecibo ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                  <FileDown className="h-5 w-5" />
                 </div>
-              )}
-            </div>
-            </div>
-          </div>
+                <span className={`font-bold text-xs ${opcionesProcesamiento.imprimirRecibo ? 'text-blue-700' : 'text-slate-700'}`}>PDF</span>
+                {opcionesProcesamiento.imprimirRecibo && <span className="text-[10px] text-blue-600/70 font-medium -mt-0.5">Generar</span>}
+              </button>
 
-          {/*  PREMIUM TOGGLE: Imprimir Factura */}
-          <div 
-            className={`group relative rounded-2xl cursor-pointer transition-all duration-300 ${
-              opcionesProcesamiento.generarFactura 
-                ? 'bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 border-2 border-blue-400 shadow-xl shadow-blue-200/50 transform scale-[1.02]' 
-                : 'bg-white border-2 border-gray-200 hover:border-blue-300 hover:shadow-lg'
-            }`}
-            onClick={() => handleToggleOpcion('generarFactura', !opcionesProcesamiento.generarFactura)}
-          >
-            {/* Badge de check premium - FUERA del overflow */}
-            {opcionesProcesamiento.generarFactura && (
-              <div className="absolute -top-2 -right-2 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ring-4 ring-white z-50 animate-bounce">
-                <CheckCircle className="h-5 w-5" />
-              </div>
-            )}
-            
-            <div className="overflow-hidden rounded-2xl">
-              {/* Efecto de brillo cuando está activa */}
-              {opcionesProcesamiento.generarFactura && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]"></div>
-              )}
-            
-            <div className="p-5 flex flex-col items-center text-center space-y-3">
-              {/* Icono premium con fondo degradado */}
-              <div className={`relative p-4 rounded-2xl transition-all duration-300 ${
-                opcionesProcesamiento.generarFactura 
-                  ? 'bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg shadow-blue-500/30 scale-105' 
-                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-blue-50 group-hover:to-blue-100'
-              }`}>
-                <Printer className={`h-7 w-7 transition-all duration-300 ${
-                  opcionesProcesamiento.generarFactura ? 'text-white' : 'text-gray-500 group-hover:text-blue-600'
-                }`} />
+              {/* OPTION 2: IMPRIMIR */}
+              <button
+                onClick={() => handleToggleOpcion('generarFactura', !opcionesProcesamiento.generarFactura)}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all h-32 relative ${opcionesProcesamiento.generarFactura
+                  ? 'bg-blue-50 border-blue-600 shadow-md transform scale-[1.02]'
+                  : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
+                  }`}
+              >
                 {opcionesProcesamiento.generarFactura && (
-                  <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
+                  <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full p-0.5 shadow-sm">
+                    <Check className="h-3 w-3" />
+                  </div>
                 )}
-              </div>
-              
-              <div className="space-y-1">
-                <h5 className={`text-sm font-bold transition-colors ${
-                  opcionesProcesamiento.generarFactura ? 'text-blue-900' : 'text-gray-800 group-hover:text-blue-700'
-              }`}>
-                Imprimir Factura
-              </h5>
-                <p className={`text-xs transition-colors ${
-                  opcionesProcesamiento.generarFactura ? 'text-blue-700' : 'text-gray-500'
-                }`}>
-                  80mm directo
-                </p>
-              </div>
-              
-              {opcionesProcesamiento.generarFactura && (
-                <div className="mt-1 px-2 py-1 bg-blue-100 rounded-full">
-                  <span className="text-xs text-blue-700 font-semibold">
-                    ✓ Enviado a impresora
-                  </span>
+                <div className={`p-2 rounded-lg mb-2 ${opcionesProcesamiento.generarFactura ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                  <Printer className="h-5 w-5" />
                 </div>
-              )}
-            </div>
-            </div>
-          </div>
+                <span className={`font-bold text-xs ${opcionesProcesamiento.generarFactura ? 'text-blue-700' : 'text-slate-700'}`}>IMPRIMIR</span>
+                {opcionesProcesamiento.generarFactura && <span className="text-[10px] text-blue-600/70 font-medium -mt-0.5">Ticket</span>}
+              </button>
 
-          {/*  PREMIUM TOGGLE: WhatsApp */}
-          <div 
-            className={`group relative rounded-2xl transition-all duration-300 ${
-              !clienteTieneWhatsApp 
-                ? 'bg-gray-50 border-2 border-gray-200 cursor-not-allowed opacity-50'
-                : opcionesProcesamiento.enviarWhatsApp 
-                  ? 'bg-gradient-to-br from-green-50 via-green-100 to-green-50 border-2 border-green-400 shadow-xl shadow-green-200/50 transform scale-[1.02] cursor-pointer' 
-                  : 'bg-white border-2 border-gray-200 hover:border-green-300 hover:shadow-lg cursor-pointer'
-            }`}
-            onClick={() => {
-              if (clienteTieneWhatsApp) {
-                handleToggleOpcion('enviarWhatsApp', !opcionesProcesamiento.enviarWhatsApp);
-              }
-            }}
-          >
-            {/* Badge de check premium - FUERA del overflow */}
-            {opcionesProcesamiento.enviarWhatsApp && (
-              <div className="absolute -top-2 -right-2 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ring-4 ring-white z-50 animate-bounce">
-                <CheckCircle className="h-5 w-5" />
-              </div>
-            )}
-            
-            <div className="overflow-hidden rounded-2xl">
-              {/* Efecto de brillo cuando está activa */}
-              {opcionesProcesamiento.enviarWhatsApp && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]"></div>
-              )}
-            
-            <div className="p-5 flex flex-col items-center text-center space-y-3">
-              {/* Icono premium con fondo degradado */}
-              <div className={`relative p-4 rounded-2xl transition-all duration-300 ${
-                !clienteTieneWhatsApp ? 'bg-gradient-to-br from-gray-100 to-gray-200' :
-                opcionesProcesamiento.enviarWhatsApp 
-                  ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/30 scale-105' 
-                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-green-50 group-hover:to-green-100'
-              }`}>
-                <MessageCircle className={`h-7 w-7 transition-all duration-300 ${
-                  !clienteTieneWhatsApp ? 'text-gray-300' :
-                  opcionesProcesamiento.enviarWhatsApp ? 'text-white' : 'text-gray-500 group-hover:text-green-600'
-                }`} />
+              {/* OPTION 3: WHATSAPP */}
+              <button
+                onClick={() => clienteTieneWhatsApp && handleToggleOpcion('enviarWhatsApp', !opcionesProcesamiento.enviarWhatsApp)}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all h-32 relative ${!clienteTieneWhatsApp ? 'opacity-50 cursor-not-allowed bg-slate-50' :
+                  opcionesProcesamiento.enviarWhatsApp
+                    ? 'bg-emerald-50 border-emerald-500 shadow-md transform scale-[1.02]'
+                    : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-sm'
+                  }`}
+              >
                 {opcionesProcesamiento.enviarWhatsApp && (
-                  <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
+                  <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-sm">
+                    <Check className="h-3 w-3" />
+                  </div>
                 )}
-              </div>
-              
-              <div className="space-y-1">
-                <h5 className={`text-sm font-bold transition-colors ${
-                !clienteTieneWhatsApp ? 'text-gray-400' :
-                  opcionesProcesamiento.enviarWhatsApp ? 'text-green-900' : 'text-gray-800 group-hover:text-green-700'
-              }`}>
-                Enviar WhatsApp
-              </h5>
-                <p className={`text-xs transition-colors ${
-                  !clienteTieneWhatsApp ? 'text-gray-400' :
-                  opcionesProcesamiento.enviarWhatsApp ? 'text-green-700' : 'text-gray-500'
-                }`}>
-                {!clienteTieneWhatsApp ? 'Sin teléfono' : 'Al cliente'}
-              </p>
-              </div>
-              
-              {opcionesProcesamiento.enviarWhatsApp && clienteTieneWhatsApp && (
-                <div className="mt-1 px-2 py-1 bg-green-100 rounded-full">
-                  <span className="text-xs text-green-700 font-semibold truncate max-w-[120px]">
-                    ✓ {ventaData.cliente?.telefono}
-                  </span>
+                <div className={`p-2 rounded-lg mb-2 ${opcionesProcesamiento.enviarWhatsApp ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                  <MessageCircle className="h-5 w-5" />
                 </div>
-              )}
-            </div>
-            </div>
-          </div>
+                <span className={`font-bold text-xs ${opcionesProcesamiento.enviarWhatsApp ? 'text-emerald-700' : 'text-slate-700'}`}>WHATSAPP</span>
+                {opcionesProcesamiento.enviarWhatsApp && <span className="text-[10px] text-emerald-600/70 font-medium -mt-0.5">Enviar</span>}
+              </button>
 
-          {/*  PREMIUM TOGGLE: Email */}
-          <div 
-            className={`group relative rounded-2xl transition-all duration-300 ${
-              !clienteTieneEmail 
-                ? 'bg-gray-50 border-2 border-gray-200 cursor-not-allowed opacity-50'
-                : opcionesProcesamiento.enviarEmail 
-                  ? 'bg-gradient-to-br from-purple-50 via-purple-100 to-purple-50 border-2 border-purple-400 shadow-xl shadow-purple-200/50 transform scale-[1.02] cursor-pointer' 
-                  : 'bg-white border-2 border-gray-200 hover:border-purple-300 hover:shadow-lg cursor-pointer'
-            }`}
-            onClick={() => {
-              if (clienteTieneEmail) {
-                handleToggleOpcion('enviarEmail', !opcionesProcesamiento.enviarEmail);
-              }
-            }}
-          >
-            {/* Badge de check premium - FUERA del overflow */}
-            {opcionesProcesamiento.enviarEmail && (
-              <div className="absolute -top-2 -right-2 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ring-4 ring-white z-50 animate-bounce">
-                <CheckCircle className="h-5 w-5" />
-              </div>
-            )}
-            
-            <div className="overflow-hidden rounded-2xl">
-              {/* Efecto de brillo cuando está activa */}
-              {opcionesProcesamiento.enviarEmail && (
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_2s_infinite]"></div>
-              )}
-            
-            <div className="p-5 flex flex-col items-center text-center space-y-3">
-              {/* Icono premium con fondo degradado */}
-              <div className={`relative p-4 rounded-2xl transition-all duration-300 ${
-                !clienteTieneEmail ? 'bg-gradient-to-br from-gray-100 to-gray-200' :
-                opcionesProcesamiento.enviarEmail 
-                  ? 'bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/30 scale-105' 
-                  : 'bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-purple-50 group-hover:to-purple-100'
-              }`}>
-                <Mail className={`h-7 w-7 transition-all duration-300 ${
-                  !clienteTieneEmail ? 'text-gray-300' :
-                  opcionesProcesamiento.enviarEmail ? 'text-white' : 'text-gray-500 group-hover:text-purple-600'
-                }`} />
+              {/* OPTION 4: EMAIL */}
+              <button
+                onClick={() => clienteTieneEmail && handleToggleOpcion('enviarEmail', !opcionesProcesamiento.enviarEmail)}
+                className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all h-32 relative ${!clienteTieneEmail ? 'opacity-50 cursor-not-allowed bg-slate-50' :
+                  opcionesProcesamiento.enviarEmail
+                    ? 'bg-purple-50 border-purple-500 shadow-md transform scale-[1.02]'
+                    : 'bg-white border-slate-200 hover:border-purple-300 hover:shadow-sm'
+                  }`}
+              >
                 {opcionesProcesamiento.enviarEmail && (
-                  <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse"></div>
+                  <div className="absolute top-2 right-2 bg-purple-500 text-white rounded-full p-0.5 shadow-sm">
+                    <Check className="h-3 w-3" />
+                  </div>
                 )}
-              </div>
-              
-              <div className="space-y-1">
-                <h5 className={`text-sm font-bold transition-colors ${
-                !clienteTieneEmail ? 'text-gray-400' :
-                  opcionesProcesamiento.enviarEmail ? 'text-purple-900' : 'text-gray-800 group-hover:text-purple-700'
-              }`}>
-                Enviar Email
-              </h5>
-                <p className={`text-xs transition-colors ${
-                  !clienteTieneEmail ? 'text-gray-400' :
-                  opcionesProcesamiento.enviarEmail ? 'text-purple-700' : 'text-gray-500'
-                }`}>
-                {!clienteTieneEmail ? 'Sin email' : 'Al cliente'}
-              </p>
-              </div>
-              
-              {opcionesProcesamiento.enviarEmail && clienteTieneEmail && (
-                <div className="mt-1 px-2 py-1 bg-purple-100 rounded-full">
-                  <span className="text-xs text-purple-700 font-semibold truncate max-w-[120px]">
-                    ✓ {ventaData.cliente?.email?.split('@')[0]}...
-                  </span>
+                <div className={`p-2 rounded-lg mb-2 ${opcionesProcesamiento.enviarEmail ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
+                  <Mail className="h-5 w-5" />
                 </div>
-              )}
+                <span className={`font-bold text-xs ${opcionesProcesamiento.enviarEmail ? 'text-purple-700' : 'text-slate-700'}`}>EMAIL</span>
+                {opcionesProcesamiento.enviarEmail && <span className="text-[10px] text-purple-600/70 font-medium -mt-0.5">Enviar</span>}
+              </button>
+
             </div>
-            </div>
-          </div>
+          </section>
 
         </div>
       </div>
-
-
-    </div>
+    </main>
   );
 };
 

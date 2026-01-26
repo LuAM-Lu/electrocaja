@@ -227,7 +227,7 @@ const ResumenGeneral = () => {
       {/* Paneles Detallados - Ocupan el espacio restante */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-        {/* Columna Izquierda: Estado de Cajas y Top Usuarios */}
+        {/* Columna Izquierda: Estado de Cajas, Top Usuarios Y Productos Estrella */}
         <div className="lg:col-span-1 flex flex-col gap-5">
 
           {/* Caja Status - Altura automática */}
@@ -281,18 +281,14 @@ const ResumenGeneral = () => {
               ))}
             </div>
           </div>
-        </div>
 
-        {/* Columna Derecha: Productos y Actividad */}
-        <div className="lg:col-span-2 flex flex-col gap-5">
-
-          {/* Productos Estrella - Altura flexible */}
+          {/* Productos Estrella - MOVIDO AQUI */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
                 <BarChart className="h-4 w-4 text-indigo-500" /> Productos Estrella
               </h4>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400 bg-gray-50 px-2 py-1 rounded">Ranking Ventas</span>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400 bg-gray-50 px-2 py-1 rounded">Ranking</span>
             </div>
             <div className="overflow-y-auto flex-1 relative">
               <table className="w-full text-xs text-left border-collapse">
@@ -300,7 +296,6 @@ const ResumenGeneral = () => {
                   <tr>
                     <th className="pb-2 pl-2 font-semibold">Producto</th>
                     <th className="pb-2 text-right font-semibold">Cant.</th>
-                    <th className="pb-2 pr-2 text-right font-semibold">Generado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -314,11 +309,10 @@ const ResumenGeneral = () => {
                             }`}>
                             #{index + 1}
                           </span>
-                          <span className="font-medium text-gray-700 truncate max-w-[200px]">{producto.descripcion}</span>
+                          <span className="font-medium text-gray-700 truncate max-w-[150px]">{producto.descripcion}</span>
                         </div>
                       </td>
                       <td className="py-3 text-right font-medium text-gray-600">{producto.ventas}</td>
-                      <td className="py-3 pr-2 text-right font-bold text-emerald-600">{formatearBs(producto.ingresos)} Bs</td>
                     </tr>
                   ))}
                 </tbody>
@@ -326,8 +320,13 @@ const ResumenGeneral = () => {
             </div>
           </div>
 
+        </div>
+
+        {/* Columna Derecha: Actividad (Ahora ocupa todo el ancho restante) */}
+        <div className="lg:col-span-2 flex flex-col gap-5">
+
           {/* Actividad Reciente - Altura flexible */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col h-full">
             <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2 mb-3 flex-shrink-0">
               <Activity className="h-4 w-4 text-gray-500" /> Últimos Movimientos
             </h4>
@@ -335,7 +334,7 @@ const ResumenGeneral = () => {
               {/* Linea conectora vertical */}
               <div className="absolute left-1.5 top-2 bottom-2 w-0.5 bg-gray-100"></div>
 
-              {datos.actividadReciente?.slice(0, 5).map((actividad, index) => (
+              {datos.actividadReciente?.slice(0, 6).map((actividad, index) => (
                 <div key={index} className="flex items-start gap-3 relative py-3 first:pt-1 border-b last:border-0 border-gray-50 group hover:bg-gray-50/50 rounded-lg px-2 transition-colors">
                   <div className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm flex-shrink-0 z-10 mt-1 ${actividad.tipo === 'venta' ? 'bg-emerald-500' :
                     actividad.tipo === 'egreso' ? 'bg-rose-500' : 'bg-blue-500'

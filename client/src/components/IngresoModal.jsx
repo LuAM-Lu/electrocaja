@@ -192,20 +192,19 @@ const TABS = [
   { id: 'finalizar', label: 'Finalizar', icon: CheckCircle, step: 4 }
 ];
 
-// 🧩 BREADCRUMB MODERNO CON VALIDACIONES (copiado de PresupuestoModal)
+// 🧩 BREADCRUMB MODERNO COMPACTO PREMIUM
 const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
   const currentIndex = tabs.findIndex(tab => tab.id === activeTab);
 
   return (
-    <div className="bg-white border-b border-gray-200 px-8 py-4">
+    <div className="bg-white border-b border-slate-100 px-6 py-2 shadow-sm z-10 sticky top-0">
       <div className="flex items-center justify-center">
-        {/* Tabs/Pasos */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-1 bg-slate-50/50 p-1 rounded-xl border border-slate-100">
           {tabs.map((tab, index) => {
             const isActive = tab.id === activeTab;
             const isCompleted = validaciones[tab.id]?.valido;
             const isPast = index < currentIndex;
-            const isAccessible = validaciones[tab.id]?.accesible !== false; // Por defecto true si no está definido
+            const isAccessible = validaciones[tab.id]?.accesible !== false;
             const canAccess = isAccessible && (index <= currentIndex || isPast || isCompleted);
 
             return (
@@ -213,50 +212,39 @@ const BreadcrumbModerno = ({ tabs, activeTab, onTabChange, validaciones }) => {
                 <button
                   onClick={() => canAccess && onTabChange(tab.id)}
                   disabled={!canAccess}
-                  title={!isAccessible ?
-                    tab.id === 'items' ? 'Selecciona un cliente primero' :
-                      tab.id === 'pagos' ? 'Completa items primero' :
-                        tab.id === 'finalizar' ? 'Completa pagos primero' : ''
-                    : ''
-                  }
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${!isAccessible
-                    ? 'text-gray-400 cursor-not-allowed border border-gray-200 opacity-50 bg-gray-50'
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all relative group ${!isAccessible
+                    ? 'text-slate-300 cursor-not-allowed'
                     : isActive
-                      ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                      ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 z-10'
                       : isCompleted
-                        ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100'
-                        : 'text-gray-600 hover:bg-gray-100 border border-gray-200'
+                        ? 'text-emerald-600 hover:bg-emerald-50'
+                        : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-700'
                     }`}
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${!isAccessible
-                    ? 'bg-gray-200 text-gray-400'
-                    : isCompleted
-                      ? 'bg-green-500 text-white'
+                  <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black transition-colors ${!isAccessible
+                    ? 'bg-slate-100 text-slate-300'
+                    : isCompleted && !isActive
+                      ? 'bg-emerald-100 text-emerald-600'
                       : isActive
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-gray-300 text-gray-600'
+                        ? 'bg-blue-600 text-white shadow-blue-200'
+                        : 'bg-slate-200 text-slate-500 group-hover:bg-slate-300'
                     }`}>
-                    {!isAccessible ? tab.step : isCompleted ? '✓' : tab.step}
+                    {isCompleted && !isActive ? <CheckCircle className="h-3 w-3" /> : tab.step}
                   </div>
 
-                  <tab.icon className={`h-4 w-4 ${!canAccess ? 'text-gray-400' : ''}`} />
-                  <span className={!canAccess ? 'text-gray-400' : ''}>{tab.label}</span>
+                  <span className={`${isActive ? 'opacity-100' : 'hidden sm:block'}`}>{tab.label}</span>
 
-                  {/* Badge de errores - solo mostrar si es accesible */}
+                  {/* Badge de errores */}
                   {isAccessible && validaciones[tab.id]?.errores > 0 && (
-                    <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                      {validaciones[tab.id].errores}
-                    </div>
-                  )}
-
-                  {/* Icono de bloqueo para pestañas no accesibles */}
-                  {!isAccessible && (
-                    <Lock className="h-3 w-3 text-gray-500" />
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
                   )}
                 </button>
 
                 {index < tabs.length - 1 && (
-                  <ArrowRight className={`h-4 w-4 ${canAccess ? 'text-gray-300' : 'text-gray-200'}`} />
+                  <div className="w-4 h-0.5 bg-slate-100 rounded-full mx-1" />
                 )}
               </React.Fragment>
             );
@@ -1574,6 +1562,31 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
     }
   };
 
+  // 🚪 MANEJADORES DE SALIDA CON ANIMACIÓN
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    } else {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 200);
+  }, [onClose]);
+
   // 🚪 MANEJADORES DE SALIDA
   const handleCancelar = async () => {
     // ✅ NO PERMITIR CANCELAR SI EL MODAL DE PROCESAMIENTO ESTÁ ABIERTO
@@ -1690,7 +1703,7 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
       document.body.removeAttribute('data-afk-cleanup');
     }, 1000);
 
-    onClose();
+    handleClose();
   };
 
   // 📐 FUNCIÓN DE ALTURA DINÁMICA (copiada de PresupuestoModal)
@@ -1864,7 +1877,7 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
       {/* ✅ OCULTAR MODAL PRINCIPAL CUANDO SE ESTÁ PROCESANDO */}
       {!showProcesandoModal && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300"
           onClick={(e) => {
             // Prevenir cierre al hacer clic fuera si el modal de procesamiento está abierto
             if (showProcesandoModal && e.target === e.currentTarget) {
@@ -1883,10 +1896,10 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
           }}
         >
           {/* 🎯 MODAL CON ALTURA FIJA */}
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl overflow-hidden h-[90vh] flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl shadow-slate-900/50 ring-1 ring-black/5 w-full max-w-[1250px] overflow-hidden h-[90vh] flex flex-col transform transition-all duration-300 scale-100">
 
             {/* 🎨 HEADER ELEGANTE (FIJO) */}
-            <div className="relative bg-gradient-to-r from-green-600 via-green-500 to-green-600 overflow-hidden flex-shrink-0 shadow-md">
+            <div className="relative bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 overflow-hidden flex-shrink-0 shadow-md">
               <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="absolute inset-0" style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
@@ -2093,7 +2106,7 @@ const IngresoModalV2 = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
             </div >
 
             {/* 🎮 BOTONES DE NAVEGACIÓN (PREMIUM & MATCHING HEADER) */}
-            < div className="flex-shrink-0 bg-gradient-to-r from-green-600 via-green-500 to-green-600 px-8 py-4 border-t border-green-400 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)] z-20" >
+            < div className="flex-shrink-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 px-8 py-4 border-t border-emerald-500 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)] z-20" >
               <div className="flex items-center justify-between">
 
                 {/* Botón Anterior (oculto en Cliente) */}

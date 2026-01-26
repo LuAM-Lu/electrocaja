@@ -146,8 +146,29 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
 
   //  ESTADO PARA ANIMACIÓN DE SALIDA
   const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
 
-  // Estados para animaciones del header
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    } else {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  // Función de cierre con animación
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 200);
+  };
   const [valorTotalType, setValorTotalType] = useState('total');
   const [isRotating, setIsRotating] = useState(false);
 
@@ -587,23 +608,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
 
   const itemsStockBajo = getStockBajo();
 
-  //  EFECTO PARA ANIMACIÓN DE SALIDA
-  useEffect(() => {
-    if (!isOpen && isClosing) {
-      const timer = setTimeout(() => {
-        setIsClosing(false);
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, isClosing]);
 
-  // Función de cierre con animación
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-    }, 200);
-  };
 
   // También actualiza la función getIconoTipo
   const getIconoTipo = (tipo) => {
@@ -643,12 +648,12 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
     { value: 'electrobar', label: 'Electrobar', icon: Coffee, color: 'text-orange-600' }
   ];
 
-  if (!isOpen) return null;
+  if (!shouldRender && !isOpen) return null;
 
   return (
     <>
       <div
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 ${className}`}
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 ${className} ${isClosing ? 'animate-modal-backdrop-exit' : 'animate-modal-backdrop-enter'}`}
         onClick={(e) => {
           console.log(' [InventoryManagerModal] Clic en backdrop padre:', {
             showItemForm,
@@ -669,7 +674,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
         }}
       >
         <div
-          className={`bg-white rounded-lg sm:rounded-xl shadow-2xl w-full sm:max-w-[85vw] h-[98vh] sm:h-[95vh] overflow-hidden flex flex-col ${isClosing ? 'animate-modal-exit' : ''
+          className={`bg-white rounded-lg sm:rounded-xl shadow-2xl w-full sm:max-w-[85vw] h-[98vh] sm:h-[95vh] overflow-hidden flex flex-col ${isClosing ? 'animate-modal-exit' : 'animate-modal-enter'
             }`}
           onClick={(e) => e.stopPropagation()} //  Prevenir propagación de clics
         >

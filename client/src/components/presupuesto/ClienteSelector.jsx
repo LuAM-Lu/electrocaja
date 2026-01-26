@@ -21,7 +21,7 @@ const validarCedulaRif = (valor) => {
 
 const validarTelefono = (valor) => {
   const valorLimpio = valor.replace(/[\s\-\(\)]/g, '');
-  const patronMovil = /^(0414|0424|0412|0416|0426)\d{7}$/;
+  const patronMovil = /^(0414|0424|0412|0416|0426|0422)\d{7}$/;
   const patronFijo = /^(021|024|025|026|027|028|029)\d{7}$/;
   return patronMovil.test(valorLimpio) || patronFijo.test(valorLimpio);
 };
@@ -76,30 +76,30 @@ const ModalRegistroCliente = ({
   const getThemeStyles = () => {
     if (theme === 'dark') {
       return {
-        modal: 'bg-gray-900 border-gray-700',
-        header: 'bg-gradient-to-r from-slate-600 to-slate-700',
-        input: 'bg-gray-800 border-gray-600 text-gray-100 focus:ring-slate-500 focus:border-slate-500',
-        button: 'bg-slate-600 hover:bg-slate-700',
-        buttonSecondary: 'bg-gray-700 hover:bg-gray-600 text-gray-300',
-        text: 'text-gray-100',
-        textSecondary: 'text-gray-300',
-        card: 'bg-gray-800/50 border-gray-700',
-        pillActive: 'bg-slate-600 text-white',
-        pillInactive: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        modal: 'bg-slate-900 border-slate-700 shadow-2xl rounded-2xl ring-1 ring-white/10',
+        header: 'bg-slate-800/50 border-b border-slate-700/50',
+        input: 'bg-slate-800 border-slate-700 text-slate-100 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 rounded-xl transition-all',
+        button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 active:scale-95 transition-all rounded-lg font-medium',
+        buttonSecondary: 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700',
+        text: 'text-slate-100',
+        textSecondary: 'text-slate-400',
+        card: 'bg-slate-800/50 border-slate-700/50 rounded-xl',
+        pillActive: 'bg-slate-700 text-white border-slate-600 shadow-sm',
+        pillInactive: 'bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-slate-800'
       };
     }
 
     return {
-      modal: 'bg-white border-gray-200',
-      header: 'bg-gradient-to-r from-emerald-500 to-emerald-600',
-      input: 'bg-white border-gray-300 text-gray-900 focus:ring-emerald-500 focus:border-emerald-500',
-      button: 'bg-emerald-600 hover:bg-emerald-700',
-      buttonSecondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
-      text: 'text-gray-900',
-      textSecondary: 'text-gray-700',
-      card: 'bg-emerald-50 border-emerald-200',
-      pillActive: 'bg-emerald-600 text-white',
-      pillInactive: 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+      modal: 'bg-white border-slate-100 shadow-2xl rounded-2xl ring-1 ring-black/5',
+      header: 'bg-slate-50/80 border-b border-slate-100 backdrop-blur-sm',
+      input: 'bg-white border-slate-200 text-slate-800 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 rounded-xl shadow-sm transition-all',
+      button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 active:scale-95 transition-all rounded-lg font-bold',
+      buttonSecondary: 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm',
+      text: 'text-slate-800',
+      textSecondary: 'text-slate-500',
+      card: 'bg-slate-50/50 border-slate-100 rounded-xl',
+      pillActive: 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm',
+      pillInactive: 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
     };
   };
 
@@ -358,10 +358,10 @@ const ModalRegistroCliente = ({
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, tipo: 'persona' }))}
                 className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${formData.tipo === 'persona'
-                    ? `${styles.pillActive} border-current`
-                    : formData.tipo === ''
-                      ? `${styles.pillInactive} border-gray-300 hover:border-current`
-                      : `${styles.pillInactive} border-gray-200 hover:border-gray-300`
+                  ? `${styles.pillActive} border-current`
+                  : formData.tipo === ''
+                    ? `${styles.pillInactive} border-gray-300 hover:border-current`
+                    : `${styles.pillInactive} border-gray-200 hover:border-gray-300`
                   }`}
               >
                 <User className="h-4 w-4 mx-auto mb-1" />
@@ -371,10 +371,10 @@ const ModalRegistroCliente = ({
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, tipo: 'empresa' }))}
                 className={`p-3 rounded-lg border-2 text-sm font-medium transition-colors ${formData.tipo === 'empresa'
-                    ? `${styles.pillActive} border-current`
-                    : formData.tipo === ''
-                      ? `${styles.pillInactive} border-gray-300 hover:border-current`
-                      : `${styles.pillInactive} border-gray-200 hover:border-gray-300`
+                  ? `${styles.pillActive} border-current`
+                  : formData.tipo === ''
+                    ? `${styles.pillInactive} border-gray-300 hover:border-current`
+                    : `${styles.pillInactive} border-gray-200 hover:border-gray-300`
                   }`}
               >
                 <Building className="h-4 w-4 mx-auto mb-1" />
@@ -635,34 +635,34 @@ const ClienteSelector = ({
   const getThemeStyles = () => {
     if (theme === 'dark') {
       return {
-        container: 'bg-gray-800/70 border-gray-700',
-        input: 'bg-gray-700 border-gray-600 text-gray-100 focus:ring-slate-500 focus:border-slate-500',
-        dropdown: 'bg-gray-800 border-gray-700',
-        option: 'hover:bg-gray-700 text-gray-200',
-        selectedCard: 'bg-slate-800/50 border-slate-600',
-        label: 'text-gray-300',
-        labelIcon: 'text-slate-400',
-        button: 'bg-slate-600 hover:bg-slate-700 text-white',
-        buttonSecondary: 'bg-gray-700 hover:bg-gray-600 text-gray-200',
-        text: 'text-gray-100',
-        textSecondary: 'text-gray-300',
-        textMuted: 'text-gray-400'
+        container: 'bg-slate-900/50 backdrop-blur-xl border-slate-700/50 shadow-2xl rounded-2xl',
+        input: 'bg-slate-800/50 border-slate-600/50 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 rounded-xl transition-all duration-300',
+        dropdown: 'bg-slate-800 border-slate-700 shadow-xl rounded-xl ring-1 ring-black/5',
+        option: 'hover:bg-slate-700/50 text-slate-200 cursor-pointer transition-colors',
+        selectedCard: 'bg-slate-800/40 border-slate-700/50 rounded-2xl backdrop-blur-sm',
+        label: 'text-slate-300 font-medium',
+        labelIcon: 'text-emerald-400',
+        button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 active:scale-95 transition-all rounded-lg font-medium',
+        buttonSecondary: 'bg-slate-700 hover:bg-slate-600 text-slate-200 shadow-sm border border-slate-600/50 transition-all rounded-lg',
+        text: 'text-slate-100 font-medium',
+        textSecondary: 'text-slate-400',
+        textMuted: 'text-slate-500'
       };
     }
 
     return {
-      container: 'bg-white border-gray-200',
-      input: 'bg-white border-gray-300 text-gray-900 focus:ring-emerald-500 focus:border-emerald-500',
-      dropdown: 'bg-white border-gray-200',
-      option: 'hover:bg-emerald-50 text-gray-900',
-      selectedCard: 'bg-emerald-50 border-emerald-200',
-      label: 'text-gray-700',
+      container: 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 rounded-2xl',
+      input: 'bg-white border-slate-200 text-slate-700 placeholder-slate-400 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 rounded-xl shadow-sm transition-all duration-300',
+      dropdown: 'bg-white border-slate-100 shadow-2xl shadow-slate-200/50 rounded-xl ring-1 ring-slate-100',
+      option: 'hover:bg-emerald-50/50 text-slate-700 cursor-pointer transition-colors',
+      selectedCard: 'bg-emerald-50/30 border-emerald-100 rounded-2xl backdrop-blur-sm shadow-sm',
+      label: 'text-slate-700 font-bold',
       labelIcon: 'text-emerald-600',
-      button: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-      buttonSecondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
-      text: 'text-gray-900',
-      textSecondary: 'text-gray-600',
-      textMuted: 'text-gray-500'
+      button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 active:scale-95 transition-all rounded-lg font-bold tracking-wide',
+      buttonSecondary: 'bg-white hover:bg-slate-50 text-slate-600 shadow-sm border border-slate-200 transition-all rounded-lg font-medium',
+      text: 'text-slate-800 font-bold',
+      textSecondary: 'text-slate-500',
+      textMuted: 'text-slate-400'
     };
   };
 
@@ -881,10 +881,10 @@ const ClienteSelector = ({
                             </div>
                           </div>
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ml-2 ${cliente.tipo === 'empresa'
-                              ? 'bg-purple-100 text-purple-700'
-                              : cliente.tipo === 'directo'
-                                ? 'bg-gray-100 text-gray-700'
-                                : 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-purple-100 text-purple-700'
+                            : cliente.tipo === 'directo'
+                              ? 'bg-gray-100 text-gray-700'
+                              : 'bg-emerald-100 text-emerald-700'
                             }`}>
                             {cliente.tipo === 'empresa' ? (
                               <Building2 className="h-3 w-3" />
@@ -910,8 +910,8 @@ const ClienteSelector = ({
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-4">
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center ${clienteSeleccionado.tipo === 'persona' ? 'bg-emerald-100 text-emerald-600' :
-                    clienteSeleccionado.tipo === 'empresa' ? 'bg-purple-100 text-purple-600' :
-                      'bg-gray-100 text-gray-600'
+                  clienteSeleccionado.tipo === 'empresa' ? 'bg-purple-100 text-purple-600' :
+                    'bg-gray-100 text-gray-600'
                   }`}>
                   {clienteSeleccionado.tipo === 'persona' ? (
                     <User className="h-8 w-8" />

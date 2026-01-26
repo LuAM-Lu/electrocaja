@@ -17,7 +17,7 @@ const obtenerPassword = async (req, res) => {
     }
 
     const userId = parseInt(req.params.id);
-    
+
     if (!userId || isNaN(userId)) {
       return sendError(res, 'ID de usuario inválido', 400);
     }
@@ -72,7 +72,7 @@ const resetearPassword = async (req, res) => {
     }
 
     const userId = parseInt(req.params.id);
-    
+
     if (!userId || isNaN(userId)) {
       return sendError(res, 'ID de usuario inválido', 400);
     }
@@ -136,11 +136,11 @@ const resetearPassword = async (req, res) => {
 const mapearTurno = (turnoFrontend) => {
   const mapeo = {
     'matutino': 'MATUTINO',
-    'vespertino': 'VESPERTINO', 
+    'vespertino': 'VESPERTINO',
     'nocturno': 'NOCTURNO',
     'completo': 'MATUTINO' // Por defecto si no existe "completo"
   };
-  
+
   return mapeo[turnoFrontend] || 'MATUTINO';
 };
 
@@ -158,14 +158,14 @@ const crearUsuario = async (req, res) => {
       return sendError(res, 'Solo administradores pueden crear usuarios', 403);
     }
 
-    const { 
-      nombre, 
-      email, 
-      password, 
-      confirmPassword, 
-      rol, 
-      sucursal, 
-      turno 
+    const {
+      nombre,
+      email,
+      password,
+      confirmPassword,
+      rol,
+      sucursal,
+      turno
     } = req.body;
 
     // 🔍 VALIDACIONES BÁSICAS
@@ -309,17 +309,17 @@ const crearUsuario = async (req, res) => {
 
   } catch (error) {
     console.error('💥 Error creando usuario:', error);
-    
+
     // Manejar errores específicos de Prisma
     if (error.code === 'P2002') {
       return sendError(res, 'El email ya está registrado', 409);
     }
-    
+
     if (error.name === 'PrismaClientValidationError') {
       console.error('💥 Error de validación Prisma:', error.message);
       return sendError(res, 'Error de validación en los datos enviados', 400);
     }
-    
+
     sendError(res, 'Error interno del servidor', 500);
   }
 };
@@ -328,7 +328,7 @@ const crearUsuario = async (req, res) => {
 const listarUsuarios = async (req, res) => {
   try {
     console.log('📋 Listando usuarios...');
-    
+
     // Solo admins pueden listar usuarios
     if (req.user?.rol !== 'admin') {
       return sendError(res, 'Solo administradores pueden listar usuarios', 403);
@@ -365,7 +365,7 @@ const listarUsuarios = async (req, res) => {
 const actualizarUsuario = async (req, res) => {
   try {
     console.log('✏️ Actualizando usuario...');
-    
+
     // Solo admins pueden actualizar usuarios
     if (req.user?.rol !== 'admin') {
       return sendError(res, 'Solo administradores pueden actualizar usuarios', 403);
@@ -466,16 +466,16 @@ const actualizarUsuario = async (req, res) => {
 
   } catch (error) {
     console.error('💥 Error actualizando usuario:', error);
-    
+
     if (error.code === 'P2002') {
       return sendError(res, 'El email ya está registrado', 409);
     }
-    
+
     if (error.name === 'PrismaClientValidationError') {
       console.error('💥 Error de validación Prisma:', error.message);
       return sendError(res, 'Error de validación en los datos enviados', 400);
     }
-    
+
     sendError(res, 'Error interno del servidor');
   }
 };
@@ -488,7 +488,7 @@ const borrarUsuario = async (req, res) => {
     console.log('🗑️ ===== BORRAR USUARIO =====');
     console.log('🗑️ Solicitado por:', req.user?.email);
     console.log('🗑️ Usuario a borrar ID:', req.params.id);
-    
+
     const userId = parseInt(req.params.id);
     const userRole = req.user?.rol;
 
@@ -529,7 +529,7 @@ const borrarUsuario = async (req, res) => {
     });
 
     // Validaciones de seguridad
-    
+
     // 1. No se puede borrar al admin principal (ID 1)
     if (usuarioABorrar.rol === 'admin' && usuarioABorrar.id === 1) {
       console.log('❌ Intento de borrar admin principal');
@@ -557,12 +557,12 @@ const borrarUsuario = async (req, res) => {
       if (global.estadoApp.usuarios_conectados) {
         const usuarioSocket = Array.from(global.estadoApp.usuarios_conectados.entries())
           .find(([_, usuario]) => usuario.email === usuarioABorrar.email);
-        
+
         if (usuarioSocket) {
           const [socketId] = usuarioSocket;
           global.estadoApp.usuarios_conectados.delete(socketId);
           console.log('🔌 Usuario removido de sesiones Socket.IO');
-          
+
           // Notificar via Socket.IO si está disponible
           if (req.io) {
             req.io.to(socketId).emit('force_logout', {
@@ -622,7 +622,7 @@ const borrarUsuario = async (req, res) => {
     console.error('💥 Error:', error.message);
     console.error('💥 Stack:', error.stack);
     console.log('💥 ================================');
-    
+
     sendError(res, 'Error interno del servidor al borrar usuario');
   }
 };
@@ -662,7 +662,7 @@ const generateAllTokens = async (req, res) => {
     });
 
     const updatedUsers = [];
-    
+
     for (const user of users) {
       if (!user.quickAccessToken) {
         let token;
@@ -676,13 +676,13 @@ const generateAllTokens = async (req, res) => {
           });
           if (!existing) isUnique = true;
         }
-        
+
         // Actualizar usuario
         const updatedUser = await prisma.user.update({
           where: { id: user.id },
           data: { quickAccessToken: token }
         });
-        
+
         updatedUsers.push({
           id: updatedUser.id,
           nombre: updatedUser.nombre,
@@ -718,7 +718,7 @@ const loginByToken = async (req, res) => {
     console.log('🔍 Buscando usuario con token:', token);
 
     const user = await prisma.user.findUnique({
-      where: { 
+      where: {
         quickAccessToken: token,
         activo: true
       }
@@ -733,9 +733,9 @@ const loginByToken = async (req, res) => {
 
     // Generar JWT (usando la misma lógica del login normal)
     const authToken = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
+      {
+        userId: user.id,
+        email: user.email,
         rol: user.rol,
         nombre: user.nombre
       },
@@ -800,7 +800,7 @@ const regenerateToken = async (req, res) => {
       data: { quickAccessToken: token }
     });
 
-    console.log(`✅ Token regenerado para ${user.nombre}: ${token}`);
+    console.log(`✅ Token regenerado para ${updatedUser.nombre}: ${token}`);
 
     sendSuccess(res, {
       id: updatedUser.id,
@@ -814,14 +814,44 @@ const regenerateToken = async (req, res) => {
   }
 };
 
+// Listar usuarios simple (para autocompletado - disponible para todos los autenticados)
+const listarUsuariosSimple = async (req, res) => {
+  try {
+    // Listar solo usuarios activos con campos mínimos
+    const usuarios = await prisma.user.findMany({
+      where: { activo: true },
+      select: {
+        id: true,
+        nombre: true,
+        sucursal: true,
+        rol: true,
+        activo: true
+      },
+      orderBy: { nombre: 'asc' }
+    });
+
+    // Mapear para estructura consistente, agregar campo 'usuario' basado en nombre o email si no existe explícitamente
+    const usuariosMapeados = usuarios.map(u => ({
+      ...u,
+      usuario: u.nombre.toLowerCase().replace(/\s+/g, '') // Generar un handle tipo @usuario
+    }));
+
+    sendSuccess(res, usuariosMapeados, 'Lista simple de usuarios');
+  } catch (error) {
+    console.error('💥 Error listando usuarios simple:', error);
+    sendError(res, 'Error interno del servidor');
+  }
+};
+
 module.exports = {
   crearUsuario,
   listarUsuarios,
   actualizarUsuario,
   borrarUsuario,
-  generateAllTokens,   
-  loginByToken,         
-  regenerateToken,      
+  generateAllTokens,
+  loginByToken,
+  regenerateToken,
   obtenerPassword,     // 🆕 NUEVO
-  resetearPassword       // 🆕 NUEVO
+  resetearPassword,       // 🆕 NUEVO
+  listarUsuariosSimple // 🆕 EXPORTADO
 };

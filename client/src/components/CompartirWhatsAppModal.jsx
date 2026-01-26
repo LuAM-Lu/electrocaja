@@ -32,8 +32,8 @@ const CompartirWhatsAppModal = ({
 
   const validatePhone = (phone) => {
     const cleanPhone = phone.replace(/\D/g, '');
-    const venezuelanMobile = /^(\+?58)?(0?4(14|24|12|16|26))\d{7}$/;
-    const internationalFormat = /^(\+?58)(4(14|24|12|16|26))\d{7}$/;
+    const venezuelanMobile = /^(\+?58)?(0?4(14|24|12|16|26|22))\d{7}$/;
+    const internationalFormat = /^(\+?58)(4(14|24|12|16|26|22))\d{7}$/;
     return venezuelanMobile.test(cleanPhone) || internationalFormat.test(cleanPhone);
   };
 
@@ -65,7 +65,7 @@ const CompartirWhatsAppModal = ({
     try {
       localStorage.setItem(STORAGE_KEY, finalWithPlus);
       setLastNumber(finalWithPlus);
-    } catch {}
+    } catch { }
 
     onSend(finalWithPlus);
   };
@@ -124,53 +124,52 @@ const CompartirWhatsAppModal = ({
 
 
               <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs sm:text-sm font-medium text-gray-700">Número de WhatsApp *</label>
-                <span className="text-xs text-gray-500 hidden sm:inline">+584141234567</span>
-              </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs sm:text-sm font-medium text-gray-700">Número de WhatsApp *</label>
+                  <span className="text-xs text-gray-500 hidden sm:inline">+584141234567</span>
+                </div>
 
-              <div className="relative mt-1">
-                <Phone className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
+                <div className="relative mt-1">
+                  <Phone className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
 
-                {lastNumber && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    {/* Botón Último Número */}
-                    <button
-                      type="button"
-                      onClick={() => setPhoneNumber(lastNumber)}
-                      className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-green-50 hover:bg-green-100 text-green font-medium shadow hover:scale-105 hover:shadow-lg transition-transform animate-pulse"
-                    >
-                      <span className="hidden sm:inline">Último Número</span>
-                      <span className="sm:hidden">Último</span>
-                    </button>
+                  {lastNumber && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      {/* Botón Último Número */}
+                      <button
+                        type="button"
+                        onClick={() => setPhoneNumber(lastNumber)}
+                        className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-green-50 hover:bg-green-100 text-green font-medium shadow hover:scale-105 hover:shadow-lg transition-transform animate-pulse"
+                      >
+                        <span className="hidden sm:inline">Último Número</span>
+                        <span className="sm:hidden">Último</span>
+                      </button>
 
-                    {/* Botón Limpiar (pill rojo con animación) */}
-                    <button
-                      type="button"
-                      onClick={() => setPhoneNumber('')}
-                      className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium shadow hover:scale-105 hover:shadow-lg transition-transform animate-pulse"
-                    >
-                      Limpiar
-                    </button>
-                  </div>
+                      {/* Botón Limpiar (pill rojo con animación) */}
+                      <button
+                        type="button"
+                        onClick={() => setPhoneNumber('')}
+                        className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium shadow hover:scale-105 hover:shadow-lg transition-transform animate-pulse"
+                      >
+                        Limpiar
+                      </button>
+                    </div>
+                  )}
+
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={handlePhoneChange}
+                    placeholder="+584141234567"
+                    className={`w-full pl-8 sm:pl-10 pr-28 sm:pr-40 py-2 sm:py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white/80 hover:bg-white text-sm sm:text-base ${errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                      }`}
+                    disabled={loading}
+                  />
+                </div>
+
+                {errors.phone && (
+                  <p className="text-red-600 text-xs mt-1">{errors.phone}</p>
                 )}
-
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={handlePhoneChange}
-                  placeholder="+584141234567"
-                  className={`w-full pl-8 sm:pl-10 pr-28 sm:pr-40 py-2 sm:py-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white/80 hover:bg-white text-sm sm:text-base ${
-                    errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                  }`}
-                  disabled={loading}
-                />
               </div>
-
-              {errors.phone && (
-                <p className="text-red-600 text-xs mt-1">{errors.phone}</p>
-              )}
-            </div>
 
 
               <div className="relative w-[100%] mx-auto">

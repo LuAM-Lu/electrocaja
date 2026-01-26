@@ -96,11 +96,38 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo, 
     }
   };
 
-  if (!isOpen) return null;
+  /* ----------------------------------------------------
+     Manejo de Animación de Cierre
+  ---------------------------------------------------- */
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    } else {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 200);
+  };
+
+  if (!shouldRender && !isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-emerald-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+    <div className={`fixed inset-0 bg-emerald-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${isClosing ? 'animate-modal-backdrop-exit' : 'animate-modal-backdrop-enter'}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden ${isClosing ? 'animate-modal-exit' : 'animate-modal-enter'}`}>
         {/* Header - Verde/Emerald como PresupuestoModal */}
         <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-8 py-6 text-white flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -124,7 +151,7 @@ const SeleccionarPresupuestoModal = ({ isOpen, onClose, onSeleccionar, onNuevo, 
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               </button>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"
                 title="Cerrar"
               >

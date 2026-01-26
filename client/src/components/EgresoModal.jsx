@@ -16,8 +16,7 @@ const METODOS_PAGO = [
 ];
 
 const BANCOS = [
-  'Banesco', 'Mercantil', 'Venezuela', 'Bicentenario', 'Provincial',
-  'Exterior', 'Caroni', 'Sofitasa', 'Plaza', 'Activo', 'Otro'
+  'Venezuela', 'Provincial', 'Mercantil', 'BNC'
 ];
 
 const CATEGORIAS_EGRESO = [
@@ -267,17 +266,17 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200">
+    <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200 group">
       <div className="flex items-center space-x-3">
-        <div className="bg-red-100 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold text-red-700">#{index + 1}</span>
+        <div className="bg-slate-100 rounded-lg w-8 h-8 flex items-center justify-center flex-shrink-0 text-slate-500 font-bold text-xs ring-1 ring-slate-200/50">
+          {index + 1}
         </div>
 
-        <div className="flex-1">
+        <div className="flex-[2]">
           <select
             value={pago.metodo}
             onChange={(e) => onUpdate(pago.id, 'metodo', e.target.value)}
-            className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all hover:border-red-300"
+            className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white transition-all text-slate-700 font-medium"
           >
             {METODOS_PAGO.map(metodo => (
               <option key={metodo.value} value={metodo.value}>
@@ -287,10 +286,10 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
           </select>
         </div>
 
-        <div className="flex-1">
+        <div className="flex-[3]">
           <div className="relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm font-medium">
-              {metodo?.moneda === 'usd' ? '$' : 'Bs'}
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-xs font-medium">
+              {metodo?.moneda === 'usd' ? 'USD' : 'Bs'}
             </span>
             <input
               id={`egreso-monto-${pago.id}`}
@@ -300,7 +299,7 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
               onChange={(e) => handleMontoChange(e.target.value)}
               onBlur={(e) => handleMontoBlur(e.target.value)}
               placeholder="0,00"
-              className="w-full pl-8 pr-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all hover:border-red-300 font-mono"
+              className="w-full pl-9 pr-3 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white transition-all font-mono text-right font-semibold text-slate-700"
             />
           </div>
         </div>
@@ -309,23 +308,23 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
           <button
             type="button"
             onClick={() => onDelete(pago.id)}
-            className="transition-all p-2 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-100 group"
+            className="transition-all p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100"
+            title="Eliminar forma de pago"
           >
-            <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
+            <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>
 
       {metodo?.requiere_referencia && (
-        <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-red-200">
+        <div className="grid grid-cols-2 gap-3 mt-2 pt-2 border-t border-slate-100/80">
           <div>
-            <label className="block text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Banco</label>
             <select
               value={pago.banco}
               onChange={(e) => onUpdate(pago.id, 'banco', e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all"
+              className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 text-slate-600 transition-all"
             >
-              <option value="">Seleccionar banco...</option>
+              <option value="">Banco...</option>
               {BANCOS.map(banco => (
                 <option key={banco} value={banco}>{banco}</option>
               ))}
@@ -333,15 +332,12 @@ const PagoItemCompacto = ({ pago, index, onUpdate, onDelete, canDelete }) => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Referencia</label>
             <input
-              id={`egreso-referencia-${pago.id}`}
-              name={`egresoReferencia${pago.id}`}
               type="text"
               value={pago.referencia}
               onChange={(e) => onUpdate(pago.id, 'referencia', e.target.value)}
-              placeholder="Nº de referencia"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all font-mono"
+              placeholder="Referencia / Nº Op."
+              className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50/50 text-slate-600 transition-all font-mono"
             />
           </div>
         </div>
@@ -361,7 +357,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
   const [mostrarObservaciones, setMostrarObservaciones] = useState(false);
   const [observaciones, setObservaciones] = useState('');
   const [montoEgreso, setMontoEgreso] = useState('');
-  const [monedaEgreso, setMonedaEgreso] = useState('usd');
+  const [monedaEgreso, setMonedaEgreso] = useState('bs');
   const [tasaActualTransaccion, setTasaActualTransaccion] = useState(tasaCambio);
   const [pagos, setPagos] = useState([{
     id: 1,
@@ -420,8 +416,73 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
     }
   };
 
+  const [usuariosSistema, setUsuariosSistema] = useState([]);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
+
+  // Cargar usuarios del sistema para autocompletado
+  useEffect(() => {
+    const cargarUsuarios = async () => {
+      try {
+        const response = await api.get('/users/simple');
+        if (response.data && response.data.data) {
+          setUsuariosSistema(response.data.data);
+        } else if (Array.isArray(response.data)) {
+          setUsuariosSistema(response.data);
+        }
+      } catch (error) {
+        console.error('Error cargando usuarios para autocomplete:', error);
+      }
+    };
+    cargarUsuarios();
+  }, []);
+
   const actualizarPago = (id, campo, valor) => {
-    setPagos(pagos.map(p => p.id === id ? { ...p, [campo]: valor } : p));
+    setPagos(pagos.map(p => {
+      if (p.id === id) {
+        const nuevoPago = { ...p, [campo]: valor };
+        // Si cambia a pago móvil y no tiene banco, asignar Venezuela por defecto
+        if (campo === 'metodo' && valor === 'pago_movil' && !p.banco) {
+          nuevoPago.banco = 'Venezuela';
+        }
+        return nuevoPago;
+      }
+      return p;
+    }));
+  };
+
+  const handleDescripcionChange = (e) => {
+    const valor = e.target.value;
+    setDescripcion(valor);
+
+    // Lógica autocompletado con @
+    const cursorEn = e.target.selectionStart;
+    const textoHastaCursor = valor.substring(0, cursorEn);
+    const busquedaMatch = textoHastaCursor.match(/@(\w*)$/);
+
+    if (busquedaMatch) {
+      const query = busquedaMatch[1].toLowerCase();
+      const filtrados = usuariosSistema.filter(u =>
+        u.nombre.toLowerCase().includes(query) ||
+        u.usuario.toLowerCase().includes(query)
+      );
+      setSugerenciasFiltradas(filtrados);
+      setMostrarSugerencias(filtrados.length > 0);
+    } else {
+      setMostrarSugerencias(false);
+    }
+  };
+
+  const seleccionarUsuarioSugerido = (usuario) => {
+    const valorActual = descripcion;
+    const match = valorActual.match(/@(\w*)$/); // Match al final o cursor (simplificado para final)
+
+    // Una implementación más robusta buscaría la posición del cursor, pero asumiremos final para simplificar la UX rápida
+    if (match) {
+      const nuevoValor = valorActual.substring(0, match.index) + usuario.nombre + ' ';
+      setDescripcion(nuevoValor);
+      setMostrarSugerencias(false);
+    }
   };
 
   const calcularTotalPagado = () => {
@@ -548,7 +609,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
       setCategoriaEgreso('');
       setObservaciones('');
       setMontoEgreso('');
-      setMonedaEgreso('usd');
+      setMonedaEgreso('bs');
       setMostrarObservaciones(false);
       setTasaActualTransaccion(tasaCambio);
       setPagos([{
@@ -560,7 +621,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
       }]);
 
       toast.success('Egreso registrado correctamente');
-      onClose();
+      handleClose();
     } catch (error) {
       toast.error(error.message || 'Error al registrar el egreso');
     } finally {
@@ -568,101 +629,96 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
     }
   };
 
-  if (!isOpen) return null;
+  /* ----------------------------------------------------
+     Manejo de Animación de Cierre
+  ---------------------------------------------------- */
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    } else {
+      // Iniciar animación de salida
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 200); // 200ms coincide con la duración de animate-modal-exit
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    // Esperar a que termine la animación antes de llamar a onClose real
+    setTimeout(() => {
+      onClose();
+    }, 200);
+  };
+
+  // Interceptar la validación de cierre externa si isOpen cambia a false
+  if (!shouldRender && !isOpen) return null;
 
   const estadisticas = obtenerEstadisticasEgreso();
 
   return (
-    <div className="fixed inset-0 bg-orange-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${isClosing ? 'animate-modal-backdrop-exit' : 'animate-modal-backdrop-enter'}`}>
+      <div className={`bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[95vh] overflow-hidden flex flex-col ring-1 ring-black/5 ${isClosing ? 'animate-modal-exit' : 'animate-modal-enter'}`}>
 
-        {/*  HEADER MODERNIZADO CON PATRÓN - FIXED */}
-        <div className="relative bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 overflow-hidden flex-shrink-0 rounded-t-2xl shadow-md">
-          {/* Patrón de fondo sutil */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }}></div>
-          </div>
-
-          {/* Efecto de brillo animado */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 animate-shimmer"></div>
-
-          <div className="relative px-6 py-3 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg shadow-inner">
-                  <CreditCard className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold tracking-tight">Nuevo Egreso</h1>
-                  <div className="text-red-100/90 text-xs flex items-center space-x-2 font-medium">
-                    <span>Registra un nuevo gasto</span>
-                    <div className="flex items-center space-x-1 bg-white/20 px-1.5 py-0.5 rounded text-[10px]">
-                      <DollarSign className="h-3 w-3" />
-                      <span>Gastos</span>
-                    </div>
-                  </div>
-                </div>
+        {/* HEADER COMPACTO & PREMIUM */}
+        <div className="relative bg-gradient-to-r from-orange-600 to-red-600 flex-shrink-0 shadow-md">
+          <div className="px-5 py-3 text-white flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md shadow-sm">
+                <CreditCard className="h-5 w-5" />
               </div>
+              <div>
+                <h1 className="text-base font-bold leading-tight">Registrar Egreso</h1>
+                <p className="text-orange-100 text-xs opacity-90">Gastos y salidas de caja</p>
+              </div>
+            </div>
 
-              <div className="flex items-center space-x-3">
-                <SelectorTasaCambio
-                  tasaActual={tasaActualTransaccion}
-                  onCambioTasa={handleCambioTasa}
-                />
-
-                {/* Separator */}
-                <div className="h-8 w-px bg-white/20 mx-1"></div>
-
-                {/* ✅ WINDOW CONTROLS (INLINE & LARGER) */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={onMinimize}
-                    className="p-2 bg-white/10 hover:bg-white/30 text-white rounded-lg transition-all backdrop-blur-sm shadow-sm hover:shadow-md active:scale-95 border border-white/10"
-                    title="Minimizar (Ocultar temporalmente)"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="p-2 bg-white/20 hover:bg-white/40 text-white rounded-lg transition-all backdrop-blur-sm shadow-sm hover:shadow-md active:scale-95 group"
-                    title="Cerrar Ventana"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
+            <div className="flex items-center space-x-3">
+              <SelectorTasaCambio
+                tasaActual={tasaActualTransaccion}
+                onCambioTasa={handleCambioTasa}
+              />
+              <div className="h-6 w-px bg-white/20 mx-1"></div>
+              <div className="flex items-center space-x-1">
+                <button onClick={onMinimize} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white/90 hover:text-white" title="Minimizar">
+                  <Minus className="h-4 w-4" />
+                </button>
+                <button onClick={handleClose} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white/90 hover:text-white" title="Cerrar">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Contenido scrolleable */}
-        <div className="flex-1 overflow-y-auto p-8">
-          <form onSubmit={handleSubmit} className="space-y-8" id="egreso-form">
+        {/* CONTENIDO SCROLLEABLE */}
+        <div className="flex-1 overflow-y-auto p-5 bg-slate-50/50">
+          <form onSubmit={handleSubmit} className="space-y-5" id="egreso-form">
 
-            {/* 1. Información General - MEJORADA */}
-            <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-2xl p-6 border-2 border-red-200 shadow-sm">
-              <h3 className="text-lg font-bold text-red-900 mb-4 flex items-center">
-                <div className="bg-red-200 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold text-red-700 mr-3">1</div>
-                Información del Egreso
-                <div className="ml-auto text-xs bg-red-200 text-red-800 px-3 py-1 rounded-full font-medium">
-                  Obligatorio
-                </div>
+            {/* 1. INFORMACIÓN PRINCIPAL */}
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm relative group">
+              <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
+
+              <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold">1</span>
+                <span>Detalles del Gasto</span>
               </h3>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-red-800 uppercase tracking-wide mb-2">
-                      Categoría del Egreso *
-                    </label>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Categoría *</label>
                     <select
                       value={categoriaEgreso}
                       onChange={(e) => setCategoriaEgreso(e.target.value)}
-                      className="w-full px-4 py-3 text-sm border-2 border-red-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all hover:border-red-400 shadow-sm"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white transition-all text-slate-700"
                       required
                     >
                       <option value="">Seleccionar categoría...</option>
@@ -673,21 +729,19 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-red-800 uppercase tracking-wide mb-2">
-                      Monto Total *
-                    </label>
-                    <div className="flex space-x-3">
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Monto Total *</label>
+                    <div className="flex space-x-2">
                       <select
                         value={monedaEgreso}
                         onChange={(e) => setMonedaEgreso(e.target.value)}
-                        className="px-3 py-3 text-sm border-2 border-red-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all shadow-sm"
+                        className="px-2 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50 font-medium text-slate-700"
                       >
                         <option value="usd">USD</option>
                         <option value="bs">Bs</option>
                       </select>
 
                       <div className="relative flex-1">
-                        <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm font-medium">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-xs font-bold">
                           {monedaEgreso === 'usd' ? '$' : 'Bs'}
                         </span>
                         <input
@@ -705,7 +759,7 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
                             setMontoEgreso(valorFormateado);
                           }}
                           placeholder="0,00"
-                          className="w-full pl-10 pr-4 py-3 text-sm border-2 border-red-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all hover:border-red-400 shadow-sm font-mono"
+                          className="w-full pl-8 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white transition-all font-mono font-bold text-slate-700 placeholder-slate-300"
                           required
                         />
                       </div>
@@ -713,42 +767,57 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-red-800 uppercase tracking-wide mb-2">
-                    Descripción del Egreso *
-                  </label>
+                <div className="relative">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Descripción *</label>
                   <input
                     id="descripcion-egreso-input"
                     name="descripcionEgreso"
                     type="text"
                     value={descripcion}
-                    onChange={(e) => setDescripcion(e.target.value)}
-                    placeholder="Ej: Pago de electricidad, Compra de materiales, Mantenimiento..."
-                    className="w-full px-4 py-3 text-sm border-2 border-red-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all hover:border-red-400 shadow-sm"
+                    onChange={handleDescripcionChange}
+                    onBlur={() => setTimeout(() => setMostrarSugerencias(false), 200)}
+                    placeholder="Ej: Pago de electricidad, Compra de materiales... (use @ para usuarios)"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white transition-all shadow-sm placeholder-slate-400 text-slate-700"
                     required
+                    autoComplete="off"
                   />
+                  {mostrarSugerencias && (
+                    <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-40 overflow-auto">
+                      {sugerenciasFiltradas.map((usuario) => (
+                        <div
+                          key={usuario.id}
+                          className="px-4 py-2 hover:bg-orange-50 cursor-pointer text-sm text-gray-700 flex items-center justify-between group"
+                          onMouseDown={(e) => {
+                            e.preventDefault(); // Evitar que el blur ocurra antes
+                            seleccionarUsuarioSugerido(usuario);
+                          }}
+                        >
+                          <span className="font-medium">{usuario.nombre}</span>
+                          <span className="text-xs text-gray-400 group-hover:text-orange-400">@{usuario.usuario}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <button
                     type="button"
                     onClick={() => setMostrarObservaciones(!mostrarObservaciones)}
-                    className="flex items-center space-x-2 text-sm text-red-600 hover:text-red-700 transition-colors font-medium"
+                    className="flex items-center space-x-1.5 text-xs text-orange-600 hover:text-orange-700 font-medium transition-colors"
                   >
-                    {mostrarObservaciones ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    <span>Agregar observaciones adicionales</span>
+                    {mostrarObservaciones ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    <span>Observaciones adicionales (opcional)</span>
                   </button>
 
                   {mostrarObservaciones && (
-                    <div className="mt-3">
-                      <input
-                        id="observaciones-egreso-input"
-                        name="observacionesEgreso"
-                        type="text"
+                    <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <textarea
+                        rows={2}
                         value={observaciones}
                         onChange={(e) => setObservaciones(e.target.value)}
-                        placeholder="Detalles adicionales del egreso..."
-                        className="w-full px-4 py-3 text-sm border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white transition-all shadow-sm"
+                        placeholder="Detalles adicionales..."
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-slate-50 resize-none text-slate-600"
                       />
                     </div>
                   )}
@@ -756,27 +825,27 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
               </div>
             </div>
 
-            {/* 2. Formas de Pago - MEJORADAS */}
-            <div className="bg-white rounded-2xl p-6 border-2 border-gray-200 shadow-lg hover:shadow-xl transition-all duration-200">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center">
-                  <div className="bg-red-100 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold text-red-600 mr-3">2</div>
-                  Formas de Pago Utilizadas
-                  <div className="ml-3 text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
-                    {pagos.length} método{pagos.length !== 1 ? 's' : ''}
-                  </div>
+            {/* 2. FORMAS DE PAGO */}
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-slate-400"></div>
+
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">2</span>
+                  <span>Métodos de Pago</span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium border border-slate-200">{pagos.length}</span>
                 </h3>
                 <button
                   type="button"
                   onClick={agregarPago}
-                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+                  className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm hover:shadow active:scale-95"
                 >
-                  <Plus className="h-4 w-4" />
-                  <span>Agregar Método</span>
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Agregar Pago</span>
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {pagos.map((pago, index) => (
                   <PagoItemCompacto
                     key={pago.id}
@@ -790,208 +859,120 @@ const EgresoModal = ({ isOpen, onClose, emitirEvento, onMinimize }) => {
               </div>
             </div>
 
-            {/* 3. Resumen del Egreso - MODERNIZADO */}
-            <div className="bg-gradient-to-br from-red-50 via-red-50 to-pink-50 rounded-2xl p-6 border-2 border-red-200 shadow-lg">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="bg-red-200 rounded-full w-10 h-10 flex items-center justify-center">
-                  <Calculator className="h-5 w-5 text-red-700" />
+            {/* 3. RESUMEN Y BALANCE */}
+            <div className={`rounded-xl p-4 border transition-all duration-300 ${estadisticas.completado
+              ? 'bg-emerald-50/50 border-emerald-100'
+              : estadisticas.exceso > 0
+                ? 'bg-orange-50/50 border-orange-100'
+                : 'bg-slate-50 border-slate-200'
+              }`}>
+
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`p-1.5 rounded-lg ${estadisticas.completado ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                  <Calculator className="h-4 w-4" />
                 </div>
-                <h3 className="text-lg font-bold text-red-900">Resumen del Egreso</h3>
+                <h3 className="text-sm font-bold text-slate-700">Resumen Financiero</h3>
                 <div className="ml-auto">
                   {estadisticas.completado ? (
-                    <div className="flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span> Completo</span>
-                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wide border border-emerald-200">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Listo
+                    </span>
                   ) : (
-                    <div className="flex items-center space-x-2 bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                      <span>Pendiente</span>
-                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wide border border-orange-200">
+                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div> Pendiente
+                    </span>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="bg-white rounded-xl p-4 border-2 border-red-200 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <DollarSign className="h-5 w-5 text-red-600" />
-                    <div className="text-xs text-red-600 font-semibold uppercase tracking-wide">Monto Total</div>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Card 1: Total Gasto */}
+                <div className="bg-white rounded-lg p-3 border border-slate-100 shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Monto Total</span>
+                  <div className="text-base font-bold text-slate-800">
+                    {monedaEgreso === 'usd' ? `$${formatearVenezolano(estadisticas.montoEgresoUSD)}` : `${formatearVenezolano(estadisticas.montoEgresoBs)} Bs`}
                   </div>
-                  <div className="text-xl font-bold text-gray-900">
-                    {monedaEgreso === 'usd'
-                      ? `$${formatearVenezolano(estadisticas.montoEgresoUSD)}`
-                      : `${formatearVenezolano(estadisticas.montoEgresoBs)} Bs`
-                    }
-                  </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    {monedaEgreso === 'usd'
-                      ? `${formatearVenezolano(estadisticas.montoEgresoBs)} Bs`
-                      : `$${formatearVenezolano(estadisticas.montoEgresoUSD)}`
-                    }
+                  <div className="text-[10px] text-slate-500">
+                    {monedaEgreso === 'usd' ? `${formatearVenezolano(estadisticas.montoEgresoBs)} Bs` : `$${formatearVenezolano(estadisticas.montoEgresoUSD)}`}
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-4 border-2 border-blue-200 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <CreditCard className="h-5 w-5 text-blue-600" />
-                    <div className="text-xs text-blue-600 font-semibold uppercase tracking-wide">Total Pagado</div>
-                  </div>
+                {/* Card 2: Total Pagado */}
+                <div className="bg-white rounded-lg p-3 border border-slate-100 shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Pagado</span>
                   {(() => {
-                    const pagadoBs = pagos.reduce((total, pago) => {
-                      const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
-                      if (metodoInfo?.moneda === 'bs') {
-                        return total + limpiarNumero(pago.monto);
-                      }
-                      return total;
-                    }, 0);
+                    const pagadoBs = pagos.reduce((t, p) => METODOS_PAGO.find(m => m.value === p.metodo)?.moneda === 'bs' ? t + limpiarNumero(p.monto) : t, 0);
+                    const pagadoUsd = pagos.reduce((t, p) => METODOS_PAGO.find(m => m.value === p.metodo)?.moneda === 'usd' ? t + limpiarNumero(p.monto) : t, 0);
 
-                    const pagadoUsd = pagos.reduce((total, pago) => {
-                      const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
-                      if (metodoInfo?.moneda === 'usd') {
-                        return total + limpiarNumero(pago.monto);
-                      }
-                      return total;
-                    }, 0);
+                    if (pagadoBs === 0 && pagadoUsd === 0) return <div className="text-sm font-medium text-slate-300 italic">Sin pagos</div>;
 
                     return (
-                      <div className="space-y-1">
-                        {pagadoBs > 0 && (
-                          <div className="text-lg font-bold text-blue-700">
-                            {formatearVenezolano(pagadoBs)} Bs
-                          </div>
-                        )}
-                        {pagadoUsd > 0 && (
-                          <div className="text-lg font-bold text-blue-700">
-                            ${formatearVenezolano(pagadoUsd)}
-                          </div>
-                        )}
-                        {pagadoBs === 0 && pagadoUsd === 0 && (
-                          <div className="text-lg text-gray-400 font-medium">Sin pagos</div>
-                        )}
+                      <div className="flex flex-col">
+                        {pagadoBs > 0 && <span className="text-sm font-bold text-blue-600">{formatearVenezolano(pagadoBs)} Bs</span>}
+                        {pagadoUsd > 0 && <span className="text-sm font-bold text-green-600">${formatearVenezolano(pagadoUsd)}</span>}
                       </div>
-                    );
+                    )
                   })()}
                 </div>
 
-                <div className="bg-white rounded-xl p-4 border-2 border-gray-200 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <Coins className="h-5 w-5 text-gray-600" />
-                    <div className="text-xs text-gray-600 font-semibold uppercase tracking-wide">
-                      {estadisticas.faltante > 0 ? 'Faltante' : estadisticas.exceso > 0 ? 'Exceso' : 'Estado'}
-                    </div>
-                  </div>
+                {/* Card 3: Estado */}
+                <div className={`bg-white rounded-lg p-3 border shadow-sm ${estadisticas.faltante > 0 ? 'border-orange-100' : 'border-emerald-100'}`}>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    {estadisticas.faltante > 0 ? 'Faltante' : estadisticas.exceso > 0 ? 'Exceso' : 'Estado'}
+                  </span>
                   {estadisticas.faltante > 0 ? (
-                    <>
-                      <div className="text-lg font-bold text-orange-700">
-                        {formatearVenezolano(estadisticas.faltante)} Bs
-                      </div>
-                      <div className="text-sm text-orange-600">
-                        ${formatearVenezolano(estadisticas.faltanteUSD)}
-                      </div>
-                    </>
+                    <div className="text-base font-bold text-orange-600">{formatearVenezolano(estadisticas.faltante)} Bs</div>
                   ) : estadisticas.exceso > 0 ? (
-                    <>
-                      <div className="text-lg font-bold text-orange-700">
-                        {formatearVenezolano(estadisticas.exceso)} Bs
-                      </div>
-                      <div className="text-sm text-orange-600">
-                        ${formatearVenezolano(estadisticas.excesoUSD)}
-                      </div>
-                    </>
+                    <div className="text-base font-bold text-orange-600">{formatearVenezolano(estadisticas.exceso)} Bs</div>
                   ) : (
-                    <>
-                      <div className="text-lg font-bold text-green-700 flex items-center space-x-2">
-                        <span> Completo</span>
-                      </div>
-                      <div className="text-sm text-green-600">
-                        Listo para procesar
-                      </div>
-                    </>
+                    <div className="text-base font-bold text-emerald-600">Completo</div>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between py-3 px-4 bg-white rounded-xl border-2 border-red-200">
-                <div className="flex items-center space-x-3">
-                  {estadisticas.faltante > 0 ? (
-                    <>
-                      <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-semibold text-orange-600">
-                        Faltan {formatearVenezolano(estadisticas.faltante)} Bs para completar
-                      </span>
-                    </>
-                  ) : estadisticas.exceso > 0 ? (
-                    <>
-                      <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-semibold text-orange-600">
-                        Exceso: {formatearVenezolano(estadisticas.exceso)} Bs
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span className="text-sm font-semibold text-green-600">
-                        Egreso completo y listo
-                      </span>
-                    </>
-                  )}
+              {/* Alert Status */}
+              {(estadisticas.faltante > 0 || estadisticas.exceso > 0) && (
+                <div className="mt-3 bg-white/60 rounded-lg px-3 py-2 text-xs font-medium text-orange-700 border border-orange-100 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
+                  {estadisticas.faltante > 0 ? `Faltan ${formatearVenezolano(estadisticas.faltante)} Bs para completar` : `Hay un exceso de ${formatearVenezolano(estadisticas.exceso)} Bs`}
                 </div>
+              )}
 
-                <div className="flex items-center space-x-2 text-sm text-red-600 font-medium bg-red-50 px-3 py-1 rounded-lg">
-                  <DollarSign className="h-4 w-4" />
-                  <span>Tasa: {formatearTasa(tasaActualTransaccion)} Bs/USD</span>
-                </div>
-              </div>
             </div>
-
           </form>
         </div>
 
-        {/* FOOTER CON BOTONES - FIXED */}
-        <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 px-8 py-4 flex-shrink-0 rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)] z-20 border-t border-orange-400">
-          <div className="flex space-x-4">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="flex-1 px-8 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl transition-all shadow-lg hover:shadow-xl backdrop-blur-sm disabled:opacity-40 disabled:cursor-not-allowed font-semibold flex items-center justify-center space-x-2"
-            >
-              <X className="h-5 w-5" />
-              <span>Cancelar</span>
-            </button>
-            <button
-              type="submit"
-              form="egreso-form"
-              disabled={loading || !estadisticas.transaccionValida}
-              className="flex-1 px-8 py-3 rounded-xl font-bold transition-all duration-200 bg-white text-orange-700 hover:bg-orange-50 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 flex items-center justify-center space-x-2 border border-white/50"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600"></div>
-                  <span>Registrando...</span>
-                </>
-              ) : (
-                <>
-                  <Minus className="h-5 w-5" />
-                  <span>Registrar Egreso</span>
-                </>
-              )}
-            </button>
-          </div>
+        {/* FOOTER ACTIONS */}
+        <div className="px-5 py-4 bg-gradient-to-r from-orange-600 to-red-600 border-t border-orange-500/30 flex-shrink-0 z-10 flex gap-3">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold rounded-xl transition-all text-sm shadow-sm backdrop-blur-sm"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            form="egreso-form"
+            disabled={loading || !estadisticas.transaccionValida}
+            className="flex-1 px-4 py-2.5 bg-white text-orange-700 hover:bg-orange-50 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-white/50"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+                <span>Procesando...</span>
+              </>
+            ) : (
+              <>
+                <Minus className="h-4 w-4" />
+                <span>Registrar Egreso</span>
+              </>
+            )}
+          </button>
         </div>
-      </div>
 
-      {/* CSS para animaciones */}
-      <style>{`
-      @keyframes shimmer {
-        0% { transform: translateX(-100%) skewX(-12deg); }
-        100% { transform: translateX(200%) skewX(-12deg); }
-      }
-      .animate-shimmer {
-        animation: shimmer 3s ease-in-out infinite;
-      }
-    `}</style>
+      </div>
     </div>
   );
 };

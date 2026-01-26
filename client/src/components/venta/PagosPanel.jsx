@@ -1,860 +1,704 @@
-// components/venta/PagosPanel.jsx - SISTEMA DE PAGOS MODULAR CON HYBRID CHIPS 
-import React from 'react';
-import { 
- X, Plus, CreditCard, DollarSign, RefreshCw,
- AlertTriangle, CheckCircle, Percent, MousePointerClick, Trash2, HandCoins, BanknoteArrowUp
+// components/venta/PagosPanel.jsx - SISTEMA DE PAGOS MODULAR (DISEÑO PREMIUM)
+import React, { useState, useEffect } from 'react';
+import {
+  X, Plus, CreditCard, DollarSign, RefreshCw,
+  AlertTriangle, CheckCircle, Percent, MousePointerClick, Trash2,
+  HandCoins, Banknote, Wallet, Landmark, Smartphone, ChevronDown,
+  AlertOctagon, History, CornerDownLeft
 } from 'lucide-react';
 import toast from '../../utils/toast.jsx';
+import {
+  generarPDFFactura,
+  generarImagenWhatsApp,
+  imprimirFacturaTermica,
+  descargarPDF
+} from '../../utils/printUtils';
 
 // ===================================
 //  FUNCIONES HELPER
 // ===================================
 const formatearVenezolano = (valor) => {
- if (!valor && valor !== 0) return '';
- const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
- return numero.toLocaleString('es-ES', {
-   minimumFractionDigits: 2,
-   maximumFractionDigits: 2
- });
+  if (!valor && valor !== 0) return '';
+  const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
+  return numero.toLocaleString('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
 };
 
 const limpiarNumero = (valor) => {
- if (!valor && valor !== 0) return 0;
- if (typeof valor === 'number' && valor > 0) return valor;
+  if (!valor && valor !== 0) return 0;
+  if (typeof valor === 'number' && valor > 0) return valor;
 
- let valorLimpio = valor.toString().replace(/[^\d.,]/g, '');
+  let valorLimpio = valor.toString().replace(/[^\d.,]/g, '');
 
- if (valorLimpio.includes(',')) {
-   const partes = valorLimpio.split(',');
-   const entero = partes[0].replace(/\./g, '');
-   const decimal = partes[1] || '0000';
-   //  CAMBIO CRÍTICO: Soportar hasta 4 decimales para pagos digitales exactos
-   const decimalLimitado = decimal.substring(0, 4);
-   const numero = parseFloat(entero + '.' + decimalLimitado);
-   return numero > 0 ? numero : 0;
- } else if (valorLimpio.includes('.')) {
-   const numero = parseFloat(valorLimpio);
-   return numero > 0 ? numero : 0;
- }
+  if (valorLimpio.includes(',')) {
+    const partes = valorLimpio.split(',');
+    const entero = partes[0].replace(/\./g, '');
+    const decimal = partes[1] || '0000';
+    const decimalLimitado = decimal.substring(0, 4);
+    const numero = parseFloat(entero + '.' + decimalLimitado);
+    return numero > 0 ? numero : 0;
+  } else if (valorLimpio.includes('.')) {
+    const numero = parseFloat(valorLimpio);
+    return numero > 0 ? numero : 0;
+  }
 
- const numero = parseFloat(valorLimpio) || 0;
- return numero > 0 ? numero : 0;
+  const numero = parseFloat(valorLimpio) || 0;
+  return numero > 0 ? numero : 0;
 };
 
 // ===================================
 //  CONFIGURACIÓN DE MÉTODOS DE PAGO
 // ===================================
 const METODOS_PAGO = [
- { value: 'efectivo_bs', label: 'Efectivo Bs', moneda: 'bs', requiere_referencia: false },
- { value: 'efectivo_usd', label: 'Efectivo USD', moneda: 'usd', requiere_referencia: false },
- { value: 'pago_movil', label: 'Pago Móvil', moneda: 'bs', requiere_referencia: true },
- { value: 'transferencia', label: 'Transferencia', moneda: 'bs', requiere_referencia: true },
- { value: 'zelle', label: 'Zelle', moneda: 'usd', requiere_referencia: true },
- { value: 'binance', label: 'Binance', moneda: 'usd', requiere_referencia: true },
- { value: 'tarjeta', label: 'Tarjeta', moneda: 'bs', requiere_referencia: true }
+  { value: 'efectivo_bs', label: 'Efectivo Bs', moneda: 'bs', requiere_referencia: false, icon: Banknote },
+  { value: 'efectivo_usd', label: 'Efectivo USD', moneda: 'usd', requiere_referencia: false, icon: DollarSign },
+  { value: 'pago_movil', label: 'Pago Móvil', moneda: 'bs', requiere_referencia: true, icon: Smartphone },
+  { value: 'transferencia', label: 'Transferencia', moneda: 'bs', requiere_referencia: true, icon: Landmark },
+  { value: 'zelle', label: 'Zelle', moneda: 'usd', requiere_referencia: true, icon: Wallet },
+  { value: 'binance', label: 'Binance', moneda: 'usd', requiere_referencia: true, icon: Wallet },
+  { value: 'tarjeta', label: 'Tarjeta', moneda: 'bs', requiere_referencia: true, icon: CreditCard }
 ];
 
 const BANCOS_VENEZUELA = [
-  'Venezuela - 0102',
-  'Venezolano Crédito - 0104',
-  'Mercantil - 0105',
-  'Provincial - 0108',
-  'Bancaribe - 0114',
-  'Exterior - 0115',
-  'Caroní - 0128',
-  'Banesco - 0134',
-  'Sofitasa - 0137',
-  'Plaza - 0138',
-  'Bangente - 0146',
-  'Fondo Común - 0151',
-  '100% Banco - 0156',
-  'DelSur - 0157',
-  'Tesoro - 0163',
-  'Agrícola - 0166',
-  'Bancrecer - 0168',
-  'R4 - 0169',
-  'Activo - 0171',
-  'Bancamiga - 0172',
-  'Banplus - 0174',
-  'BANFANB - 0177',
-  'BNC - 0191',
-  'Crédito Popular - 0601'
+  'Venezuela - 0102', 'Venezolano Crédito - 0104', 'Mercantil - 0105', 'Provincial - 0108',
+  'Bancaribe - 0114', 'Exterior - 0115', 'Caroní - 0128', 'Banesco - 0134', 'Sofitasa - 0137',
+  'Plaza - 0138', 'Bangente - 0146', 'Fondo Común - 0151', '100% Banco - 0156', 'DelSur - 0157',
+  'Tesoro - 0163', 'Agrícola - 0166', 'Bancrecer - 0168', 'R4 - 0169', 'Activo - 0171',
+  'Bancamiga - 0172', 'Banplus - 0174', 'BANFANB - 0177', 'BNC - 0191', 'Crédito Popular - 0601'
 ];
 
-// Obtener métodos disponibles (sin duplicados)
 const obtenerMetodosDisponibles = (pagosActuales, idActual = null) => {
- const metodosUsados = pagosActuales
-   .filter(pago => pago.id !== idActual)
-   .map(pago => pago.metodo);
- 
- return METODOS_PAGO.filter(metodo => !metodosUsados.includes(metodo.value));
+  const metodosUsados = pagosActuales
+    .filter(pago => pago.id !== idActual)
+    .map(pago => pago.metodo);
+
+  return METODOS_PAGO.filter(metodo => !metodosUsados.includes(metodo.value));
 };
 
-//  FUNCIÓN PARA OBTENER MONEDA PREDOMINANTE
 const obtenerMonedaPredominante = (pagos) => {
   if (!pagos || pagos.length === 0) return 'bs';
-  
-  // Contar métodos por moneda
   const conteoMonedas = { bs: 0, usd: 0 };
-  
   pagos.forEach(pago => {
     if (pago.monto && parseFloat(pago.monto.replace(',', '.')) > 0) {
       const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
-      if (metodoInfo) {
-        conteoMonedas[metodoInfo.moneda]++;
-      }
+      if (metodoInfo) conteoMonedas[metodoInfo.moneda]++;
     }
   });
-  
-  // Retornar la moneda con más métodos de pago
   return conteoMonedas.usd > conteoMonedas.bs ? 'usd' : 'bs';
 };
 
 // ===================================
-//  COMPONENTE HYBRID CHIP COMPACTO
+//  COMPONENTE PAGO ITEM (CONTROLLED)
 // ===================================
-const PagoItemHybrid = ({ 
- pago, index, onUpdate, onDelete, canDelete, tipo = "pago",
- exceso = 0, totalVueltoActual = 0, tasaCambio = 1
+const PagoItem = ({
+  pago, index, onUpdate, onDelete, canDelete, tipo = "pago",
+  exceso = 0, totalVueltoActual = 0, tasaCambio = 1,
+  isEditing, onEdit, onSave
 }) => {
- const [isEditing, setIsEditing] = React.useState(false);
- const metodo = METODOS_PAGO.find(m => m.value === pago.metodo);
- const esVuelto = tipo === "vuelto";
- const monto = limpiarNumero(pago.monto);
- 
- //  Obtener icono y colores por método
- const getMetodoConfig = (metodoValue) => {
-   const configs = {
-     efectivo_bs: { icon: '', color: 'emerald', label: 'Efectivo Bs' },
-     efectivo_usd: { icon: '', color: 'green', label: 'Efectivo USD' },
-     pago_movil: { icon: '', color: 'blue', label: 'Pago Móvil' },
-     transferencia: { icon: '', color: 'indigo', label: 'Transferencia' },
-     zelle: { icon: '', color: 'purple', label: 'Zelle' },
-     binance: { icon: '', color: 'yellow', label: 'Binance' },
-     tarjeta: { icon: '', color: 'gray', label: 'Tarjeta' }
-   };
-   return configs[metodoValue] || configs.efectivo_bs;
- };
- 
- const config = getMetodoConfig(pago.metodo);
- 
- //  Colores dinámicos
- const getColorClasses = (color, isVuelto) => {
-   const baseColors = {
-     emerald: isVuelto ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800',
-     blue: isVuelto ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-blue-50 border-blue-200 text-blue-800',
-     green: isVuelto ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-green-50 border-green-200 text-green-800',
-     indigo: isVuelto ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-indigo-50 border-indigo-200 text-indigo-800',
-     purple: 'bg-purple-50 border-purple-200 text-purple-800',
-     yellow: isVuelto ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-yellow-50 border-yellow-200 text-yellow-800',
-     gray: isVuelto ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-gray-50 border-gray-200 text-gray-800'
-   };
-   return baseColors[color] || baseColors.emerald;
- };
- 
- //  Estado del pago
- const getEstadoPago = () => {
-   if (!pago.monto || monto === 0) return { icon: '', text: 'Pendiente', color: 'text-orange-600' };
-   if (metodo?.requiere_referencia && (!pago.banco || !pago.referencia)) return { icon: '', text: 'Incompleto', color: 'text-red-600' };
-   return { icon: '', text: 'OK', color: 'text-green-600' };
- };
- 
- const estado = getEstadoPago();
- const colorClasses = getColorClasses(config.color, esVuelto);
- 
- //  FUNCIÓN PARA VALIDAR EXCESO DE VUELTO
-const validarExcesoVuelto = (valorActual) => {
-  if (tipo !== "vuelto" || !valorActual) return true;
-  
-  const montoNumerico = parseFloat(valorActual.replace(',', '.')) || 0;
-  
-  //  NO VALIDAR LÍMITE - PERMITIR VUELTOS MÚLTIPLES
-  // El usuario puede dar $4 USD + equivalente en Bs del resto
-  // Solo validar que no sea negativo
-  if (montoNumerico <= 0) {
-    toast('El monto debe ser mayor a 0', {
-      style: {
-        background: '#FEF3C7',
-        border: '1px solid #F59E0B',
-        color: '#92400E'
-      },
-      duration: 3000
-    });
-    return false;
-  }
-  
-  return true;
-};
- 
- //  FUNCIÓN MEJORADA PARA MANEJO DE MONTO SIN VALIDACIÓN TEMPRANA
- const handleMontoChange = (valor) => {
-   //  CONVERTIR PUNTO A COMA AUTOMÁTICAMENTE
-   let valorLimpio = valor.replace(/[^\d.,]/g, '').replace(/\./g, ',');
-   
-   // Solo permitir una coma decimal
-   const comas = (valorLimpio.match(/,/g) || []).length;
-   if (comas > 1) {
-     const ultimaComa = valorLimpio.lastIndexOf(',');
-     valorLimpio = valorLimpio.substring(0, ultimaComa).replace(/,/g, '') + valorLimpio.substring(ultimaComa);
-   }
-   
-   //  ACTUALIZAR SIN VALIDAR (permite escribir libremente)
-   onUpdate(pago.id, 'monto', valorLimpio);
- };
- 
- //  FUNCIÓN PARA GUARDAR CON VALIDACIÓN
- const handleGuardar = () => {
-   if (!pago.monto || parseFloat(pago.monto.replace(',', '.')) <= 0) {
-     toast('Ingresa un monto válido antes de guardar', {
-       style: {
-         background: '#FEF3C7',
-         border: '1px solid #F59E0B',
-         color: '#92400E'
-       }
-     });
-     return;
-   }
-   
-   //  VALIDAR EXCESO SOLO AL GUARDAR
-   if (validarExcesoVuelto(pago.monto)) {
-     setIsEditing(false);
-   }
- };
- 
- //  MANEJAR ENTER EN INPUT
- const handleKeyPress = (e) => {
-   if (e.key === 'Enter') {
-     e.preventDefault();
-     handleGuardar();
-   }
- };
- 
- if (isEditing) {
-   return (
-     <div className={`border-2 border-dashed border-blue-300 bg-blue-50 rounded-xl p-4 transition-all duration-200 w-full`}>
-       <div className="space-y-3">
-         {/* Selector de método */}
-         <div>
-           <label className="block text-xs font-medium text-gray-600 mb-1">Método de {esVuelto ? 'Vuelto' : 'Pago'}</label>
-           <select
-             value={pago.metodo}
-             onChange={(e) => onUpdate(pago.id, 'metodo', e.target.value)}
-             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-           >
-             {obtenerMetodosDisponibles([], pago.id).map(metodo => (
-               <option key={metodo.value} value={metodo.value}>
-                 {metodo.label}
-               </option>
-             ))}
-           </select>
-         </div>
-         
-         {/* Input de monto con Enter */}
-         <div>
-           <label className="block text-xs font-medium text-gray-600 mb-1">
-             Monto ({metodo?.moneda === 'usd' ? 'USD' : 'Bs'})
-             {tipo === "vuelto" && (
-               <span className="text-purple-600 ml-1">
-                 - Máx: {((exceso - totalVueltoActual) / (metodo?.moneda === 'usd' ? tasaCambio : 1)).toFixed(2)}
-               </span>
-             )}
-           </label>
-           <input
-             id={`pago-monto-${pago.id}`}
-             name={`pagoMonto${pago.id}`}
-             type="text"
-             value={pago.monto}
-             onChange={(e) => handleMontoChange(e.target.value)}
-             onKeyPress={handleKeyPress} //  VALIDAR AL PRESIONAR ENTER
-             placeholder={metodo?.moneda === 'usd' ? '0,00' : '0,00'}
-             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
-             autoFocus
-           />
-           <div className="text-xs text-gray-500 mt-1">Presiona Enter para guardar</div>
-         </div>
-         
-         {/* Campos adicionales si requiere referencia */}
-         {metodo?.requiere_referencia && (
-           <div className="grid grid-cols-2 gap-2">
-             <div>
-               <label className="block text-xs font-medium text-gray-600 mb-1">Banco</label>
-               <select
-                 value={pago.banco || ''}
-                 onChange={(e) => onUpdate(pago.id, 'banco', e.target.value)}
-                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-               >
-                 <option value="">Seleccionar...</option>
-                 {BANCOS_VENEZUELA.map(banco => (
-                   <option key={banco} value={banco}>{banco}</option>
-                 ))}
-               </select>
-             </div>
-             <div>
-               <label className="block text-xs font-medium text-gray-600 mb-1">Referencia</label>
-               <input
-                 id={`pago-referencia-${pago.id}`}
-                 name={`pagoReferencia${pago.id}`}
-                 type="text"
-                 value={pago.referencia || ''}
-                 onChange={(e) => onUpdate(pago.id, 'referencia', e.target.value)}
-                 onKeyPress={handleKeyPress} //  TAMBIÉN PUEDE GUARDAR CON ENTER
-                 placeholder="Nº referencia"
-                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-               />
-             </div>
-           </div>
-         )}
-         
-         {/* Botones */}
-         <div className="flex justify-end space-x-2 pt-2">
-           <button
-              onClick={() => {
-                //  LIMPIAR DATOS CORRECTAMENTE
-                console.log(' Limpiando chip:', pago.id);
-                onUpdate(pago.id, 'monto', '');
-                if (metodo?.requiere_referencia) {
-                  onUpdate(pago.id, 'banco', '');
-                  onUpdate(pago.id, 'referencia', '');
-                }
-                toast('Datos del chip limpiados', {
-                  duration: 2000
-                });
-                //  FORZAR RE-RENDER DEL COMPONENTE
-                setIsEditing(false);
-                setTimeout(() => setIsEditing(true), 100);
-              }}
-              className="px-3 py-1.5 text-xs text-orange-600 hover:text-orange-800 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors"
-            >
-              Limpiar
-            </button>
-           <button
-             onClick={handleGuardar}
-             className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-           >
-             Guardar
-           </button>
-         </div>
-       </div>
-     </div>
-   );
- }
- 
- //  CHIP COMPACTO CON INFORMACIÓN COMPLETA EN UNA FILA
- return (
-   <div 
-     className={`${colorClasses} border-2 rounded-lg p-3 transition-all duration-200 hover:shadow-md cursor-pointer group relative w-full flex-shrink-0`}
-     onClick={() => setIsEditing(true)}
-   >
-     {/*  LAYOUT HORIZONTAL OPTIMIZADO CON INFORMACIÓN COMPLETA */}
-     <div className="flex items-center justify-between">
-       
-       {/* Lado izquierdo: Método completo y monto */}
-       <div className="flex items-center space-x-3 flex-1 min-w-0">
-         <span className="text-lg">{config.icon}</span>
-         <div className="flex items-center space-x-3 min-w-0 flex-1">
-           <span className="font-semibold text-sm text-gray-800 truncate">{config.label.toUpperCase()}</span>
-           <div className="font-bold text-sm">
-             {monto > 0 ? (
-               <span className="text-emerald-700">
-                 {metodo?.moneda === 'usd' ? '$' : 'Bs'} {formatearVenezolano(monto)}
-               </span>
-             ) : (
-               <span className="text-gray-400">Sin monto</span>
-             )}
-           </div>
-         </div>
-       </div>
-       
-       {/* Centro-derecha: Estado y botón eliminar */}
-       <div className="flex items-center space-x-3">
-         <div className="flex items-center space-x-1">
-           <span className="text-sm">{estado.icon}</span>
-           <span className={`text-sm font-medium ${estado.color}`}>{estado.text}</span>
-         </div>
-         
-         {/* Botón eliminar */}
-         {canDelete && (
-           <button
-             onClick={(e) => {
-               e.stopPropagation();
-               onDelete(pago.id);
-             }}
-             className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 p-1 hover:bg-red-100 rounded transition-all flex-shrink-0"
-             title="Eliminar"
-           >
-             <X className="h-4 w-4" />
-           </button>
-         )}
-       </div>
-     </div>
-     
-     {/* Detalles bancarios (solo si los hay y en línea) */}
-     {metodo?.requiere_referencia && (pago.banco || pago.referencia) && (
-       <div className="mt-2 text-xs text-gray-600 truncate">
-         {pago.banco && <span>{pago.banco.split(' ')[0]}</span>}
-         {pago.referencia && <span className="ml-2 font-mono">•••{pago.referencia.slice(-4)}</span>}
-       </div>
-     )}
-     
-     {/* Indicador de hover */}
-     <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-30 transition-opacity rounded-b-lg"></div>
-   </div>
- );
-};
+  const metodo = METODOS_PAGO.find(m => m.value === pago.metodo) || METODOS_PAGO[0];
+  const esVuelto = tipo === "vuelto";
+  const monto = limpiarNumero(pago.monto);
+  const MetodoIcon = metodo.icon;
 
+  const handleMontoChange = (valor) => {
+    let valorLimpio = valor.replace(/[^\d.,]/g, '').replace(/\./g, ',');
+    const comas = (valorLimpio.match(/,/g) || []).length;
+    if (comas > 1) {
+      const ultimaComa = valorLimpio.lastIndexOf(',');
+      valorLimpio = valorLimpio.substring(0, ultimaComa).replace(/,/g, '') + valorLimpio.substring(ultimaComa);
+    }
+    onUpdate(pago.id, 'monto', valorLimpio);
+  };
+
+  const handleGuardar = () => {
+    if (!pago.monto || parseFloat(pago.monto.replace(',', '.')) <= 0) {
+      toast.error('Ingresa un monto válido');
+      return;
+    }
+    onSave(pago.id);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleGuardar();
+    }
+  };
+
+  // ESTILO EDICIÓN: CARD FORM
+  if (isEditing) {
+    return (
+      <div className={`grid grid-cols-1 gap-2 border-2 border-dashed p-4 rounded-xl mb-4 relative animate-in fade-in zoom-in duration-200 ${esVuelto ? 'border-purple-500/20 bg-purple-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+
+        {canDelete && (
+          <button
+            onClick={() => onDelete(pago.id)}
+            className="absolute top-2 right-2 text-slate-400 hover:text-red-500 transition-colors"
+            title="Eliminar"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Método</label>
+            <div className="relative">
+              <select
+                value={pago.metodo}
+                onChange={(e) => onUpdate(pago.id, 'metodo', e.target.value)}
+                className="w-full bg-white border-slate-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 transition-all appearance-none pr-8 py-2 pl-3 text-sm font-medium text-slate-700 h-[42px]"
+                autoFocus
+              >
+                {obtenerMetodosDisponibles([], pago.id).map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none h-4 w-4" />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Monto ({metodo.moneda === 'usd' ? 'USD' : 'Bs'})</label>
+            <div className="relative group">
+              <input
+                className="w-full bg-white border-slate-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 transition-all text-lg font-bold py-2 px-3 text-emerald-700 font-mono h-[42px]"
+                type="text"
+                value={pago.monto}
+                onChange={(e) => handleMontoChange(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="0,00"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-bold pointer-events-none">
+                {metodo.moneda === 'bs'
+                  ? `$${(limpiarNumero(pago.monto) / tasaCambio).toFixed(2)}`
+                  : `${(limpiarNumero(pago.monto) * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs`
+                }
+              </span>
+            </div>
+          </div>
+        </div>
+        <p className="text-[9px] text-slate-400 italic flex items-center gap-1 mt-1 justify-end">
+          <CornerDownLeft className="h-2.5 w-2.5" /> Enter para guardar
+        </p>
+
+        {metodo.requiere_referencia && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Banco</label>
+              <div className="relative">
+                <select
+                  value={pago.banco || ''}
+                  onChange={(e) => onUpdate(pago.id, 'banco', e.target.value)}
+                  className="w-full bg-white border-slate-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500 transition-all appearance-none py-2 px-3 text-sm"
+                >
+                  <option value="">Seleccionar...</option>
+                  {BANCOS_VENEZUELA.map(banco => (
+                    <option key={banco} value={banco}>{banco}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none h-4 w-4" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase ml-1">Referencia</label>
+              <input
+                className="w-full bg-white border-slate-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500 transition-all py-2 px-3 text-sm font-mono"
+                placeholder="Ej: 4852"
+                type="text"
+                value={pago.referencia || ''}
+                onChange={(e) => onUpdate(pago.id, 'referencia', e.target.value)}
+                onKeyPress={handleKeyPress}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            onClick={() => onUpdate(pago.id, 'monto', '')}
+            className="px-6 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all border border-slate-200 text-sm"
+          >
+            Limpiar
+          </button>
+          <button
+            onClick={handleGuardar}
+            className="px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all text-sm flex items-center gap-2"
+          >
+            <CheckCircle className="h-4 w-4" /> Guardar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ESTILO VISTA: LIST ITEM
+  if (!isEditing) {
+    const isVueltoStyle = tipo === 'vuelto';
+    const bgClass = isVueltoStyle ? 'bg-purple-50/50 border-purple-100 hover:bg-purple-100/50' : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-100/50';
+    const iconWrapperClass = isVueltoStyle ? 'bg-purple-100 text-purple-600' : 'bg-emerald-100 text-emerald-600';
+    const textClass = isVueltoStyle ? 'text-purple-700' : 'text-slate-700';
+    const amountClass = isVueltoStyle ? 'text-purple-600' : 'text-emerald-600';
+
+    return (
+      <div
+        className={`flex items-center justify-between p-2 rounded-lg border mb-2 cursor-pointer transition-colors group animate-in fade-in slide-in-from-left-4 duration-300 ${bgClass}`}
+        onClick={() => onEdit(pago.id)}
+      >
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${iconWrapperClass}`}>
+            <MetodoIcon className="h-4 w-4" />
+          </div>
+          <div>
+            <p className={`text-xs font-bold leading-tight uppercase ${textClass}`}>{metodo.label}</p>
+            <p className="text-[10px] text-slate-500 flex items-center gap-1">
+              {metodo.requiere_referencia && (pago.banco || pago.referencia) ? (
+                <>
+                  {pago.referencia && <span className="font-mono">Ref: {pago.referencia}</span>}
+                  {pago.banco && <span>• {pago.banco.split('-')[0].trim()}</span>}
+                </>
+              ) : (
+                'Pago directo'
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className={`text-xs font-bold leading-tight ${amountClass}`}>
+            {isVueltoStyle ? '-' : ''} {metodo.moneda === 'bs' ? `${formatearVenezolano(monto)} Bs` : `$${formatearVenezolano(monto)}`}
+          </p>
+          <p className="text-[9px] text-slate-400">
+            {metodo.moneda === 'bs' ? `$${(monto / tasaCambio).toFixed(2)}` : `${(monto * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+};
 // ===================================
 //  COMPONENTE PRINCIPAL PAGOS PANEL
 // ===================================
-const PagosPanel = ({ 
- pagos, 
- vueltos, 
- onPagosChange, 
- totalVenta, 
- tasaCambio,
- title = "Métodos de Pago",
- descuento = 0,
- onDescuentoChange = () => {},
- onDescuentoLimpiar = () => {},
- onValidationChange = () => {},
- permitirPagoParcial = false // ✅ NUEVO: Permitir pagos parciales (para abonos)
+const PagosPanel = ({
+  pagos, vueltos, onPagosChange, totalVenta, tasaCambio,
+  title = "Métodos de Pago", descuento = 0, onDescuentoChange = () => { },
+  onDescuentoLimpiar = () => { }, onValidationChange = () => { },
+  permitirPagoParcial = false
 }) => {
- const [totalVentaClicked, setTotalVentaClicked] = React.useState(false);
- const [descuentoClicked, setDescuentoClicked] = React.useState(false);
- 
- // ===================================
- //  CALCULAR TOTALES CON REDONDEO MEJORADO
- // ===================================
- const calcularTotalPagado = () => {
-   const total = pagos.reduce((total, pago) => {
-     const monto = limpiarNumero(pago.monto);
-     const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
+  const [editingIds, setEditingIds] = useState(new Set());
 
-     if (metodoInfo?.moneda === 'bs') {
-       return total + monto;
-     } else {
-       return total + (monto * tasaCambio);
-     }
-   }, 0);
-
-   //  PRECISIÓN ALTA - Redondear a 4 decimales para evitar errores flotantes
-   // pero preservar precisión para pagos digitales exactos
-   return Math.round(total * 10000) / 10000;
- };
-
- const calcularTotalVuelto = () => {
-  const total = vueltos.reduce((total, vuelto) => {
-    const monto = limpiarNumero(vuelto.monto);
-    const metodoInfo = METODOS_PAGO.find(m => m.value === vuelto.metodo);
-
-    if (metodoInfo?.moneda === 'bs') {
-      return total + monto;
-    } else {
-      return total + (monto * tasaCambio);
+  // Inicializar edición para pagos vacíos al montar
+  useEffect(() => {
+    const idsParaEditar = pagos.filter(p => !p.monto).map(p => p.id);
+    if (idsParaEditar.length > 0) {
+      setEditingIds(prev => {
+        const next = new Set(prev);
+        idsParaEditar.forEach(id => next.add(id));
+        return next;
+      });
     }
-  }, 0);
+  }, [pagos.length]); // Solo cuando cambia la longitud (agregado)
 
-  //  PRECISIÓN ALTA - Redondear a 4 decimales para preservar exactitud
-  return Math.round(total * 10000) / 10000;
-};
+  const toggleEdit = (id, shouldEdit) => {
+    setEditingIds(prev => {
+      const next = new Set(prev);
+      if (shouldEdit) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
 
- const totalPagado = calcularTotalPagado();
- const totalVuelto = calcularTotalVuelto();
- const totalConDescuento = totalVenta - descuento;
- const diferencia = totalPagado - totalConDescuento;
- const faltante = Math.max(0, -diferencia);
- const exceso = Math.max(0, diferencia);
- const excesoPendiente = Math.round((exceso - totalVuelto) * 100) / 100; //  FIX PRECISIÓN
+  const calcularTotalPagado = () => {
+    const total = pagos.reduce((total, pago) => {
+      const monto = limpiarNumero(pago.monto);
+      const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
+      return total + (metodoInfo?.moneda === 'bs' ? monto : (monto * tasaCambio));
+    }, 0);
+    return Math.round(total * 10000) / 10000;
+  };
 
- // Estado de la transacción
- // ✅ Para pagos parciales (abonos), solo validar que haya monto > 0
- const transaccionCompleta = permitirPagoParcial 
-   ? (totalPagado > 0.01 && totalPagado <= totalConDescuento + 0.01)
-   : (faltante <= 0.01);
- const necesitaVuelto = excesoPendiente > 0.01;
+  const calcularTotalVuelto = () => {
+    const total = vueltos.reduce((total, vuelto) => {
+      const monto = limpiarNumero(vuelto.monto);
+      const metodoInfo = METODOS_PAGO.find(m => m.value === vuelto.metodo);
+      return total + (metodoInfo?.moneda === 'bs' ? monto : (monto * tasaCambio));
+    }, 0);
+    return Math.round(total * 10000) / 10000;
+  };
 
- React.useEffect(() => {
-  //  SOLO VALIDAR - NO AUTO-ELIMINAR
-  // ✅ Para pagos parciales, permitir hasta 1 centavo de diferencia
-  const excesoPendienteSignificativo = permitirPagoParcial
-    ? (Math.abs(excesoPendiente) > 0.01 ? excesoPendiente : 0)
-    : (Math.abs(excesoPendiente) > 0.01 ? excesoPendiente : 0);
-  
-  // ✅ Para abonos, validar que haya monto pagado
-  // ✅ Para ventas normales, permitir avanzar si el pago está completo (no falta nada)
-  //    incluso si hay excedente (el excedente se manejará como vuelto)
-  const esValido = permitirPagoParcial 
-    ? (totalPagado > 0.01 && excesoPendiente <= 0.01)
-    : (transaccionCompleta); // Permitir avanzar si el pago está completo, incluso con excedente
-  
-  onValidationChange(esValido, excesoPendienteSignificativo);
-}, [transaccionCompleta, excesoPendiente, onValidationChange, permitirPagoParcial, totalPagado]);
+  const totalPagado = calcularTotalPagado();
+  const totalVuelto = calcularTotalVuelto();
+  const totalConDescuento = totalVenta - descuento;
+  const diferencia = totalPagado - totalConDescuento;
+  const faltante = Math.max(0, -diferencia);
+  const exceso = Math.max(0, diferencia);
+  const excesoPendiente = Math.round((exceso - totalVuelto) * 100) / 100;
 
- // ===================================
- //  MANEJADORES DE EVENTOS
- // ===================================
- const agregarPago = () => {
-   const metodosDisponibles = obtenerMetodosDisponibles(pagos);
-   if (metodosDisponibles.length === 0) {
-     toast('Todos los métodos de pago ya están en uso', {
-       style: {
-         background: '#FEF3C7',
-         border: '1px solid #F59E0B',
-         color: '#92400E'
-       }
-     });
-     return;
-   }
+  const transaccionCompleta = permitirPagoParcial
+    ? (totalPagado > 0.01 && totalPagado <= totalConDescuento + 0.01)
+    : (faltante <= 0.01);
+  const necesitaVuelto = excesoPendiente > 0.01;
 
-   const nuevosPagos = [...pagos, {
-     id: crypto.randomUUID(),
-     metodo: metodosDisponibles[0].value,
-     monto: '',
-     banco: '',
-     referencia: ''
-   }];
-   
-   onPagosChange(nuevosPagos, vueltos);
- };
+  React.useEffect(() => {
+    const excesoPendienteSignificativo = Math.abs(excesoPendiente) > 0.01 ? excesoPendiente : 0;
+    const esValido = permitirPagoParcial
+      ? (totalPagado > 0.01 && excesoPendiente <= 0.01)
+      : (transaccionCompleta);
 
- const agregarVuelto = () => {
-   const metodosDisponibles = obtenerMetodosDisponibles(vueltos);
-   if (metodosDisponibles.length === 0) {
-     toast('Todos los métodos de vuelto ya están en uso', {
-       style: {
-         background: '#FEF3C7',
-         border: '1px solid #F59E0B',
-         color: '#92400E'
-       }
-     });
-     return;
-   }
+    onValidationChange(esValido, excesoPendienteSignificativo);
+  }, [transaccionCompleta, excesoPendiente, onValidationChange, permitirPagoParcial, totalPagado]);
 
-   //  OBTENER MONEDA PREDOMINANTE Y PRESELECCIONAR
-   const monedaPredominante = obtenerMonedaPredominante(pagos);
-   const metodoPreferido = metodosDisponibles.find(m => m.moneda === monedaPredominante) || metodosDisponibles[0];
+  const agregarPago = () => {
+    if (obtenerMetodosDisponibles(pagos).length === 0) {
+      toast.error('Todos los métodos de pago están en uso');
+      return;
+    }
+    const newId = crypto.randomUUID();
+    const nuevosPagos = [...pagos, {
+      id: newId,
+      metodo: obtenerMetodosDisponibles(pagos)[0].value,
+      monto: '', banco: '', referencia: ''
+    }];
+    onPagosChange(nuevosPagos, vueltos);
+  };
 
-   const nuevosVueltos = [...vueltos, {
-     id: crypto.randomUUID(),
-     metodo: metodoPreferido.value, //  PRESELECCIONAR MÉTODO SEGÚN MONEDA
-     monto: '',
-     banco: '',
-     referencia: ''
-   }];
-   
-   onPagosChange(pagos, nuevosVueltos);
- };
+  const agregarVuelto = () => {
+    if (obtenerMetodosDisponibles(vueltos).length === 0) {
+      toast.error('Todos los métodos de vuelto están en uso');
+      return;
+    }
+    const monedaPredominante = obtenerMonedaPredominante(pagos);
+    const metodosDisp = obtenerMetodosDisponibles(vueltos);
+    const metodoPreferido = metodosDisp.find(m => m.moneda === monedaPredominante) || metodosDisp[0];
 
- const actualizarPago = (id, campo, valor) => {
-   const nuevosPagos = pagos.map(p => p.id === id ? { ...p, [campo]: valor } : p);
-   onPagosChange(nuevosPagos, vueltos);
- };
+    const nuevosVueltos = [...vueltos, {
+      id: crypto.randomUUID(),
+      metodo: metodoPreferido.value,
+      monto: '', banco: '', referencia: ''
+    }];
+    onPagosChange(pagos, nuevosVueltos);
+  };
 
- const actualizarVuelto = (id, campo, valor) => {
-   const nuevosVueltos = vueltos.map(v => v.id === id ? { ...v, [campo]: valor } : v);
-   onPagosChange(pagos, nuevosVueltos);
- };
+  const actualizarPago = (id, campo, valor) => {
+    const nuevosPagos = pagos.map(p => p.id === id ? { ...p, [campo]: valor } : p);
+    onPagosChange(nuevosPagos, vueltos);
+  };
 
- const eliminarPago = (id) => {
-   if (pagos.length > 1) {
-     const nuevosPagos = pagos.filter(p => p.id !== id);
-     onPagosChange(nuevosPagos, vueltos);
-   }
- };
+  const actualizarVuelto = (id, campo, valor) => {
+    const nuevosVueltos = vueltos.map(v => v.id === id ? { ...v, [campo]: valor } : v);
+    onPagosChange(pagos, nuevosVueltos);
+  };
 
- const eliminarVuelto = (id) => {
-   const nuevosVueltos = vueltos.filter(v => v.id !== id);
-   onPagosChange(pagos, nuevosVueltos);
- };
+  const eliminarPago = (id) => {
+    if (pagos.length > 1) {
+      const nuevosPagos = pagos.filter(p => p.id !== id);
+      onPagosChange(nuevosPagos, vueltos);
+      toggleEdit(id, false);
+    }
+  };
 
- const handleTotalVentaClick = () => {
-   setTotalVentaClicked(true);
-   
-   const primerPagoVacio = pagos.find(p => !p.monto || parseFloat(p.monto.replace(',', '.')) === 0);
-   
-   if (primerPagoVacio) {
-     const metodoInfo = METODOS_PAGO.find(m => m.value === primerPagoVacio.metodo);
-     let montoAEnviar;
-     
-     if (metodoInfo?.moneda === 'bs') {
-       montoAEnviar = totalConDescuento.toFixed(2).replace('.', ',');
-     } else {
-       montoAEnviar = (totalConDescuento / tasaCambio).toFixed(2).replace('.', ',');
-     }
-     
-     actualizarPago(primerPagoVacio.id, 'monto', montoAEnviar);
-     toast.success(`Monto enviado al ${metodoInfo.label}`);
-   } else {
-     toast('Todos los métodos de pago ya tienen montos asignados', {
-       style: {
-         background: '#FEF3C7',
-         border: '1px solid #F59E0B',
-         color: '#92400E'
-       }
-     });
-   }
- };
+  const eliminarVuelto = (id) => {
+    const nuevosVueltos = vueltos.filter(v => v.id !== id);
+    onPagosChange(pagos, nuevosVueltos);
+  };
 
- const handleDescuentoClick = () => {
-   setDescuentoClicked(true);
-   onDescuentoChange();
- };
+  // Filtros para columnas
+  const pagosEnEdicion = pagos.filter(p => editingIds.has(p.id));
+  const pagosGuardados = pagos.filter(p => !editingIds.has(p.id));
 
- const handleLimpiarDescuento = (e) => {
-   e.stopPropagation();
+  // Manejador para clic en Total Venta (Auto-llenar)
+  const handleTotalVentaClick = () => {
+    if (faltante <= 0.01) {
+      toast.success('El monto ya está cubierto');
+      return;
+    }
 
-   if (onDescuentoLimpiar) {
-     onDescuentoLimpiar();
-     toast.success('Descuento eliminado');
-   } else {
-     toast.error('Función onDescuentoLimpiar no disponible');
-   }
- };
+    // Buscar si hay un pago actual en edición
+    const pagoEnEdicion = pagos.find(p => editingIds.has(p.id));
 
- return (
-   <div className="space-y-4">
-     
-     {/* ===================================
-          RESUMEN VISUAL DE TOTALES
-         =================================== */}
-     <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200 rounded-xl p-6">
-       <div className="flex items-center justify-between mb-4">
-         <h3 className="text-lg font-bold text-blue-900 flex items-center">
-           <DollarSign className="h-5 w-5 mr-2" />
-           Resumen de Pagos
-         </h3>
-         {/* Indicador de estado inline */}
-         {transaccionCompleta ? (
-           <div className="flex items-center space-x-2 text-green-700 bg-green-100 px-3 py-1.5 rounded-full">
-             <CheckCircle className="h-4 w-4" />
-             <span className="text-sm font-medium">Pago Completo</span>
-           </div>
-         ) : (
-           <div className="flex items-center space-x-2 text-red-700 bg-red-100 px-3 py-1.5 rounded-full">
-             <AlertTriangle className="h-4 w-4" />
-             <span className="text-sm font-medium">Faltan {formatearVenezolano(faltante)} Bs</span>
-           </div>
-         )}
-       </div>
-       
-       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-         {/* TOTAL VENTA */}
-         <div 
-           className={`bg-white rounded-lg p-3 border-2 border-blue-200 shadow-sm cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200 ${!totalVentaClicked ? 'animate-pulse' : ''} hover:animate-none relative group text-center`}
-           onClick={handleTotalVentaClick}
-         >
-           <div className={`absolute -bottom-2 -right-2 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg ${!totalVentaClicked ? 'animate-bounce' : ''}`}>
-             <MousePointerClick className="h-3 w-3" />
-           </div>
-           
-           <div className="text-xs text-blue-600 mb-1 uppercase tracking-wide font-medium">Total Venta</div>
-           <div className="font-bold text-base text-blue-900">{formatearVenezolano(totalVenta)} Bs</div>
-           <div className="text-xs text-blue-500">${(totalVenta / tasaCambio).toFixed(2)}</div>
-           
-           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
-             Click para enviar al método de pago
-             <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-           </div>
-         </div>
-         
-         {/* DESCUENTO */}
-         <div 
-           className={`bg-white rounded-lg p-3 border-2 border-purple-200 shadow-sm cursor-pointer hover:shadow-md hover:border-purple-300 transition-all duration-200 ${!descuentoClicked ? 'animate-pulse' : ''} hover:animate-none relative group text-center`}
-           onClick={handleDescuentoClick}
-         >
-           {descuento > 0 && (
-             <div 
-               className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg animate-bounce hover:animate-none cursor-pointer z-10"
-               onClick={handleLimpiarDescuento}
-               title="Eliminar descuento"
-             >
-               <Trash2 className="h-3 w-3" />
-             </div>
-           )}
-           
-           <div className={`absolute -bottom-2 -right-2 bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg ${!descuentoClicked ? 'animate-bounce' : ''}`}>
-             <MousePointerClick className="h-3 w-3" />
-           </div>
-           
-           <div className="text-xs text-purple-600 mb-1 uppercase tracking-wide flex items-center justify-center font-medium">
-             <Percent className="h-3 w-3 mr-1" />
-             Descuento
-           </div>
-           <div className="font-bold text-base text-purple-700">
-             {descuento > 0 ? `-${formatearVenezolano(descuento)} Bs` : '0 Bs'}
-           </div>
-           <div className="text-xs text-purple-500">
-             ${(descuento / tasaCambio).toFixed(2)}
-           </div>
-           
-           <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
-             {descuento > 0 ? 'Click para modificar o eliminar descuento' : 'Click para aplicar descuento'}
-             <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-           </div>
-         </div>
-         
-         {/* FALTANTE */}
-          <div className={`rounded-lg p-3 border-2 shadow-sm text-center ${faltante > 0 ? 'border-red-400 bg-red-100' : 'border-gray-200 bg-white'}`}>
-            <div className={`text-xs mb-1 uppercase tracking-wide flex items-center justify-center ${faltante > 0 ? 'text-red-700' : 'text-gray-600'}`}>
-              {faltante > 0 ? <AlertTriangle className="h-3 w-3 mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
-              FALTA POR PAGAR
+    if (pagoEnEdicion) {
+      // Actualizar el pago existente en edición
+      actualizarPago(pagoEnEdicion.id, 'monto', formatearVenezolano(faltante));
+      toast.info('Monto actualizado al restante');
+    } else {
+      // Crear nuevo pago con el restante
+      if (obtenerMetodosDisponibles(pagos).length === 0) {
+        toast.error('No hay más métodos de pago disponibles');
+        return;
+      }
+
+      const newId = crypto.randomUUID();
+      const metodoDisponibles = obtenerMetodosDisponibles(pagos);
+      const metodo = metodoDisponibles.length > 0 ? metodoDisponibles[0].value : 'efectivo_bs';
+
+      const nuevosPagos = [...pagos, {
+        id: newId,
+        metodo: metodo,
+        monto: formatearVenezolano(faltante),
+        banco: '',
+        referencia: ''
+      }];
+
+      onPagosChange(nuevosPagos, vueltos);
+      toggleEdit(newId, true);
+      toast.success('Pago agregado por el restante');
+    }
+  };
+
+  return (
+    <main className="flex-grow w-full space-y-6">
+      {/* HEADER SUMMARY */}
+      <section className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <div className="flex items-center justify-between mb-4 px-2">
+          <div className="flex items-center gap-2">
+            <Banknote className="h-6 w-6 text-blue-600" />
+            <h2 className="font-bold text-slate-700 text-lg">Resumen de Pagos</h2>
+          </div>
+          {faltante > 0.01 ? (
+            <div className="flex items-center gap-2 bg-red-50 text-red-500 px-3 py-1 rounded-full text-sm font-bold border border-red-100 animate-pulse">
+              <AlertTriangle className="h-4 w-4" />
+              Faltan {formatearVenezolano(faltante)} Bs
             </div>
-            <div className={`font-bold text-base ${faltante > 0 ? 'text-red-800' : 'text-gray-500'}`}>
-              {formatearVenezolano(faltante)} Bs
+          ) : (
+            <div className="flex items-center gap-2 bg-emerald-50 text-emerald-500 px-3 py-1 rounded-full text-sm font-bold border border-emerald-100">
+              <CheckCircle className="h-4 w-4" />
+              Pago Completo
             </div>
-            <div className={`text-xs ${faltante > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-              ${(faltante / tasaCambio).toFixed(2)}
+          )}
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl cursor-pointer hover:shadow-md transition-shadow relative group" onClick={handleTotalVentaClick}>
+            <p className="text-[10px] uppercase font-bold text-blue-600 mb-1 flex items-center gap-1">
+              <DollarSign className="h-3 w-3" /> Total Venta
+            </p>
+            <p className="text-xl font-bold text-slate-800 leading-tight">{formatearVenezolano(totalVenta)} Bs</p>
+            <p className="text-sm text-blue-500 font-medium">${(totalVenta / tasaCambio).toFixed(2)}</p>
+            <div className="absolute inset-0 bg-blue-100/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+              <span className="bg-white text-blue-600 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">Click para completar</span>
             </div>
           </div>
-         
-         {/* EXCEDENTE */}
-          <div className={`rounded-lg p-3 border-2 shadow-sm text-center ${excesoPendiente > 0 ? 'border-amber-400 bg-amber-100' : 'border-gray-200 bg-white'}`}>
-            <div className={`text-xs mb-1 uppercase tracking-wide flex items-center justify-center ${excesoPendiente > 0 ? 'text-amber-700' : 'text-gray-600'}`}>
-              {excesoPendiente > 0 ? <HandCoins className="h-3 w-3 mr-1" /> : <HandCoins className="h-3 w-3 mr-1" />}
-              EXCEDENTE
+          <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl cursor-pointer hover:shadow-md transition-shadow relative group" onClick={onDescuentoChange}>
+            {descuento > 0 && <span onClick={(e) => { e.stopPropagation(); onDescuentoLimpiar(); }} className="absolute top-2 right-2 text-purple-400 hover:text-red-500 z-10"><X className="h-3 w-3" /></span>}
+            <p className="text-[10px] uppercase font-bold text-purple-600 mb-1 flex items-center gap-1">
+              <Percent className="h-3 w-3" /> % Descuento
+            </p>
+            <p className="text-xl font-bold text-slate-800 leading-tight">{formatearVenezolano(descuento)} Bs</p>
+            <p className="text-sm text-purple-500 font-medium">${(descuento / tasaCambio).toFixed(2)}</p>
+            <div className="absolute inset-0 bg-purple-100/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center pointer-events-none">
+              <span className="bg-white text-purple-600 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">Clic para aplicar descuento</span>
             </div>
-            <div className={`font-bold text-base ${excesoPendiente > 0 ? 'text-amber-800' : 'text-gray-500'}`}>
-              {formatearVenezolano(excesoPendiente)} Bs
+          </div>
+          <div className={`bg-red-50 border-2 border-red-200 p-4 rounded-xl ring-offset-2 ${faltante > 0.01 ? 'ring-2 ring-red-500/10' : ''}`}>
+            <p className="text-[10px] uppercase font-bold text-red-600 mb-1 flex items-center gap-1">
+              <AlertOctagon className="h-3 w-3" /> Falta por Pagar
+            </p>
+            <p className="text-xl font-bold text-red-700 leading-tight">{formatearVenezolano(faltante)} Bs</p>
+            <p className="text-sm text-red-500 font-medium">${(faltante / tasaCambio).toFixed(2)}</p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1 flex items-center gap-1">
+              <HandCoins className="h-3 w-3" /> Excedente
+            </p>
+            <p className="text-xl font-bold text-slate-600 leading-tight">{formatearVenezolano(excesoPendiente)} Bs</p>
+            <p className="text-sm text-slate-400 font-medium">${(excesoPendiente / tasaCambio).toFixed(2)}</p>
+          </div>
+          <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl">
+            <p className="text-[10px] uppercase font-bold text-emerald-600 mb-1 flex items-center gap-1">
+              <Wallet className="h-3 w-3" /> Monto Pagado
+            </p>
+            <p className="text-xl font-bold text-emerald-700 leading-tight">{formatearVenezolano(totalPagado)} Bs</p>
+            <p className="text-sm text-emerald-500 font-medium">${(totalPagado / tasaCambio).toFixed(2)}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* MAIN GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+        {/* LEFT COLUMN: PAYMENTS (Unified Section) */}
+        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px]">
+          <div className="p-4 bg-slate-50/50 border-b border-slate-200 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <span className="bg-emerald-500 text-white p-1.5 rounded-lg">
+                <Landmark className="h-4 w-4" />
+              </span>
+              <h3 className="font-bold text-slate-700">Métodos de Pago</h3>
             </div>
-            <div className={`text-xs ${excesoPendiente > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
-              ${(excesoPendiente / tasaCambio).toFixed(2)}
+            <button
+              onClick={agregarPago}
+              disabled={obtenerMetodosDisponibles(pagos).length === 0}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus className="h-4 w-4" /> Agregar
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4 max-h-[600px] overflow-y-auto">
+            {/* 1. PAGOS EN EDICIÓN (FORMULARIOS) */}
+            {pagosEnEdicion.length > 0 && (
+              <div className="space-y-4 mb-4">
+                {pagosEnEdicion.map((pago, idx) => (
+                  <PagoItem
+                    key={pago.id}
+                    pago={pago}
+                    index={idx}
+                    onUpdate={actualizarPago}
+                    onDelete={eliminarPago}
+                    canDelete={pagos.length > 1}
+                    tipo="pago"
+                    exceso={exceso}
+                    totalVueltoActual={totalVuelto}
+                    tasaCambio={tasaCambio}
+                    isEditing={true}
+                    onEdit={() => toggleEdit(pago.id, true)}
+                    onSave={() => toggleEdit(pago.id, false)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* 2. PAGOS GUARDADOS (LISTA) */}
+            {pagosGuardados.length > 0 && (
+              <>
+                {pagosEnEdicion.length > 0 && <div className="border-t border-slate-100 my-4"></div>}
+
+                <h4 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Pagos Guardados</h4>
+                <div className="space-y-3">
+                  {pagosGuardados.map((pago, idx) => (
+                    <PagoItem
+                      key={pago.id}
+                      pago={pago}
+                      index={idx}
+                      onUpdate={actualizarPago}
+                      onDelete={eliminarPago}
+                      canDelete={pagos.length > 1}
+                      tipo="pago"
+                      exceso={exceso}
+                      totalVueltoActual={totalVuelto}
+                      tasaCambio={tasaCambio}
+                      isEditing={false}
+                      onEdit={() => toggleEdit(pago.id, true)}
+                      onSave={() => toggleEdit(pago.id, false)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Empty State global */}
+            {pagosEnEdicion.length === 0 && pagosGuardados.length === 0 && (
+              <div className="flex flex-col items-center justify-center p-8 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+                <Landmark className="h-10 w-10 mb-2 opacity-50" />
+                <p className="text-sm font-medium">No hay pagos registrados</p>
+                <p className="text-xs">Usa "Agregar" para iniciar</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* RIGHT COLUMN: VUELTOS ONLY */}
+        <section className="flex flex-col gap-6">
+
+          {/* VUELTOS */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px]">
+            <div className="p-4 bg-slate-50/50 border-b border-slate-200 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <span className="bg-purple-500 text-white p-1.5 rounded-lg">
+                  <RefreshCw className="h-4 w-4" />
+                </span>
+                <h3 className="font-bold text-slate-700">Vueltos</h3>
+              </div>
+              <button
+                onClick={() => {
+                  const monedaPredominante = obtenerMonedaPredominante(pagos);
+                  const metodosDisp = obtenerMetodosDisponibles(vueltos);
+                  const metodoPreferido = metodosDisp.find(m => m.moneda === monedaPredominante) || metodosDisp[0];
+                  const newId = crypto.randomUUID();
+                  const nuevosVueltos = [...vueltos, {
+                    id: newId,
+                    metodo: metodoPreferido?.value || 'efectivo_bs',
+                    monto: '', banco: '', referencia: ''
+                  }];
+                  onPagosChange(pagos, nuevosVueltos);
+                  toggleEdit(newId, true);
+                }}
+                disabled={!necesitaVuelto}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${necesitaVuelto ? 'bg-purple-500 hover:bg-purple-600 text-white shadow-sm' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+              >
+                <Plus className="h-4 w-4" /> Agregar
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[600px] overflow-y-auto">
+              {/* 1. VUELTOS EN EDICIÓN (FORMULARIOS) */}
+              {vueltos.filter(v => editingIds.has(v.id)).length > 0 && (
+                <div className="space-y-4 mb-4">
+                  {vueltos.filter(v => editingIds.has(v.id)).map((vuelto, idx) => (
+                    <PagoItem
+                      key={vuelto.id}
+                      pago={vuelto}
+                      index={idx}
+                      onUpdate={actualizarVuelto}
+                      onDelete={eliminarVuelto}
+                      canDelete={true}
+                      tipo="vuelto"
+                      exceso={exceso}
+                      totalVueltoActual={totalVuelto}
+                      tasaCambio={tasaCambio}
+                      isEditing={true}
+                      onEdit={() => toggleEdit(vuelto.id, true)}
+                      onSave={() => toggleEdit(vuelto.id, false)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* 2. VUELTOS GUARDADOS (LISTA) */}
+              {vueltos.filter(v => !editingIds.has(v.id)).length > 0 && (
+                <>
+                  {vueltos.filter(v => editingIds.has(v.id)).length > 0 && <div className="border-t border-slate-100 my-4"></div>}
+
+                  <h4 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Vueltos Guardados</h4>
+                  <div className="space-y-3">
+                    {vueltos.filter(v => !editingIds.has(v.id)).map((vuelto, idx) => (
+                      <PagoItem
+                        key={vuelto.id}
+                        pago={vuelto}
+                        index={idx}
+                        onUpdate={actualizarVuelto}
+                        onDelete={eliminarVuelto}
+                        canDelete={true}
+                        tipo="vuelto"
+                        exceso={exceso}
+                        totalVueltoActual={totalVuelto}
+                        tasaCambio={tasaCambio}
+                        isEditing={false}
+                        onEdit={() => toggleEdit(vuelto.id, true)}
+                        onSave={() => toggleEdit(vuelto.id, false)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Empty State Vueltos */}
+              {vueltos.length === 0 && (
+                <div className="flex flex-col items-center justify-center text-center space-y-4 py-4 min-h-[200px]">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border-4 border-slate-100 mb-2">
+                    <RefreshCw className="h-6 w-6 text-slate-300" />
+                  </div>
+                  <h4 className="font-bold text-slate-600 text-sm">No hay vuelto pendiente</h4>
+                </div>
+              )}
             </div>
           </div>
 
-         {/* TOTAL PAGADO */}
-          <div className={`rounded-lg p-3 border-2 shadow-sm text-center ${totalPagado > 0 ? 'border-emerald-400 bg-emerald-100' : 'border-gray-200 bg-white'}`}>
-            <div className={`text-xs mb-1 uppercase tracking-wide flex items-center justify-center ${totalPagado > 0 ? 'text-emerald-700' : 'text-gray-600'}`}>
-              <BanknoteArrowUp className="h-3 w-3 mr-1" />
-              MONTO PAGADO
-            </div>
-            <div className={`font-bold text-base ${totalPagado > 0 ? 'text-emerald-800' : 'text-gray-500'}`}>
-              {formatearVenezolano(totalPagado)} Bs
-            </div>
-            <div className={`text-xs ${totalPagado > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
-              ${(totalPagado / tasaCambio).toFixed(2)}
-            </div>
-          </div>
-       </div>
-     </div>
-
-     {/* ===================================
-          LAYOUT UNIFICADO DE 2 COLUMNAS: PAGOS Y VUELTOS
-         =================================== */}
-     <div className="grid grid-cols-2 gap-6">
-       
-       {/*  COLUMNA IZQUIERDA: MÉTODOS DE PAGO */}
-       <div className="space-y-3">
-         {/* Header de Pagos */}
-         <div className="bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 backdrop-blur-sm border border-gray-200/50 rounded-xl p-3 shadow-lg flex items-center justify-between">
-           <div className="flex items-center space-x-3">
-             <div className="bg-gradient-to-br from-emerald-500 to-green-600 p-2 rounded-lg shadow-md">
-               <CreditCard className="h-4 w-4 text-white" />
-             </div>
-             <span className="text-gray-800 font-semibold text-base">Métodos de Pago</span>
-           </div>
-
-           <button
-             onClick={agregarPago}
-             disabled={obtenerMetodosDisponibles(pagos).length === 0}
-             className="group bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold px-3 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center space-x-2"
-           >
-             <div className="bg-white/20 p-1 rounded group-hover:bg-white/30 transition-all duration-200">
-               <Plus className="h-3 w-3" />
-             </div>
-             <span className="text-sm">Agregar</span>
-           </button>
-         </div>
-         
-         {/* Chips de Pagos */}
-         <div className="space-y-2 max-h-80 overflow-y-auto">
-           {pagos.map((pago, index) => (
-             <PagoItemHybrid
-               key={pago.id}
-               pago={pago}
-               index={index}
-               onUpdate={actualizarPago}
-               onDelete={eliminarPago}
-               canDelete={pagos.length > 1}
-               tipo="pago"
-               exceso={exceso}
-               totalVueltoActual={totalVuelto}
-               tasaCambio={tasaCambio}
-             />
-           ))}
-         </div>
-       </div>
-
-       {/*  COLUMNA DERECHA: MÉTODOS DE VUELTO */}
-       <div className="space-y-3">
-         {/* Header de Vueltos */}
-         <div className={`bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 backdrop-blur-sm border border-gray-200/50 rounded-xl p-3 shadow-lg flex items-center justify-between ${!necesitaVuelto ? 'opacity-50' : ''}`}>
-           <div className="flex items-center space-x-3">
-             <div className={`bg-gradient-to-br p-2 rounded-lg shadow-md ${necesitaVuelto ? 'from-purple-500 to-indigo-600' : 'from-gray-400 to-gray-500'}`}>
-               <RefreshCw className="h-4 w-4 text-white" />
-             </div>
-             <span className="text-gray-800 font-semibold text-base">
-               Vueltos
-               {necesitaVuelto && (
-                 <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                   {formatearVenezolano(excesoPendiente)} Bs pendiente
-                 </span>
-               )}
-             </span>
-           </div>
-
-           <button
-             onClick={agregarVuelto}
-             disabled={!necesitaVuelto || obtenerMetodosDisponibles(vueltos).length === 0}
-             className="group bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold px-3 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center space-x-2"
-           >
-             <div className="bg-white/20 p-1 rounded group-hover:bg-white/30 transition-all duration-200">
-               <Plus className="h-3 w-3" />
-             </div>
-             <span className="text-sm">Agregar</span>
-           </button>
-         </div>
-         
-         {/* Chips de Vueltos o Mensaje */}
-<div className="space-y-2 max-h-80 overflow-y-auto">
-  {vueltos.length > 0 ? (
-    //  MOSTRAR VUELTOS SIEMPRE QUE EXISTAN
-    vueltos.map((vuelto, index) => (
-      <PagoItemHybrid
-        key={vuelto.id}
-        pago={vuelto}
-        index={index}
-        onUpdate={actualizarVuelto}
-        onDelete={eliminarVuelto}
-        canDelete={true}
-        tipo="vuelto"
-        exceso={exceso}
-        totalVueltoActual={totalVuelto}
-        tasaCambio={tasaCambio}
-      />
-    ))
-  ) : necesitaVuelto ? (
-    //  MOSTRAR MENSAJE SOLO SI NECESITA VUELTO Y NO HAY CHIPS
-    <div className="bg-purple-50 border-2 border-dashed border-purple-300 rounded-xl p-6 text-center">
-      <RefreshCw className="h-8 w-8 text-purple-400 mx-auto mb-2" />
-      <p className="text-purple-700 font-medium">Hay exceso por entregar</p>
-      <p className="text-purple-600 text-sm">
-        Agrega un método de vuelto para especificar cómo entregar los {formatearVenezolano(excesoPendiente)} Bs
-      </p>
-    </div>
-  ) : (
-    //  MENSAJE CUANDO NO HAY EXCESO
-    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
-      <CheckCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-      <p className="text-gray-600 font-medium">No hay vuelto pendiente</p>
-      <p className="text-gray-500 text-sm">
-        Los vueltos aparecerán aquí cuando el pago exceda el total
-      </p>
-    </div>
-  )}
-</div>
-       </div>
-     </div>
-   </div>
- );
+        </section>
+      </div>
+    </main>
+  );
 };
 
 export default PagosPanel;

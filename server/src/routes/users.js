@@ -3,11 +3,12 @@ const express = require('express');
 const {
   crearUsuario,
   listarUsuarios,
+  listarUsuariosSimple, // 🆕 Importado
   actualizarUsuario,
   borrarUsuario,
-  generateAllTokens,    
-  loginByToken,          
-  regenerateToken,       
+  generateAllTokens,
+  loginByToken,
+  regenerateToken,
   obtenerPassword,       // 🆕 NUEVO
   resetearPassword      // 🆕 NUEVO
 } = require('../controllers/userController');
@@ -18,6 +19,9 @@ const router = express.Router();
 
 // POST /api/users/crear - Solo admin
 router.post('/crear', verifyToken, checkPermissions(['admin']), crearUsuario);
+
+// GET /api/users/simple - Autocomplete (Todos autenticados)
+router.get('/simple', verifyToken, listarUsuariosSimple);
 
 // GET /api/users - Solo admin
 router.get('/', verifyToken, checkPermissions(['admin']), listarUsuarios);

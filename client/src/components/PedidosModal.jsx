@@ -148,12 +148,39 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
     const usuario = useAuthStore(state => state.usuario);
     const esAdmin = usuario?.rol === 'admin';
 
-    if (!isOpen) return null;
+    /* ----------------------------------------------------
+       Manejo de Animación de Cierre
+    ---------------------------------------------------- */
+    const [isClosing, setIsClosing] = useState(false);
+    const [shouldRender, setShouldRender] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setShouldRender(true);
+            setIsClosing(false);
+        } else {
+            setIsClosing(true);
+            const timer = setTimeout(() => {
+                setShouldRender(false);
+                setIsClosing(false);
+            }, 200);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
+
+    const handleClose = () => {
+        setIsClosing(true);
+        setTimeout(() => {
+            onClose();
+        }, 200);
+    };
+
+    if (!shouldRender && !isOpen) return null;
 
     return (
         <>
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] h-[95vh] flex flex-col overflow-hidden">
+            <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 ${isClosing ? 'animate-modal-backdrop-exit' : 'animate-modal-backdrop-enter'}`}>
+                <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] h-[95vh] flex flex-col overflow-hidden ${isClosing ? 'animate-modal-exit' : 'animate-modal-enter'}`}>
 
                     {/* Header */}
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
@@ -175,7 +202,7 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             </button>
                             <button
-                                onClick={onClose}
+                                onClick={handleClose}
                                 className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
                                 title="Cerrar"
                             >

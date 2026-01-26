@@ -147,32 +147,32 @@ const ModalItemPersonalizado = ({ isOpen, onClose, onAgregar, tasaCambio = 1, th
   const getThemeStyles = () => {
     if (theme === 'dark') {
       return {
-        modal: 'bg-gray-900 border-gray-700',
-        header: 'bg-gradient-to-r from-slate-600 to-slate-700',
-        input: 'bg-gray-800 border-gray-600 text-gray-100 focus:ring-slate-500 focus:border-slate-500',
-        button: 'bg-slate-600 hover:bg-slate-700',
-        buttonSecondary: 'bg-gray-700 hover:bg-gray-600 text-gray-300',
-        text: 'text-gray-100',
-        textSecondary: 'text-gray-300',
-        card: 'bg-yellow-900/20 border-yellow-700/50',
-        cardText: 'text-yellow-200',
-        pillActive: 'bg-slate-600 text-white',
-        pillInactive: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+        modal: 'bg-slate-900 border-slate-700 shadow-2xl rounded-2xl ring-1 ring-white/10',
+        header: 'bg-slate-800/50 border-b border-slate-700/50',
+        input: 'bg-slate-800 border-slate-700 text-slate-100 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 rounded-xl transition-all',
+        button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 active:scale-95 transition-all rounded-lg font-medium',
+        buttonSecondary: 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700',
+        text: 'text-slate-100',
+        textSecondary: 'text-slate-400',
+        card: 'bg-amber-900/20 border-amber-700/30 rounded-xl',
+        cardText: 'text-amber-200',
+        pillActive: 'bg-slate-700 text-white border-slate-600 shadow-sm',
+        pillInactive: 'bg-slate-800/50 text-slate-400 border-slate-700 hover:bg-slate-800'
       };
     }
 
     return {
-      modal: 'bg-white border-gray-200',
-      header: 'bg-gradient-to-r from-blue-500 to-blue-600',
-      input: 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500',
-      button: 'bg-blue-600 hover:bg-blue-700',
-      buttonSecondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
-      text: 'text-gray-900',
-      textSecondary: 'text-gray-700',
-      card: 'bg-yellow-50 border-yellow-200',
-      cardText: 'text-yellow-700',
-      pillActive: 'bg-emerald-600 text-white',
-      pillInactive: 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+      modal: 'bg-white border-slate-100 shadow-2xl rounded-2xl ring-1 ring-black/5',
+      header: 'bg-slate-50/80 border-b border-slate-100 backdrop-blur-sm',
+      input: 'bg-white border-slate-200 text-slate-800 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 rounded-xl shadow-sm transition-all',
+      button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 active:scale-95 transition-all rounded-lg font-bold',
+      buttonSecondary: 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm',
+      text: 'text-slate-800',
+      textSecondary: 'text-slate-500',
+      card: 'bg-amber-50 border-amber-100 rounded-xl',
+      cardText: 'text-amber-700',
+      pillActive: 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm',
+      pillInactive: 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
     };
   };
 
@@ -447,44 +447,44 @@ const ItemsTable = ({
   const getThemeStyles = () => {
     if (theme === 'dark') {
       return {
-        container: 'bg-gray-800/70 border-gray-700',
-        header: 'bg-gray-700/50',
-        input: 'bg-gray-700 border-gray-600 text-gray-100 focus:ring-slate-500 focus:border-slate-500',
-        table: 'bg-gray-800/50',
-        tableHeader: 'bg-gray-700/50 text-gray-300',
-        tableRow: 'hover:bg-gray-700/40 border-gray-700/50',
-        dropdown: 'bg-gray-800 border-gray-700',
-        dropdownOption: 'hover:bg-gray-700 text-gray-200',
-        button: 'bg-slate-600 hover:bg-slate-700 text-white',
-        buttonSecondary: 'bg-gray-700 hover:bg-gray-600 text-gray-300',
-        text: 'text-gray-100',
-        textSecondary: 'text-gray-300',
-        textMuted: 'text-gray-400',
-        emptyState: 'text-gray-500',
-        summaryCard: 'bg-slate-800/50 border-slate-600',
-        summaryText: 'text-slate-200',
-        summaryValue: 'text-slate-100'
+        container: 'bg-slate-900/50 backdrop-blur-xl border-slate-700/50 shadow-2xl rounded-2xl',
+        header: 'bg-slate-800/40 border-b border-slate-700/50',
+        input: 'bg-slate-800/50 border-slate-600/50 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 rounded-xl transition-all duration-300',
+        table: 'bg-transparent',
+        tableHeader: 'bg-slate-800/30 text-slate-400 text-xs uppercase tracking-wider font-semibold py-4',
+        tableRow: 'hover:bg-slate-800/50 border-slate-700/30 transition-colors duration-200 text-sm',
+        dropdown: 'bg-slate-800 border-slate-700 shadow-xl rounded-xl ring-1 ring-black/5',
+        dropdownOption: 'hover:bg-slate-700/50 text-slate-200 cursor-pointer transition-colors',
+        button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20 active:scale-95 transition-all rounded-lg font-medium',
+        buttonSecondary: 'bg-slate-700 hover:bg-slate-600 text-slate-200 shadow-sm border border-slate-600/50 transition-all rounded-lg',
+        text: 'text-slate-100 font-medium',
+        textSecondary: 'text-slate-400',
+        textMuted: 'text-slate-500',
+        emptyState: 'text-slate-500',
+        summaryCard: 'bg-slate-800/40 border-slate-700/50 rounded-2xl backdrop-blur-sm',
+        summaryText: 'text-slate-400',
+        summaryValue: 'text-emerald-400 font-bold'
       };
     }
 
     return {
-      container: 'bg-white border-gray-200',
-      header: 'bg-gray-50',
-      input: 'bg-white border-gray-300 text-gray-900 focus:ring-emerald-500 focus:border-emerald-500',
+      container: 'bg-white border-slate-100 shadow-xl shadow-slate-200/50 rounded-2xl',
+      header: 'bg-slate-50/50 border-b border-slate-100 backdrop-blur-sm',
+      input: 'bg-white border-slate-200 text-slate-700 placeholder-slate-400 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 rounded-xl shadow-sm transition-all duration-300',
       table: 'bg-white',
-      tableHeader: 'bg-gray-50 text-gray-900',
-      tableRow: 'hover:bg-gray-50 border-gray-200',
-      dropdown: 'bg-white border-gray-200',
-      dropdownOption: 'hover:bg-emerald-50 text-gray-900',
-      button: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-      buttonSecondary: 'bg-gray-100 hover:bg-gray-200 text-gray-700',
-      text: 'text-gray-900',
-      textSecondary: 'text-gray-600',
-      textMuted: 'text-gray-500',
-      emptyState: 'text-gray-500',
-      summaryCard: 'bg-emerald-50 border-emerald-200',
-      summaryText: 'text-emerald-600',
-      summaryValue: 'text-emerald-900'
+      tableHeader: 'bg-slate-50/80 text-slate-500 text-xs uppercase tracking-wider font-bold py-4',
+      tableRow: 'hover:bg-slate-50/80 border-slate-100 transition-colors duration-200 text-sm group',
+      dropdown: 'bg-white border-slate-100 shadow-2xl shadow-slate-200/50 rounded-xl ring-1 ring-slate-100',
+      dropdownOption: 'hover:bg-emerald-50/50 text-slate-700 cursor-pointer transition-colors',
+      button: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 active:scale-95 transition-all rounded-lg font-bold tracking-wide',
+      buttonSecondary: 'bg-white hover:bg-slate-50 text-slate-600 shadow-sm border border-slate-200 transition-all rounded-lg font-medium',
+      text: 'text-slate-800 font-bold',
+      textSecondary: 'text-slate-500',
+      textMuted: 'text-slate-400',
+      emptyState: 'text-slate-400',
+      summaryCard: 'bg-emerald-50/30 border-emerald-100 rounded-2xl backdrop-blur-sm',
+      summaryText: 'text-emerald-700/80 font-medium',
+      summaryValue: 'text-emerald-800 font-black tracking-tight'
     };
   };
 

@@ -1,5 +1,5 @@
 // components/reportes/ReportesModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, BarChart, Package, TrendingDown, DollarSign, Search, Users, FileText, Calendar, Wrench } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import toast from '../../utils/toast.jsx';
@@ -18,8 +18,35 @@ const ReportesModal = ({ isOpen, onClose }) => {
   const [tabActiva, setTabActiva] = useState('resumen');
   const [loading, setLoading] = useState(false);
 
+  /* ----------------------------------------------------
+     Manejo de Animación de Cierre
+  ---------------------------------------------------- */
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    } else {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 200);
+  };
+
   if (!tienePermiso('VER_REPORTES') || usuario?.rol !== 'admin') return null;
-  if (!isOpen) return null;
+  if (!shouldRender && !isOpen) return null;
 
   const tabs = [
     { id: 'resumen', label: 'Resumen', icon: BarChart, descripcion: 'Dashboard principal con métricas clave' },
@@ -51,8 +78,8 @@ const ReportesModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+    <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${isClosing ? 'animate-modal-backdrop-exit' : 'animate-modal-backdrop-enter'}`}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col ${isClosing ? 'animate-modal-exit' : 'animate-modal-enter'}`}>
         {/* Header Compacto */}
         <div className="relative bg-gradient-to-r from-purple-600 to-indigo-700 overflow-hidden flex-shrink-0 shadow-md z-10">
           <div className="relative px-6 py-3 text-white">
@@ -104,7 +131,7 @@ const ReportesModal = ({ isOpen, onClose }) => {
                   <span>{usuario?.nombre}</span>
                 </div>
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="bg-white/10 hover:bg-white/20 p-1.5 rounded-lg transition-colors text-white"
                 >
                   <X className="h-5 w-5" />
@@ -179,7 +206,7 @@ const ReportesModal = ({ isOpen, onClose }) => {
               </button>
 
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="px-6 py-2 text-xs font-bold text-purple-700 bg-white hover:bg-purple-50 border border-transparent rounded-lg transition-all shadow-lg hover:shadow-xl active:scale-95"
               >
                 Cerrar Panel
