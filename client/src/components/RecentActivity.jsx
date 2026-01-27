@@ -1,362 +1,352 @@
 // components/RecentActivity.jsx (CÓDIGO COMPLETO - INVENTARIO Y MONTOS EN MISMA FILA)
 import React from 'react';
-import { Clock, TrendingUp, TrendingDown, Activity, Lock, User, Package, DollarSign, Coins } from 'lucide-react';
+import { Clock, TrendingUp, TrendingDown, Activity, Lock, User, Package, DollarSign, Coins, Smartphone } from 'lucide-react';
 import { useRecentActivity } from '../store/cajaStore';
 
 const RecentActivity = () => {
- const { transacciones, ultimoCierre, cajaActual } = useRecentActivity();
+  const { transacciones, ultimoCierre, cajaActual } = useRecentActivity();
 
- const ultimaActividad = !cajaActual && ultimoCierre 
-   ? ultimoCierre 
-   : (transacciones.length > 0 ? transacciones[0] : null);
+  const ultimaActividad = !cajaActual && ultimoCierre
+    ? ultimoCierre
+    : (transacciones.length > 0 ? transacciones[0] : null);
 
-const formatearHora = (fechaHora) => {
-   if (!fechaHora) return '--:--';
-   const fecha = new Date(fechaHora);
-   if (isNaN(fecha.getTime())) return '--:--';
-   return fecha.toLocaleTimeString('es-VE', {
-     hour: '2-digit',
-     minute: '2-digit'
-   });
- };
+  const formatearHora = (fechaHora) => {
+    if (!fechaHora) return '--:--';
+    const fecha = new Date(fechaHora);
+    if (isNaN(fecha.getTime())) return '--:--';
+    return fecha.toLocaleTimeString('es-VE', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-const formatearFecha = (fechaHora) => {
-   if (!fechaHora) return '--/--';
-   const fecha = new Date(fechaHora);
-   if (isNaN(fecha.getTime())) return '--/--';
-   return fecha.toLocaleDateString('es-VE', {
-     day: '2-digit',
-     month: '2-digit'
-   });
- };
+  const formatearFecha = (fechaHora) => {
+    if (!fechaHora) return '--/--';
+    const fecha = new Date(fechaHora);
+    if (isNaN(fecha.getTime())) return '--/--';
+    return fecha.toLocaleDateString('es-VE', {
+      day: '2-digit',
+      month: '2-digit'
+    });
+  };
 
- const formatearBolivares = (amount) => {
-   return Math.round(amount).toLocaleString('es-VE');
- };
+  const formatearBolivares = (amount) => {
+    return Math.round(amount).toLocaleString('es-VE');
+  };
 
- const getInventarioIcon = (tipo) => {
-   switch(tipo) {
-     case 'producto': return '';
-     case 'servicio': return '';
-     case 'electrobar': return '';
-     default: return '';
-   }
- };
+  const getInventarioIcon = (tipo) => {
+    switch (tipo) {
+      case 'producto': return '';
+      case 'servicio': return '';
+      case 'electrobar': return '';
+      default: return '';
+    }
+  };
 
-const obtenerMontosOriginales = (transaccion) => {
-   // Para vueltos, usar los datos directos de la transacción
-   if (transaccion.categoria?.includes('Vuelto de venta')) {
-     return [{
-       monto: transaccion.totalBs,
-       moneda: 'bs',
-       simbolo: 'Bs'
-     }];
-   }
-   
-   // Para transacciones normales, usar pagos
-   if (!transaccion.pagos || transaccion.pagos.length === 0) return [];
-   
-   const montosPorMoneda = transaccion.pagos.reduce((acc, pago) => {
-     if (!acc[pago.moneda]) acc[pago.moneda] = 0;
-     acc[pago.moneda] += pago.monto;
-     return acc;
-   }, {});
+  const obtenerMontosOriginales = (transaccion) => {
+    // Para vueltos, usar los datos directos de la transacción
+    if (transaccion.categoria?.includes('Vuelto de venta')) {
+      return [{
+        monto: transaccion.totalBs,
+        moneda: 'bs',
+        simbolo: 'Bs'
+      }];
+    }
 
-   return Object.entries(montosPorMoneda).map(([moneda, monto]) => ({
-     monto,
-     moneda,
-     simbolo: moneda === 'usd' ? '$' : 'Bs'
-   }));
- };
+    // Para transacciones normales, usar pagos
+    if (!transaccion.pagos || transaccion.pagos.length === 0) return [];
 
- return (
-   <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col w-full">
-     {/* Header estilo CajaStatus/Summary */}
-     <div className={`px-4 py-3 ${
-       cajaActual 
-         ? 'bg-gradient-to-r from-blue-600 to-blue-700'
-         : 'bg-gradient-to-r from-slate-600 to-slate-700'
-     }`}>
-       <div className="flex items-center justify-between">
-         <div className="flex items-center space-x-3">
-           <div className="bg-white/20 backdrop-blur-sm rounded-lg p-1.5">
-             <Activity className="h-4 w-4 text-white" />
-           </div>
-           <div>
-             <h3 className="text-sm font-semibold text-white">Última Actividad</h3>
-             <p className={`text-xs ${
-               cajaActual ? 'text-emerald-100' : 'text-slate-200'
-             }`}>
-               {cajaActual ? 'Sistema operativo' : 'Sistema cerrado'}
-             </p>
-           </div>
-         </div>
-         
-         {/* ID/Hora en el header */}
-         {ultimaActividad && ultimaActividad.tipo !== 'cierre' && (
-           <div className="text-xs text-white/90 font-mono bg-white/10 rounded-full px-2 py-1">
-                  #{ultimaActividad.id} • {formatearHora(ultimaActividad.fechaHora || ultimaActividad.fecha_hora || ultimaActividad.createdAt || ultimaActividad.timestamp)}
-           </div>
-         )}
-         {ultimaActividad && ultimaActividad.tipo === 'cierre' && (
-           <div className="text-xs text-white/90 bg-white/10 rounded-full px-2 py-1">
-             {formatearFecha(ultimaActividad.fechaHora || ultimaActividad.fecha_hora)} • {formatearHora(ultimaActividad.fechaHora || ultimaActividad.fecha_hora)}
-           </div>
-         )}
-       </div>
-     </div>
+    const montosPorMoneda = transaccion.pagos.reduce((acc, pago) => {
+      const key = pago.metodo === 'pago_movil' ? 'pm' : pago.moneda;
+      if (!acc[key]) acc[key] = 0;
+      acc[key] += pago.monto;
+      return acc;
+    }, {});
 
-     {/* Contenido */}
-     <div className="p-4">
-       {!ultimaActividad ? (
-         <div className="text-center py-4 text-gray-500">
-           <p className="text-sm">No hay actividad registrada</p>
-         </div>
-       ) : ultimaActividad.tipo === 'cierre' ? (
-         // Mostrar información del último cierre
-         <div className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50 transition-colors">
-           <div className="flex items-start justify-between">
-             <div className="flex items-start space-x-2">
-               <div className="p-1 rounded bg-red-100">
-                 <Lock className="h-3 w-3 text-red-600" />
-               </div>
-               
-               <div className="flex-1">
-                 <div className="text-sm font-medium text-gray-900">
-                   Caja Cerrada
-                 </div>
-                 <div className="text-xs text-gray-500 flex items-center space-x-1">
-                   <User className="h-3 w-3" />
-                   <span>Por: {ultimaActividad.usuario_cierre || ultimaActividad.usuario || 'Usuario'}</span>
-                 </div>
-               </div>
-             </div>
-             
-             <div className="text-right">
-               <div className="text-xs text-gray-500 mb-1">Resumen del día</div>
-               <div className="text-xs space-y-0.5">
-                 <div className="text-success-600 font-medium">
-                   +{formatearBolivares(ultimaActividad.total_ingresos_bs)} Bs
-                 </div>
-                 <div className="text-danger-600 font-medium">
-                   -{formatearBolivares(ultimaActividad.total_egresos_bs)} Bs
-                 </div>
-               </div>
-             </div>
-           </div>
-         </div>
-       ) : (
-         // Mostrar última transacción
-         <div className="space-y-3">
-           {/* Título con badge de tipo */}
-           <div className="flex items-center space-x-2">
-             {ultimaActividad.item_inventario && (
-               <span className="text-sm" title={`Del inventario: ${ultimaActividad.item_inventario.tipo}`}>
-                 {getInventarioIcon(ultimaActividad.item_inventario.tipo)}
-               </span>
-             )}
-             <div className="text-base font-semibold text-gray-900">
-               {ultimaActividad.categoria}
-             </div>
-             <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
-               ultimaActividad.tipo === 'ingreso'
-                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                 : 'bg-red-50 text-red-700 border-red-200'
-             }`}>
-               {ultimaActividad.tipo === 'ingreso' ? (
-                 <TrendingUp className="h-3 w-3 mr-1" />
-               ) : (
-                 <TrendingDown className="h-3 w-3 mr-1" />
-               )}
-               {ultimaActividad.tipo === 'ingreso' ? 'INGRESO' : 'EGRESO'}
-             </div>
-           </div>
+    return Object.entries(montosPorMoneda).map(([key, monto]) => ({
+      monto,
+      moneda: key === 'pm' ? 'bs' : key,
+      tipo: key, // 'usd', 'bs', 'pm'
+      simbolo: key === 'usd' ? '$' : 'Bs'
+    }));
+  };
 
-           {/* Info del inventario y montos en la misma fila */}
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-             
-             {/* Inventario */}
-             {ultimaActividad.item_inventario && (
-               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200/50 shadow-sm">
-                 <div className="flex items-center space-x-2 mb-1">
-                   <div className="bg-blue-500 p-1 rounded shadow-sm">
-                     <Package className="h-3 w-3 text-white" />
-                   </div>
-                   <span className="text-xs font-semibold text-blue-800">Inventario</span>
-                 </div>
-                 
-                 <div className="flex items-center space-x-2">
-                   
-                   <div className="flex-1">
-                     <div className="text-sm font-bold text-blue-900">
-                       {ultimaActividad.item_inventario.cantidad}× ${ultimaActividad.item_inventario.precio_unitario.toFixed(2)}
-                     </div>
-                     <div className="text-xs text-blue-700">
-                       {ultimaActividad.item_inventario.tipo === 'electrobar' ? ' Electrobar' : 
-                        ultimaActividad.item_inventario.tipo === 'producto' ? 'Producto' : 'Servicio'}
-                     </div>
-                   </div>
-                   
-                   {/* Stock si aplica */}
-                   {(ultimaActividad.item_inventario.tipo === 'producto' || ultimaActividad.item_inventario.tipo === 'electrobar') && (
-                     <div className="text-right">
-                       <div className="text-xs text-blue-600">Stock</div>
-                       <div className={`text-sm font-bold ${
-                         ultimaActividad.item_inventario.stock_actual <= 5 ? 'text-orange-600' : 'text-green-600'
-                       }`}>
-                         {ultimaActividad.item_inventario.stock_actual}
-                         {ultimaActividad.item_inventario.stock_actual <= 5 && ' '}
-                       </div>
-                     </div>
-                   )}
-                 </div>
-               </div>
-             )}
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col w-full transition-all duration-300 hover:shadow-md">
+      {/* Header Premium */}
+      <div className={`px-4 py-3 relative overflow-hidden ${cajaActual
+        ? 'bg-gradient-to-r from-blue-600 to-indigo-700'
+        : 'bg-gradient-to-r from-slate-700 to-slate-800'
+        }`}>
+        {/* Shine Effect Overlay */}
+        <div className="absolute inset-0 bg-white/5 opacity-20 transform -skew-x-12 translate-x-full animate-[shimmer_2s_infinite]"></div>
 
-             {/* Montos originales */}
-             <div className="space-y-2">
-               {(() => {
-                 const montosOriginales = obtenerMontosOriginales(ultimaActividad);
-                 return montosOriginales.map((montoInfo, idx) => (
-                   <div key={idx} className={`rounded-lg p-3 border shadow-sm ${
-                     ultimaActividad.tipo === 'ingreso'
-                       ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200/50'
-                       : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200/50'
-                   }`}>
-                     <div className="flex items-center space-x-2 mb-1">
-                       <div className={`p-1 rounded shadow-sm ${
-                         ultimaActividad.tipo === 'ingreso' ? 'bg-emerald-500' : 'bg-red-500'
-                       }`}>
-                         {montoInfo.moneda === 'usd' ? (
-                           <DollarSign className="h-3 w-3 text-white" />
-                         ) : (
-                           <Coins className="h-3 w-3 text-white" />
-                         )}
-                       </div>
-                       <span className={`text-xs font-semibold ${
-                         ultimaActividad.tipo === 'ingreso' ? 'text-emerald-800' : 'text-red-800'
-                       }`}>
-                         {montoInfo.moneda === 'usd' ? 'Dólares' : 'Bolívares'}
-                       </span>
-                     </div>
-                     <div className={`text-sm font-bold ${
-                       ultimaActividad.tipo === 'ingreso' ? 'text-emerald-900' : 'text-red-900'
-                     }`}>
-                       {ultimaActividad.tipo === 'ingreso' ? '+' : '-'}
-                       {montoInfo.simbolo}{montoInfo.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                     </div>
-                   </div>
-                 ));
-               })()}
-             </div>
-           </div>
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center space-x-3">
+            <div className="bg-white/20 backdrop-blur-md rounded-lg p-1.5 shadow-inner border border-white/10">
+              <Activity className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-wide">Última Actividad</h3>
+              <p className={`text-[10px] font-medium uppercase tracking-wider ${cajaActual ? 'text-blue-100' : 'text-slate-300'
+                }`}>
+                {cajaActual ? 'En Tiempo Real' : 'Historial de Cierre'}
+              </p>
+            </div>
+          </div>
 
-           {/* Métodos de pago compactos */}
-           <div className="flex flex-wrap gap-1">
-             {(() => {
-               // Para vueltos, mostrar método principal
-               if (ultimaActividad.categoria?.includes('Vuelto de venta') && ultimaActividad.metodoPagoPrincipal) {
-                 const getMetodoColor = (metodo) => {
-                   const colorMap = {
-                     'efectivo_bs': 'bg-indigo-100 text-indigo-700 border-indigo-200',
-                     'efectivo_usd': 'bg-green-100 text-green-700 border-green-200',
-                     'pago_movil': 'bg-purple-100 text-purple-700 border-purple-200',
-                     'transferencia': 'bg-orange-100 text-orange-700 border-orange-200',
-                     'binance': 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                   };
-                   return colorMap[metodo] || 'bg-gray-100 text-gray-700 border-gray-200';
-                 };
+          {/* ID/Hora Badge */}
+          {ultimaActividad && ultimaActividad.tipo !== 'cierre' && (
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] text-white/80 font-mono bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm border border-white/10">
+                #{ultimaActividad.id}
+              </span>
+              <span className="text-xs text-white font-bold mt-0.5">
+                {formatearHora(ultimaActividad.fechaHora || ultimaActividad.fecha_hora || ultimaActividad.createdAt || ultimaActividad.timestamp)}
+              </span>
+            </div>
+          )}
+          {ultimaActividad && ultimaActividad.tipo === 'cierre' && (
+            <div className="text-xs text-white/90 bg-white/10 rounded-full px-3 py-1 backdrop-blur-sm border border-white/10 shadow-sm">
+              {formatearFecha(ultimaActividad.fechaHora || ultimaActividad.fecha_hora)} • {formatearHora(ultimaActividad.fechaHora || ultimaActividad.fecha_hora)}
+            </div>
+          )}
+        </div>
+      </div>
 
-                 const getMetodoLabel = (metodo) => {
-                   const labelMap = {
-                     'efectivo_bs': 'Efectivo Bs',
-                     'efectivo_usd': 'Efectivo USD',
-                     'pago_movil': 'Pago Móvil',
-                     'transferencia': 'Transferencia',
-                     'binance': 'Binance'
-                   };
-                   return labelMap[metodo] || metodo.replace('_', ' ').toUpperCase();
-                 };
+      {/* Contenido Principal */}
+      <div className="p-4 flex-1 flex flex-col justify-center bg-gradient-to-b from-white to-gray-50/50">
+        {!ultimaActividad ? (
+          <div className="text-center py-8">
+            <div className="bg-gray-50 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-3 border border-gray-100 shadow-inner">
+              <Clock className="h-8 w-8 text-gray-300" />
+            </div>
+            <p className="text-gray-400 font-medium text-sm">Esperando movimientos...</p>
+          </div>
+        ) : ultimaActividad.tipo === 'cierre' ? (
+          // ==============================
+          // VISTA DE CIERRE
+          // ==============================
+          <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-1 h-full bg-slate-500"></div>
 
-                 return (
-                   <span 
-                     className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getMetodoColor(ultimaActividad.metodoPagoPrincipal)}`}
-                     title={`Vuelto entregado en ${getMetodoLabel(ultimaActividad.metodoPagoPrincipal)}`}
-                   >
-                     <TrendingDown className="h-3 w-3 mr-1 text-orange-500" />
-                     {getMetodoLabel(ultimaActividad.metodoPagoPrincipal).split(' ')[0]}: {ultimaActividad.totalBs} Bs
-                   </span>
-                 );
-               }
-               
-               // Para transacciones normales, mostrar pagos
-               const getMetodoColor = (metodo) => {
-                 const colorMap = {
-                   'efectivo_bs': 'bg-indigo-100 text-indigo-700 border-indigo-200',
-                   'efectivo_usd': 'bg-green-100 text-green-700 border-green-200',
-                   'pago_movil': 'bg-purple-100 text-purple-700 border-purple-200',
-                   'transferencia': 'bg-orange-100 text-orange-700 border-orange-200',
-                   'binance': 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                 };
-                 return colorMap[metodo] || 'bg-gray-100 text-gray-700 border-gray-200';
-               };
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-lg bg-red-50 border border-red-100 text-red-600 shadow-sm">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-900 text-base">Caja Cerrada</h4>
+                  <div className="flex items-center text-xs text-gray-500 mt-1">
+                    <User className="h-3 w-3 mr-1" />
+                    <span>{ultimaActividad.usuario_cierre || ultimaActividad.usuario || 'Usuario'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-               const getMetodoLabel = (metodo) => {
-                 const labelMap = {
-                   'efectivo_bs': 'Efectivo Bs',
-                   'efectivo_usd': 'Efectivo USD',
-                   'pago_movil': 'Pago Móvil',
-                   'transferencia': 'Transferencia',
-                   'binance': 'Binance'
-                 };
-                 return labelMap[metodo] || metodo.replace('_', ' ').toUpperCase();
-               };
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div className="bg-emerald-50/50 rounded-lg p-2 border border-emerald-100/50 text-center">
+                <span className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider">Ingresos</span>
+                <div className="text-sm font-bold text-emerald-700">+{formatearBolivares(ultimaActividad.total_ingresos_bs)} Bs</div>
+              </div>
+              <div className="bg-red-50/50 rounded-lg p-2 border border-red-100/50 text-center">
+                <span className="text-[10px] uppercase font-bold text-red-600 tracking-wider">Egresos</span>
+                <div className="text-sm font-bold text-red-700">-{formatearBolivares(ultimaActividad.total_egresos_bs)} Bs</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // ==============================
+          // VISTA DE TRANSACCIÓN PREMIUM
+          // ==============================
+          <div className="space-y-4">
 
-               return ultimaActividad.pagos?.slice(0, 2).map((pago, idx) => (
-                 <span 
-                   key={idx}
-                   className={`inline-flex px-2 py-0.5 rounded text-xs font-medium border ${getMetodoColor(pago.metodo)}`}
-                   title={`${getMetodoLabel(pago.metodo)}: ${pago.monto} ${pago.moneda.toUpperCase()}`}
-                 >
-                   {getMetodoLabel(pago.metodo).split(' ')[0]}: {pago.monto} {pago.moneda.toUpperCase()}
-                 </span>
-               ));
-             })()}
-             {(ultimaActividad.pagos?.length || 0) > 2 && !ultimaActividad.categoria?.includes('Vuelto de venta') && (
-               <span className="inline-flex px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 border border-gray-200">
-                 +{ultimaActividad.pagos.length - 2}
-               </span>
-             )}
-           </div>
+            {/* Header Tarjeta */}
+            {/* Header Tarjeta - Una sola fila */}
+            <div className="flex items-center justify-center w-full px-2 gap-2">
+              <span className={`flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${ultimaActividad.tipo === 'ingreso'
+                ? 'bg-emerald-100/50 text-emerald-700 border-emerald-200'
+                : 'bg-rose-100/50 text-rose-700 border-rose-200'
+                }`}>
+                {ultimaActividad.tipo === 'ingreso' ? (
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 mr-1" />
+                )}
+                {ultimaActividad.tipo === 'ingreso' ? 'INGRESO' : 'EGRESO'}
+              </span>
 
-           {/* Info básica al final */}
-           <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
-             <div className="flex items-center space-x-2">
-               <span>{ultimaActividad.pagos?.length || 0} método{(ultimaActividad.pagos?.length || 0) !== 1 ? 's' : ''} de pago</span>
-               {ultimaActividad.item_inventario && (
-                 <>
-                   <span>•</span>
-                   <div className="flex items-center space-x-1">
-                     <Package className="h-3 w-3 text-indigo-500" />
-                     <span className="text-indigo-600 font-medium">Inventario</span>
-                   </div>
-                 </>
-               )}
-             </div>
-             <div className="text-right">
-               <div className="text-gray-400">
-                 {formatearFecha(ultimaActividad.fechaHora || ultimaActividad.fecha_hora)}
-               </div>
-               <div className="text-gray-500 text-xs">
-                 Por: {ultimaActividad.usuario || 'Usuario'}
-               </div>
-             </div>
-           </div>
-         </div>
-       )}
-     </div>
-   </div>
- );
+              <h4 className="text-sm font-bold text-gray-900 truncate max-w-[180px]" title={ultimaActividad.categoria}>
+                {ultimaActividad.categoria}
+              </h4>
+
+              {ultimaActividad.item_inventario && (
+                <span className="flex-shrink-0 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
+                  Inv.
+                </span>
+              )}
+            </div>
+
+            {/* Main Content Grid */}
+            <div className="w-full">
+
+              {/* Card de Montos - Highlight con Grid Dinámico */}
+              <div className={(() => {
+                const numMontos = obtenerMontosOriginales(ultimaActividad).length;
+                return `grid gap-2 ${numMontos >= 3 ? 'grid-cols-3' : numMontos === 2 ? 'grid-cols-2' : 'grid-cols-1'}`;
+              })()}>
+                {(() => {
+                  const montosOriginales = obtenerMontosOriginales(ultimaActividad);
+                  return montosOriginales.map((montoInfo, idx) => {
+                    const theme = {
+                      pm: {
+                        bg: 'bg-purple-500',
+                        text: 'text-purple-600',
+                        amount: 'text-purple-900',
+                        border: 'border-purple-100',
+                        bgGrad: 'bg-gradient-to-br from-white to-purple-50',
+                        shadow: 'shadow-purple-100/50'
+                      },
+                      usd: {
+                        bg: 'bg-emerald-500',
+                        text: 'text-emerald-600',
+                        amount: 'text-emerald-900',
+                        border: 'border-emerald-100',
+                        bgGrad: 'bg-gradient-to-br from-white to-emerald-50',
+                        shadow: 'shadow-emerald-100/50'
+                      },
+                      bs: {
+                        bg: 'bg-blue-500',
+                        text: 'text-blue-600',
+                        amount: 'text-blue-900',
+                        border: 'border-blue-100',
+                        bgGrad: 'bg-gradient-to-br from-white to-blue-50',
+                        shadow: 'shadow-blue-100/50'
+                      }
+                    }[montoInfo.tipo] || {
+                      bg: 'bg-gray-500',
+                      text: 'text-gray-600',
+                      amount: 'text-gray-900',
+                      border: 'border-gray-100',
+                      bgGrad: 'bg-white',
+                      shadow: 'shadow-sm'
+                    };
+
+                    const formattedAmount = montoInfo.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 });
+                    const fontSize = montosOriginales.length >= 3
+                      ? (formattedAmount.length > 10 ? 'text-xs' : 'text-sm')
+                      : (formattedAmount.length > 10 ? 'text-base' : 'text-lg');
+
+                    return (
+                      <div key={idx} className={`relative overflow-hidden rounded-xl p-3 border transition-all duration-300 hover:shadow-md group ${theme.bgGrad} ${theme.border} ${theme.shadow}`}>
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white/10 group-hover:to-white/20 transition-all duration-500"></div>
+
+                        <div className="flex flex-col items-center justify-center relative z-10 space-y-1">
+                          <div className={`p-2 rounded-full shadow-sm mb-1 ${theme.bg} text-white`}>
+                            {montoInfo.tipo === 'usd' ? (
+                              <DollarSign className="h-4 w-4" />
+                            ) : montoInfo.tipo === 'pm' ? (
+                              <Smartphone className="h-4 w-4" />
+                            ) : (
+                              <Coins className="h-4 w-4" />
+                            )}
+                          </div>
+
+                          <div className="flex flex-col items-center">
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${theme.text} opacity-80`}>
+                              {montoInfo.tipo === 'usd' ? 'Dólares' : montoInfo.tipo === 'pm' ? 'Pago Móvil' : 'Bolívares'}
+                            </span>
+                            <span className={`${fontSize} font-black tracking-tight ${theme.amount}`}>
+                              {ultimaActividad.tipo === 'ingreso' ? '+' : '-'}
+                              {montoInfo.simbolo}{formattedAmount}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Card Inventario (Si existe) */}
+              {ultimaActividad.item_inventario && (
+                <div className="bg-blue-50/50 rounded-xl p-3 border border-blue-100 relative group overflow-hidden">
+                  <div className="absolute -right-4 -top-4 bg-blue-100 rounded-full h-16 w-16 opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="flex items-center space-x-2">
+                      <div className="bg-white p-1.5 rounded-md shadow-sm text-blue-600 border border-blue-50">
+                        <Package className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-blue-600 font-semibold uppercase tracking-wider">Item</div>
+                        <div className="text-sm font-bold text-blue-900">
+                          {ultimaActividad.item_inventario.cantidad} un. <span className="text-blue-400 mx-1">×</span> {ultimaActividad.item_inventario.precio_unitario.toFixed(2)}$
+                        </div>
+                      </div>
+                    </div>
+
+                    {(ultimaActividad.item_inventario.tipo === 'producto' || ultimaActividad.item_inventario.tipo === 'electrobar') && (
+                      <div className="text-right pl-2 border-l border-blue-200/50">
+                        <span className="text-[10px] text-blue-500 font-medium block">Stock</span>
+                        <span className={`text-sm font-bold ${ultimaActividad.item_inventario.stock_actual <= 5 ? 'text-orange-500' : 'text-blue-700'
+                          }`}>
+                          {ultimaActividad.item_inventario.stock_actual}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Footer Información */}
+            <div className="pt-2 mt-1 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                {/* Payment Methods Badges */}
+                <div className="flex flex-wrap gap-1 align-center">
+                  {(() => {
+                    if (ultimaActividad.categoria?.includes('Vuelto de venta') && ultimaActividad.metodoPagoPrincipal) {
+                      return (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold border bg-gray-50 border-gray-200 text-gray-600 shadow-sm">
+                          <TrendingDown className="h-2.5 w-2.5 mr-1 text-orange-500" />
+                          Vuelto: {ultimaActividad.metodoPagoPrincipal.replace('_', ' ').toUpperCase()}
+                        </span>
+                      );
+                    }
+
+                    return ultimaActividad.pagos?.slice(0, 2).map((pago, idx) => (
+                      <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-semibold border bg-gray-50/80 border-gray-200 text-gray-700 hover:bg-gray-100 transition-colors cursor-default">
+                        {pago.metodo.split('_')[0].toUpperCase()}
+                        <span className="ml-0.5 text-gray-400">|</span>
+                        <span className="ml-0.5 font-bold">{pago.moneda.toUpperCase()}</span>
+                      </span>
+                    ));
+                  })()}
+                  {(ultimaActividad.pagos?.length || 0) > 2 && (
+                    <span className="text-[9px] text-gray-400 font-medium self-center">
+                      +{ultimaActividad.pagos.length - 2} más
+                    </span>
+                  )}
+                </div>
+
+                {/* User Info */}
+                <div className="flex items-center text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full border border-gray-100 shrink-0">
+                  <User className="h-2.5 w-2.5 mr-1" />
+                  <span className="font-medium text-gray-600 max-w-[70px] truncate">
+                    {ultimaActividad.usuario || 'Usuario'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default RecentActivity;

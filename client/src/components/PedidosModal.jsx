@@ -6,6 +6,7 @@ import {
     Store, XCircle, RefreshCw, MessageCircle, Monitor, Wallet,
     Trash2, ClipboardCheck, ChevronDown, ChevronLeft, ChevronRight
 } from 'lucide-react';
+import { TbTruckDelivery } from 'react-icons/tb';
 import { api } from '../config/api';
 import toast from '../utils/toast.jsx';
 import NuevoPedidoModal from './NuevoPedidoModal';
@@ -41,6 +42,7 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
     const [paginaActual, setPaginaActual] = useState(1);
     const [confirmarEliminar, setConfirmarEliminar] = useState(null);
     const [dropdownAbierto, setDropdownAbierto] = useState(null);
+    const [estadoPendienteConfirmar, setEstadoPendienteConfirmar] = useState(null);
     const [pedidoAPagar, setPedidoAPagar] = useState(null); // Para modal de pago
     const PEDIDOS_POR_PAGINA = 4;
 
@@ -94,6 +96,18 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
     );
 
     // Cambiar estado del pedido
+    const handleSolicitarCambioEstado = (pedidoId, nuevoEstado) => {
+        setEstadoPendienteConfirmar({ pedidoId, nuevoEstado });
+        setDropdownAbierto(null);
+    };
+
+    const confirmarCambioEstado = async () => {
+        if (estadoPendienteConfirmar) {
+            await cambiarEstado(estadoPendienteConfirmar.pedidoId, estadoPendienteConfirmar.nuevoEstado);
+            setEstadoPendienteConfirmar(null);
+        }
+    };
+
     const cambiarEstado = async (pedidoId, nuevoEstado) => {
         try {
             // Buscar el pedido para validar
@@ -175,6 +189,44 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
         }, 200);
     };
 
+    // Render Confirmation Modal
+    const renderConfirmationModal = () => {
+        if (!estadoPendienteConfirmar) return null;
+
+        const configNuevoEstado = ESTADOS_CONFIG[estadoPendienteConfirmar.nuevoEstado];
+
+        return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            Confirmar Cambio
+                        </h3>
+                    </div>
+                    <div className="p-6">
+                        <p className="text-gray-600 mb-4">
+                            ¿Estás seguro de cambiar el estado a <span className={`font-bold ${configNuevoEstado?.color.split(' ')[1]}`}>{configNuevoEstado?.label}</span>?
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setEstadoPendienteConfirmar(null)}
+                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmarCambioEstado}
+                                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors font-medium"
+                            >
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     if (!shouldRender && !isOpen) return null;
 
     return (
@@ -186,7 +238,7 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                             <div className="bg-white/20 p-2 rounded-lg">
-                                <Package className="h-6 w-6 text-white" />
+                                <TbTruckDelivery className="h-6 w-6 text-white" />
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-white">Pedidos de Productos</h2>
@@ -425,9 +477,11 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
 
                                                             return (
                                                                 <div className="relative">
+                                                                    <span className="absolute -top-5 w-full text-center left-0 text-[10px] text-gray-400 font-bold uppercase tracking-wider">Estado del pedido</span>
                                                                     {/* Botón trigger */}
                                                                     <button
                                                                         onClick={() => setDropdownAbierto(estaAbierto ? null : pedido.id)}
+                                                                        title="Cambiar estado"
                                                                         className="flex items-center space-x-2 text-sm font-medium border-2 border-indigo-200 rounded-xl px-3 py-1.5 
                                                                             bg-gradient-to-r from-indigo-50 to-purple-50 
                                                                             hover:from-indigo-100 hover:to-purple-100
@@ -447,8 +501,14 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
                                                                                 className="fixed inset-0 z-10"
                                                                                 onClick={() => setDropdownAbierto(null)}
                                                                             />
+
                                                                             {/* Menu */}
-                                                                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-20 animate-in fade-in slide-in-from-top-1 duration-150">
+                                                                            <div className="absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-20 animate-in fade-in slide-in-from-top-1 duration-150 overflow-hidden">
+                                                                                {/* Header del dropdown */}
+                                                                                <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 mb-1">
+                                                                                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Cambiar estado a:</span>
+                                                                                </div>
+
                                                                                 {estadosDisponibles.filter(k => k !== pedido.estado).map(key => {
                                                                                     const config = ESTADOS_CONFIG[key];
                                                                                     const IconoItem = config?.icon || Clock;
@@ -456,17 +516,14 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
                                                                                     return (
                                                                                         <button
                                                                                             key={key}
-                                                                                            onClick={() => {
-                                                                                                cambiarEstado(pedido.id, key);
-                                                                                                setDropdownAbierto(null);
-                                                                                            }}
-                                                                                            className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors ${esCancelado
+                                                                                            onClick={() => handleSolicitarCambioEstado(pedido.id, key)}
+                                                                                            className={`w-full flex items-center space-x-3 px-4 py-2.5 text-sm transition-all hover:pl-5 group ${esCancelado
                                                                                                 ? 'text-red-600 hover:bg-red-50'
-                                                                                                : 'text-gray-700 hover:bg-indigo-50'
+                                                                                                : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'
                                                                                                 }`}
                                                                                         >
-                                                                                            <IconoItem className={`h-4 w-4 ${esCancelado ? 'text-red-500' : 'text-indigo-500'}`} />
-                                                                                            <span>{config?.label || key}</span>
+                                                                                            <IconoItem className={`h-4 w-4 ${esCancelado ? 'text-red-500' : 'text-gray-400 group-hover:text-indigo-500'}`} />
+                                                                                            <span className="font-medium">{config?.label || key}</span>
                                                                                         </button>
                                                                                     );
                                                                                 })}
@@ -654,6 +711,8 @@ const PedidosModal = ({ isOpen, onClose, onMinimize }) => {
                     setPedidoAPagar(null);
                 }}
             />
+
+            {renderConfirmationModal()}
         </>
     );
 };

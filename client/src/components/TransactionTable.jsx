@@ -1,6 +1,7 @@
 // components/TransactionTable.jsx (HEADER VERDE CORREGIDO)
 import React, { useState, useEffect } from 'react';
 import { Eye, Wrench, HandCoins, Trash2, Plus, Search, Filter, Calendar, Clock, TrendingUp, TrendingDown, CreditCard, DollarSign, Smartphone, ArrowUpDown, ChevronLeft, ChevronRight, FileText, Coffee, MonitorSmartphone, Package, User } from 'lucide-react';
+import { FaCashRegister, FaLock } from 'react-icons/fa';
 import { useTransactionTable } from '../store/cajaStore';
 //import TransactionDetailModal from './TransactionDetailModal';
 import DeleteTransactionModal from './DeleteTransactionModal';
@@ -290,13 +291,13 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
 
   const getMetodoColor = (metodo) => {
     const colorMap = {
-      'efectivo_bs': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      'efectivo_usd': 'bg-green-50 text-green-700 border-green-200',
+      'efectivo_bs': 'bg-blue-50 text-blue-700 border-blue-200',
+      'efectivo_usd': 'bg-emerald-50 text-emerald-700 border-emerald-200', // Green consistent
       'pago_movil': 'bg-purple-50 text-purple-700 border-purple-200',
-      'transferencia': 'bg-orange-50 text-orange-700 border-orange-200',
-      'zelle': 'bg-green-50 text-green-700 border-green-200',
+      'transferencia': 'bg-cyan-50 text-cyan-700 border-cyan-200',
+      'zelle': 'bg-emerald-50 text-emerald-700 border-emerald-200',
       'binance': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-      'tarjeta': 'bg-blue-50 text-blue-700 border-blue-200'
+      'tarjeta': 'bg-indigo-50 text-indigo-700 border-indigo-200'
     };
     return colorMap[metodo] || 'bg-gray-50 text-gray-700 border-gray-200';
   };
@@ -324,9 +325,9 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
 
   if (!cajaActual) {
     return (
-      <div className="bg-white/70 backdrop-blur-lg rounded-xl shadow-sm border border-white/20 overflow-hidden relative">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative">
         {/* Header cuando caja está cerrada - GRIS */}
-        <div className="bg-gradient-to-r from-slate-600/80 to-slate-700/80 backdrop-blur-sm px-6 py-4 border-b border-white/30">
+        <div className="bg-gradient-to-r from-slate-600 to-slate-700 px-6 py-4">
           <div className="flex items-center space-x-3 mb-2">
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2 border border-white/30">
               <FileText className="h-5 w-5 text-white" />
@@ -339,7 +340,12 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
         </div>
         <div className="p-12 text-center">
           <div className="bg-gray-100/70 backdrop-blur-sm rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center border border-white/30">
-            <Calendar className="h-8 w-8 text-gray-400" />
+            <div className="relative">
+              <FaCashRegister className="h-10 w-10 text-gray-400" />
+              <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-[2px] border border-gray-100">
+                <FaLock className="h-2.5 w-2.5 text-gray-400" />
+              </div>
+            </div>
           </div>
           <h3 className="text-lg font-semibold text-gray-600 mb-2">Caja Cerrada</h3>
           <p className="text-gray-500">Abre la caja para comenzar a registrar transacciones</p>
@@ -653,7 +659,7 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
                           {montosOriginales.map((montoInfo, idx) => (
                             <div key={idx} className={`text-sm font-bold ${montoInfo.metodo === 'pago_movil' ? 'text-purple-700' :
                               montoInfo.moneda === 'usd' ? 'text-green-700' :
-                                transaccion.tipo === 'ingreso' ? 'text-emerald-700' : 'text-red-700'
+                                'text-blue-700'
                               }`}>
                               {transaccion.tipo === 'ingreso' ? '+' : '-'}
                               {montoInfo.simbolo}{formatAmount(montoInfo.monto)}

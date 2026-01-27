@@ -1,6 +1,7 @@
 // components/CajaStatus.jsx (FORMATO TABLA 3 COLUMNAS x 2 FILAS)
 import React, { useState } from 'react';
 import { Store, DollarSign, Coins, Smartphone, Unlock, Package, AlertTriangle, User, Calendar, Clock, MonitorSmartphone, Wrench, Coffee } from 'lucide-react';
+import { FaCashRegister, FaUnlock } from "react-icons/fa";
 import { useCajaStore } from '../store/cajaStore';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
@@ -114,9 +115,14 @@ const CajaStatus = () => {
             <button
               onClick={handleAbrirCaja}
               disabled={!tienePermiso('ABRIR_CAJA')}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 mx-auto shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-500"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-2 rounded-lg text-xl font-bold transition-all duration-200 flex items-center justify-center space-x-3 mx-auto shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-500"
             >
-              <Unlock className="h-4 w-4" />
+              <div className="relative">
+                <FaCashRegister className="h-8 w-8" />
+                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-[2px] shadow-sm">
+                  <FaUnlock className="h-3 w-3 text-blue-600" />
+                </div>
+              </div>
               <span>
                 {tienePermiso('ABRIR_CAJA') ? 'Abrir Caja' : 'Sin Permisos'}
               </span>
@@ -256,39 +262,45 @@ const CajaStatus = () => {
         </div>
 
 
-        {/*  NUEVA FILA 3: Tabla 3 columnas x 2 filas */}
-        <div className="border-t border-gray-100 pt-2">
-          <div className="grid grid-cols-3 gap-1 text-xs">
+        {/*  NUEVA FILA 3: Footer Premium Compacto */}
+        <div className="border-t border-gray-100 pt-1 mt-1">
+          <div className="bg-gray-50/80 rounded-lg p-1.5 border border-gray-200/50">
+            <div className="grid grid-cols-3 gap-1">
 
-            {/* FILA 1: Headers con iconos */}
-            <div className="flex items-center space-x-1 text-gray-500">
-              <User className="h-3 w-3 text-blue-600" />
-              <span>Abierta por:</span>
+              {/* Columna 1: Usuario */}
+              <div className="flex flex-col items-start">
+                <div className="flex items-center space-x-1 mb-0.5">
+                  <User className="h-2 w-2 text-blue-500" />
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400">Abierta por</span>
+                </div>
+                <div className="font-black text-[10px] text-gray-700 truncate w-full pl-0.5" title={usuarioApertura}>
+                  {usuarioApertura}
+                </div>
+              </div>
+
+              {/* Columna 2: Fecha (Centro) */}
+              <div className="flex flex-col items-center border-l border-r border-gray-200/50 bg-white/50 rounded-sm">
+                <div className="flex items-center space-x-1 mb-0.5">
+                  <Calendar className="h-2 w-2 text-blue-500" />
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400">Fecha</span>
+                </div>
+                <div className="font-black text-[10px] text-gray-700 text-center">
+                  {fechaApertura}
+                </div>
+              </div>
+
+              {/* Columna 3: Hora (Derecha) */}
+              <div className="flex flex-col items-end">
+                <div className="flex items-center space-x-1 mb-0.5">
+                  <Clock className="h-2 w-2 text-blue-500" />
+                  <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400">Hora</span>
+                </div>
+                <div className="font-black text-[10px] text-gray-700 text-right pr-0.5">
+                  {horaApertura}
+                </div>
+              </div>
+
             </div>
-
-            <div className="flex items-center space-x-1 text-gray-500 justify-center">
-              <Calendar className="h-3 w-3 text-blue-600" />
-              <span>Fecha:</span>
-            </div>
-
-            <div className="flex items-center space-x-1 text-gray-500 justify-end">
-              <Clock className="h-3 w-3 text-blue-600" />
-              <span>Hora:</span>
-            </div>
-
-            {/* FILA 2: Valores */}
-            <div className="font-bold text-gray-900 truncate" title={usuarioApertura}>
-              {usuarioApertura}
-            </div>
-
-            <div className="font-bold text-gray-900 text-center">
-              {fechaApertura}
-            </div>
-
-            <div className="font-bold text-gray-900 text-right">
-              {horaApertura}
-            </div>
-
           </div>
         </div>
       </div>

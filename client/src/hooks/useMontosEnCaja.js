@@ -58,15 +58,15 @@ export const useMontosEnCaja = (cajaPendienteData = null) => {
 
     //  PROCESAR CADA TRANSACCIÓN
     (transaccionesParaCalcular || []).forEach(transaccion => {
-      
+
       //  CASO ESPECIAL: VUELTOS (usan metodoPagoPrincipal)
       if (transaccion.categoria?.includes('Vuelto de venta')) {
         const montoVuelto = parseFloat(transaccion.totalBs || transaccion.total_bs) || 0;
         const metodoVuelto = transaccion.metodoPagoPrincipal || 'efectivo_bs';
-        
+
         // Los vueltos siempre son egresos físicos
         egresosBs += montoVuelto;
-        
+
         // Afectar el método físico específico
         if (metodoVuelto === 'efectivo_bs') {
           efectivoBsActual -= montoVuelto;
@@ -78,49 +78,49 @@ export const useMontosEnCaja = (cajaPendienteData = null) => {
           pagoMovilActual -= montoVuelto;
           egresosPagoMovil += montoVuelto;
         }
-        
+
         return; // Skip procesamiento normal de pagos para vueltos
       }
 
       //  CASO NORMAL: PROCESAR PAGOS DE LA TRANSACCIÓN
       const pagosTransaccion = transaccion.pagos || [];
       const tipoTransaccion = (transaccion.tipo || 'ingreso').toLowerCase();
-      
+
       pagosTransaccion.forEach(pago => {
         const monto = parseFloat(pago.monto) || 0;
         const factor = tipoTransaccion === 'ingreso' ? 1 : -1;
-        
+
         // Solo procesar los 3 métodos físicos
         if (pago.metodo === 'efectivo_bs' && pago.moneda === 'bs') {
           efectivoBsActual += monto * factor;
-          
+
           if (tipoTransaccion === 'ingreso') {
             ingresosBs += monto;
           } else {
             egresosBs += monto;
           }
         }
-        
+
         else if (pago.metodo === 'efectivo_usd' && pago.moneda === 'usd') {
           efectivoUsdActual += monto * factor;
-          
+
           if (tipoTransaccion === 'ingreso') {
             ingresosUsd += monto;
           } else {
             egresosUsd += monto;
           }
         }
-        
+
         else if (pago.metodo === 'pago_movil' && pago.moneda === 'bs') {
           pagoMovilActual += monto * factor;
-          
+
           if (tipoTransaccion === 'ingreso') {
             ingresosPagoMovil += monto;
           } else {
             egresosPagoMovil += monto;
           }
         }
-        
+
         // Los demás métodos (transferencia, zelle, etc.) son referenciales
         // Solo cuentan para estadísticas, no para montos físicos
       });
@@ -141,7 +141,7 @@ export const useMontosEnCaja = (cajaPendienteData = null) => {
       efectivoBs: efectivoBsActual,
       efectivoUsd: efectivoUsdActual,
       pagoMovil: pagoMovilActual,
-      
+
       //  MOVIMIENTOS DEL DÍA
       ingresosBs,
       egresosBs,
@@ -149,20 +149,20 @@ export const useMontosEnCaja = (cajaPendienteData = null) => {
       egresosUsd,
       ingresosPagoMovil,
       egresosPagoMovil,
-      
+
       //  BALANCES (para estadísticas)
       balanceBs,
       balanceUsd,
       balancePagoMovil,
-      
+
       //  MONTOS INICIALES (referencia)
       montosIniciales,
-      
+
       //  ESTADÍSTICAS
       transaccionesTotales: (transaccionesParaCalcular || []).length,
       ventasCount: (transaccionesParaCalcular || []).filter(t => (t.tipo || 'ingreso').toLowerCase() === 'ingreso').length,
       egresosCount: (transaccionesParaCalcular || []).filter(t => (t.tipo || 'egreso').toLowerCase() === 'egreso').length,
-      
+
       //  INDICADOR DE FUENTE
       esCajaPendiente: !!cajaPendienteData
     };
@@ -172,9 +172,10 @@ export const useMontosEnCaja = (cajaPendienteData = null) => {
 //  FUNCIONES AUXILIARES PARA FORMATEO CORRECTO
 export const formatearBolivares = (amount) => {
   //  FORMATO VENEZOLANO: 1.250,00 Bs
-  return (amount || 0).toLocaleString('es-ES', {
+  return (amount || 0).toLocaleString('es-VE', {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
+    useGrouping: true
   });
 };
 

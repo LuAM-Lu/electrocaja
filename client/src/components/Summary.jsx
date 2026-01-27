@@ -1,5 +1,6 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Smartphone, BarChart3, Coins, DollarSign } from 'lucide-react';
+import { FaCashRegister, FaLock } from 'react-icons/fa';
 import { useCajaStore } from '../store/cajaStore';
 import { useMontosEnCaja, formatearBolivares, formatearDolares } from '../hooks/useMontosEnCaja';
 
@@ -22,6 +23,14 @@ const Summary = () => {
           </div>
         </div>
         <div className="p-4 text-center py-6 text-gray-500">
+          <div className="bg-gray-100/70 backdrop-blur-sm rounded-full p-6 w-20 h-20 mx-auto mb-4 flex items-center justify-center border border-white/30">
+            <div className="relative">
+              <FaCashRegister className="h-10 w-10 text-gray-400" />
+              <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-[2px] border border-gray-100">
+                <FaLock className="h-2.5 w-2.5 text-gray-400" />
+              </div>
+            </div>
+          </div>
           <p>Abre la caja para ver el resumen</p>
         </div>
       </div>
@@ -109,18 +118,17 @@ const Summary = () => {
 
         <div className="mt-3 pt-3 border-t border-gray-100">
           <div className="space-y-2">
-            
+
             {/* Segunda fila: Balance centrado con iconos */}
             <div className="w-full">
               <div className="flex items-center justify-between w-full bg-blue-50 px-3 py-1 rounded border border-blue-200 text-xs">
                 {/* Bolívares */}
                 <div className="flex items-center space-x-1">
                   <Coins className="h-3 w-3 text-blue-600" />
-                  <span className={`font-semibold ${
-                    montosReales.balanceBs >= 0
-                      ? 'text-emerald-600'
-                      : 'text-red-600'
-                  }`}>
+                  <span className={`font-semibold ${montosReales.balanceBs >= 0
+                    ? 'text-emerald-600'
+                    : 'text-red-600'
+                    }`}>
                     {formatearBolivares(montosReales.balanceBs)} Bs
                   </span>
                 </div>
@@ -130,11 +138,10 @@ const Summary = () => {
                 {/* Dólares */}
                 <div className="flex items-center space-x-1">
                   <DollarSign className="h-3 w-3 text-green-600" />
-                  <span className={`font-semibold ${
-                    montosReales.balanceUsd >= 0
-                      ? 'text-emerald-600'
-                      : 'text-red-600'
-                  }`}>
+                  <span className={`font-semibold ${montosReales.balanceUsd >= 0
+                    ? 'text-emerald-600'
+                    : 'text-red-600'
+                    }`}>
                     ${formatearDolares(montosReales.balanceUsd)}
                   </span>
                 </div>

@@ -1,6 +1,7 @@
 // components/FloatingActions.jsx (VERSIÓN CORREGIDA COMPLETA)
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Minus, Menu, X, Lock, Zap, Package, Calculator, Users, Settings, Search, Scan, FileText, /* Activity, */ DollarSign, Camera, XCircle, ClipboardList } from 'lucide-react';
+import { TbTruckDelivery } from 'react-icons/tb';
 import { useAuthStore } from '../store/authStore';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useCajaStore } from '../store/cajaStore';
@@ -489,7 +490,7 @@ const FloatingActions = ({ onNewTransaction, onCerrarCaja, onOpenInventario, onO
               onClick={() => handleAction('pedidos')}
               className="group relative bg-blue-500 hover:bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg transform transition-all duration-300 hover:scale-110 hover:shadow-xl flex items-center justify-center"
             >
-              <ClipboardList className="h-6 w-6" />
+              <TbTruckDelivery className="h-6 w-6" />
               <div className="absolute right-full top-1/2 transform -translate-y-1/2 mr-3 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-lg">
                 Pedidos
                 <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
