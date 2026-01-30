@@ -192,7 +192,8 @@ const corsOptions = {
     'X-Requested-With',
     'Access-Control-Allow-Headers',
     'Access-Control-Allow-Origin',
-    'Access-Control-Allow-Methods'
+    'Access-Control-Allow-Methods',
+    'X-API-Key'  // Para API externa eweb
   ],
   optionsSuccessStatus: 200,
   preflightContinue: false
@@ -434,6 +435,15 @@ app.use('/api/servicios', serviciosRoutes); // 🔧 RUTAS DE SERVICIOS TÉCNICOS
 app.use('/api/cron', cronRoutes); // 🕐 RUTAS DE CRON JOBS (ADMIN)
 app.use('/api/files', filesRoutes); // 📂 RUTAS DE GESTIÓN DE ARCHIVOS
 
+// 🌐 API EXTERNA (eweb) - Sincronización con electroshopve.com, publicidadtv, etc.
+const { initializeEwebApi } = require('./api/eweb');
+initializeEwebApi(app, {
+  basePath: '/api/eweb',
+  enableWebhookProcessor: true,
+  processorInterval: 30000, // Procesar webhooks cada 30 segundos
+  warmupCache: true,
+  warmupLimit: 100
+});
 
 // 🔧 SOCKET.IO - EVENTOS COMPLETOS CON BLOQUEOS
 io.on('connection', (socket) => {

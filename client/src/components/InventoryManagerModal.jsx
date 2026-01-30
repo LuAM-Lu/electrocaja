@@ -140,6 +140,14 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
 
+  // Estado para información de la API externa
+  const [apiStats, setApiStats] = useState({
+    online: false,
+    clientes: 0,
+    totalRequests: 0,
+    webhooksActivos: 0
+  });
+
   // Ref para input de imagen oculto (cambio rápido de imagen)
   const imageInputRef = React.useRef(null);
   const [pendingImageProductId, setPendingImageProductId] = useState(null);
@@ -238,6 +246,54 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
 
     if (isOpen) {
       fetchTasas();
+    }
+  }, [isOpen]);
+
+  // Cargar stats de la API externa
+  useEffect(() => {
+    const fetchApiStats = async () => {
+      try {
+        // Health check (público) - BASE_URL ya incluye /api
+        const healthRes = await fetch(`${API_CONFIG.BASE_URL}/eweb/health`);
+        const healthData = await healthRes.json();
+
+        if (healthData.success) {
+          // Obtener lista de clientes (requiere auth)
+          const token = localStorage.getItem('auth-token');
+          const clientsRes = await fetch(`${API_CONFIG.BASE_URL}/eweb/admin/clientes`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (clientsRes.ok) {
+            const clientsData = await clientsRes.json();
+            const clientes = clientsData.data || [];
+
+            // Calcular totales
+            const totalRequests = clientes.reduce((acc, c) => acc + (c.totalRequests || 0), 0);
+            const webhooksActivos = clientes.reduce((acc, c) =>
+              acc + (c.webhookEndpoints?.filter(w => w.activo)?.length || 0), 0);
+
+            setApiStats({
+              online: true,
+              clientes: clientes.length,
+              totalRequests,
+              webhooksActivos
+            });
+          } else {
+            setApiStats(prev => ({ ...prev, online: true }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching API stats:', error);
+        setApiStats(prev => ({ ...prev, online: false }));
+      }
+    };
+
+    if (isOpen) {
+      fetchApiStats();
+      // Actualizar cada 30 segundos
+      const interval = setInterval(fetchApiStats, 30000);
+      return () => clearInterval(interval);
     }
   }, [isOpen]);
 
@@ -1036,7 +1092,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
                                 <div className="font-medium text-gray-900">Conexión API</div>
                                 <div className="text-xs text-gray-500">Sincronizar con tienda web</div>
                               </div>
-                              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pronto</span>
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Activo</span>
                             </button>
                           </div>
                         </div>
@@ -1482,15 +1538,51 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
                 {/* Separador */}
                 <div className="h-4 w-px bg-indigo-400/30"></div>
 
-                {/* Sync API */}
-                <div className="flex items-center gap-2.5 pl-1">
+                {/* Sync API - Stats reales */}
+                <div
+                  className="flex items-center gap-3 pl-1 cursor-pointer hover:bg-indigo-500/20 rounded-lg px-2 py-1 transition-colors"
+                  onClick={() => setShowConexionApi(true)}
+                  title="Click para gestionar API"
+                >
                   <div className="relative flex items-center justify-center">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-20"></span>
-                    <Globe className="h-3.5 w-3.5 text-green-400 animate-pulse" />
+                    {apiStats.online ? (
+                      <>
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-20"></span>
+                        <Globe className="h-3.5 w-3.5 text-green-400" />
+                      </>
+                    ) : (
+                      <Globe className="h-3.5 w-3.5 text-red-400" />
+                    )}
                   </div>
-                  <div className="flex flex-col leading-none">
-                    <span className="text-[9px] text-indigo-300 font-bold tracking-wider">En línea</span>
-                    <span className="text-[10px] text-green-300 font-medium whitespace-nowrap">www.electroshopve.com</span>
+                  <div className="flex items-center gap-3">
+                    {/* Estado */}
+                    <div className="flex flex-col leading-none">
+                      <span className="text-[9px] text-indigo-300 font-bold tracking-wider">API EWEB</span>
+                      <span className={`text-[10px] font-medium ${apiStats.online ? 'text-green-300' : 'text-red-300'}`}>
+                        {apiStats.online ? 'En línea' : 'Offline'}
+                      </span>
+                    </div>
+
+                    {/* Stats */}
+                    {apiStats.online && (
+                      <>
+                        <div className="h-3 w-px bg-indigo-400/30"></div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-center">
+                            <div className="text-[10px] font-bold text-white">{apiStats.clientes}</div>
+                            <div className="text-[8px] text-indigo-300">Clientes</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-[10px] font-bold text-white">{apiStats.totalRequests.toLocaleString()}</div>
+                            <div className="text-[8px] text-indigo-300">Requests</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-[10px] font-bold text-white">{apiStats.webhooksActivos}</div>
+                            <div className="text-[8px] text-indigo-300">Webhooks</div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 

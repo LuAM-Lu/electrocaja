@@ -172,7 +172,7 @@ const CajaStatus = () => {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-white">Montos Iniciales</h3>
-              <p className="text-xs text-emerald-100">Caja operativa</p>
+              <p className="text-xs text-emerald-100">CAJA OPERATIVA</p>
             </div>
           </div>
 

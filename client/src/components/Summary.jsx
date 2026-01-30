@@ -47,7 +47,7 @@ const Summary = () => {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-white">Resumen del Día</h3>
-              <p className="text-xs text-emerald-100">Montos en caja</p>
+              <p className="text-xs text-emerald-100">MONTOS EN CAJA</p>
             </div>
           </div>
 

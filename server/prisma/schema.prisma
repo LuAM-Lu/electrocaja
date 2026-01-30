@@ -991,3 +991,272 @@ enum EstadoPedido {
   ENTREGADO           // Cliente recibió el producto
   CANCELADO           // Pedido cancelado
 }
+
+// =====================================================
+// 🌐 API EXTERNA - Clientes, Webhooks y Logs
+// Sistema para sincronización con electroshopve.com,
+// publicidadtv y futuras aplicaciones
+// =====================================================
+
+model ApiClient {
+  id                Int               @id @default(autoincrement())
+  nombre            String            @unique // electroshopve, publicidadtv, etc.
+  descripcion       String?
+  
+  // Autenticación
+  apiKey            String            @unique @map("api_key")
+  apiKeyHash        String            @map("api_key_hash") // Hash para validación segura
+  jwtSecret         String            @map("jwt_secret") // Secreto único por cliente
+  
+  // Configuración de acceso
+  ipWhitelist       Json?             @map("ip_whitelist") // Array de IPs permitidas
+  activo            Boolean           @default(true)
+  
+  // Permisos granulares
+  permisos          Json              @default("{}") // {read: true, write: false, webhook: true}
+  
+  // Configuración de sincronización
+  syncConfig        Json?             @map("sync_config") // Campos a sincronizar, filtros, etc.
+  
+  // Rate limiting
+  rateLimitRpm      Int               @default(60) @map("rate_limit_rpm") // Requests por minuto
+  rateLimitDaily    Int               @default(10000) @map("rate_limit_daily") // Requests por día
+  
+  // Estadísticas
+  totalRequests     Int               @default(0) @map("total_requests")
+  lastRequest       DateTime?         @map("last_request")
+  
+  // Auditoría
+  creadoPorId       Int               @map("creado_por_id")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  
+  // Relaciones
+  webhookEndpoints  WebhookEndpoint[]
+  webhookLogs       WebhookLog[]
+  apiLogs           ApiLog[]
+  tokens            ApiToken[]
+  
+  @@index([apiKey])
+  @@index([activo])
+  @@map("api_clients")
+}
+
+model ApiToken {
+  id              Int           @id @default(autoincrement())
+  clienteId       Int           @map("cliente_id")
+  token           String        @unique
+  tipo            TipoToken     @default(ACCESS)
+  
+  // Vigencia
+  expiresAt       DateTime      @map("expires_at")
+  revocado        Boolean       @default(false)
+  revocadoAt      DateTime?     @map("revocado_at")
+  
+  // Metadata
+  ipOrigen        String?       @map("ip_origen")
+  userAgent       String?       @map("user_agent")
+  
+  createdAt       DateTime      @default(now()) @map("created_at")
+  
+  cliente         ApiClient     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([clienteId])
+  @@index([expiresAt])
+  @@map("api_tokens")
+}
+
+model WebhookEndpoint {
+  id              Int                 @id @default(autoincrement())
+  clienteId       Int                 @map("cliente_id")
+  
+  // Configuración del endpoint
+  url             String              // https://electroshopve.com/api/webhook/stock
+  eventos         Json                // Array: ['STOCK_UPDATED', 'PRODUCT_CREATED', etc.]
+  secreto         String              // Para firmar payloads (HMAC)
+  
+  // Estado
+  activo          Boolean             @default(true)
+  verificado      Boolean             @default(false) // Si pasó prueba de conexión
+  ultimaVerificacion DateTime?        @map("ultima_verificacion")
+  
+  // Headers personalizados
+  headers         Json?               // Headers adicionales para el request
+  
+  // Configuración de reintentos
+  maxReintentos   Int                 @default(5) @map("max_reintentos")
+  timeoutMs       Int                 @default(10000) @map("timeout_ms")
+  
+  // Estadísticas
+  totalEnvios     Int                 @default(0) @map("total_envios")
+  enviosExitosos  Int                 @default(0) @map("envios_exitosos")
+  enviosFallidos  Int                 @default(0) @map("envios_fallidos")
+  ultimoEnvio     DateTime?           @map("ultimo_envio")
+  ultimoError     String?             @map("ultimo_error")
+  
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  
+  cliente         ApiClient           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  logs            WebhookLog[]
+  
+  @@index([clienteId])
+  @@index([activo])
+  @@map("webhook_endpoints")
+}
+
+model WebhookLog {
+  id              Int                 @id @default(autoincrement())
+  endpointId      Int                 @map("endpoint_id")
+  clienteId       Int                 @map("cliente_id")
+  
+  // Evento
+  evento          TipoEventoWebhook
+  payload         Json                // Datos enviados
+  
+  // Resultado
+  estado          EstadoWebhook       @default(PENDIENTE)
+  intentos        Int                 @default(0)
+  proximoIntento  DateTime?           @map("proximo_intento")
+  
+  // Response
+  httpStatus      Int?                @map("http_status")
+  responseBody    String?             @map("response_body") @db.Text
+  errorMensaje    String?             @map("error_mensaje") @db.Text
+  
+  // Timing
+  duracionMs      Int?                @map("duracion_ms")
+  
+  createdAt       DateTime            @default(now()) @map("created_at")
+  procesadoAt     DateTime?           @map("procesado_at")
+  
+  endpoint        WebhookEndpoint     @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  cliente         ApiClient           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  
+  @@index([endpointId])
+  @@index([clienteId])
+  @@index([estado])
+  @@index([proximoIntento])
+  @@index([createdAt])
+  @@map("webhook_logs")
+}
+
+model ApiLog {
+  id              Int               @id @default(autoincrement())
+  clienteId       Int?              @map("cliente_id")
+  
+  // Request
+  metodo          String            // GET, POST, PUT, DELETE
+  endpoint        String            // /api/eweb/catalogo
+  queryParams     Json?             @map("query_params")
+  body            Json?
+  
+  // Response
+  httpStatus      Int               @map("http_status")
+  responseSize    Int?              @map("response_size") // bytes
+  
+  // Metadata
+  ipAddress       String?           @map("ip_address")
+  userAgent       String?           @map("user_agent")
+  duracionMs      Int               @map("duracion_ms")
+  
+  // Error details (si aplica)
+  error           String?           @db.Text
+  
+  createdAt       DateTime          @default(now()) @map("created_at")
+  
+  cliente         ApiClient?        @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  
+  @@index([clienteId])
+  @@index([createdAt])
+  @@index([httpStatus])
+  @@index([endpoint])
+  @@map("api_logs")
+}
+
+// Cache de productos para sincronización
+model ProductCache {
+  id              Int               @id @default(autoincrement())
+  productoId      Int               @unique @map("producto_id")
+  
+  // Datos cacheados (DTO para eweb)
+  dataCache       Json              @map("data_cache")
+  
+  // Control de versión
+  version         Int               @default(1)
+  hash            String            // Hash de los datos para detectar cambios
+  
+  // Timestamps
+  cachedAt        DateTime          @default(now()) @map("cached_at")
+  expiresAt       DateTime          @map("expires_at")
+  
+  @@index([productoId])
+  @@index([expiresAt])
+  @@map("product_cache")
+}
+
+// Cola de webhooks pendientes (para reintentos)
+model WebhookQueue {
+  id              Int               @id @default(autoincrement())
+  
+  // Destino
+  endpointId      Int               @map("endpoint_id")
+  webhookLogId    Int               @map("webhook_log_id")
+  
+  // Datos
+  payload         Json
+  evento          TipoEventoWebhook
+  
+  // Estado
+  estado          EstadoCola        @default(PENDIENTE)
+  prioridad       Int               @default(0) // Mayor = más prioritario
+  intentos        Int               @default(0)
+  maxIntentos     Int               @default(5) @map("max_intentos")
+  
+  // Scheduling
+  procesarEn      DateTime          @default(now()) @map("procesar_en")
+  ultimoIntento   DateTime?         @map("ultimo_intento")
+  
+  // Error tracking
+  ultimoError     String?           @map("ultimo_error") @db.Text
+  
+  createdAt       DateTime          @default(now()) @map("created_at")
+  
+  @@index([estado, procesarEn])
+  @@index([prioridad])
+  @@map("webhook_queue")
+}
+
+// Enums para API Externa
+enum TipoToken {
+  ACCESS
+  REFRESH
+}
+
+enum TipoEventoWebhook {
+  PRODUCT_CREATED       // Producto creado
+  PRODUCT_UPDATED       // Producto actualizado
+  PRODUCT_DELETED       // Producto eliminado/desactivado
+  STOCK_UPDATED         // Stock modificado (venta, ajuste, etc.)
+  PRICE_UPDATED         // Precio modificado
+  IMAGE_UPDATED         // Imagen actualizada
+  BULK_SYNC             // Sincronización masiva completada
+  HEARTBEAT             // Ping de salud
+}
+
+enum EstadoWebhook {
+  PENDIENTE
+  EN_PROCESO
+  EXITOSO
+  FALLIDO
+  REINTENTAR
+  AGOTADO               // Sin más reintentos
+}
+
+enum EstadoCola {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADO
+  FALLIDO
+}

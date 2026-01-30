@@ -3,6 +3,9 @@ const fs = require('fs').promises;
 const path = require('path');
 const { processImage, deleteOldImage } = require('../middleware/upload');
 
+// 🌐 Hooks para API externa (electroshopve, publicidadtv, etc.)
+const ewebHooks = require('../api/eweb/hooks/inventoryHooks');
+
 // ===================================
 // 🔍 OBTENER TODOS LOS PRODUCTOS
 // ===================================
@@ -247,6 +250,9 @@ const createProduct = async (req, res) => {
       console.log('📡 Evento inventario_actualizado emitido (CREAR)');
     }
 
+    // 🌐 Hook API externa (electroshopve, publicidadtv, etc.)
+    ewebHooks.afterProductCreated(product, req.user?.userId).catch(console.error);
+
     res.status(201).json({
       success: true,
       message: 'Producto creado correctamente',
@@ -417,6 +423,13 @@ const updateProduct = async (req, res) => {
       console.log('📡 Evento inventario_actualizado emitido (EDITAR)');
     }
 
+    // 🌐 Hook API externa (electroshopve, publicidadtv, etc.)
+    const changesMap = {};
+    for (const change of changes) {
+      changesMap[change.campo] = { old: change.valorAnterior, new: change.valorNuevo };
+    }
+    ewebHooks.afterProductUpdated(updatedProduct, changesMap, req.user?.userId).catch(console.error);
+
     res.json({
       success: true,
       message: 'Producto actualizado correctamente',
@@ -561,6 +574,9 @@ const deleteProduct = async (req, res) => {
       });
       console.log('📡 Evento inventario_actualizado emitido (ELIMINAR)');
     }
+
+    // 🌐 Hook API externa (electroshopve, publicidadtv, etc.)
+    ewebHooks.afterProductDeleted(product.id, product.codigoBarras, req.user?.userId).catch(console.error);
 
     res.json({
       success: true,
@@ -724,6 +740,15 @@ const adjustStock = async (req, res) => {
         motivo: 'Ajuste de stock manual'
       }
     });
+
+    // 🌐 Hook API externa (electroshopve, publicidadtv, etc.)
+    ewebHooks.afterStockUpdated(
+      updatedProduct,
+      product.stock,
+      nuevoStock,
+      motivo || 'Ajuste manual',
+      usuarioId
+    ).catch(console.error);
 
     res.json({
       success: true,
