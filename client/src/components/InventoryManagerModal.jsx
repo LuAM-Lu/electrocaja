@@ -5,7 +5,7 @@ import {
   X, Package, Plus, Edit2, Trash2, Search,
   Eye, DollarSign, AlertCircle, Hash, Image, Camera,
   Folder, Phone, CheckCircle, XCircle, BarChart3,
-  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, ChevronUp, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin, Clock
+  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, ChevronUp, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin, Clock, Star
 } from 'lucide-react';
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
@@ -18,6 +18,7 @@ import RespaldoJsonModal from './inventario/RespaldoJsonModal';
 import AjusteMasivoModal from './inventario/AjusteMasivoModal';
 import ConexionApiModal from './inventario/ConexionApiModal';
 import PrintInventarioModal from './inventario/PrintInventarioModal';
+import DisplayControlModal from './inventario/DisplayControlModal';
 import { getImageUrl, API_CONFIG, api } from '../config/api';
 
 const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) => {
@@ -27,7 +28,8 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
     eliminarItem,
     obtenerEstadisticas,
     obtenerStockBajo,
-    obtenerInventario // Agregado para recargar
+    obtenerInventario, // Agregado para recargar
+    toggleDestacado
   } = useInventarioStore();
 
   const { usuario, socket } = useAuthStore();
@@ -139,6 +141,7 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
   const [showConexionApi, setShowConexionApi] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const [showDisplayControl, setShowDisplayControl] = useState(false); // 📺 Modal de display
 
   // Estado para información de la API externa
   const [apiStats, setApiStats] = useState({
@@ -614,6 +617,24 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
         imageInputRef.current.value = '';
       }
     }
+  };
+
+  const handleToggleDestacado = async (e, item) => {
+    e.stopPropagation();
+    if (!usuario) {
+      toast.error('Debes iniciar sesión');
+      return;
+    }
+
+    // Acción optimista del store: actualiza UI inmediatamente y sincroniza con backend
+    const nuevoEstado = !item.destacado;
+    toggleDestacado(item.id, nuevoEstado);
+
+    // Toast informativo corto
+    toast.success(nuevoEstado ? 'Producto destacado ⭐' : 'Producto no destacado', {
+      duration: 1500,
+      position: 'bottom-right'
+    });
   };
 
   // Función para filtrar y ordenar items
@@ -1293,6 +1314,23 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
                             </div>
                           </th>
 
+                          {/* Destacado - Sortable - 5% */}
+                          <th
+                            className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase cursor-pointer hover:bg-gray-200/50 transition-colors"
+                            onClick={() => toggleSort('destacado')}
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              <Star className="h-3 w-3 text-amber-500" />
+                              {getSortInfo('destacado') && (
+                                <>
+                                  {getSortInfo('destacado').direction === 'asc'
+                                    ? <ChevronUp className="h-2.5 w-2.5 text-indigo-600" />
+                                    : <ChevronDown className="h-2.5 w-2.5 text-indigo-600" />}
+                                </>
+                              )}
+                            </div>
+                          </th>
+
                           {/* Estado - No sortable - 5% */}
                           <th className="w-[5%] px-1 py-2 text-center text-[10px] font-bold text-gray-700 uppercase">
                             <div className="flex items-center justify-center">
@@ -1458,6 +1496,22 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
                               </div>
                             </td>
 
+                            {/* Destacado */}
+                            <td className="px-1 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('⭐ Click en estrella:', item.id, 'Rol:', usuario?.rol);
+                                  handleToggleDestacado(e, item);
+                                }}
+                                className={`p-2 rounded-full hover:bg-indigo-100 transition-all z-10 relative ${item.destacado ? 'text-amber-500 scale-110' : 'text-gray-300 hover:text-amber-400'}`}
+                                title={item.destacado ? 'Quitar destacado' : 'Destacar'}
+                              >
+                                <Star className={`h-5 w-5 ${item.destacado ? 'fill-current' : ''}`} />
+                              </button>
+                            </td>
+
                             {/* Estado */}
                             <td className="px-1 py-2 text-center">
                               {item.activo !== false ? (
@@ -1586,6 +1640,27 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
                   </div>
                 </div>
 
+                {/* Separador */}
+                <div className="h-4 w-px bg-indigo-400/30"></div>
+
+                {/* 📺 Botón Display/Publicidad */}
+                <div
+                  className="flex items-center gap-2 cursor-pointer hover:bg-indigo-500/20 rounded-lg px-2 py-1 transition-colors"
+                  onClick={() => setShowDisplayControl(true)}
+                  title="Configurar display de publicidad"
+                >
+                  <div className="relative flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-300">
+                      <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                      <polyline points="17 2 12 7 7 2"></polyline>
+                    </svg>
+                  </div>
+                  <div className="flex flex-col leading-none">
+                    <span className="text-[9px] text-indigo-300 font-bold tracking-wider">DISPLAY</span>
+                    <span className="text-[10px] font-medium text-purple-300">TV/Pantallas</span>
+                  </div>
+                </div>
+
               </div>
 
             </div>
@@ -1653,6 +1728,12 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
       <PrintInventarioModal
         isOpen={showPrintModal}
         onClose={() => setShowPrintModal(false)}
+      />
+
+      {/* 📺 Modal de Control de Display/Publicidad */}
+      <DisplayControlModal
+        isOpen={showDisplayControl}
+        onClose={() => setShowDisplayControl(false)}
       />
 
       {/* Input oculto para cambio rápido de imagen */}

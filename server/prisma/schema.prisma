@@ -167,6 +167,7 @@ model Product {
   id                   Int                          @id @default(autoincrement())
   descripcion          String
   tipo                 TipoProducto                 @default(PRODUCTO)
+  destacado            Boolean                      @default(false) // Para display
   codigoBarras         String                       @map("codigo_barras")
   codigoInterno        String                       @map("codigo_interno")
   categoria            String?
@@ -1259,4 +1260,17 @@ enum EstadoCola {
   EN_PROCESO
   COMPLETADO
   FALLIDO
+}
+
+// ============================================
+// CONFIGURACIÓN CENTRALIZADA
+// ============================================
+
+model Configuracion {
+  id        Int      @id @default(autoincrement())
+  clave     String   @unique // Ej: 'display_config', 'sistema_general', 'impresion'
+  valor     Json     // Objeto JSON con la configuración
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("configuraciones")
 }

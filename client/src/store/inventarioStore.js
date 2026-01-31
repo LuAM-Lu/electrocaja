@@ -23,14 +23,14 @@ const useInventarioStore = create()(
         try {
           const result = await testConnection();
           set({ conectado: result.success });
-          
+
           if (!result.success) {
             toast.error('Sin conexión al servidor', {
               duration: 4000,
               position: 'top-right'
             });
           }
-          
+
           return result.success;
         } catch (error) {
           set({ conectado: false });
@@ -50,50 +50,51 @@ const useInventarioStore = create()(
         if (!conectado) return;
 
         set({ loading: true, error: null });
-        
+
         try {
           const response = await apiWithRetry(() => api.get('/inventory/products?limit=1000'));
-          
+
           if (response.data.success) {
-           // Convertir formato backend a frontend
-              const productosAPI = response.data.data.map(item => ({
-                id: item.id,
-                descripcion: item.descripcion,
-                precio: parseFloat(item.precioVenta || item.precio_venta || item.precio || 0),
-                stock: item.tipo?.toUpperCase() === 'SERVICIO' ? null : (item.stock || 0),
-                observaciones: item.observaciones || '',
-                tipo: (item.tipo || 'producto').toLowerCase(),
-                fecha_creacion: item.fechaCreacion || item.fecha_creacion,
-                codigo_barras: item.codigoBarras || item.codigo_barras || '',
-                codigo_interno: item.codigoInterno || item.codigo_interno || '',
-                categoria: item.categoria || 'General',
-                precio_costo: parseFloat(item.precioCosto || item.precio_costo || 0),
-                precio_venta: parseFloat(item.precioVenta || item.precio_venta || item.precio || 0),
-                margen_porcentaje: parseFloat(item.margenPorcentaje || item.margen_porcentaje || 0),
-                stock_minimo: parseInt(item.stockMinimo || item.stock_minimo || 5),
-                stock_maximo: parseInt(item.stockMaximo || item.stock_maximo || 100),
-                ubicacion_fisica: item.ubicacionFisica || item.ubicacion_fisica || '',
-                imagen_url: item.imagenUrl || item.imagen_url || '',
-                proveedor: item.proveedor || '',
-                telefono_proveedor: item.telefonoProveedor || item.telefono_proveedor || '',
-                proveedor_factura_iva: item.proveedorFacturaIva !== undefined ? item.proveedorFacturaIva : true,
-                activo: item.activo !== undefined ? item.activo : true
-              }));
-                          
-            set({ 
-              inventario: productosAPI, 
+            // Convertir formato backend a frontend
+            const productosAPI = response.data.data.map(item => ({
+              id: item.id,
+              descripcion: item.descripcion,
+              precio: parseFloat(item.precioVenta || item.precio_venta || item.precio || 0),
+              stock: item.tipo?.toUpperCase() === 'SERVICIO' ? null : (item.stock || 0),
+              observaciones: item.observaciones || '',
+              tipo: (item.tipo || 'producto').toLowerCase(),
+              fecha_creacion: item.fechaCreacion || item.fecha_creacion,
+              codigo_barras: item.codigoBarras || item.codigo_barras || '',
+              codigo_interno: item.codigoInterno || item.codigo_interno || '',
+              categoria: item.categoria || 'General',
+              precio_costo: parseFloat(item.precioCosto || item.precio_costo || 0),
+              precio_venta: parseFloat(item.precioVenta || item.precio_venta || item.precio || 0),
+              margen_porcentaje: parseFloat(item.margenPorcentaje || item.margen_porcentaje || 0),
+              stock_minimo: parseInt(item.stockMinimo || item.stock_minimo || 5),
+              stock_maximo: parseInt(item.stockMaximo || item.stock_maximo || 100),
+              ubicacion_fisica: item.ubicacionFisica || item.ubicacion_fisica || '',
+              imagen_url: item.imagenUrl || item.imagen_url || '',
+              proveedor: item.proveedor || '',
+              telefono_proveedor: item.telefonoProveedor || item.telefono_proveedor || '',
+              proveedor_factura_iva: item.proveedorFacturaIva !== undefined ? item.proveedorFacturaIva : true,
+              activo: item.activo !== undefined ? item.activo : true,
+              destacado: item.destacado || false
+            }));
+
+            set({
+              inventario: productosAPI,
               loading: false,
-              conectado: true 
+              conectado: true
             });
           }
         } catch (error) {
           console.error(' Error al obtener inventario:', error);
-          set({ 
-            loading: false, 
+          set({
+            loading: false,
             error: error.message,
-            conectado: false 
+            conectado: false
           });
-          
+
           toast.error(`Error al cargar inventario: ${error.message}`, {
             duration: 5000,
             position: 'top-right'
@@ -109,7 +110,7 @@ const useInventarioStore = create()(
         if (!conectado) return null;
 
         set({ loading: true, error: null });
-        
+
         try {
           const backendData = {
             descripcion: itemData.descripcion,
@@ -133,23 +134,23 @@ const useInventarioStore = create()(
 
           console.log(' Enviando nuevo producto:', backendData);
           const response = await apiWithRetry(() => api.post('/inventory/products', backendData));
-          
+
           if (response.data.success) {
             // Recargar inventario completo
             await get().obtenerInventario();
             set({ loading: false });
-            
+
             toast.success(`${itemData.descripcion} agregado exitosamente`, {
               duration: 3000,
               position: 'top-right'
             });
-            
+
             return response.data.data;
           }
         } catch (error) {
           console.error(' Error al agregar item:', error);
           set({ loading: false, error: error.message });
-          
+
           toast.error(`Error al agregar producto: ${error.response?.data?.message || error.message}`, {
             duration: 5000,
             position: 'top-right'
@@ -166,49 +167,49 @@ const useInventarioStore = create()(
         if (!conectado) return null;
 
         set({ loading: true, error: null });
-        
+
         try {
           // Preparar datos para backend
-        const backendData = {
-          descripcion: itemData.descripcion,
-          categoria: itemData.categoria,
-          precioCosto: parseFloat(itemData.precio_costo || 0),
-          precioVenta: parseFloat(itemData.precio_venta || itemData.precio || 0),
-          margenPorcentaje: parseFloat(itemData.margen_porcentaje || 30),
-          stock: itemData.stock !== undefined ? parseInt(itemData.stock) : undefined,
-          stockMinimo: parseInt(itemData.stock_minimo || 5),
-          stockMaximo: parseInt(itemData.stock_maximo || 100),
-          ubicacionFisica: itemData.ubicacion_fisica || '',
-          imagenUrl: itemData.imagen_url || '',
-          proveedor: itemData.proveedor || '',
-          telefonoProveedor: itemData.telefono_proveedor || '',
-          proveedorFacturaIva: itemData.proveedor_factura_iva !== false, //  NUEVO CAMPO
-          observaciones: itemData.observaciones || ''
-        };
+          const backendData = {
+            descripcion: itemData.descripcion,
+            categoria: itemData.categoria,
+            precioCosto: parseFloat(itemData.precio_costo || 0),
+            precioVenta: parseFloat(itemData.precio_venta || itemData.precio || 0),
+            margenPorcentaje: parseFloat(itemData.margen_porcentaje || 30),
+            stock: itemData.stock !== undefined ? parseInt(itemData.stock) : undefined,
+            stockMinimo: parseInt(itemData.stock_minimo || 5),
+            stockMaximo: parseInt(itemData.stock_maximo || 100),
+            ubicacionFisica: itemData.ubicacion_fisica || '',
+            imagenUrl: itemData.imagen_url || '',
+            proveedor: itemData.proveedor || '',
+            telefonoProveedor: itemData.telefono_proveedor || '',
+            proveedorFacturaIva: itemData.proveedor_factura_iva !== false, //  NUEVO CAMPO
+            observaciones: itemData.observaciones || ''
+          };
 
           console.log(` Actualizando producto ID ${id}:`, backendData);
           const response = await apiWithRetry(() => api.put(`/inventory/products/${id}`, backendData));
-          
+
           if (response.data.success) {
             // Actualizar en estado local
             set(state => ({
-              inventario: state.inventario.map(item => 
+              inventario: state.inventario.map(item =>
                 item.id === id ? { ...item, ...response.data.data } : item
               ),
               loading: false
             }));
-            
+
             toast.success(`Producto actualizado exitosamente`, {
               duration: 3000,
               position: 'top-right'
             });
-            
+
             return response.data.data;
           }
         } catch (error) {
           console.error(' Error al actualizar item:', error);
           set({ loading: false, error: error.message });
-          
+
           toast.error(`Error al actualizar producto: ${error.response?.data?.message || error.message}`, {
             duration: 5000,
             position: 'top-right'
@@ -217,51 +218,87 @@ const useInventarioStore = create()(
         }
       },
 
-eliminarItem: async (id, options = {}) => {
-  const conectado = await get().verificarConexion();
-  if (!conectado) return false;
+      // ===================================
+      //  TOGGLE DESTACADO (OPTIMISTA)
+      // ===================================
+      toggleDestacado: async (id, destacado) => {
+        // 1. Actualización Optimista Local
+        const { inventario } = get();
+        const itemOriginal = inventario.find(i => i.id === id);
 
-  set({ loading: true, error: null });
-  
-  try {
-    const { motivo = 'ELIMINACION_MANUAL' } = options;
-    
-    console.log(` Eliminando producto ID ${id} - Motivo: ${motivo}`);
-    
-    const response = await apiWithRetry(() => 
-      api.delete(`/inventory/products/${id}`, {
-        data: { motivo }  // Enviar motivo en el body
-      })
-    );
-    
-    if (response.data.success) {
-      // Marcar como inactivo en lugar de eliminar del estado
-      set(state => ({
-        inventario: state.inventario.map(item => 
-          item.id === id 
-            ? { 
-                ...item, 
-                activo: false, 
-                motivoInactivacion: motivo,
-                fechaInactivacion: new Date().toISOString()
-              }
-            : item
-        ),
-        loading: false
-      }));
-      
-      toast.success(`Producto eliminado exitosamente`);
-      
-      return true;
-    }
-  } catch (error) {
-    console.error(' Error al eliminar item:', error);
-    set({ loading: false, error: error.message });
-    
-    toast.error(`Error al eliminar producto: ${error.response?.data?.message || error.message}`);
-    throw error;
-  }
-},
+        set(state => ({
+          inventario: state.inventario.map(item =>
+            item.id === id ? { ...item, destacado } : item
+          )
+        }));
+
+        try {
+          // 2. Llamada API (update parcial)
+          const response = await apiWithRetry(() => api.put(`/inventory/products/${id}`, { destacado }));
+
+          if (!response.data.success) {
+            throw new Error('Error en respuesta del servidor');
+          }
+        } catch (error) {
+          console.error('Error toggling destacado:', error);
+          toast.error('No se pudo actualizar el estado destacado');
+
+          // 3. Revertir cambio si falla
+          if (itemOriginal) {
+            set(state => ({
+              inventario: state.inventario.map(item =>
+                item.id === id ? { ...item, destacado: !destacado } : item // Mejor usar el valor original por si acaso
+              )
+            }));
+          }
+        }
+      },
+
+      eliminarItem: async (id, options = {}) => {
+        const conectado = await get().verificarConexion();
+        if (!conectado) return false;
+
+        set({ loading: true, error: null });
+
+        try {
+          const { motivo = 'ELIMINACION_MANUAL' } = options;
+
+          console.log(` Eliminando producto ID ${id} - Motivo: ${motivo}`);
+
+          const response = await apiWithRetry(() =>
+            api.delete(`/inventory/products/${id}`, {
+              data: { motivo }  // Enviar motivo en el body
+            })
+          );
+
+          if (response.data.success) {
+            // Marcar como inactivo en lugar de eliminar del estado
+            set(state => ({
+              inventario: state.inventario.map(item =>
+                item.id === id
+                  ? {
+                    ...item,
+                    activo: false,
+                    motivoInactivacion: motivo,
+                    fechaInactivacion: new Date().toISOString()
+                  }
+                  : item
+              ),
+              loading: false
+            }));
+
+            toast.success(`Producto eliminado exitosamente`);
+
+            return true;
+          }
+        } catch (error) {
+          console.error(' Error al eliminar item:', error);
+          set({ loading: false, error: error.message });
+
+          toast.error(`Error al eliminar producto: ${error.response?.data?.message || error.message}`);
+          throw error;
+        }
+      },
 
       // ===================================
       //  REDUCIR STOCK
@@ -269,7 +306,7 @@ eliminarItem: async (id, options = {}) => {
       reducirStock: async (id, cantidad) => {
         const { inventario } = get();
         const item = inventario.find(i => i.id === id);
-        
+
         if (!item) {
           toast.error('Producto no encontrado');
           throw new Error('Item no encontrado');
@@ -294,7 +331,7 @@ eliminarItem: async (id, options = {}) => {
       aumentarStock: async (id, cantidad) => {
         const { inventario } = get();
         const item = inventario.find(i => i.id === id);
-        
+
         if (!item) {
           toast.error('Producto no encontrado');
           throw new Error('Item no encontrado');
@@ -317,18 +354,18 @@ eliminarItem: async (id, options = {}) => {
         if (!conectado) return null;
 
         try {
-          const response = await apiWithRetry(() => 
+          const response = await apiWithRetry(() =>
             api.patch(`/inventory/products/${id}/stock`, { stock: nuevoStock })
           );
-          
+
           if (response.data.success) {
             // Actualizar en estado local
             set(state => ({
-              inventario: state.inventario.map(item => 
+              inventario: state.inventario.map(item =>
                 item.id === id ? { ...item, stock: nuevoStock } : item
               )
             }));
-            
+
             return response.data.data;
           }
         } catch (error) {
@@ -343,18 +380,18 @@ eliminarItem: async (id, options = {}) => {
       // ===================================
       actualizarStockReservado: (productoId, nuevoStockReservado) => {
         set(state => ({
-          inventario: state.inventario.map(item => 
-            item.id === productoId 
-              ? { 
-                  ...item, 
-                  stockReservado: nuevoStockReservado,
-                  stockDisponible: item.stock !== null ? item.stock - nuevoStockReservado : null,
-                  ultimaActualizacionStock: new Date().toISOString()
-                }
+          inventario: state.inventario.map(item =>
+            item.id === productoId
+              ? {
+                ...item,
+                stockReservado: nuevoStockReservado,
+                stockDisponible: item.stock !== null ? item.stock - nuevoStockReservado : null,
+                ultimaActualizacionStock: new Date().toISOString()
+              }
               : item
           )
         }));
-        
+
         console.log(` Stock reservado actualizado para producto ${productoId}: ${nuevoStockReservado}`);
       },
 
@@ -363,19 +400,19 @@ eliminarItem: async (id, options = {}) => {
       // ===================================
       actualizarStockDisponible: (productoId, stockTotal, stockReservado) => {
         set(state => ({
-          inventario: state.inventario.map(item => 
-            item.id === productoId 
-              ? { 
-                  ...item, 
-                  stock: stockTotal,
-                  stockReservado: stockReservado,
-                  stockDisponible: stockTotal - stockReservado,
-                  ultimaActualizacionStock: new Date().toISOString()
-                }
+          inventario: state.inventario.map(item =>
+            item.id === productoId
+              ? {
+                ...item,
+                stock: stockTotal,
+                stockReservado: stockReservado,
+                stockDisponible: stockTotal - stockReservado,
+                ultimaActualizacionStock: new Date().toISOString()
+              }
               : item
           )
         }));
-        
+
         console.log(` Stock disponible actualizado para producto ${productoId}: ${stockTotal - stockReservado}`);
       },
 
@@ -384,22 +421,22 @@ eliminarItem: async (id, options = {}) => {
       // ===================================
       sincronizarStockDesdeWebSocket: (data) => {
         const { productoId, stockTotal, stockReservado, stockDisponible, operacion } = data;
-        
+
         set(state => ({
-          inventario: state.inventario.map(item => 
-            item.id === productoId 
-              ? { 
-                  ...item, 
-                  stock: stockTotal,
-                  stockReservado: stockReservado,
-                  stockDisponible: stockDisponible,
-                  ultimaActualizacionStock: new Date().toISOString(),
-                  ultimaOperacion: operacion
-                }
+          inventario: state.inventario.map(item =>
+            item.id === productoId
+              ? {
+                ...item,
+                stock: stockTotal,
+                stockReservado: stockReservado,
+                stockDisponible: stockDisponible,
+                ultimaActualizacionStock: new Date().toISOString(),
+                ultimaOperacion: operacion
+              }
               : item
           )
         }));
-        
+
         console.log(` Stock sincronizado desde WebSocket para producto ${productoId}:`, data);
       },
 
@@ -408,10 +445,10 @@ eliminarItem: async (id, options = {}) => {
       // ===================================
       obtenerEstadisticasStock: () => {
         const { inventario } = get();
-        
+
         const productosFisicos = inventario.filter(item => item.stock !== null);
         const productosConReservas = productosFisicos.filter(item => item.stockReservado > 0);
-        
+
         const estadisticas = {
           totalProductos: inventario.length,
           productosFisicos: productosFisicos.length,
@@ -420,10 +457,10 @@ eliminarItem: async (id, options = {}) => {
           stockTotalReservado: productosConReservas.reduce((sum, item) => sum + (item.stockReservado || 0), 0),
           stockTotalDisponible: productosFisicos.reduce((sum, item) => sum + (item.stockDisponible || item.stock || 0), 0),
           productosStockBajo: productosFisicos.filter(item => item.stockDisponible <= item.stock_minimo).length,
-          ultimaActualizacion: productosFisicos.length > 0 ? 
+          ultimaActualizacion: productosFisicos.length > 0 ?
             Math.max(...productosFisicos.map(item => new Date(item.ultimaActualizacionStock || 0).getTime())) : null
         };
-        
+
         return estadisticas;
       },
 
@@ -433,7 +470,7 @@ eliminarItem: async (id, options = {}) => {
       buscarItems: (termino) => {
         const { inventario } = get();
         if (!termino) return inventario;
-        
+
         const terminoLower = termino.toLowerCase();
         return inventario.filter(item =>
           item.descripcion.toLowerCase().includes(terminoLower) ||
@@ -448,15 +485,15 @@ eliminarItem: async (id, options = {}) => {
       // ===================================
       //  FUNCIONES DE RESERVA Y LIBERACIÓN
       // ===================================
-      
+
       // Obtener stock disponible de un producto específico
       obtenerStockDisponible: (productoId) => {
         const { inventario } = get();
         const producto = inventario.find(item => item.id === productoId);
-        
+
         if (!producto) return null;
         if (producto.stock === null) return null; // Servicios no tienen stock
-        
+
         return {
           stockTotal: producto.stock,
           stockReservado: producto.stockReservado || 0,
@@ -473,15 +510,15 @@ eliminarItem: async (id, options = {}) => {
       // Verificar si hay stock suficiente para una reserva
       verificarStockSuficiente: (productoId, cantidadRequerida) => {
         const stockInfo = get().obtenerStockDisponible(productoId);
-        
+
         if (!stockInfo) return { suficiente: false, razon: 'Producto no encontrado' };
         if (stockInfo.stockDisponible < cantidadRequerida) {
-          return { 
-            suficiente: false, 
-            razon: `Stock insuficiente. Disponible: ${stockInfo.stockDisponible}, Requerido: ${cantidadRequerida}` 
+          return {
+            suficiente: false,
+            razon: `Stock insuficiente. Disponible: ${stockInfo.stockDisponible}, Requerido: ${cantidadRequerida}`
           };
         }
-        
+
         return { suficiente: true, stockInfo };
       },
 
@@ -501,19 +538,19 @@ eliminarItem: async (id, options = {}) => {
             return item;
           })
         }));
-        
+
         console.log(` Reservas expiradas limpiadas para ${productosAfectados.length} productos`);
       },
 
       // ===================================
       //  FUNCIONES DE MONITOREO
       // ===================================
-      
+
       // Obtener productos con stock bajo
       obtenerProductosStockBajo: () => {
         const { inventario } = get();
-        return inventario.filter(item => 
-          item.stock !== null && 
+        return inventario.filter(item =>
+          item.stock !== null &&
           item.stockDisponible <= item.stock_minimo
         );
       },
@@ -521,7 +558,7 @@ eliminarItem: async (id, options = {}) => {
       // Obtener productos con reservas activas
       obtenerProductosConReservas: () => {
         const { inventario } = get();
-        return inventario.filter(item => 
+        return inventario.filter(item =>
           item.stockReservado > 0
         );
       },
@@ -530,10 +567,10 @@ eliminarItem: async (id, options = {}) => {
       obtenerHistorialStock: () => {
         const { inventario } = get();
         const hace24Horas = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        
+
         return inventario
-          .filter(item => 
-            item.ultimaActualizacionStock && 
+          .filter(item =>
+            item.ultimaActualizacionStock &&
             new Date(item.ultimaActualizacionStock) > hace24Horas
           )
           .map(item => ({
@@ -568,7 +605,7 @@ eliminarItem: async (id, options = {}) => {
       // ===================================
       obtenerEstadisticas: () => {
         const { inventario } = get();
-        
+
         const stats = {
           total: inventario.length,
           productos: inventario.filter(i => i.tipo === 'producto').length,

@@ -445,6 +445,15 @@ initializeEwebApi(app, {
   warmupLimit: 100
 });
 
+// 📺 DISPLAY/PUBLICIDAD - Rutas públicas para mostrar productos en TV/pantallas
+const displayRoutes = require('./routes/displayRoutes');
+app.use('/api/display', displayRoutes);
+
+// 🆕 Lista de clientes display conectados para tracking
+if (!io.displayClients) {
+  io.displayClients = [];
+}
+
 // 🔧 SOCKET.IO - EVENTOS COMPLETOS CON BLOQUEOS
 io.on('connection', (socket) => {
   console.log('👤 Nueva conexión Socket.IO:', socket.id);
@@ -897,6 +906,50 @@ io.on('connection', (socket) => {
   // Error de Socket.IO
   socket.on('error', (error) => {
     console.error('❌ Error en Socket.IO:', error);
+  });
+
+  // 📺 EVENTOS DE DISPLAY/PUBLICIDAD
+  socket.on('display:connect', (data) => {
+    console.log('📺 Display conectado:', socket.id);
+
+    const clientInfo = {
+      id: socket.id,
+      userAgent: data.userAgent || 'Desconocido',
+      ip: socket.handshake.address,
+      connectedAt: new Date().toISOString(),
+      lastPing: new Date().toISOString()
+    };
+
+    // Agregar a la lista de clientes display
+    if (!io.displayClients) io.displayClients = [];
+    io.displayClients.push(clientInfo);
+
+    // Unirse a sala de display
+    socket.join('display_clients');
+
+    // Notificar a admin panel
+    io.emit('display:clients_updated', io.displayClients);
+
+    console.log(`📺 Total displays conectados: ${io.displayClients.length}`);
+  });
+
+  socket.on('display:disconnect', () => {
+    console.log('📺 Display desconectado:', socket.id);
+
+    if (io.displayClients) {
+      io.displayClients = io.displayClients.filter(c => c.id !== socket.id);
+      io.emit('display:clients_updated', io.displayClients);
+    }
+  });
+
+  socket.on('display:ping', () => {
+    // Actualizar último ping del cliente
+    if (io.displayClients) {
+      const client = io.displayClients.find(c => c.id === socket.id);
+      if (client) {
+        client.lastPing = new Date().toISOString();
+      }
+    }
   });
 });
 

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mostrador de Precio - Digital Signage Vertical</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#0061F2", // Bright vivid blue
+                        secondary: "#10B981", // Emerald green for price
+                        "background-light": "#F3F4F6", // Light grey background
+                        "background-dark": "#111827", // Dark grey background
+                        "card-light": "#FFFFFF",
+                        "card-dark": "#1F2937",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                        serif: ["Playfair Display", "serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                        'xl': "1rem",
+                        '2xl': "1.5rem",
+                        '3xl': "2rem",
+                    },
+                    screens: {
+                        'portrait': {'raw': '(orientation: portrait)'},
+                    }
+                },
+            },
+        };
+    </script>
+<style>
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+        body {
+            height: 100vh;
+            overflow: hidden;
+        }
+        .ribbon-wrapper {
+            width: 150px;
+            height: 150px;
+            overflow: hidden;
+            position: absolute;
+            z-index: 20;
+            pointer-events: none;
+        }
+        .ribbon-wrapper-top-left {
+            top: -10px;
+            left: -10px;
+        }
+        .ribbon-wrapper-top-right {
+            top: -10px;
+            right: -10px;
+        }
+        .ribbon {
+            font: bold 12px sans-serif;
+            color: #fff;
+            text-align: center;
+            transform: rotate(-45deg);
+            position: relative;
+            padding: 7px 0;
+            top: 25px;
+            left: -35px;
+            width: 180px;
+            box-shadow: 0 5px 10px rgba(0,0,0,.1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .ribbon-wrapper-top-right .ribbon {
+            transform: rotate(45deg);
+            left: auto;
+            right: -35px;
+        }
+        .ribbon:before, .ribbon:after {
+            content: "";
+            position: absolute;
+            bottom: -6px; 
+            border-top: 6px solid;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+        }
+        .ribbon:before {
+            left: 0;
+            border-top-color: inherit; 
+            filter: brightness(60%);
+        }
+        .ribbon:after {
+            right: 0;
+            border-top-color: inherit;
+            filter: brightness(60%);
+        }
+        .ribbon-primary {
+            background-color: #0061F2;
+            border-top-color: #004bbb;
+        }
+        .ribbon-secondary {
+            background-color: #10B981;
+            border-top-color: #0b8d61;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-gray-800 dark:text-gray-100 font-display h-screen w-full flex flex-col transition-colors duration-300 overflow-hidden">
+<header class="bg-primary text-white shadow-lg relative z-20 flex-none h-[8vh]">
+<div class="h-full px-6 flex justify-between items-center">
+<div class="flex items-center gap-4">
+<div class="bg-white/20 h-10 w-24 rounded-xl backdrop-blur-sm flex items-center justify-center border border-white/10">
+<span class="text-xs font-black tracking-widest text-white/90">LOGO</span>
+</div>
+<div>
+<h1 class="text-2xl font-bold leading-tight tracking-tight">electroshopve.com</h1>
+<p class="text-xs text-blue-100 font-medium tracking-wide opacity-90">VISTA CLIENTE</p>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow flex flex-col h-[84vh] overflow-hidden relative p-6 gap-4">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2"></div>
+<div class="absolute bottom-0 left-0 w-80 h-80 bg-secondary/5 rounded-full blur-3xl -z-10 -translate-x-1/2 translate-y-1/4"></div>
+<div class="flex-[42] flex flex-col relative shrink-0 min-h-0">
+<div class="bg-card-light dark:bg-card-dark rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700 w-full h-full p-4 pt-10 flex flex-col items-center relative overflow-visible group">
+<div class="ribbon-wrapper ribbon-wrapper-top-left">
+<div class="ribbon ribbon-primary">PRODUCTO</div>
+</div>
+<div class="absolute inset-0 bg-gradient-to-br from-transparent to-gray-50 dark:to-gray-800/50 opacity-50 rounded-3xl overflow-hidden pointer-events-none"></div>
+<div class="relative z-10 text-center mb-2 px-4 w-full">
+<h2 class="font-serif text-4xl lg:text-5xl font-bold text-gray-800 dark:text-gray-100 leading-tight tracking-tight">
+                        Monitor Smart 4K
+                    </h2>
+<p class="font-display text-sm font-semibold tracking-widest text-primary uppercase mt-1 opacity-80">Edición Profesional</p>
+</div>
+<div class="relative flex-1 w-full flex items-center justify-center min-h-0">
+<img alt="Product" class="max-h-full w-auto object-contain p-2 drop-shadow-2xl z-10 scale-100 group-hover:scale-105 transition-transform duration-700 ease-out" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC26aokc48X_DzYILSYkVjRAUfLZd9T76zRO3mY7XjZw1OjVx4zRqxAM--UTat3AHeXNmrKapSHNO5MhgKIBG5uxe3kgkAGytDw4RvNd5JfHtXg71n--ugIeX78NnxtQoLxjyvWxclE6R0biCU7PzwXKk3KL6U9Y24gWXFsv9-L4eEm1a-QzAbtzCH3WTPsg_JZuKqg1eAJNWIORTDrGRGY3e6VfdySR0qRtLrCeVeafG4xePBX4loNqOnHxiqZ26Tjuxypa3ah6bqf"/>
+</div>
+</div>
+</div>
+<div class="flex-[24] flex flex-col shrink-0 min-h-0">
+<div class="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-3xl p-6 relative overflow-visible shadow-sm flex flex-col justify-center items-center text-center h-full w-full">
+<div class="ribbon-wrapper ribbon-wrapper-top-left">
+<div class="ribbon ribbon-secondary">DISPONIBLE</div>
+</div>
+<span class="material-symbols-outlined absolute -left-6 -bottom-6 text-[8rem] text-emerald-100 dark:text-emerald-900/30 opacity-40 -rotate-12 pointer-events-none overflow-hidden select-none">sell</span>
+<div class="flex flex-col items-center relative z-10 w-full">
+<div class="flex flex-col items-center">
+<span class="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Precio de Venta</span>
+<h2 class="text-7xl lg:text-8xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter leading-none">4.775<span class="text-5xl align-top mt-2 inline-block">,99</span></h2>
+<span class="text-2xl lg:text-3xl font-bold text-emerald-700 dark:text-emerald-500 mt-2">Bolívares</span>
+</div>
+<div class="mt-2 flex flex-col items-center gap-2">
+<span class="text-xs text-primary font-bold bg-blue-50/80 dark:bg-blue-900/20 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800/30">IVA 16% INCLUIDO</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex-[13] grid grid-cols-2 gap-4 shrink-0 min-h-0">
+<div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-2 flex flex-col justify-center items-center text-center shadow-sm h-full">
+<span class="material-symbols-outlined text-primary mb-0.5 text-2xl">inventory_2</span>
+<span class="text-[10px] font-bold text-primary uppercase opacity-70">Stock Actual</span>
+<div class="flex items-baseline gap-1">
+<span class="text-3xl font-black text-primary leading-none">107</span>
+<span class="text-xs font-bold text-blue-600 dark:text-blue-300">unds</span>
+</div>
+</div>
+<div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-2 flex flex-col justify-center items-center text-center shadow-sm relative overflow-hidden h-full">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-gray-400 text-xl">qr_code_scanner</span>
+<span class="text-[10px] font-bold text-gray-500 uppercase opacity-70">Código</span>
+</div>
+<span class="font-mono font-bold text-xl text-gray-800 dark:text-gray-200 tracking-tight">EC2704475QA</span>
+</div>
+</div>
+<div class="flex-[17] flex flex-col shrink-0 min-h-0">
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 flex flex-col justify-center shadow-sm h-full relative overflow-hidden">
+<div class="absolute -right-4 -bottom-4 text-gray-50 dark:text-gray-700/50 pointer-events-none">
+<span class="material-symbols-outlined text-8xl opacity-30">description</span>
+</div>
+<div class="relative z-10 h-full flex flex-col justify-center">
+<div class="flex items-center gap-2 mb-2">
+<span class="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 p-1 rounded-md material-symbols-outlined text-sm">info</span>
+<span class="text-xs font-bold text-gray-500 uppercase tracking-wide">Descripción del Producto</span>
+</div>
+<p class="text-xl text-gray-700 dark:text-gray-200 leading-normal font-semibold line-clamp-3">
+                        Dispositivo de alta eficiencia energética con tecnología de punta. Ideal para uso comercial o doméstico intensivo.
+                    </p>
+</div>
+</div>
+</div>
+</main>
+<footer class="bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 text-gray-500 h-[8vh] flex-none z-10">
+<div class="h-full px-6 flex justify-between items-center text-xs font-medium">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-1.5 text-gray-800 dark:text-gray-200 font-bold">
+<span class="material-symbols-outlined text-sm text-primary">store</span>
+<span>Electro Caja</span>
+</div>
+<span class="opacity-70">Sistema de Inventario v2.4</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-full shadow-sm border border-gray-200 dark:border-gray-700">
+<span class="material-symbols-outlined text-sm text-green-500">fiber_manual_record</span>
+<span>En Línea</span>
+</div>
+<div class="text-right">
+<div class="font-bold text-gray-800 dark:text-gray-200">30 ENE</div>
+<div class="text-[10px] opacity-70">2026</div>
+</div>
+</div>
+</div>
+</footer>
+
+</body></html>

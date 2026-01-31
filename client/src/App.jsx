@@ -8,6 +8,7 @@ import LoginModal from './components/LoginModal';
 import BloqueoOverlay from './components/BloqueoOverlay';
 import BloqueoCojeModal from './components/BloqueoCojeModal';
 import VistaPublicaServicio from './components/servicios/VistaPublicaServicio';
+import DisplayPage from './pages/DisplayPage'; // 📺 Página de display/publicidad
 import { useCajaStore } from './store/cajaStore';
 import { useAuthStore } from './store/authStore';
 import { useSocketEvents } from './hooks/useSocketEvents';
@@ -34,112 +35,112 @@ function App() {
   //  STORES
   // ===================================
   const { initialize } = useCajaStore();
-  const { 
-    isAuthenticated, 
-    verificarSesion, 
-    extenderSesion, 
+  const {
+    isAuthenticated,
+    verificarSesion,
+    extenderSesion,
     getSessionInfo,
     isSocketConnected,
     usuario,
     cajaPendienteCierre,
-  sistemaBloquedadoPorCaja
+    sistemaBloquedadoPorCaja
   } = useAuthStore();
   const { cajaActual } = useCajaStore();
-  
+
   // ===================================
   //  SOCKET EVENTS
   // ===================================
- //  HOOK PARA MANEJAR SOCKET.IO Y BLOQUEOS
-  const { 
+  //  HOOK PARA MANEJAR SOCKET.IO Y BLOQUEOS
+  const {
     emitirEvento,
-    usuariosBloqueados, 
-    motivoBloqueo, 
-    usuarioCerrando, 
-    socketConnected 
+    usuariosBloqueados,
+    motivoBloqueo,
+    usuarioCerrando,
+    socketConnected
   } = useSocketEvents();
-  
 
-//  CONECTAR SOCKET AL CAJASTORE (EVITAR DUPLICADOS)
-useEffect(() => {
-  if (emitirEvento && !window.socketConnectedToCajaStore) {
-    window.socketConnectedToCajaStore = true;
-    
-    import('./store/cajaStore').then(({ conectarSocketAlStore }) => {
-      conectarSocketAlStore(emitirEvento);
-    });
-  }
-}, [emitirEvento]);
 
-//  LISTENER GLOBAL PARA EVENTOS DE INVENTARIO EN TIEMPO REAL
-useEffect(() => {
-  const { socket } = useAuthStore.getState();
-  
-  if (!socket || typeof socket.on !== 'function') {
-    console.log('⚠️ [App] Socket no disponible para listener de inventario');
-    return;
-  }
-  
-  const handleInventarioActualizado = async (data) => {
-    console.log('📦 [App] Evento inventario_actualizado recibido:', data.operacion, data.producto?.descripcion);
-    
-    const { usuario: usuarioActual } = useAuthStore.getState();
-    const { obtenerInventario, sincronizarStockDesdeWebSocket } = useInventarioStore.getState();
-    
-    // Actualizar el stock específico del producto si viene en el evento
-    if (data.producto?.id && sincronizarStockDesdeWebSocket) {
-      sincronizarStockDesdeWebSocket({
-        productoId: data.producto.id,
-        stockTotal: data.producto.stock,
-        stockReservado: 0, // No tenemos esta info en el evento
-        stockDisponible: data.producto.stock,
-        operacion: data.operacion
+  //  CONECTAR SOCKET AL CAJASTORE (EVITAR DUPLICADOS)
+  useEffect(() => {
+    if (emitirEvento && !window.socketConnectedToCajaStore) {
+      window.socketConnectedToCajaStore = true;
+
+      import('./store/cajaStore').then(({ conectarSocketAlStore }) => {
+        conectarSocketAlStore(emitirEvento);
       });
     }
-    
-    // Recargar inventario completo para asegurar sincronización
-    // Solo si no hay modales críticos abiertos
-    const modalProtectionKeys = [
-      'itemFormModalActive',
-      'ingresoModalActive',
-      'productViewModalActive'
-    ];
-    
-    const anyModalActive = modalProtectionKeys.some(key =>
-      sessionStorage.getItem(key) === 'true'
-    );
-    
-    if (!anyModalActive) {
-      await obtenerInventario();
-    } else {
-      // Marcar que hay actualización pendiente
-      sessionStorage.setItem('inventarioPendienteActualizar', 'true');
+  }, [emitirEvento]);
+
+  //  LISTENER GLOBAL PARA EVENTOS DE INVENTARIO EN TIEMPO REAL
+  useEffect(() => {
+    const { socket } = useAuthStore.getState();
+
+    if (!socket || typeof socket.on !== 'function') {
+      console.log('⚠️ [App] Socket no disponible para listener de inventario');
+      return;
     }
-    
-    // Mostrar toast solo si es de otro usuario
-    if (data.usuario && data.usuario !== usuarioActual?.nombre) {
-      switch (data.operacion) {
-        case 'VENTA_PROCESADA':
-          toast.info(`📦 ${data.producto?.descripcion}: Stock actualizado (-${data.cantidad} unidades)`, { duration: 3000 });
-          break;
-        case 'STOCK_DEVUELTO':
-          toast.success(`↩️ ${data.producto?.descripcion}: Stock devuelto (+${data.cantidad} unidades)`, { duration: 3000 });
-          break;
-        default:
-          toast.info(`📦 ${data.producto?.descripcion}: Inventario actualizado`, { duration: 2000 });
-          break;
+
+    const handleInventarioActualizado = async (data) => {
+      console.log('📦 [App] Evento inventario_actualizado recibido:', data.operacion, data.producto?.descripcion);
+
+      const { usuario: usuarioActual } = useAuthStore.getState();
+      const { obtenerInventario, sincronizarStockDesdeWebSocket } = useInventarioStore.getState();
+
+      // Actualizar el stock específico del producto si viene en el evento
+      if (data.producto?.id && sincronizarStockDesdeWebSocket) {
+        sincronizarStockDesdeWebSocket({
+          productoId: data.producto.id,
+          stockTotal: data.producto.stock,
+          stockReservado: 0, // No tenemos esta info en el evento
+          stockDisponible: data.producto.stock,
+          operacion: data.operacion
+        });
       }
-    }
-  };
-  
-  // Registrar listener global
-  console.log('✅ [App] Registrando listener global de inventario_actualizado');
-  socket.on('inventario_actualizado', handleInventarioActualizado);
-  
-  return () => {
-    console.log('🧹 [App] Limpiando listener global de inventario_actualizado');
-    socket.off('inventario_actualizado', handleInventarioActualizado);
-  };
-}, [socketConnected]);
+
+      // Recargar inventario completo para asegurar sincronización
+      // Solo si no hay modales críticos abiertos
+      const modalProtectionKeys = [
+        'itemFormModalActive',
+        'ingresoModalActive',
+        'productViewModalActive'
+      ];
+
+      const anyModalActive = modalProtectionKeys.some(key =>
+        sessionStorage.getItem(key) === 'true'
+      );
+
+      if (!anyModalActive) {
+        await obtenerInventario();
+      } else {
+        // Marcar que hay actualización pendiente
+        sessionStorage.setItem('inventarioPendienteActualizar', 'true');
+      }
+
+      // Mostrar toast solo si es de otro usuario
+      if (data.usuario && data.usuario !== usuarioActual?.nombre) {
+        switch (data.operacion) {
+          case 'VENTA_PROCESADA':
+            toast.info(`📦 ${data.producto?.descripcion}: Stock actualizado (-${data.cantidad} unidades)`, { duration: 3000 });
+            break;
+          case 'STOCK_DEVUELTO':
+            toast.success(`↩️ ${data.producto?.descripcion}: Stock devuelto (+${data.cantidad} unidades)`, { duration: 3000 });
+            break;
+          default:
+            toast.info(`📦 ${data.producto?.descripcion}: Inventario actualizado`, { duration: 2000 });
+            break;
+        }
+      }
+    };
+
+    // Registrar listener global
+    console.log('✅ [App] Registrando listener global de inventario_actualizado');
+    socket.on('inventario_actualizado', handleInventarioActualizado);
+
+    return () => {
+      console.log('🧹 [App] Limpiando listener global de inventario_actualizado');
+      socket.off('inventario_actualizado', handleInventarioActualizado);
+    };
+  }, [socketConnected]);
 
   // ===================================
   //  INFO DE SESIÓN
@@ -152,122 +153,122 @@ useEffect(() => {
   const initializeNotifications = async () => {
     const { usuario } = useAuthStore.getState();
     const { setupSocketListeners, addNotificacion } = useNotificacionesStore.getState();
-    
+
     if (!usuario) return;
-    
+
     // Configurar listeners de Socket.IO
     setupSocketListeners();
-    
+
     // Verificar inventario para stock bajo
     await checkInventoryAlerts();
   };
 
   const checkInventoryAlerts = async () => {
-  try {
-    const { inventario, obtenerStockBajo, obtenerInventario } = useInventarioStore.getState();
-    const { notificaciones, addNotificacion } = useNotificacionesStore.getState();
-    
-    if (inventario.length === 0) {
-      await obtenerInventario();
+    try {
+      const { inventario, obtenerStockBajo, obtenerInventario } = useInventarioStore.getState();
+      const { notificaciones, addNotificacion } = useNotificacionesStore.getState();
+
+      if (inventario.length === 0) {
+        await obtenerInventario();
+      }
+
+      const stockBajo = obtenerStockBajo(10);
+
+      //  VERIFICAR SI YA EXISTE NOTIFICACIÓN DE STOCK BAJO
+      const yaExisteStockBajo = notificaciones.some(n =>
+        n.tipo === 'stock_bajo' && !n.leida
+      );
+
+      if (stockBajo.length > 0 && !yaExisteStockBajo) {
+        addNotificacion({
+          tipo: 'stock_bajo',
+          titulo: `${stockBajo.length} producto${stockBajo.length > 1 ? 's' : ''} con stock bajo`,
+          descripcion: stockBajo.map(p => `${p.descripcion} (${p.stock} unidades)`).join(', ').substring(0, 100),
+          accionable: true,
+          datos: { productos: stockBajo }
+        });
+      }
+    } catch (error) {
+      console.error(' Error verificando stock:', error);
     }
-    
-    const stockBajo = obtenerStockBajo(10);
-    
-    //  VERIFICAR SI YA EXISTE NOTIFICACIÓN DE STOCK BAJO
-    const yaExisteStockBajo = notificaciones.some(n => 
-      n.tipo === 'stock_bajo' && !n.leida
-    );
-    
-    if (stockBajo.length > 0 && !yaExisteStockBajo) {
-      addNotificacion({
-        tipo: 'stock_bajo',
-        titulo: `${stockBajo.length} producto${stockBajo.length > 1 ? 's' : ''} con stock bajo`,
-        descripcion: stockBajo.map(p => `${p.descripcion} (${p.stock} unidades)`).join(', ').substring(0, 100),
-        accionable: true,
-        datos: { productos: stockBajo }
-      });
-    }
-  } catch (error) {
-    console.error(' Error verificando stock:', error);
-  }
-};
+  };
 
   // ===================================
   //  FUNCIONES DE MANEJO
   // ===================================
- const handleLoginSuccess = () => {
-  setShowLogin(false);
-  initialize();
-};
+  const handleLoginSuccess = () => {
+    setShowLogin(false);
+    initialize();
+  };
 
   // ===================================
   //  EFECTOS PRINCIPALES
   // ===================================
 
 
-//  EFECTO PRINCIPAL: Verificar autenticación al cargar
-useEffect(() => {
-  let mounted = true;
- 
-  //  CONFIGURAR SISTEMA DE EVENTOS GLOBALES
-  window.emitirEventoGlobal = (evento, datos) => {
-    const eventoCustom = new CustomEvent(evento, { detail: datos });
-    window.dispatchEvent(eventoCustom);
-  };
- 
-  //  LISTENER PARA TOKEN EXPIRADO
-  const handleTokenExpired = (event) => {
-    useAuthStore.getState().handleTokenExpired();
-  };
+  //  EFECTO PRINCIPAL: Verificar autenticación al cargar
+  useEffect(() => {
+    let mounted = true;
 
-  window.addEventListener('token-expired', handleTokenExpired);
- 
-  const checkAuth = async () => {
-    if (!mounted) return;
-   
-    const tokenExists = localStorage.getItem('auth-token');
-    if (tokenExists) {
-      try {
-        const authResult = await useAuthStore.getState().checkAuth();
-       
-        if (!mounted) return;
-       
-        if (authResult) {
-        setShowLogin(false);
-        setIsLoading(false);
-        initialize();
-         
-          //  PREVENIR DUPLICADOS
-          if (!window.notificationsInitialized) {
-            window.notificationsInitialized = true;
-            setTimeout(() => {
-              initializeNotifications();
-            }, 2000);
-          }
-        } else {
-          if (mounted) {
-            setShowLogin(true);
+    //  CONFIGURAR SISTEMA DE EVENTOS GLOBALES
+    window.emitirEventoGlobal = (evento, datos) => {
+      const eventoCustom = new CustomEvent(evento, { detail: datos });
+      window.dispatchEvent(eventoCustom);
+    };
+
+    //  LISTENER PARA TOKEN EXPIRADO
+    const handleTokenExpired = (event) => {
+      useAuthStore.getState().handleTokenExpired();
+    };
+
+    window.addEventListener('token-expired', handleTokenExpired);
+
+    const checkAuth = async () => {
+      if (!mounted) return;
+
+      const tokenExists = localStorage.getItem('auth-token');
+      if (tokenExists) {
+        try {
+          const authResult = await useAuthStore.getState().checkAuth();
+
+          if (!mounted) return;
+
+          if (authResult) {
+            setShowLogin(false);
             setIsLoading(false);
+            initialize();
+
+            //  PREVENIR DUPLICADOS
+            if (!window.notificationsInitialized) {
+              window.notificationsInitialized = true;
+              setTimeout(() => {
+                initializeNotifications();
+              }, 2000);
+            }
+          } else {
+            if (mounted) {
+              setShowLogin(true);
+              setIsLoading(false);
+            }
           }
+        } catch (error) {
+          console.error(' Error en checkAuth:', error);
+          if (mounted) setShowLogin(true);
         }
-      } catch (error) {
-        console.error(' Error en checkAuth:', error);
+      } else {
         if (mounted) setShowLogin(true);
       }
-    } else {
-      if (mounted) setShowLogin(true);
-    }
-   
-    if (mounted) setIsLoading(false);
-  };
-  const timer = setTimeout(checkAuth, 100);
- 
-  return () => {
-    mounted = false;
-    clearTimeout(timer);
-    window.removeEventListener('token-expired', handleTokenExpired); //  LÍNEA NUEVA
-  };
-}, []);
+
+      if (mounted) setIsLoading(false);
+    };
+    const timer = setTimeout(checkAuth, 100);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      window.removeEventListener('token-expired', handleTokenExpired); //  LÍNEA NUEVA
+    };
+  }, []);
 
   //  Escuchar cambios en isAuthenticated (para logout)
   useEffect(() => {
@@ -279,8 +280,8 @@ useEffect(() => {
   }, [isAuthenticated]);
 
   //  Auto-verificación de sesión cada minuto
-    useEffect(() => {
-  if (!isAuthenticated || showLogin) return; //  AGREGAR showLogin
+  useEffect(() => {
+    if (!isAuthenticated || showLogin) return; //  AGREGAR showLogin
 
     const interval = setInterval(() => {
       const sesionValida = verificarSesion();
@@ -307,7 +308,7 @@ useEffect(() => {
     };
 
     const eventos = ['click', 'keydown', 'mousemove', 'scroll'];
-    
+
     eventos.forEach(evento => {
       document.addEventListener(evento, handleActivity);
     });
@@ -320,7 +321,7 @@ useEffect(() => {
     };
   }, [isAuthenticated, extenderSesion]);
 
- //  Verificar estado WhatsApp periódicamente
+  //  Verificar estado WhatsApp periódicamente
   useEffect(() => {
     //  SOLO EJECUTAR SI ESTÁ AUTENTICADO
     if (!isAuthenticated) return;
@@ -330,7 +331,7 @@ useEffect(() => {
         const response = await api.get('/whatsapp/estado');
         const conectado = response.data.data?.conectado || false;
         const nuevoEstado = conectado ? 'ONLINE' : 'OFFLINE';
-        
+
         setPanelStats(prev => {
           if (prev.whatsappStatus !== nuevoEstado) {
             console.log(' WhatsApp cambió de', prev.whatsappStatus, 'a', nuevoEstado);
@@ -370,13 +371,13 @@ useEffect(() => {
       if (event.ctrlKey && event.shiftKey && event.key === 'D') {
         event.preventDefault();
         setShowDebugPanel(prev => !prev);
-        
+
         if (!showDebugPanel) {
-          toast.success('Panel debug activado', { 
+          toast.success('Panel debug activado', {
             duration: 2000,
           });
         } else {
-          toast.success('Panel debug desactivado', { 
+          toast.success('Panel debug desactivado', {
             duration: 2000,
           });
         }
@@ -384,7 +385,7 @@ useEffect(() => {
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -418,8 +419,8 @@ useEffect(() => {
 
   // Verificar si estamos en una ruta pública (no requiere autenticación)
   const location = window.location.pathname;
-  const esRutaPublica = location.startsWith('/servicio/');
-  
+  const esRutaPublica = location.startsWith('/servicio/') || location === '/display';
+
   //  Mostrar login si no está autenticado y no es ruta pública
   if ((!isAuthenticated || showLogin) && !esRutaPublica) {
     return (
@@ -458,7 +459,10 @@ useEffect(() => {
       <Routes>
         {/* Ruta pública para seguimiento de servicios */}
         <Route path="/servicio/:token" element={<VistaPublicaServicio />} />
-        
+
+        {/* 📺 Ruta pública para display/publicidad en TV */}
+        <Route path="/display" element={<DisplayPage />} />
+
         {/* Ruta principal de la aplicación */}
         <Route path="*" element={
           <>
@@ -493,9 +497,9 @@ useEffect(() => {
                   <Dashboard emitirEvento={emitirEvento} />
                   <Footer />
                 </div>
-                
+
                 {/*  Overlay de bloqueo */}
-                <BloqueoOverlay 
+                <BloqueoOverlay
                   usuariosBloqueados={usuariosBloqueados}
                   motivoBloqueo={motivoBloqueo}
                   usuarioCerrando={usuarioCerrando}
@@ -513,7 +517,7 @@ useEffect(() => {
           </>
         } />
       </Routes>
-      
+
       {/* Componentes globales */}
       {showDebugPanel && (
         <div className="fixed bottom-4 right-4 bg-gray-900 text-white p-4 rounded-lg shadow-xl z-50 text-xs max-w-xs border border-gray-700">
@@ -579,7 +583,7 @@ useEffect(() => {
           </div>
         </div>
       )}
-      
+
       <Toaster />
     </BrowserRouter>
   );

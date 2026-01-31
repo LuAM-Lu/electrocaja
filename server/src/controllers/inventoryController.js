@@ -321,7 +321,7 @@ const updateProduct = async (req, res) => {
       'precioCosto', 'precioVenta', 'margenPorcentaje',
       'stockMinimo', 'stockMaximo', 'ubicacionFisica', 'imagenUrl',
       'imagenThumbnail', 'proveedor', 'telefonoProveedor',
-      'proveedorFacturaIva', 'observaciones', 'activo'
+      'proveedorFacturaIva', 'observaciones', 'activo', 'destacado'
     ];
 
     // ✅ AGREGAR STOCK SOLO SI NO ES SERVICIO
