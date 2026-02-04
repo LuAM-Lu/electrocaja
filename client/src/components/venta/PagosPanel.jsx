@@ -81,7 +81,7 @@ const obtenerMonedaPredominante = (pagos) => {
   if (!pagos || pagos.length === 0) return 'bs';
   const conteoMonedas = { bs: 0, usd: 0 };
   pagos.forEach(pago => {
-    if (pago.monto && parseFloat(pago.monto.replace(',', '.')) > 0) {
+    if (pago.monto && limpiarNumero(pago.monto) > 0) {
       const metodoInfo = METODOS_PAGO.find(m => m.value === pago.metodo);
       if (metodoInfo) conteoMonedas[metodoInfo.moneda]++;
     }
@@ -113,7 +113,8 @@ const PagoItem = ({
   };
 
   const handleGuardar = () => {
-    if (!pago.monto || parseFloat(pago.monto.replace(',', '.')) <= 0) {
+    // Usar limpiarNumero para validar correctamente montos con formato venezolano (ej: 10.000,00)
+    if (!pago.monto || limpiarNumero(pago.monto) <= 0) {
       toast.error('Ingresa un monto válido');
       return;
     }
@@ -420,7 +421,7 @@ const PagosPanel = ({
 
     if (pagoEnEdicion) {
       // Actualizar el pago existente en edición
-      actualizarPago(pagoEnEdicion.id, 'monto', formatearVenezolano(faltante));
+      actualizarPago(pagoEnEdicion.id, 'monto', faltante.toFixed(2).replace('.', ','));
       toast.info('Monto actualizado al restante');
     } else {
       // Crear nuevo pago con el restante
@@ -436,7 +437,7 @@ const PagosPanel = ({
       const nuevosPagos = [...pagos, {
         id: newId,
         metodo: metodo,
-        monto: formatearVenezolano(faltante),
+        monto: faltante.toFixed(2).replace('.', ','),
         banco: '',
         referencia: ''
       }];

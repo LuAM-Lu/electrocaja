@@ -26,8 +26,19 @@ export const parseMoney = (value) => {
   }
 
   if (typeof value === 'string') {
-    // Remove spaces and replace comma with dot
-    const cleaned = value.trim().replace(/\s/g, '').replace(',', '.');
+    // Remove spaces
+    let cleaned = value.trim().replace(/\s/g, '');
+
+    // Check if it's Venezuelan format (contains period and comma) or just comma
+    if (cleaned.includes('.') && cleaned.includes(',')) {
+      // Assume Venezuelan format: 1.000,00 -> Remove dots, replace comma with dot
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    } else if (cleaned.includes(',')) {
+      // Assume simple comma decimal: 100,50 -> Replace comma with dot
+      cleaned = cleaned.replace(',', '.');
+    }
+    // If it only has dots, standard behavior (depends on context, but usually safe to assume standard float if no commas)
+
     const parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : roundMoney(parsed);
   }
@@ -161,7 +172,7 @@ export const calculatePaymentTotals = (pagos, tasaCambio) => {
 
   pagos.forEach(pago => {
     const monto = parseMoney(pago.monto);
-    
+
     // Determinar moneda: usar explícita o determinar desde método de pago
     let moneda = pago.moneda;
     if (!moneda) {
@@ -182,7 +193,7 @@ export const calculatePaymentTotals = (pagos, tasaCambio) => {
         moneda = 'bs';
       }
     }
-    
+
     if (moneda === 'bs') {
       totalBs = addMoney(totalBs, monto);
     } else if (moneda === 'usd') {

@@ -13,86 +13,89 @@ const QRCode = require('qrcode');
  * @param {number} tasaCambio - Tasa de cambio actual (Bs/USD)
  */
 const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 = null, tasaCambio = 37.50, esReimpresion = false, numeroReimpresion = 0) => {
-  const fechaActual = new Date().toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  const fechaEntrega = servicio.fechaEntregaEstimada 
-    ? new Date(servicio.fechaEntregaEstimada).toLocaleDateString('es-ES', {
+    const fechaActual = new Date().toLocaleDateString('es-ES', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
-      })
-    : '—';
-
-  const problemas = Array.isArray(servicio.problemas) 
-    ? servicio.problemas.join(', ')
-    : servicio.problemas || '—';
-
-  const items = servicio.items || [];
-  const totalEstimado = parseFloat(servicio.totalEstimado || 0);
-  const totalPagado = parseFloat(servicio.totalPagado || 0);
-  const saldoPendiente = parseFloat(servicio.saldoPendiente || 0);
-
-  // 🆕 Convertir montos a Bs usando la tasa de cambio
-  const tasa = parseFloat(tasaCambio) || 37.50;
-  const totalEstimadoBs = totalEstimado * tasa;
-  const totalPagadoBs = totalPagado * tasa;
-  const saldoPendienteBs = saldoPendiente * tasa;
-
-  // Formatear números venezolanos (DEBE IR ANTES de usarlo)
-  const formatearVenezolano = (valor) => {
-    if (!valor && valor !== 0) return '0,00';
-    const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
-    return numero.toLocaleString('es-VE', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
     });
-  };
 
-  // Formatear montos en formato dual (Bs + USD) para tickets
-  const formatearDual = (valorBs) => {
-    const valorUsd = valorBs / tasa;
-    return `${formatearVenezolano(valorBs)} Bs <span style="font-size: 8px; color: #000;">($${valorUsd.toFixed(2)})</span>`;
-  };
+    const fechaEntrega = servicio.fechaEntregaEstimada
+        ? new Date(servicio.fechaEntregaEstimada).toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        })
+        : '—';
 
-  // 🆕 Obtener métodos de pago del pago inicial (si existe)
-  let metodosPago = '';
-  if (servicio.pagos && servicio.pagos.length > 0) {
-    // Buscar el pago inicial
-    const pagoInicial = servicio.pagos.find(p => p.tipo === 'PAGO_INICIAL');
-    if (pagoInicial && Array.isArray(pagoInicial.pagos)) {
-      const nombresMetodos = {
-        'efectivo_bs': 'Efectivo Bs',
-        'efectivo_usd': 'Efectivo USD',
-        'pago_movil': 'Pago Móvil',
-        'transferencia': 'Transferencia',
-        'zelle': 'Zelle',
-        'binance': 'Binance',
-        'tarjeta': 'Tarjeta'
-      };
+    const problemas = Array.isArray(servicio.problemas)
+        ? servicio.problemas.join(', ')
+        : servicio.problemas || '—';
 
-      metodosPago = pagoInicial.pagos.map(p => {
-        const metodo = p.metodo || '';
-        const monto = parseFloat(p.monto || 0);
-        const moneda = p.moneda || 'bs';
+    const items = servicio.items || [];
+    const totalEstimado = parseFloat(servicio.totalEstimado || 0);
+    const totalPagado = parseFloat(servicio.totalPagado || 0);
+    const saldoPendiente = parseFloat(servicio.saldoPendiente || 0);
 
-        // Mostrar monto en la moneda original del método de pago
-        if (moneda === 'usd') {
-          return `${nombresMetodos[metodo] || metodo}: $${monto.toFixed(2)} USD`;
-        } else {
-          return `${nombresMetodos[metodo] || metodo}: ${formatearVenezolano(monto)} Bs`;
+    // 🆕 Convertir montos a Bs usando la tasa de cambio
+    const tasa = parseFloat(tasaCambio) || 37.50;
+    const totalEstimadoBs = totalEstimado * tasa;
+    const totalPagadoBs = totalPagado * tasa;
+    const saldoPendienteBs = saldoPendiente * tasa;
+
+    // Formatear números venezolanos (DEBE IR ANTES de usarlo)
+    // Formatear números venezolanos (DEBE IR ANTES de usarlo)
+    const formatearVenezolano = (valor) => {
+        if (!valor && valor !== 0) return '0,00';
+        const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
+
+        const parts = numero.toFixed(2).split('.');
+        const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const decimalPart = parts[1];
+
+        return `${integerPart},${decimalPart}`;
+    };
+
+    // Formatear montos en formato dual (Bs + USD) para tickets
+    const formatearDual = (valorBs) => {
+        const valorUsd = valorBs / tasa;
+        return `${formatearVenezolano(valorBs)} Bs <span style="font-size: 8px; color: #000;">($${valorUsd.toFixed(2)})</span>`;
+    };
+
+    // 🆕 Obtener métodos de pago del pago inicial (si existe)
+    let metodosPago = '';
+    if (servicio.pagos && servicio.pagos.length > 0) {
+        // Buscar el pago inicial
+        const pagoInicial = servicio.pagos.find(p => p.tipo === 'PAGO_INICIAL');
+        if (pagoInicial && Array.isArray(pagoInicial.pagos)) {
+            const nombresMetodos = {
+                'efectivo_bs': 'Efectivo Bs',
+                'efectivo_usd': 'Efectivo USD',
+                'pago_movil': 'Pago Móvil',
+                'transferencia': 'Transferencia',
+                'zelle': 'Zelle',
+                'binance': 'Binance',
+                'tarjeta': 'Tarjeta'
+            };
+
+            metodosPago = pagoInicial.pagos.map(p => {
+                const metodo = p.metodo || '';
+                const monto = parseFloat(p.monto || 0);
+                const moneda = p.moneda || 'bs';
+
+                // Mostrar monto en la moneda original del método de pago
+                if (moneda === 'usd') {
+                    return `${nombresMetodos[metodo] || metodo}: $${monto.toFixed(2)} USD`;
+                } else {
+                    return `${nombresMetodos[metodo] || metodo}: ${formatearVenezolano(monto)} Bs`;
+                }
+            }).join('<br>');
         }
-      }).join('<br>');
     }
-  }
 
-  return `
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -321,11 +324,11 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
         </div>
         <div style="border-top: 1px dashed #000; margin: 2px 0;"></div>
         ${items.map(item => {
-          const precioUnitario = parseFloat(item.precioUnitario || item.precio_unitario || item.precio || 0);
-          const cantidad = parseFloat(item.cantidad || 0);
-          const subtotal = precioUnitario * cantidad;
-          const subtotalBs = subtotal * tasa;
-          return `
+        const precioUnitario = parseFloat(item.precioUnitario || item.precio_unitario || item.precio || 0);
+        const cantidad = parseFloat(item.cantidad || 0);
+        const subtotal = precioUnitario * cantidad;
+        const subtotalBs = subtotal * tasa;
+        return `
             <div class="item-row" style="color: #000;">
                 <div style="width: 10%; text-align: center; font-weight: 700; color: #000;">${cantidad}</div>
                 <div style="width: 60%; text-align: left; color: #000;">
@@ -336,7 +339,7 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
                 </div>
             </div>
         `;
-        }).join('')}
+    }).join('')}
         <div class="separator"></div>
         ` : ''}
         
@@ -411,7 +414,7 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
  * Mínimo papel posible - solo número de orden grande y info esencial
  */
 const generarHTMLTicketInterno = (servicio) => {
-  return `
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -478,20 +481,20 @@ const generarHTMLTicketInterno = (servicio) => {
  * Genera código QR como base64
  */
 const generarQRBase64 = async (linkSeguimiento) => {
-  try {
-    const qrDataURL = await QRCode.toDataURL(linkSeguimiento, {
-      width: 200,
-      margin: 2,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF'
-      }
-    });
-    return qrDataURL;
-  } catch (error) {
-    console.error('Error generando QR:', error);
-    return null;
-  }
+    try {
+        const qrDataURL = await QRCode.toDataURL(linkSeguimiento, {
+            width: 200,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        });
+        return qrDataURL;
+    } catch (error) {
+        console.error('Error generando QR:', error);
+        return null;
+    }
 };
 
 /**
@@ -503,82 +506,85 @@ const generarQRBase64 = async (linkSeguimiento) => {
  * @param {number} tasaCambio - Tasa de cambio actual (Bs/USD)
  */
 const generarHTMLTicketAbono = (servicio, pagoData, linkSeguimiento, qrBase64 = null, tasaCambio = 37.50) => {
-  const fechaActual = new Date().toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-
-  const totalEstimado = parseFloat(servicio.totalEstimado || 0);
-  const totalPagado = parseFloat(servicio.totalPagado || 0);
-  const saldoPendiente = parseFloat(servicio.saldoPendiente || 0);
-
-  // Convertir montos a Bs
-  const tasa = parseFloat(tasaCambio) || 37.50;
-  const totalEstimadoBs = totalEstimado * tasa;
-  const totalPagadoBs = totalPagado * tasa;
-  const saldoPendienteBs = saldoPendiente * tasa;
-
-  // Formatear números venezolanos
-  const formatearVenezolano = (valor) => {
-    if (!valor && valor !== 0) return '0,00';
-    const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
-    return numero.toLocaleString('es-VE', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+    const fechaActual = new Date().toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
     });
-  };
 
-  // Formatear montos en formato dual (Bs + USD) para tickets
-  const formatearDual = (valorBs) => {
-    const valorUsd = valorBs / tasa;
-    return `${formatearVenezolano(valorBs)} Bs <span style="font-size: 8px; color: #000;">($${valorUsd.toFixed(2)})</span>`;
-  };
+    const totalEstimado = parseFloat(servicio.totalEstimado || 0);
+    const totalPagado = parseFloat(servicio.totalPagado || 0);
+    const saldoPendiente = parseFloat(servicio.saldoPendiente || 0);
 
-  // Formatear métodos de pago respetando la moneda original
-  const metodosPago = Array.isArray(pagoData.pagos) ? pagoData.pagos.map(p => {
-    const metodo = p.metodo || '';
-    const monto = parseFloat(p.monto || 0);
-    const moneda = p.moneda || 'bs';
-    
-    const nombresMetodos = {
-      'efectivo_bs': 'Efectivo Bs',
-      'efectivo_usd': 'Efectivo USD',
-      'pago_movil': 'Pago Móvil',
-      'transferencia': 'Transferencia',
-      'zelle': 'Zelle',
-      'binance': 'Binance',
-      'tarjeta': 'Tarjeta'
+    // Convertir montos a Bs
+    const tasa = parseFloat(tasaCambio) || 37.50;
+    const totalEstimadoBs = totalEstimado * tasa;
+    const totalPagadoBs = totalPagado * tasa;
+    const saldoPendienteBs = saldoPendiente * tasa;
+
+    // Formatear números venezolanos
+    // Formatear números venezolanos
+    const formatearVenezolano = (valor) => {
+        if (!valor && valor !== 0) return '0,00';
+        const numero = typeof valor === 'number' ? valor : parseFloat(valor) || 0;
+
+        const parts = numero.toFixed(2).split('.');
+        const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        const decimalPart = parts[1];
+
+        return `${integerPart},${decimalPart}`;
     };
-    
-    // 🆕 Mostrar monto en la moneda original del método de pago
-    if (moneda === 'usd') {
-      return `${nombresMetodos[metodo] || metodo}: $${monto.toFixed(2)} USD`;
-    } else {
-      return `${nombresMetodos[metodo] || metodo}: ${formatearVenezolano(monto)} Bs`;
-    }
-  }).join('\n') : '—';
-  
-  // 🆕 Calcular monto del abono en ambas monedas para mostrar correctamente
-  let montoAbonoBs = 0;
-  let montoAbonoUsd = 0;
-  
-  if (Array.isArray(pagoData.pagos)) {
-    pagoData.pagos.forEach(p => {
-      const monto = parseFloat(p.monto || 0);
-      const moneda = p.moneda || 'bs';
-      if (moneda === 'usd') {
-        montoAbonoUsd += monto;
-        montoAbonoBs += monto * tasa;
-      } else {
-        montoAbonoBs += monto;
-      }
-    });
-  }
 
-  return `
+    // Formatear montos en formato dual (Bs + USD) para tickets
+    const formatearDual = (valorBs) => {
+        const valorUsd = valorBs / tasa;
+        return `${formatearVenezolano(valorBs)} Bs <span style="font-size: 8px; color: #000;">($${valorUsd.toFixed(2)})</span>`;
+    };
+
+    // Formatear métodos de pago respetando la moneda original
+    const metodosPago = Array.isArray(pagoData.pagos) ? pagoData.pagos.map(p => {
+        const metodo = p.metodo || '';
+        const monto = parseFloat(p.monto || 0);
+        const moneda = p.moneda || 'bs';
+
+        const nombresMetodos = {
+            'efectivo_bs': 'Efectivo Bs',
+            'efectivo_usd': 'Efectivo USD',
+            'pago_movil': 'Pago Móvil',
+            'transferencia': 'Transferencia',
+            'zelle': 'Zelle',
+            'binance': 'Binance',
+            'tarjeta': 'Tarjeta'
+        };
+
+        // 🆕 Mostrar monto en la moneda original del método de pago
+        if (moneda === 'usd') {
+            return `${nombresMetodos[metodo] || metodo}: $${monto.toFixed(2)} USD`;
+        } else {
+            return `${nombresMetodos[metodo] || metodo}: ${formatearVenezolano(monto)} Bs`;
+        }
+    }).join('\n') : '—';
+
+    // 🆕 Calcular monto del abono en ambas monedas para mostrar correctamente
+    let montoAbonoBs = 0;
+    let montoAbonoUsd = 0;
+
+    if (Array.isArray(pagoData.pagos)) {
+        pagoData.pagos.forEach(p => {
+            const monto = parseFloat(p.monto || 0);
+            const moneda = p.moneda || 'bs';
+            if (moneda === 'usd') {
+                montoAbonoUsd += monto;
+                montoAbonoBs += monto * tasa;
+            } else {
+                montoAbonoBs += monto;
+            }
+        });
+    }
+
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -758,12 +764,12 @@ const generarHTMLTicketAbono = (servicio, pagoData, linkSeguimiento, qrBase64 = 
         <!-- ABONO REGISTRADO -->
         <div class="total-section" style="background: #f0f0f0 !important; border: 2px solid #000;">
             <div class="subtitle bold center" style="color: #000;">ABONO REGISTRADO:</div>
-            ${montoAbonoUsd > 0 && montoAbonoBs > 0 
-              ? `<div class="total-amount center" style="color: #000;">${formatearVenezolano(montoAbonoBs)} Bs / $${montoAbonoUsd.toFixed(2)} USD</div>`
-              : montoAbonoUsd > 0 
+            ${montoAbonoUsd > 0 && montoAbonoBs > 0
+            ? `<div class="total-amount center" style="color: #000;">${formatearVenezolano(montoAbonoBs)} Bs / $${montoAbonoUsd.toFixed(2)} USD</div>`
+            : montoAbonoUsd > 0
                 ? `<div class="total-amount center" style="color: #000;">$${montoAbonoUsd.toFixed(2)} USD</div>`
                 : `<div class="total-amount center" style="color: #000;">${formatearVenezolano(montoAbonoBs)} Bs</div>`
-            }
+        }
         </div>
         
         <!-- MÉTODOS DE PAGO -->
@@ -808,9 +814,9 @@ const generarHTMLTicketAbono = (servicio, pagoData, linkSeguimiento, qrBase64 = 
 };
 
 module.exports = {
-  generarHTMLTicketServicio,
-  generarHTMLTicketInterno,
-  generarQRBase64,
-  generarHTMLTicketAbono
+    generarHTMLTicketServicio,
+    generarHTMLTicketInterno,
+    generarQRBase64,
+    generarHTMLTicketAbono
 };
 

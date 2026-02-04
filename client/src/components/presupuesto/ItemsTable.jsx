@@ -775,7 +775,7 @@ const ItemsTable = ({
 
       {/*  BARRA DE BÚSQUEDA Y CONTROLES */}
       {isEditable && (
-        <div className={`${styles.container} border rounded-lg p-3`}>
+        <div className={`${styles.container} border rounded-lg p-3 relative z-20`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className={`text-base font-semibold ${styles.text} flex items-center`}>
               <ShoppingCart className={`h-4 w-4 mr-2 ${styles.textSecondary}`} />

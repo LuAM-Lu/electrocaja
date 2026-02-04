@@ -42,11 +42,11 @@ const calcularDiasTranscurridos = (fechaIngreso) => {
   const hoy = new Date();
   const ingreso = new Date(fechaIngreso);
   if (isNaN(ingreso.getTime())) return 0;
-  
+
   // Normalizar ambas fechas a medianoche para calcular días completos
   const hoyNormalizado = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
   const ingresoNormalizado = new Date(ingreso.getFullYear(), ingreso.getMonth(), ingreso.getDate());
-  
+
   const diff = Math.floor((hoyNormalizado - ingresoNormalizado) / (1000 * 60 * 60 * 24));
   return diff < 0 ? 0 : diff;
 };
@@ -57,7 +57,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const { socket } = useAuthStore();
   const { obtenerServicio } = useServiciosStore();
   const { tasaCambio } = useCajaStore();
-  
+
   const [imagenExpandida, setImagenExpandida] = useState(null);
   const [tiempoTranscurrido, setTiempoTranscurrido] = useState('');
   const [tooltipAbierto, setTooltipAbierto] = useState(false);
@@ -70,22 +70,22 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const [showModalEntrega, setShowModalEntrega] = useState(false);
   const [dispositivoExpandido, setDispositivoExpandido] = useState(false);
   const tooltipButtonRef = useRef(null);
-  
+
   // ✅ Usar refs para mantener referencias estables y evitar loops infinitos
   const servicioIdRef = useRef(servicio?.id);
   const actualizarEstadoRef = useRef(actualizarEstado);
   const obtenerServicioRef = useRef(obtenerServicio);
   const actualizandoRef = useRef(false); // ✅ Bandera para evitar actualizaciones simultáneas
-  
+
   // Actualizar refs cuando cambian (sin causar re-renders)
   useEffect(() => {
     servicioIdRef.current = servicio?.id;
   }, [servicio?.id]);
-  
+
   useEffect(() => {
     actualizarEstadoRef.current = actualizarEstado;
   }, [actualizarEstado]);
-  
+
   useEffect(() => {
     obtenerServicioRef.current = obtenerServicio;
   }, [obtenerServicio]);
@@ -105,18 +105,18 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
 
 
     const handleNotaAgregada = async (data) => {
-      
+
       // ✅ Evitar procesamiento simultáneo
       if (actualizandoRef.current) {
         return;
       }
-      
+
       // Solo actualizar si la nota es para este servicio
       if (data.servicioId === servicioIdRef.current) {
-        
+
         // ✅ Marcar como actualizando
         actualizandoRef.current = true;
-        
+
         try {
           // Recargar servicio completo desde el backend para obtener todas las notas actualizadas
           const servicioActualizado = await obtenerServicioRef.current(servicioIdRef.current);
@@ -162,40 +162,40 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
     if (typeof servicioActual.tecnicoAsignado === 'string') {
       return servicioActual.tecnicoAsignado;
     }
-    
+
     // Si tecnico es un objeto, extraer el nombre
     if (servicioActual.tecnico && typeof servicioActual.tecnico === 'object') {
       return servicioActual.tecnico.nombre || servicioActual.tecnico.email || 'Sin asignar';
     }
-    
+
     // Si tecnico es un string, usarlo
     if (typeof servicioActual.tecnico === 'string') {
       return servicioActual.tecnico;
     }
-    
+
     // Fallback
     return 'Sin asignar';
   })();
-  
+
   // 🔧 Extraer nombre del cliente (puede ser objeto o string)
-  const clienteNombre = servicioActual.clienteNombre || 
-    (typeof servicioActual.cliente === 'object' && servicioActual.cliente?.nombre) || 
-    servicioActual.cliente || 
+  const clienteNombre = servicioActual.clienteNombre ||
+    (typeof servicioActual.cliente === 'object' && servicioActual.cliente?.nombre) ||
+    servicioActual.cliente ||
     'Sin nombre';
-  
+
   // 🔧 Extraer datos del dispositivo
   const dispositivoTexto = servicioActual.dispositivo ||
     (servicioActual.dispositivoMarca && servicioActual.dispositivoModelo
       ? `${servicioActual.dispositivoMarca} ${servicioActual.dispositivoModelo}`.trim()
       : servicioActual.dispositivoMarca || servicioActual.dispositivoModelo || '—');
-  
+
   // 🔧 Extraer información detallada del dispositivo
   const dispositivoMarca = servicioActual.dispositivoMarca || servicioActual.dispositivo?.marca || '—';
   const dispositivoModelo = servicioActual.dispositivoModelo || servicioActual.dispositivo?.modelo || '—';
   const dispositivoColor = servicioActual.dispositivoColor || servicioActual.dispositivo?.color || null;
   const dispositivoImei = servicioActual.dispositivoImei || servicioActual.dispositivo?.imei || servicioActual.imei || '—';
   const dispositivoTipo = servicioActual.dispositivoTipo || servicioActual.dispositivo?.tipo || servicioActual.tipo || null;
-  
+
   // 🔧 Extraer accesorios
   const accesorios = (() => {
     if (servicioActual.accesorios) {
@@ -212,13 +212,13 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
       }
     }
     if (servicioActual.dispositivo?.accesorios) {
-      return Array.isArray(servicioActual.dispositivo.accesorios) 
-        ? servicioActual.dispositivo.accesorios 
+      return Array.isArray(servicioActual.dispositivo.accesorios)
+        ? servicioActual.dispositivo.accesorios
         : [];
     }
     return [];
   })();
-  
+
   // 🔧 Mapeo de tipos de dispositivo a iconos
   const obtenerIconoTipo = (tipo) => {
     if (!tipo) return Smartphone;
@@ -235,7 +235,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
     };
     return iconosMap[tipoLower] || Smartphone;
   };
-  
+
   // 🔧 Mapeo de tipos de dispositivo a etiquetas
   const obtenerEtiquetaTipo = (tipo) => {
     if (!tipo) return 'Dispositivo';
@@ -252,33 +252,33 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
     };
     return etiquetasMap[tipoLower] || tipo;
   };
-  
+
   const IconoTipo = obtenerIconoTipo(dispositivoTipo);
   const etiquetaTipo = obtenerEtiquetaTipo(dispositivoTipo);
-  
+
   // 🔧 Extraer datos del cliente
   const clienteTelefono = servicioActual.clienteTelefono ||
     (typeof servicioActual.cliente === 'object' && servicioActual.cliente?.telefono) ||
     servicioActual.telefono ||
     '';
-  
+
   const clienteEmail = servicioActual.clienteEmail ||
     (typeof servicioActual.cliente === 'object' && servicioActual.cliente?.email) ||
     servicioActual.email ||
     '';
-  
+
   const clienteDireccion = servicioActual.clienteDireccion ||
     (typeof servicioActual.cliente === 'object' && servicioActual.cliente?.direccion) ||
     servicioActual.direccion ||
     '';
-  
+
   // 🔧 Extraer fecha de entrega
   const fechaEntrega = servicioActual.fechaEntrega || servicioActual.fechaEntregaEstimada || servicioActual.fechaEntregaReal;
-  
+
   // 🔧 Función para normalizar estado del backend al formato del frontend
   const normalizarEstado = (estadoBackend) => {
     if (!estadoBackend) return 'Recibido';
-    
+
     // Mapeo directo de estados del backend a frontend
     const mapaEstados = {
       'RECIBIDO': 'Recibido',
@@ -289,38 +289,38 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
       'ENTREGADO': 'Entregado',
       'CANCELADO': 'Cancelado'
     };
-    
+
     // Si está en el mapa, usar el valor mapeado
     if (mapaEstados[estadoBackend]) {
       return mapaEstados[estadoBackend];
     }
-    
+
     // Si ya está en formato frontend, devolverlo tal cual
     if (Object.keys(estadoConfig).includes(estadoBackend)) {
       return estadoBackend;
     }
-    
+
     // Si tiene guiones bajos, convertir a formato legible
     if (estadoBackend.includes('_')) {
       return estadoBackend.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
-    
+
     // Default
     return 'Recibido';
   };
-  
+
   // Normalizar estado del servicio
   const estadoNormalizado = normalizarEstado(servicioActual.estado);
-  
+
   const diasTranscurridos = calcularDiasTranscurridos(servicioActual.fechaIngreso);
   const estaVencido = diasTranscurridos > 5 && (estadoNormalizado === 'Recibido' || estadoNormalizado === 'En Diagnóstico');
-  
+
   // Obtener configuración del estado (con fallback seguro)
   const estado = estadoConfig[estadoNormalizado] || estadoConfig['Recibido'];
-  
+
   // Asegurar que el progreso esté definido
   const progreso = estado?.progreso ?? 0;
-  
+
   // 🔧 Calcular totales desde items (API) o productos (legacy)
   const items = servicioActual.items || servicioActual.productos || [];
   const totalGeneral = items.reduce((acc, item) => {
@@ -343,7 +343,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const saldoPendiente = parseFloat(servicioActual.saldoPendiente ?? (totalGeneral - totalPagado));
 
   const tieneSaldoPendiente = saldoPendiente > 0;
-  
+
   // 🔧 Extraer notas (API usa 'notas', legacy usa 'notasTecnicas')
   const notas = servicioActual.notas || servicioActual.notasTecnicas || [];
 
@@ -376,7 +376,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
         const ahora = new Date();
         const ultima = new Date(servicioActual.ultimaActualizacion);
         const diff = Math.floor((ahora - ultima) / (1000 * 60));
-        setTiempoTranscurrido(diff < 60 ? `${diff}m` : `${Math.floor(diff/60)}h`);
+        setTiempoTranscurrido(diff < 60 ? `${diff}m` : `${Math.floor(diff / 60)}h`);
       }
     }, 60000);
     return () => clearInterval(interval);
@@ -405,10 +405,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const handleImprimirCliente = async () => {
     try {
       setLoading(true);
-      
+
       // Obtener servicio completo desde el backend con todos los datos necesarios
       const servicioCompleto = await obtenerServicio(servicioActual.id);
-      
+
       if (!servicioCompleto) {
         toast.error('No se pudo cargar el servicio para reimprimir');
         return;
@@ -417,17 +417,17 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
       // Solicitar regeneración al backend con tipo 'cliente' para marcar como reimpresión
       try {
         const response = await api.get(`/servicios/${servicioActual.id}/ticket?tipo=cliente`);
-        
+
         if (response.data.success && response.data.data) {
           const { ticketHTML, qrCode, linkSeguimiento } = response.data.data;
-          
+
           // Imprimir solo el ticket del cliente
           const ventanaImpresion = window.open('', '_blank', 'width=302,height=800,scrollbars=yes');
-          
+
           if (!ventanaImpresion) {
             throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
           }
-          
+
           let htmlConQR = ticketHTML;
           if (qrCode && ticketHTML.includes('qr-code-placeholder')) {
             htmlConQR = ticketHTML.replace(
@@ -435,17 +435,17 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
               `<img src="${qrCode}" alt="QR Code" style="max-width: 150px; height: auto; margin: 5px auto; display: block;" />`
             );
           }
-          
+
           ventanaImpresion.document.write(htmlConQR);
           ventanaImpresion.document.close();
-          
+
           // Esperar a que se cargue y luego imprimir
           ventanaImpresion.onload = () => {
             setTimeout(() => {
               ventanaImpresion.print();
             }, 250);
           };
-          
+
           toast.success('Ticket del cliente reimpreso exitosamente');
         } else {
           throw new Error('No se pudo generar el ticket');
@@ -465,10 +465,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const handleImprimirInterno = async () => {
     try {
       setLoading(true);
-      
+
       // Obtener servicio completo desde el backend con todos los datos necesarios
       const servicioCompleto = await obtenerServicio(servicioActual.id);
-      
+
       if (!servicioCompleto) {
         toast.error('No se pudo cargar el servicio para reimprimir');
         return;
@@ -477,31 +477,31 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
       // Solicitar regeneración al backend con tipo 'interno'
       try {
         const response = await api.get(`/servicios/${servicioActual.id}/ticket?tipo=interno`);
-        
+
         if (response.data.success && response.data.data) {
           const { ticketHTMLInterno } = response.data.data;
-          
+
           if (!ticketHTMLInterno) {
             throw new Error('No se pudo generar el ticket interno');
           }
-          
+
           // Imprimir solo el ticket interno
           const ventanaImpresion = window.open('', '_blank', 'width=302,height=400,scrollbars=yes');
-          
+
           if (!ventanaImpresion) {
             throw new Error('No se pudo abrir la ventana de impresión. Verifica que no esté bloqueada por el navegador.');
           }
-          
+
           ventanaImpresion.document.write(ticketHTMLInterno);
           ventanaImpresion.document.close();
-          
+
           // Esperar a que se cargue y luego imprimir
           ventanaImpresion.onload = () => {
             setTimeout(() => {
               ventanaImpresion.print();
             }, 250);
           };
-          
+
           toast.success('Ticket interno reimpreso exitosamente');
         } else {
           throw new Error('No se pudo generar el ticket');
@@ -525,12 +525,12 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const handleConfirmarWhatsApp = async () => {
     try {
       setLoading(true);
-      
+
       // Verificar estado de WhatsApp primero
       const estadoResponse = await api.get('/whatsapp/estado');
       const estadoWhatsApp = estadoResponse.data?.data || estadoResponse.data;
-      
-      
+
+
       if (!estadoWhatsApp || !estadoWhatsApp.conectado) {
         toast.error('WhatsApp no está conectado. Por favor, conecta WhatsApp primero desde la configuración.');
         return;
@@ -570,7 +570,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   //  Componente de contacto con tooltip clickeable
   const ContactoTooltip = () => (
     <>
-      <button 
+      <button
         ref={tooltipButtonRef}
         onClick={() => setTooltipAbierto(!tooltipAbierto)}
         className="flex items-center gap-2 px-3 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm hover:bg-blue-600/30 transition-colors"
@@ -579,10 +579,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
         {clienteNombre}
         <FaWhatsapp size={10} />
       </button>
-      
+
       {/*  Tooltip renderizado fuera del modal usando portal */}
       {tooltipAbierto && createPortal(
-        <div 
+        <div
           className="fixed z-[9999]"
           style={{
             top: `${tooltipPosition.top - 10}px`,
@@ -604,10 +604,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                 <MapPin size={12} className="text-red-400 mt-0.5" />
                 <span className="text-gray-300 leading-tight">{clienteDireccion || 'No disponible'}</span>
               </div>
-              
+
               {/* Acciones rápidas en el tooltip */}
               <div className="flex gap-1 mt-3 pt-2 border-t border-gray-700">
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(`tel:${clienteTelefono}`);
@@ -617,7 +617,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                   <Phone size={10} />
                   Llamar
                 </button>
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(`https://wa.me/${clienteTelefono?.replace(/\D/g, '')}`);
@@ -627,7 +627,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                   <FaWhatsapp size={10} />
                   WA
                 </button>
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(`mailto:${clienteEmail}`);
@@ -658,24 +658,24 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
             <div className="absolute inset-0" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }} />
           </div>
 
-          <div className="relative px-8 py-4 text-white">
+          <div className="relative px-6 py-3 text-white">
             {/* 🔧 HEADER EN UNA SOLA FILA */}
             <div className="flex items-center justify-between gap-4">
               {/* IZQUIERDA: Icono y Título */}
               <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
-                  {estado.icon && React.cloneElement(estado.icon, { className: "h-5 w-5" })}
+                <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                  {estado.icon && React.cloneElement(estado.icon, { className: "h-4 w-4" })}
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold">Orden #{servicioActual.numeroServicio || servicioActual.id}</h1>
+                  <h1 className="text-base font-bold leading-tight">Orden #{servicioActual.numeroServicio || servicioActual.id}</h1>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="bg-white/20 px-2 py-0.5 rounded-full text-white/90 text-[10px] font-medium flex items-center gap-1">
                       <User size={9} />
-                      Técnico asignado: {tecnicoAsignado}
+                      {tecnicoAsignado}
                     </span>
                     <span className="bg-white/10 px-2 py-0.5 rounded-full text-white/70 text-[10px] flex items-center gap-1">
                       <CalendarDays size={9} />
-                      Creado: {formatearFecha(servicioActual.fechaIngreso)}
+                      {formatearFecha(servicioActual.fechaIngreso)}
                     </span>
                     {tiempoTranscurrido && (
                       <span className="bg-white/10 px-2 py-0.5 rounded-full text-white/70 text-[10px] flex items-center gap-1">
@@ -692,47 +692,46 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                 {/* Badges de Estado */}
                 <div className="flex items-center gap-2">
                   {estaVencido && (
-                    <span className="bg-red-500/40 px-2.5 py-1 rounded-full text-red-100 text-[10px] font-medium flex items-center gap-1 animate-pulse border border-red-400/50 whitespace-nowrap">
-                      <AlertTriangle size={11} />
+                    <span className="bg-red-500/40 px-2 py-0.5 rounded-full text-red-100 text-[9px] font-medium flex items-center gap-1 animate-pulse border border-red-400/50 whitespace-nowrap">
+                      <AlertTriangle size={10} />
                       Vencido ({diasTranscurridos}d)
                     </span>
                   )}
                   {estadoNormalizado === 'Listo para Retiro' && (
-                    <span className="bg-green-500/40 px-2.5 py-1 rounded-full text-green-100 text-[10px] font-medium flex items-center gap-1 border border-green-400/50 whitespace-nowrap">
-                      <CheckCircle size={11} />
+                    <span className="bg-green-500/40 px-2 py-0.5 rounded-full text-green-100 text-[9px] font-medium flex items-center gap-1 border border-green-400/50 whitespace-nowrap">
+                      <CheckCircle size={10} />
                       Listo
                     </span>
                   )}
                 </div>
 
                 {/* Barra de Progreso Compacta */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20 flex items-center gap-3 min-w-[500px]">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20 flex items-center gap-2 min-w-[300px] max-w-[400px]">
                   <div className="flex-1">
-                    <div className="flex items-center justify-between text-[10px] mb-1">
+                    <div className="flex items-center justify-between text-[9px] mb-0.5">
                       <span className="text-white/80">Progreso</span>
                       <span className="text-white font-bold">{progreso}%</span>
                     </div>
-                    <div className="w-full bg-white/20 rounded-full h-2.5 shadow-inner relative overflow-hidden">
-                      <div 
-                        className={`h-2.5 rounded-full transition-all duration-1000 ease-out shadow-lg relative overflow-hidden ${
-                          estadoNormalizado === 'Recibido' 
-                            ? 'bg-gradient-to-r from-purple-400 to-purple-600 shadow-purple-500/50'
-                            : estadoNormalizado === 'En Diagnóstico'
+                    <div className="w-full bg-white/20 rounded-full h-1.5 shadow-inner relative overflow-hidden">
+                      <div
+                        className={`h-1.5 rounded-full transition-all duration-1000 ease-out shadow-lg relative overflow-hidden ${estadoNormalizado === 'Recibido'
+                          ? 'bg-gradient-to-r from-purple-400 to-purple-600 shadow-purple-500/50'
+                          : estadoNormalizado === 'En Diagnóstico'
                             ? 'bg-gradient-to-r from-amber-400 to-yellow-500 shadow-amber-500/50'
                             : estadoNormalizado === 'Esperando Aprobación'
-                            ? 'bg-gradient-to-r from-orange-400 to-red-500 shadow-orange-500/50'
-                            : estadoNormalizado === 'En Reparación'
-                            ? 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/50'
-                            : estadoNormalizado === 'Listo para Retiro'
-                            ? 'bg-gradient-to-r from-emerald-400 to-green-500 shadow-emerald-500/50'
-                            : estadoNormalizado === 'Entregado'
-                            ? 'bg-gradient-to-r from-gray-400 to-gray-500 shadow-gray-500/50'
-                            : 'bg-gradient-to-r from-blue-400 via-emerald-400 to-emerald-500 shadow-emerald-500/50'
-                        }`}
-                        style={{width: `${progreso}%`}}
+                              ? 'bg-gradient-to-r from-orange-400 to-red-500 shadow-orange-500/50'
+                              : estadoNormalizado === 'En Reparación'
+                                ? 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/50'
+                                : estadoNormalizado === 'Listo para Retiro'
+                                  ? 'bg-gradient-to-r from-emerald-400 to-green-500 shadow-emerald-500/50'
+                                  : estadoNormalizado === 'Entregado'
+                                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 shadow-gray-500/50'
+                                    : 'bg-gradient-to-r from-blue-400 via-emerald-400 to-emerald-500 shadow-emerald-500/50'
+                          }`}
+                        style={{ width: `${progreso}%` }}
                       >
                         {/* Efecto de brillo animado que se mueve */}
-                        <div 
+                        <div
                           className="absolute inset-0 animate-shimmer"
                           style={{
                             background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)',
@@ -756,26 +755,26 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
         </div>
 
         {/* CONTENIDO PRINCIPAL */}
-        <div className="flex-1 overflow-hidden p-6 bg-gray-900">
-          <div className="grid grid-cols-[40fr_60fr] gap-6 h-full">
-            
+        <div className="flex-1 overflow-hidden p-4 bg-gray-900">
+          <div className="grid grid-cols-[35fr_65fr] gap-4 h-full">
+
             {/* COLUMNA IZQUIERDA */}
-            <div className="flex flex-col gap-4 min-h-0">
-              
+            <div className="flex flex-col gap-3 min-h-0">
+
               {/* INFORMACIÓN DE CLIENTE - COMPACTA */}
-              <div className="bg-gray-800/70 rounded-xl p-2.5 border border-gray-700 flex-[0.3] flex flex-col min-h-0 shadow-lg overflow-hidden">
-                <h3 className="text-[11px] font-semibold text-gray-100 mb-1.5 flex items-center gap-1 flex-shrink-0">
-                  <User className="h-3 w-3 text-blue-400" />
+              <div className="bg-gray-800/70 rounded-xl p-2 border border-gray-700 flex-[0.3] flex flex-col min-h-0 shadow-lg overflow-hidden">
+                <h3 className="text-[10px] font-semibold text-gray-100 mb-1 flex items-center gap-1 flex-shrink-0">
+                  <User className="h-2.5 w-2.5 text-blue-400" />
                   Información del Cliente
                 </h3>
-                <div className="flex-1 flex flex-col space-y-1.5 min-h-0 overflow-y-auto">
-                  <div className="flex items-center justify-between flex-shrink-0 pb-1">
+                <div className="flex-1 flex flex-col space-y-1 min-h-0 overflow-y-auto">
+                  <div className="flex items-center justify-between flex-shrink-0 pb-0.5">
                     <span className="text-gray-400 text-[9px]">Cliente:</span>
                     <div className="scale-90 origin-right">
                       <ContactoTooltip />
                     </div>
                   </div>
-                  
+
                   {/* INFORMACIÓN DEL DISPOSITIVO - DESPLEGABLE */}
                   <div className="bg-gray-900/50 rounded-lg border border-gray-700/50 flex-shrink-0">
                     <button
@@ -1030,141 +1029,141 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                 <div className="flex-1 overflow-y-auto min-h-0 p-4">
                   {notas.length > 0 ? (
                     (() => {
-                        // ✅ Función para renderizar contenido con iconos de Lucide
-                        const renderizarContenidoConIconos = (texto) => {
-                          if (!texto) return <i className="text-gray-500">Sin mensaje</i>;
+                      // ✅ Función para renderizar contenido con iconos de Lucide
+                      const renderizarContenidoConIconos = (texto) => {
+                        if (!texto) return <i className="text-gray-500">Sin mensaje</i>;
 
-                          // Mapeo de iconos
-                          const iconMap = {
-                            '[ICON:PAYMENT]': { Icon: CreditCard, color: 'text-emerald-400' },
-                            '[ICON:CASH]': { Icon: Banknote, color: 'text-green-400' },
-                            '[ICON:DOLLAR]': { Icon: DollarSign, color: 'text-emerald-400' },
-                            '[ICON:MOBILE]': { Icon: Smartphone, color: 'text-blue-400' },
-                            '[ICON:BANK]': { Icon: Building2, color: 'text-indigo-400' },
-                            '[ICON:CARD]': { Icon: CreditCard, color: 'text-purple-400' },
-                            '[ICON:CRYPTO]': { Icon: Coins, color: 'text-yellow-400' },
-                            '[ICON:INBOX]': { Icon: Inbox, color: 'text-purple-400' },
-                            '[ICON:STETHOSCOPE]': { Icon: Stethoscope, color: 'text-amber-400' },
-                            '[ICON:CLOCK]': { Icon: Clock, color: 'text-orange-400' },
-                            '[ICON:WRENCH]': { Icon: Wrench, color: 'text-red-400' },
-                            '[ICON:CHECK]': { Icon: CheckCircle, color: 'text-emerald-400' },
-                            '[ICON:PACKAGE]': { Icon: PackageCheck, color: 'text-gray-400' },
-                            '[ICON:FLAG]': { Icon: Flag, color: 'text-blue-400' }
-                          };
-
-                          // Dividir el texto por marcadores de iconos
-                          const partes = texto.split(/(\[ICON:\w+\])/g);
-
-                          return (
-                            <>
-                              {partes.map((parte, i) => {
-                                if (parte.startsWith('[ICON:')) {
-                                  const iconInfo = iconMap[parte];
-                                  if (iconInfo) {
-                                    const { Icon, color } = iconInfo;
-                                    return <Icon key={i} size={16} className={`inline-block mr-1.5 ${color} align-middle`} />;
-                                  }
-                                  // Si el icono no se encuentra en el mapa, no mostrar nada
-                                  return null;
-                                }
-                                return <span key={i}>{parte}</span>;
-                              })}
-                            </>
-                          );
+                        // Mapeo de iconos
+                        const iconMap = {
+                          '[ICON:PAYMENT]': { Icon: CreditCard, color: 'text-emerald-400' },
+                          '[ICON:CASH]': { Icon: Banknote, color: 'text-green-400' },
+                          '[ICON:DOLLAR]': { Icon: DollarSign, color: 'text-emerald-400' },
+                          '[ICON:MOBILE]': { Icon: Smartphone, color: 'text-blue-400' },
+                          '[ICON:BANK]': { Icon: Building2, color: 'text-indigo-400' },
+                          '[ICON:CARD]': { Icon: CreditCard, color: 'text-purple-400' },
+                          '[ICON:CRYPTO]': { Icon: Coins, color: 'text-yellow-400' },
+                          '[ICON:INBOX]': { Icon: Inbox, color: 'text-purple-400' },
+                          '[ICON:STETHOSCOPE]': { Icon: Stethoscope, color: 'text-amber-400' },
+                          '[ICON:CLOCK]': { Icon: Clock, color: 'text-orange-400' },
+                          '[ICON:WRENCH]': { Icon: Wrench, color: 'text-red-400' },
+                          '[ICON:CHECK]': { Icon: CheckCircle, color: 'text-emerald-400' },
+                          '[ICON:PACKAGE]': { Icon: PackageCheck, color: 'text-gray-400' },
+                          '[ICON:FLAG]': { Icon: Flag, color: 'text-blue-400' }
                         };
-                        
-                        // ✅ Determinar estilo premium según tipo de nota
+
+                        // Dividir el texto por marcadores de iconos
+                        const partes = texto.split(/(\[ICON:\w+\])/g);
+
+                        return (
+                          <>
+                            {partes.map((parte, i) => {
+                              if (parte.startsWith('[ICON:')) {
+                                const iconInfo = iconMap[parte];
+                                if (iconInfo) {
+                                  const { Icon, color } = iconInfo;
+                                  return <Icon key={i} size={16} className={`inline-block mr-1.5 ${color} align-middle`} />;
+                                }
+                                // Si el icono no se encuentra en el mapa, no mostrar nada
+                                return null;
+                              }
+                              return <span key={i}>{parte}</span>;
+                            })}
+                          </>
+                        );
+                      };
+
+                      // ✅ Determinar estilo premium según tipo de nota
                       const obtenerEstiloNota = (nota) => {
                         const tipoNota = (nota.tipo?.toLowerCase() || '');
                         const contenidoNota = nota.contenido || nota.mensaje || nota.texto || '';
-                        
-                          if (tipoNota === 'cambio_estado') {
-                            const estadoNuevo = nota.estadoNuevo || '';
-                            const estadoConfigMap = {
-                              'RECIBIDO': 'bg-gradient-to-r from-purple-500/20 to-purple-600/20 border-purple-500/50',
-                              'EN_DIAGNOSTICO': 'bg-gradient-to-r from-amber-500/20 to-yellow-600/20 border-amber-500/50',
-                              'ESPERANDO_APROBACION': 'bg-gradient-to-r from-orange-500/20 to-red-600/20 border-orange-500/50',
-                              'EN_REPARACION': 'bg-gradient-to-r from-red-500/20 to-red-700/20 border-red-500/50',
-                              'LISTO_RETIRO': 'bg-gradient-to-r from-emerald-500/20 to-green-600/20 border-emerald-500/50',
-                              'ENTREGADO': 'bg-gradient-to-r from-gray-500/20 to-slate-600/20 border-gray-500/50'
-                            };
-                            return estadoConfigMap[estadoNuevo] || 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 border-blue-500/50';
-                          } else if (contenidoNota.includes('[ICON:PAYMENT]')) {
-                            return 'bg-gradient-to-r from-emerald-500/20 to-green-600/20 border-emerald-500/50';
-                          } else if (tipoNota === 'modificacion_items' || contenidoNota.includes('[ICON:WRENCH]')) {
-                            return 'bg-gradient-to-r from-blue-500/20 to-indigo-600/20 border-blue-500/50';
-                          }
-                          return 'bg-gray-800/50 border-gray-700/50';
-                        };
-                        
-                        // ✅ Función para renderizar cambio de estado visualmente
+
+                        if (tipoNota === 'cambio_estado') {
+                          const estadoNuevo = nota.estadoNuevo || '';
+                          const estadoConfigMap = {
+                            'RECIBIDO': 'bg-gradient-to-r from-purple-500/20 to-purple-600/20 border-purple-500/50',
+                            'EN_DIAGNOSTICO': 'bg-gradient-to-r from-amber-500/20 to-yellow-600/20 border-amber-500/50',
+                            'ESPERANDO_APROBACION': 'bg-gradient-to-r from-orange-500/20 to-red-600/20 border-orange-500/50',
+                            'EN_REPARACION': 'bg-gradient-to-r from-red-500/20 to-red-700/20 border-red-500/50',
+                            'LISTO_RETIRO': 'bg-gradient-to-r from-emerald-500/20 to-green-600/20 border-emerald-500/50',
+                            'ENTREGADO': 'bg-gradient-to-r from-gray-500/20 to-slate-600/20 border-gray-500/50'
+                          };
+                          return estadoConfigMap[estadoNuevo] || 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 border-blue-500/50';
+                        } else if (contenidoNota.includes('[ICON:PAYMENT]')) {
+                          return 'bg-gradient-to-r from-emerald-500/20 to-green-600/20 border-emerald-500/50';
+                        } else if (tipoNota === 'modificacion_items' || contenidoNota.includes('[ICON:WRENCH]')) {
+                          return 'bg-gradient-to-r from-blue-500/20 to-indigo-600/20 border-blue-500/50';
+                        }
+                        return 'bg-gray-800/50 border-gray-700/50';
+                      };
+
+                      // ✅ Función para renderizar cambio de estado visualmente
                       const renderizarCambioEstado = (nota) => {
                         const tipoNota = (nota.tipo?.toLowerCase() || '');
-                          if (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) {
-                            return null;
-                          }
+                        if (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) {
+                          return null;
+                        }
 
-                          // Función para obtener configuración de estado
-                          const obtenerConfigEstado = (estadoCodigo) => {
-                            if (!estadoCodigo) return { color: 'bg-gray-600', textColor: 'text-gray-100', icon: <Flag size={12} />, label: 'Desconocido' };
-                            
-                            const estadoUpper = estadoCodigo.toUpperCase();
-                            const mapaEstados = {
-                              'RECIBIDO': { color: 'bg-gradient-to-r from-purple-400 to-purple-600', textColor: 'text-gray-100', icon: <Inbox size={12} />, label: 'Recibido' },
-                              'EN_DIAGNOSTICO': { color: 'bg-gradient-to-r from-amber-700 to-yellow-800', textColor: 'text-amber-100', icon: <Stethoscope size={12} />, label: 'En Diagnóstico' },
-                              'EN DIAGNOSTICO': { color: 'bg-gradient-to-r from-amber-700 to-yellow-800', textColor: 'text-amber-100', icon: <Stethoscope size={12} />, label: 'En Diagnóstico' },
-                              'ESPERANDO_APROBACION': { color: 'bg-gradient-to-r from-orange-700 to-red-800', textColor: 'text-orange-100', icon: <Clock size={12} />, label: 'Esperando Aprobación' },
-                              'ESPERANDO APROBACION': { color: 'bg-gradient-to-r from-orange-700 to-red-800', textColor: 'text-orange-100', icon: <Clock size={12} />, label: 'Esperando Aprobación' },
-                              'EN_REPARACION': { color: 'bg-gradient-to-r from-red-800 to-red-900', textColor: 'text-red-100', icon: <Wrench size={12} />, label: 'En Reparación' },
-                              'EN REPARACION': { color: 'bg-gradient-to-r from-red-800 to-red-900', textColor: 'text-red-100', icon: <Wrench size={12} />, label: 'En Reparación' },
-                              'LISTO_RETIRO': { color: 'bg-gradient-to-r from-emerald-700 to-green-800', textColor: 'text-emerald-100', icon: <CheckCircle size={12} />, label: 'Listo para Retiro' },
-                              'LISTO RETIRO': { color: 'bg-gradient-to-r from-emerald-700 to-green-800', textColor: 'text-emerald-100', icon: <CheckCircle size={12} />, label: 'Listo para Retiro' },
-                              'ENTREGADO': { color: 'bg-gradient-to-r from-gray-800 to-gray-900', textColor: 'text-gray-200', icon: <PackageCheck size={12} />, label: 'Entregado' }
-                            };
-                            
-                            // Buscar por código exacto primero
-                            if (mapaEstados[estadoUpper]) {
-                              return mapaEstados[estadoUpper];
-                            }
-                            
-                            // Si no se encuentra, normalizar y buscar
-                            const estadoNormalizado = estadoUpper.replace(/_/g, ' ');
-                            if (mapaEstados[estadoNormalizado]) {
-                              return mapaEstados[estadoNormalizado];
-                            }
-                            
-                            // Fallback
-                            return {
-                              color: 'bg-gray-600',
-                              textColor: 'text-gray-100',
-                              icon: <Flag size={12} />,
-                              label: estadoCodigo.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                            };
+                        // Función para obtener configuración de estado
+                        const obtenerConfigEstado = (estadoCodigo) => {
+                          if (!estadoCodigo) return { color: 'bg-gray-600', textColor: 'text-gray-100', icon: <Flag size={12} />, label: 'Desconocido' };
+
+                          const estadoUpper = estadoCodigo.toUpperCase();
+                          const mapaEstados = {
+                            'RECIBIDO': { color: 'bg-gradient-to-r from-purple-400 to-purple-600', textColor: 'text-gray-100', icon: <Inbox size={12} />, label: 'Recibido' },
+                            'EN_DIAGNOSTICO': { color: 'bg-gradient-to-r from-amber-700 to-yellow-800', textColor: 'text-amber-100', icon: <Stethoscope size={12} />, label: 'En Diagnóstico' },
+                            'EN DIAGNOSTICO': { color: 'bg-gradient-to-r from-amber-700 to-yellow-800', textColor: 'text-amber-100', icon: <Stethoscope size={12} />, label: 'En Diagnóstico' },
+                            'ESPERANDO_APROBACION': { color: 'bg-gradient-to-r from-orange-700 to-red-800', textColor: 'text-orange-100', icon: <Clock size={12} />, label: 'Esperando Aprobación' },
+                            'ESPERANDO APROBACION': { color: 'bg-gradient-to-r from-orange-700 to-red-800', textColor: 'text-orange-100', icon: <Clock size={12} />, label: 'Esperando Aprobación' },
+                            'EN_REPARACION': { color: 'bg-gradient-to-r from-red-800 to-red-900', textColor: 'text-red-100', icon: <Wrench size={12} />, label: 'En Reparación' },
+                            'EN REPARACION': { color: 'bg-gradient-to-r from-red-800 to-red-900', textColor: 'text-red-100', icon: <Wrench size={12} />, label: 'En Reparación' },
+                            'LISTO_RETIRO': { color: 'bg-gradient-to-r from-emerald-700 to-green-800', textColor: 'text-emerald-100', icon: <CheckCircle size={12} />, label: 'Listo para Retiro' },
+                            'LISTO RETIRO': { color: 'bg-gradient-to-r from-emerald-700 to-green-800', textColor: 'text-emerald-100', icon: <CheckCircle size={12} />, label: 'Listo para Retiro' },
+                            'ENTREGADO': { color: 'bg-gradient-to-r from-gray-800 to-gray-900', textColor: 'text-gray-200', icon: <PackageCheck size={12} />, label: 'Entregado' }
                           };
 
-                          const estadoAnterior = obtenerConfigEstado(nota.estadoAnterior);
-                          const estadoNuevo = obtenerConfigEstado(nota.estadoNuevo);
+                          // Buscar por código exacto primero
+                          if (mapaEstados[estadoUpper]) {
+                            return mapaEstados[estadoUpper];
+                          }
 
-                          return (
-                            <div className="mt-3 p-2 sm:p-3 bg-gradient-to-r from-gray-900/60 via-gray-800/60 to-gray-900/60 border border-gray-600/30 rounded-lg backdrop-blur-sm">
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-                                {/* Badges de estado - Responsive */}
-                                <div className="flex items-center gap-1.5 sm:gap-2 flex-1 flex-wrap w-full sm:w-auto">
-                                  <span className={`px-2 sm:px-3 py-1 sm:py-1.5 ${estadoAnterior.color} ${estadoAnterior.textColor} rounded-md font-medium border border-white/20 flex items-center gap-1 sm:gap-1.5 shadow-sm text-xs sm:text-sm whitespace-nowrap`}>
-                                    {estadoAnterior.icon}
-                                    <span className="truncate">{estadoAnterior.label}</span>
-                                  </span>
-                                  <span className="text-gray-400 font-bold text-sm sm:text-lg flex-shrink-0">→</span>
-                                  <span className={`px-2 sm:px-3 py-1 sm:py-1.5 ${estadoNuevo.color} ${estadoNuevo.textColor} rounded-md font-medium border border-white/20 flex items-center gap-1 sm:gap-1.5 shadow-sm text-xs sm:text-sm whitespace-nowrap`}>
-                                    {estadoNuevo.icon}
-                                    <span className="truncate">{estadoNuevo.label}</span>
-                                  </span>
-                                </div>
+                          // Si no se encuentra, normalizar y buscar
+                          const estadoNormalizado = estadoUpper.replace(/_/g, ' ');
+                          if (mapaEstados[estadoNormalizado]) {
+                            return mapaEstados[estadoNormalizado];
+                          }
+
+                          // Fallback
+                          return {
+                            color: 'bg-gray-600',
+                            textColor: 'text-gray-100',
+                            icon: <Flag size={12} />,
+                            label: estadoCodigo.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                          };
+                        };
+
+                        const estadoAnterior = obtenerConfigEstado(nota.estadoAnterior);
+                        const estadoNuevo = obtenerConfigEstado(nota.estadoNuevo);
+
+                        return (
+                          <div className="mt-3 p-2 sm:p-3 bg-gradient-to-r from-gray-900/60 via-gray-800/60 to-gray-900/60 border border-gray-600/30 rounded-lg backdrop-blur-sm">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                              {/* Badges de estado - Responsive */}
+                              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 flex-wrap w-full sm:w-auto">
+                                <span className={`px-2 sm:px-3 py-1 sm:py-1.5 ${estadoAnterior.color} ${estadoAnterior.textColor} rounded-md font-medium border border-white/20 flex items-center gap-1 sm:gap-1.5 shadow-sm text-xs sm:text-sm whitespace-nowrap`}>
+                                  {estadoAnterior.icon}
+                                  <span className="truncate">{estadoAnterior.label}</span>
+                                </span>
+                                <span className="text-gray-400 font-bold text-sm sm:text-lg flex-shrink-0">→</span>
+                                <span className={`px-2 sm:px-3 py-1 sm:py-1.5 ${estadoNuevo.color} ${estadoNuevo.textColor} rounded-md font-medium border border-white/20 flex items-center gap-1 sm:gap-1.5 shadow-sm text-xs sm:text-sm whitespace-nowrap`}>
+                                  {estadoNuevo.icon}
+                                  <span className="truncate">{estadoNuevo.label}</span>
+                                </span>
                               </div>
                             </div>
-                          );
-                        };
-                      
+                          </div>
+                        );
+                      };
+
                       // ✅ Agrupar notas por grupoId (si existe)
                       // Crear un mapa de grupos por grupoId
                       const gruposPorId = new Map();
@@ -1184,26 +1183,26 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                           notasSinGrupo.push(nota);
                         }
                       });
-                      
+
                       // Ordenar notas dentro de cada grupo: texto primero, luego imágenes
                       gruposPorId.forEach((notasGrupo) => {
                         notasGrupo.sort((a, b) => {
                           const tipoA = (a.tipo?.toLowerCase() || '');
                           const tipoB = (b.tipo?.toLowerCase() || '');
-                          
+
                           // Texto primero
                           if (tipoA === 'texto' && tipoB !== 'texto') return -1;
                           if (tipoA !== 'texto' && tipoB === 'texto') return 1;
-                          
+
                           // Luego por fecha (más antiguas primero dentro del grupo)
                           const fechaA = new Date(a.fecha || a.createdAt || a.updatedAt || 0);
                           const fechaB = new Date(b.fecha || b.createdAt || b.updatedAt || 0);
                           return fechaA - fechaB;
                         });
                       });
-                      
+
                       const notasAgrupadas = [];
-                      
+
                       // Agregar grupos (con grupoId)
                       gruposPorId.forEach((notasGrupo) => {
                         // Solo crear grupo si hay más de una nota o si hay texto + imágenes
@@ -1224,15 +1223,15 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                           notasSinGrupo.push(notasGrupo[0]);
                         }
                       });
-                      
+
                       // Agregar notas sin grupo como individuales
                       notasSinGrupo.forEach((nota) => {
                         notasAgrupadas.push({ tipo: 'individual', nota: nota });
                       });
-                      
+
                       // Ordenar los grupos/notas finales por fecha (más recientes primero) para visualización
                       notasAgrupadas.sort((a, b) => {
-                        const fechaA = a.tipo === 'grupo' 
+                        const fechaA = a.tipo === 'grupo'
                           ? (a.notas[0].fecha || a.notas[0].createdAt || a.notas[0].updatedAt || 0)
                           : (a.nota.fecha || a.nota.createdAt || a.nota.updatedAt || 0);
                         const fechaB = b.tipo === 'grupo'
@@ -1240,7 +1239,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                           : (b.nota.fecha || b.nota.createdAt || b.nota.updatedAt || 0);
                         return new Date(fechaB) - new Date(fechaA); // Más recientes primero para visualización
                       });
-                      
+
                       return notasAgrupadas.map((item, idx) => {
                         if (item.tipo === 'grupo') {
                           // Renderizar grupo: texto + imágenes o solo imágenes
@@ -1259,13 +1258,13 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                           const imagenes = imagenesNotas
                             .map(n => n.imagen || n.archivoUrl)
                             .filter(Boolean);
-                        
-                        return (
+
+                          return (
                             <div key={`grupo-${idx}`} className={`${obtenerEstiloNota(primeraNota)} rounded-xl p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
                               <div className="flex items-center justify-between text-gray-300 text-xs mb-3">
-                                <span className="font-medium">{fechaNota ? new Date(fechaNota).toLocaleDateString('es-VE', { 
-                                  day: '2-digit', 
-                                  month: 'short', 
+                                <span className="font-medium">{fechaNota ? new Date(fechaNota).toLocaleDateString('es-VE', {
+                                  day: '2-digit',
+                                  month: 'short',
                                   year: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit'
@@ -1279,20 +1278,20 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                                   )}
                                 </div>
                               </div>
-                              
+
                               {/* Mostrar texto solo si existe */}
                               {contenidoNota && (
                                 <div className="text-gray-100 text-sm leading-relaxed mb-3 font-medium">
                                   {tipoNota !== 'cambio_estado' && renderizarContenidoConIconos(contenidoNota)}
                                 </div>
                               )}
-                              
+
                               {/* Imágenes agrupadas */}
                               {imagenes.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
                                   {imagenes.map((imagen, imgIdx) => (
-                                    <div 
-                                      key={imgIdx} 
+                                    <div
+                                      key={imgIdx}
                                       className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
                                       style={{ width: '80px', height: '80px' }}
                                       onClick={() => setImagenExpandida(imagen)}
@@ -1347,86 +1346,86 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
 
                           return (
                             <div key={idx} className={`${obtenerEstiloNota(nota)} rounded-xl p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
-                            <div className="flex items-center justify-between text-gray-300 text-xs mb-3">
-                              <span className="font-medium">{fechaNota ? new Date(fechaNota).toLocaleDateString('es-VE', { 
-                                day: '2-digit', 
-                                month: 'short', 
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : '—'}</span>
-                              <div className="flex items-center gap-2">
-                                {imagenes.length > 0 && (
-                                  <span className="inline-flex items-center gap-1 text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">
-                                    <Camera size={12} />
-                                    {imagenes.length}
-                                  </span>
-                                )}
-                                {audioUrl && (
-                                  <span className="inline-flex items-center gap-1 text-purple-400 bg-purple-500/20 px-2 py-0.5 rounded-full">
-                                    <Mic size={12} />
-                                    Audio
-                                  </span>
-                                )}
+                              <div className="flex items-center justify-between text-gray-300 text-xs mb-3">
+                                <span className="font-medium">{fechaNota ? new Date(fechaNota).toLocaleDateString('es-VE', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : '—'}</span>
+                                <div className="flex items-center gap-2">
+                                  {imagenes.length > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">
+                                      <Camera size={12} />
+                                      {imagenes.length}
+                                    </span>
+                                  )}
+                                  {audioUrl && (
+                                    <span className="inline-flex items-center gap-1 text-purple-400 bg-purple-500/20 px-2 py-0.5 rounded-full">
+                                      <Mic size={12} />
+                                      Audio
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            {/* Mostrar contenido solo si existe */}
-                            {/* ✅ Si es cambio_estado CON ambos campos (estadoAnterior Y estadoNuevo), no mostrar contenido (se muestra visualmente abajo) */}
-                            {/* ✅ Si es cambio_estado SIN ambos campos completos, SÍ mostrar contenido (es texto normal) */}
-                            {contenidoNota && (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) && (
-                              <div className="text-gray-100 text-sm leading-relaxed mb-3 font-medium">
-                                {renderizarContenidoConIconos(contenidoNota)}
-                              </div>
-                            )}
+                              {/* Mostrar contenido solo si existe */}
+                              {/* ✅ Si es cambio_estado CON ambos campos (estadoAnterior Y estadoNuevo), no mostrar contenido (se muestra visualmente abajo) */}
+                              {/* ✅ Si es cambio_estado SIN ambos campos completos, SÍ mostrar contenido (es texto normal) */}
+                              {contenidoNota && (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) && (
+                                <div className="text-gray-100 text-sm leading-relaxed mb-3 font-medium">
+                                  {renderizarContenidoConIconos(contenidoNota)}
+                                </div>
+                              )}
 
-                            {/* Renderizar cambio de estado visualmente (solo si tiene estadoAnterior/estadoNuevo) */}
+                              {/* Renderizar cambio de estado visualmente (solo si tiene estadoAnterior/estadoNuevo) */}
                               {renderizarCambioEstado(nota)}
-                            
-                            {/* Reproductor de audio */}
-                            {audioUrl && (
-                              <div className="mb-3 p-3 bg-gray-900/50 rounded-lg border border-purple-500/30">
-                                <audio 
-                                  controls 
-                                  src={audioUrl} 
-                                  className="w-full h-10"
-                                  preload="metadata"
-                                >
-                                  Tu navegador no soporta el elemento de audio.
-                                </audio>
-                              </div>
-                            )}
-                            
-                            {/* Imágenes */}
-                            {imagenes.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                {imagenes.map((imagen, imgIdx) => (
-                                  <div 
-                                    key={imgIdx} 
-                                    className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
-                                      style={{ width: '80px', height: '80px' }}
-                                    onClick={() => setImagenExpandida(imagen)}
+
+                              {/* Reproductor de audio */}
+                              {audioUrl && (
+                                <div className="mb-3 p-3 bg-gray-900/50 rounded-lg border border-purple-500/30">
+                                  <audio
+                                    controls
+                                    src={audioUrl}
+                                    className="w-full h-10"
+                                    preload="metadata"
                                   >
+                                    Tu navegador no soporta el elemento de audio.
+                                  </audio>
+                                </div>
+                              )}
+
+                              {/* Imágenes */}
+                              {imagenes.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {imagenes.map((imagen, imgIdx) => (
+                                    <div
+                                      key={imgIdx}
+                                      className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
+                                      style={{ width: '80px', height: '80px' }}
+                                      onClick={() => setImagenExpandida(imagen)}
+                                    >
                                       <div className="w-full h-full bg-gray-800">
-                                    <img
-                                      src={imagen}
-                                      alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
+                                        <img
+                                          src={imagen}
+                                          alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
                                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-                                      loading="lazy"
-                                    />
+                                          loading="lazy"
+                                        />
                                       </div>
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                           <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
                                             <Camera size={12} className="text-white" />
+                                          </div>
                                         </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
                         }
                       });
                     })()
@@ -1446,7 +1445,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
         {/* FOOTER OPTIMIZADO */}
         <div className="flex-shrink-0 bg-gray-800 px-8 py-4 border-t border-gray-700">
           <div className="flex justify-center items-center gap-3">
-            
+
             {/* Acciones secundarias */}
             <button
               onClick={handleReimprimirOrden}
@@ -1469,16 +1468,15 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
             {tieneSaldoPendiente && (
               <button
                 onClick={() => setShowPagoModal(true)}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] ${
-                  estadoNormalizado === 'Listo para Retiro'
-                    ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white shadow-emerald-500/25'
-                    : 'bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-500 text-white shadow-blue-500/25'
-                }`}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] ${estadoNormalizado === 'Listo para Retiro'
+                  ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white shadow-emerald-500/25'
+                  : 'bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-500 text-white shadow-blue-500/25'
+                  }`}
               >
                 <CreditCard size={18} />
                 <span>
-                  {estadoNormalizado === 'Listo para Retiro' 
-                    ? 'Pagar y Entregar' 
+                  {estadoNormalizado === 'Listo para Retiro'
+                    ? 'Pagar y Entregar'
                     : 'Registrar Pago'}
                 </span>
               </button>
@@ -1542,63 +1540,63 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
         </div>
       )}
 
-       {/* MODAL DE REIMPRESIÓN */}
-       {showModalReimprimir && (
-         <ModalReimprimirTicket
-           isOpen={showModalReimprimir}
-           onClose={() => setShowModalReimprimir(false)}
-           onImprimirCliente={handleImprimirCliente}
-           onImprimirInterno={handleImprimirInterno}
-         />
-       )}
+      {/* MODAL DE REIMPRESIÓN */}
+      {showModalReimprimir && (
+        <ModalReimprimirTicket
+          isOpen={showModalReimprimir}
+          onClose={() => setShowModalReimprimir(false)}
+          onImprimirCliente={handleImprimirCliente}
+          onImprimirInterno={handleImprimirInterno}
+        />
+      )}
 
-       {/* MODAL DE CONFIRMACIÓN WHATSAPP */}
-       {showModalWhatsApp && (
-         <ModalConfirmarWhatsApp
-           isOpen={showModalWhatsApp}
-           onClose={() => setShowModalWhatsApp(false)}
-           onConfirmar={handleConfirmarWhatsApp}
-           clienteNombre={clienteNombre}
-           numeroServicio={servicioActual.numeroServicio || servicioActual.id}
-         />
-       )}
+      {/* MODAL DE CONFIRMACIÓN WHATSAPP */}
+      {showModalWhatsApp && (
+        <ModalConfirmarWhatsApp
+          isOpen={showModalWhatsApp}
+          onClose={() => setShowModalWhatsApp(false)}
+          onConfirmar={handleConfirmarWhatsApp}
+          clienteNombre={clienteNombre}
+          numeroServicio={servicioActual.numeroServicio || servicioActual.id}
+        />
+      )}
 
-       {/* MODAL DE PAGO AL RETIRO */}
-       {showPagoModal && (
-         <PagoRetiroModal
-           isOpen={showPagoModal}
-           onClose={() => setShowPagoModal(false)}
-           servicio={servicioActual}
-           saldoPendiente={saldoPendiente}
+      {/* MODAL DE PAGO AL RETIRO */}
+      {showPagoModal && (
+        <PagoRetiroModal
+          isOpen={showPagoModal}
+          onClose={() => setShowPagoModal(false)}
+          servicio={servicioActual}
+          saldoPendiente={saldoPendiente}
           onPagoCompletado={async (servicioActualizado, debeAbrirEntrega = false) => {
             // El servicio ya viene actualizado del backend
             // Actualizar el servicio local para reflejar cambios
             if (servicioActualizado) {
               // ✅ Marcar como actualizando para evitar que el socket handler procese eventos duplicados
               actualizandoRef.current = true;
-              
+
               // Actualizar servicio local con los datos del backend
               setServicioLocal(servicioActualizado);
-              
+
               // Recalcular totales
               const nuevoTotalPagado = parseFloat(servicioActualizado.totalPagado || totalPagado);
               const nuevoSaldoPendiente = parseFloat(servicioActualizado.saldoPendiente || saldoPendiente);
-              
+
               // Si ya no tiene saldo pendiente y está listo, mostrar mensaje
               if (nuevoSaldoPendiente <= 0 && estadoNormalizado === 'Listo para Retiro') {
                 toast.success('El servicio está completamente pagado y listo para entregar');
-                
+
                 // 🆕 Si debe abrir el modal de entrega (pago final completado), abrirlo automáticamente
                 if (debeAbrirEntrega) {
                   // Verificar que el servicio esté en LISTO_RETIRO antes de abrir el modal
                   const estadoActual = servicioActualizado.estado;
                   const estadoNormalizadoActual = normalizarEstado(estadoActual);
-                  
+
                   // Solo abrir el modal si el estado es LISTO_RETIRO y no hay saldo pendiente
                   if (estadoNormalizadoActual === 'Listo para Retiro' && nuevoSaldoPendiente <= 0) {
                     // Asegurar que el servicio local esté actualizado antes de abrir el modal
                     setServicioLocal(servicioActualizado);
-                    
+
                     // Pequeño delay para que el usuario vea el mensaje de éxito y el estado se actualice
                     setTimeout(() => {
                       setShowModalEntrega(true);
@@ -1613,52 +1611,52 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                   }
                 }
               }
-              
+
               // ✅ Liberar la bandera después de un delay para evitar procesamiento de eventos socket duplicados
               setTimeout(() => {
                 actualizandoRef.current = false;
               }, 1000);
             }
-            
+
             setShowPagoModal(false);
           }}
-         />
-       )}
+        />
+      )}
 
-       {/* MODAL DE CONFIRMACIÓN DE ENTREGA */}
-       {showModalEntrega && (
-         <ModalConfirmarEntrega
-           isOpen={showModalEntrega}
-           onClose={() => setShowModalEntrega(false)}
-           servicio={servicioActual}
-           onEntregaCompletada={async (servicioActualizado) => {
-             // Actualizar servicio local
-             if (servicioActualizado) {
-               actualizandoRef.current = true;
-               setServicioLocal(servicioActualizado);
-               
-               setTimeout(() => {
-                 actualizandoRef.current = false;
-               }, 1000);
-             }
-             
-             // Recargar servicio completo
-             const servicioCompleto = await obtenerServicio(servicioActual.id);
-             if (servicioCompleto) {
-               setServicioLocal(servicioCompleto);
-             }
-             
-             setShowModalEntrega(false);
-             
-             // Cerrar modal principal después de un delay
-             setTimeout(() => {
-               if (typeof onClose === 'function') {
-                 onClose();
-               }
-             }, 1500);
-           }}
-         />
-       )}
+      {/* MODAL DE CONFIRMACIÓN DE ENTREGA */}
+      {showModalEntrega && (
+        <ModalConfirmarEntrega
+          isOpen={showModalEntrega}
+          onClose={() => setShowModalEntrega(false)}
+          servicio={servicioActual}
+          onEntregaCompletada={async (servicioActualizado) => {
+            // Actualizar servicio local
+            if (servicioActualizado) {
+              actualizandoRef.current = true;
+              setServicioLocal(servicioActualizado);
+
+              setTimeout(() => {
+                actualizandoRef.current = false;
+              }, 1000);
+            }
+
+            // Recargar servicio completo
+            const servicioCompleto = await obtenerServicio(servicioActual.id);
+            if (servicioCompleto) {
+              setServicioLocal(servicioCompleto);
+            }
+
+            setShowModalEntrega(false);
+
+            // Cerrar modal principal después de un delay
+            setTimeout(() => {
+              if (typeof onClose === 'function') {
+                onClose();
+              }
+            }, 1500);
+          }}
+        />
+      )}
     </div>
   );
 }

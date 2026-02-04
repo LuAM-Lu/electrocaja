@@ -213,7 +213,15 @@ const TransactionTable = ({ itemsPerPage: itemsPerPageProp }) => {
   };
 
   const formatAmount = (amount) => {
-    return amount.toLocaleString('es-VE', { minimumFractionDigits: 2 });
+    if (!amount && amount !== 0) return '0,00';
+    const numero = typeof amount === 'number' ? amount : parseFloat(amount) || 0;
+
+    // Manual format: dots for thousands, comma for decimals
+    const parts = numero.toFixed(2).split('.');
+    const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const decimalPart = parts[1];
+
+    return `${integerPart},${decimalPart}`;
   };
 
   const obtenerMontosOriginales = (transaccion) => {

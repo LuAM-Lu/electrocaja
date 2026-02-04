@@ -13,6 +13,7 @@ import { imprimirTicketServicio } from '../../../utils/imprimirTicketServicio';
 import toast from '../../../utils/toast.jsx';
 import { delay } from '../../../utils/saleProcessingHelpers';
 import { PROCESSING_CONFIG } from '../../../constants/processingConstants';
+import { parseMoney } from '../../../utils/moneyUtils';
 
 export default function PasoConfirmacion({ datos, onActualizar, loading, servicioCreado, onAccionesCompletadas, onOpcionesCambio, procesandoModalRef, opcionesProcesamiento: opcionesProcesamientoProp, ventanasImpresionPreAbiertas }) {
   const { tasaCambio } = useCajaStore();
@@ -21,10 +22,10 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
     imprimir: true
   });
   const [ejecutandoAcciones, setEjecutandoAcciones] = useState(false);
-  
+
   // Estado unificado para secciones colapsables (Cliente y Dispositivo)
   const [informacionExpandida, setInformacionExpandida] = useState(false);
-  
+
   // Usar opciones del prop si están disponibles
   const opcionesFinales = opcionesProcesamientoProp || opcionesProcesamiento;
 
@@ -54,7 +55,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
       console.log('⚠️ [PasoConfirmacion] Saliendo de ejecutarAcciones (sin servicio o ya ejecutando)');
       return;
     }
-    
+
     setEjecutandoAcciones(true);
     const accionesEjecutadas = [];
 
@@ -158,12 +159,12 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
           if (procesandoModalRef?.current) {
             procesandoModalRef.current.avanzarPaso('whatsapp');
           }
-          
+
           await delay(PROCESSING_CONFIG.STEP_DELAYS.OPTION_EXECUTION);
-          
+
           const estadoResponse = await api.get('/whatsapp/estado');
           const estadoWhatsApp = estadoResponse.data?.data || estadoResponse.data;
-          
+
           if (!estadoWhatsApp || !estadoWhatsApp.conectado) {
             console.warn('⚠️ WhatsApp desconectado, no se enviará mensaje');
             if (procesandoModalRef?.current) {
@@ -218,14 +219,14 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
   };
 
   // Obtener problemas como array
-  const problemasArray = Array.isArray(datos.dispositivo.problemas) 
-    ? datos.dispositivo.problemas 
-    : datos.dispositivo.problema 
-      ? [datos.dispositivo.problema] 
+  const problemasArray = Array.isArray(datos.dispositivo.problemas)
+    ? datos.dispositivo.problemas
+    : datos.dispositivo.problema
+      ? [datos.dispositivo.problema]
       : [];
 
   const total = calcularTotal();
-  
+
   // Normalizar cliente
   const clienteNormalizado = (() => {
     if (!datos.cliente) return null;
@@ -257,7 +258,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      
+
       {/* CLIENTE Y DISPOSITIVO - BOTÓN ÚNICO DE DESPLIEGUE */}
       <div className="bg-gradient-to-br from-gray-800/95 to-gray-900/95 rounded-xl border-2 border-gray-700/50 shadow-xl overflow-hidden">
         {/* BOTÓN ÚNICO PARA AMBOS */}
@@ -277,7 +278,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
               </p>
             </div>
           </div>
-          
+
           {/* DISPOSITIVO - DERECHA */}
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-500/20 rounded-lg">
@@ -290,7 +291,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
               </p>
             </div>
           </div>
-          
+
           {/* CHEVRON */}
           {informacionExpandida ? (
             <ChevronUp className="h-5 w-5 text-gray-400 ml-4" />
@@ -298,12 +299,12 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
             <ChevronDown className="h-5 w-5 text-gray-400 ml-4" />
           )}
         </button>
-        
+
         {/* CONTENIDO EXPANDIDO: CLIENTE Y DISPOSITIVO */}
         {informacionExpandida && (
           <div className="px-4 pb-4 space-y-4 border-t border-gray-700/50 pt-4">
             <div className="flex flex-col lg:flex-row gap-6">
-              
+
               {/* CLIENTE */}
               <div className="space-y-3 lg:w-[45%]">
                 <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-3">
@@ -366,7 +367,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                     )}
                   </div>
                 </div>
-                
+
                 {/* INFORMACIÓN DEL DISPOSITIVO - DOS FILAS */}
                 <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3 space-y-2">
                   {/* FILA 1: Identificación */}
@@ -379,7 +380,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                         <span className="text-green-600/50">•</span>
                       </>
                     )}
-                    
+
                     {/* Marca */}
                     {datos.dispositivo.marca && (
                       <>
@@ -388,7 +389,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                         <span className="text-green-600/50">•</span>
                       </>
                     )}
-                    
+
                     {/* Modelo */}
                     {datos.dispositivo.modelo && (
                       <>
@@ -397,7 +398,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                         <span className="text-green-600/50">•</span>
                       </>
                     )}
-                    
+
                     {/* Color */}
                     {datos.dispositivo.color && (
                       <>
@@ -406,7 +407,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                         <span className="text-green-600/50">•</span>
                       </>
                     )}
-                    
+
                     {/* IMEI/Serial */}
                     {datos.dispositivo.imei && (
                       <>
@@ -417,7 +418,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                         )}
                       </>
                     )}
-                    
+
                     {/* Patrón de desbloqueo */}
                     {datos.dispositivo.patron && (
                       <>
@@ -429,7 +430,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                       </>
                     )}
                   </div>
-                  
+
                   {/* FILA 2: Accesorios Dejados */}
                   {datos.dispositivo.accesorios && datos.dispositivo.accesorios.length > 0 && (
                     <div className="flex items-center flex-wrap gap-2 text-xs pt-1 border-t border-green-700/30">
@@ -443,7 +444,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                       </div>
                     </div>
                   )}
-                  
+
                   {/* FILA 3: Problemas */}
                   {problemasArray.length > 0 && (
                     <div className="flex items-center flex-wrap gap-2 text-xs pt-1 border-t border-green-700/30">
@@ -475,7 +476,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
 
       {/* CUERPO DE ORDEN: ITEMS + RESUMEN + MODALIDAD DE PAGO (UNA COLUMNA) */}
       <div className="bg-gradient-to-br from-gray-800/95 to-gray-900/95 rounded-2xl border-2 border-gray-700/50 shadow-2xl overflow-hidden">
-        
+
         {/* ENCABEZADO DEL CUERPO */}
         <div className="bg-gradient-to-r from-emerald-800/30 to-blue-800/30 border-b-2 border-gray-700/50 p-4">
           <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2">
@@ -485,7 +486,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
         </div>
 
         <div className="p-6 space-y-6">
-          
+
           {/* FILA 1: ITEMS Y SERVICIOS */}
           <div className="space-y-4">
             {datos.items && datos.items.length > 0 ? (
@@ -494,7 +495,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                   // Normalizar precio_unitario (puede venir como precio_unitario o precioUnitario)
                   const precioUnitario = parseFloat(item.precio_unitario || item.precioUnitario || 0);
                   const cantidad = parseFloat(item.cantidad || 0);
-                  
+
                   return (
                     <div key={item.id || index} className="bg-gray-700/40 rounded-lg p-3 border border-gray-600/50 hover:bg-gray-700/60 transition-colors">
                       <div className="grid grid-cols-12 gap-3 items-center">
@@ -508,13 +509,13 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                             </span>
                           )}
                         </div>
-                        
+
                         {/* Cantidad */}
                         <div className="col-span-4 md:col-span-2 text-center">
                           <div className="text-gray-400 text-xs mb-0.5">Cantidad</div>
                           <div className="text-gray-200 font-semibold text-sm">{cantidad}</div>
                         </div>
-                        
+
                         {/* Precio Unitario */}
                         <div className="col-span-4 md:col-span-2 text-center">
                           <div className="text-gray-400 text-xs mb-0.5">Precio Unit.</div>
@@ -525,7 +526,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                             ${precioUnitario.toFixed(2)} USD
                           </div>
                         </div>
-                        
+
                         {/* Subtotal */}
                         <div className="col-span-4 md:col-span-2 text-right">
                           <div className="text-gray-400 text-xs mb-0.5">Subtotal</div>
@@ -550,7 +551,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
 
           {/* FILA 2: MODALIDAD DE PAGO Y RESUMEN FINANCIERO (COMPARTEN FILA) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
+
             {/* COLUMNA 1: MODALIDAD DE PAGO */}
             {datos.modalidadPago && (
               <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-xl p-3 border-2 border-gray-700/50 shadow-lg">
@@ -575,7 +576,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                         // Calcular monto pagado desde los pagos si monto no está disponible o es 0
                         let montoPagadoUsd = datos.pagoInicial.monto || 0;
                         let montoPagadoBs = (montoPagadoUsd * tasaCambio) || 0;
-                        
+
                         // Si el monto es 0 pero hay pagos, calcular desde los pagos
                         if (montoPagadoUsd === 0 && datos.pagoInicial.pagos && datos.pagoInicial.pagos.length > 0) {
                           const metodoMonedaMap = {
@@ -587,25 +588,25 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                             'binance': 'usd',
                             'tarjeta': 'bs'
                           };
-                          
+
                           let totalBsCalculado = 0;
                           let totalUsdCalculado = 0;
-                          
+
                           datos.pagoInicial.pagos.forEach(pago => {
-                            const monto = parseFloat(pago.monto) || 0;
+                            const monto = parseMoney(pago.monto);
                             const moneda = pago.moneda || metodoMonedaMap[pago.metodo] || 'bs';
-                            
+
                             if (moneda === 'bs') {
                               totalBsCalculado += monto;
                             } else {
                               totalUsdCalculado += monto;
                             }
                           });
-                          
+
                           montoPagadoBs = totalBsCalculado + (totalUsdCalculado * tasaCambio);
                           montoPagadoUsd = (totalBsCalculado / tasaCambio) + totalUsdCalculado;
                         }
-                        
+
                         return (
                           <>
                             <div className="flex justify-between items-center pt-1.5 border-t border-gray-700/50">
@@ -656,23 +657,23 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                                 };
                                 moneda = metodoMonedaMap[pago.metodo] || 'bs';
                               }
-                              
-                              const monto = parseFloat(pago.monto) || 0;
-                              const montoBs = moneda === 'bs' 
-                                ? monto 
+
+                              const monto = parseMoney(pago.monto);
+                              const montoBs = moneda === 'bs'
+                                ? monto
                                 : monto * tasaCambio;
-                              const montoUsd = moneda === 'usd' 
-                                ? monto 
+                              const montoUsd = moneda === 'usd'
+                                ? monto
                                 : monto / tasaCambio;
-                              
+
                               const metodoLabel = pago.metodo === 'efectivo_bs' ? 'Efectivo Bs' :
                                 pago.metodo === 'efectivo_usd' ? 'Efectivo USD' :
-                                pago.metodo === 'pago_movil' ? 'Pago Móvil' :
-                                pago.metodo === 'transferencia' ? 'Transferencia' :
-                                pago.metodo === 'zelle' ? 'Zelle' :
-                                pago.metodo === 'binance' ? 'Binance' :
-                                pago.metodo === 'tarjeta' ? 'Tarjeta' : pago.metodo;
-                              
+                                  pago.metodo === 'pago_movil' ? 'Pago Móvil' :
+                                    pago.metodo === 'transferencia' ? 'Transferencia' :
+                                      pago.metodo === 'zelle' ? 'Zelle' :
+                                        pago.metodo === 'binance' ? 'Binance' :
+                                          pago.metodo === 'tarjeta' ? 'Tarjeta' : pago.metodo;
+
                               return (
                                 <span key={index} className="text-[10px] bg-gray-700/50 px-1.5 py-0.5 rounded border border-gray-600/50">
                                   {metodoLabel}: {montoBs.toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
@@ -695,7 +696,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                 <DollarSign className="h-5 w-5 text-emerald-400" />
                 Resumen Financiero
               </h3>
-              
+
               <div className="space-y-3">
                 {datos.items && datos.items.length > 0 ? (
                   <div className="flex justify-between items-center text-xs">
@@ -745,7 +746,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
         <p className="text-xs text-gray-400 mb-2">
           Selecciona al menos una opción para crear la orden
         </p>
-        
+
         {!opcionesFinales.imprimir && !opcionesFinales.enviarWhatsapp && (
           <div className="mb-2 p-2 bg-amber-900/30 border border-amber-700/50 rounded-lg">
             <p className="text-amber-200 text-xs flex items-center gap-2">
@@ -754,17 +755,16 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
             </p>
           </div>
         )}
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Imprimir Ticket Térmico */}
           <button
             onClick={() => toggleOpcion('imprimir')}
             disabled={loading || ejecutandoAcciones || servicioCreado}
-            className={`p-3 rounded-lg border-2 transition-all ${
-              opcionesFinales.imprimir
-                ? 'border-blue-500 bg-blue-600/20 text-blue-200 shadow-lg'
-                : 'border-gray-600 bg-gray-700/30 text-gray-300 hover:border-gray-500'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`p-3 rounded-lg border-2 transition-all ${opcionesFinales.imprimir
+              ? 'border-blue-500 bg-blue-600/20 text-blue-200 shadow-lg'
+              : 'border-gray-600 bg-gray-700/30 text-gray-300 hover:border-gray-500'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -774,11 +774,10 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                   <div className="text-[11px] opacity-75">Generar ticket físico impreso</div>
                 </div>
               </div>
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                opcionesFinales.imprimir
-                  ? 'border-blue-400 bg-blue-500'
-                  : 'border-gray-400'
-              }`}>
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${opcionesFinales.imprimir
+                ? 'border-blue-400 bg-blue-500'
+                : 'border-gray-400'
+                }`}>
                 {opcionesFinales.imprimir && (
                   <CheckCircle className="h-2.5 w-2.5 text-white" />
                 )}
@@ -790,11 +789,10 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
           <button
             onClick={() => toggleOpcion('enviarWhatsapp')}
             disabled={loading || ejecutandoAcciones || servicioCreado}
-            className={`p-3 rounded-lg border-2 transition-all ${
-              opcionesFinales.enviarWhatsapp
-                ? 'border-green-500 bg-green-600/20 text-green-200 shadow-lg'
-                : 'border-gray-600 bg-gray-700/30 text-gray-300 hover:border-gray-500'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`p-3 rounded-lg border-2 transition-all ${opcionesFinales.enviarWhatsapp
+              ? 'border-green-500 bg-green-600/20 text-green-200 shadow-lg'
+              : 'border-gray-600 bg-gray-700/30 text-gray-300 hover:border-gray-500'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -804,11 +802,10 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                   <div className="text-[11px] opacity-75">Enviar información digital al cliente</div>
                 </div>
               </div>
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                opcionesFinales.enviarWhatsapp
-                  ? 'border-green-400 bg-green-500'
-                  : 'border-gray-400'
-              }`}>
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${opcionesFinales.enviarWhatsapp
+                ? 'border-green-400 bg-green-500'
+                : 'border-gray-400'
+                }`}>
                 {opcionesFinales.enviarWhatsapp && (
                   <CheckCircle className="h-2.5 w-2.5 text-white" />
                 )}

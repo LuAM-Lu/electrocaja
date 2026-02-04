@@ -15,24 +15,35 @@ const toDecimal = (value) => {
   return new Decimal(value || 0);
 };
 
+// 🔧 HELPER: Parsear monto venezolano de manera robusta
+const parseMontoVenezolano = (monto) => {
+  if (typeof monto === 'number') return monto;
+  if (typeof monto === 'string') {
+    // Eliminar puntos de miles y reemplazar coma por punto
+    const limpio = monto.replace(/\./g, '').replace(',', '.');
+    return parseFloat(limpio);
+  }
+  return 0;
+};
+
 
 // 🔧 HELPER: Generar código de venta único - VERSIÓN CORTA
 const generarCodigoVenta = async () => {
   let codigoGenerado;
   let intentos = 0;
   const maxIntentos = 5;
-  
+
   while (intentos < maxIntentos) {
     const fecha = new Date();
     const dia = fecha.getDate().toString().padStart(2, '0');
     const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-    
+
     // Obtener consecutivo del día
     const inicioDelDia = new Date(fecha);
     inicioDelDia.setHours(0, 0, 0, 0);
     const finDelDia = new Date(fecha);
     finDelDia.setHours(23, 59, 59, 999);
-    
+
     const ventasDelDia = await prisma.transaccion.count({
       where: {
         fechaHora: {
@@ -42,25 +53,25 @@ const generarCodigoVenta = async () => {
         tipo: 'INGRESO'
       }
     });
-    
+
     const consecutivo = (ventasDelDia + 1).toString().padStart(2, '0');
     const random = Math.random().toString(36).substr(2, 2).toUpperCase();
-    
+
     // Formato: V22082544KL (V + día + mes + consecutivo + random)
     codigoGenerado = `V${dia}${mes}${consecutivo}${random}`;
-    
+
     const existe = await prisma.transaccion.findUnique({
       where: { codigoVenta: codigoGenerado }
     });
-    
+
     if (!existe) {
       return codigoGenerado;
     }
-    
+
     intentos++;
     await new Promise(resolve => setTimeout(resolve, 5));
   }
-  
+
   // Fallback más corto
   const fallback = `V${Date.now().toString().slice(-6)}`;
   return fallback;
@@ -71,19 +82,19 @@ const generarCodigoVenta = async () => {
 const reservarStock = async (req, res) => {
   const timestamp = new Date().toISOString();
   const requestId = `REQ_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-  
+
   console.log('🚨🚨🚨 BACKEND RESERVAR STOCK LLAMADA 🚨🚨🚨');
   console.log(`⏰ [${timestamp}] REQUEST ID: ${requestId}`);
-  
+
   try {
     // 🆕 SOPORTAR TANTO PRODUCTO INDIVIDUAL COMO ARRAY
     const { productoId, cantidad, sesionId, items } = req.body;
-    
+
     // Si viene array de items, procesar múltiples productos
     if (items && Array.isArray(items)) {
       return await reservarMultiplesProductos(req, res, items, sesionId, requestId);
     }
-    
+
     // Si es producto individual, usar nuevo servicio
     const usuarioId = req.user.userId;
 
@@ -136,16 +147,16 @@ const reservarStock = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error reservando stock:', error);
-    
+
     // Manejar errores específicos del servicio
     if (error.message.includes('Stock insuficiente')) {
       return sendError(res, error.message, 400);
     }
-    
+
     if (error.message.includes('Producto no encontrado')) {
       return sendError(res, error.message, 404);
     }
-    
+
     sendError(res, 'Error interno del servidor');
   }
 };
@@ -153,23 +164,23 @@ const reservarStock = async (req, res) => {
 // 🆕 FUNCIÓN OPTIMIZADA PARA MÚLTIPLES PRODUCTOS
 const reservarMultiplesProductos = async (req, res, items, sesionId, requestId) => {
   const usuarioId = req.user.userId;
-  
+
   console.log(`📦 [${requestId}] Reservando ${items.length} productos para sesión: ${sesionId}`);
-  
+
   const resultados = [];
   const errores = [];
-  
+
   try {
-    
+
     // 🔒 TRANSACCIÓN ATÓMICA - TODO O NADA
     await prisma.$transaction(async (tx) => {
       for (const item of items) {
         if (item.cantidad <= 0) continue; // Skip items con cantidad 0
-        
+
         const producto = await tx.product.findUnique({
           where: { id: item.productoId }
         });
-        
+
         if (!producto) {
           errores.push({
             productoId: item.productoId,
@@ -178,7 +189,7 @@ const reservarMultiplesProductos = async (req, res, items, sesionId, requestId) 
           });
           continue;
         }
-        
+
         // Servicios no necesitan reserva
         if (producto.tipo === 'SERVICIO') {
           resultados.push({
@@ -189,10 +200,10 @@ const reservarMultiplesProductos = async (req, res, items, sesionId, requestId) 
           });
           continue;
         }
-        
+
         // 🔍 VERIFICAR STOCK DISPONIBLE
         const stockInfo = await verificarStockDisponible(tx, producto.id, item.cantidad, sesionId);
-        
+
         if (!stockInfo.disponible) {
           errores.push({
             productoId: item.productoId,
@@ -205,10 +216,10 @@ const reservarMultiplesProductos = async (req, res, items, sesionId, requestId) 
           });
           continue;
         }
-        
+
         // 🔒 CREAR/ACTUALIZAR RESERVA
         await crearOActualizarReserva(tx, producto.id, item.cantidad, sesionId, usuarioId, req.ip);
-        
+
         resultados.push({
           productoId: item.productoId,
           producto: producto.descripcion,
@@ -216,33 +227,33 @@ const reservarMultiplesProductos = async (req, res, items, sesionId, requestId) 
           reservado: true
         });
       }
-      
+
       // Si hay errores, rechazar toda la transacción
       if (errores.length > 0) {
         throw new Error('STOCK_CONFLICTS');
       }
     });
-    
+
     // ✅ TODO RESERVADO EXITOSAMENTE
     console.log(`✅ [${requestId}] ${resultados.length} productos reservados exitosamente`);
-    
+
     sendSuccess(res, {
       reservadosExitosamente: resultados.length,
       detalles: resultados,
       sesionId: sesionId
     }, `${resultados.length} productos reservados correctamente`);
-    
+
   } catch (error) {
     if (error.message === 'STOCK_CONFLICTS') {
       // 🚨 RESPUESTA CON CONFLICTOS DETALLADOS
       console.log(`❌ [${requestId}] Conflictos de stock:`, errores.length);
-      
+
       return sendError(res, 'Stock reservado por otros usuarios', 409, {
         type: 'STOCK_RESERVADO',
         detalles: errores
       });
     }
-    
+
     console.error(`❌ [${requestId}] Error en transacción múltiple:`, error);
     sendError(res, 'Error interno del servidor');
   }
@@ -262,23 +273,23 @@ const verificarStockDisponible = async (tx, productoId, cantidadSolicitada, sesi
       }
     }
   });
-  
+
   const producto = await tx.product.findUnique({
     where: { id: productoId }
   });
-  
+
   // Separar reservas propias vs de otros
-  const reservasPropias = reservasActivas.filter(r => 
+  const reservasPropias = reservasActivas.filter(r =>
     r.motivo && r.motivo.includes(sesionId)
   );
-  const reservasDeOtros = reservasActivas.filter(r => 
+  const reservasDeOtros = reservasActivas.filter(r =>
     !r.motivo || !r.motivo.includes(sesionId)
   );
-  
+
   const stockReservadoPropias = reservasPropias.reduce((sum, r) => sum + r.cantidad, 0);
   const stockReservadoOtros = reservasDeOtros.reduce((sum, r) => sum + r.cantidad, 0);
   const stockDisponible = producto.stock - stockReservadoOtros;
-  
+
   return {
     disponible: stockDisponible >= cantidadSolicitada,
     stockDisponible,
@@ -302,7 +313,7 @@ const crearOActualizarReserva = async (tx, productoId, cantidad, sesionId, usuar
       transaccionId: null
     }
   });
-  
+
   if (reservaExistente) {
     // Actualizar reserva existente
     await tx.stockMovement.update({
@@ -315,23 +326,23 @@ const crearOActualizarReserva = async (tx, productoId, cantidad, sesionId, usuar
     });
   } else {
     // Obtener stock actual del producto
-        const producto = await tx.product.findUnique({
-          where: { id: productoId }
-        });
+    const producto = await tx.product.findUnique({
+      where: { id: productoId }
+    });
 
-        await tx.stockMovement.create({
-          data: {
-            productoId: productoId,
-            tipo: 'RESERVA',
-            cantidad: cantidad,
-            stockAnterior: producto.stock,
-            stockNuevo: producto.stock, // Stock no cambia en reserva
-            motivo: `Sesión: ${sesionId}`,
-            observaciones: `Reserva para venta completa - sesión ${sesionId}`,
-            usuarioId: usuarioId,
-            ipAddress: ipAddress
-          }
-        });
+    await tx.stockMovement.create({
+      data: {
+        productoId: productoId,
+        tipo: 'RESERVA',
+        cantidad: cantidad,
+        stockAnterior: producto.stock,
+        stockNuevo: producto.stock, // Stock no cambia en reserva
+        motivo: `Sesión: ${sesionId}`,
+        observaciones: `Reserva para venta completa - sesión ${sesionId}`,
+        usuarioId: usuarioId,
+        ipAddress: ipAddress
+      }
+    });
   }
 };
 
@@ -341,10 +352,10 @@ const crearOActualizarReserva = async (tx, productoId, cantidad, sesionId, usuar
 const liberarStock = async (req, res) => {
   const timestamp = new Date().toISOString();
   const requestId = `LIBERAR_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-  
+
   console.log('🚨🚨🚨 BACKEND LIBERAR STOCK LLAMADA 🚨🚨🚨');
   console.log(`⏰ [${timestamp}] REQUEST ID: ${requestId}`);
-  
+
   try {
     const { productoId, sesionId, cantidad = null } = req.body;
     const usuarioId = req.user.userId;
@@ -401,7 +412,7 @@ const liberarStock = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error liberando stock:', error);
-    
+
     // Manejar errores específicos del servicio
     if (error.message.includes('No hay reservas activas')) {
       return sendSuccess(res, {
@@ -409,7 +420,7 @@ const liberarStock = async (req, res) => {
         mensaje: error.message
       });
     }
-    
+
     sendError(res, 'Error interno del servidor');
   }
 };
@@ -417,9 +428,9 @@ const liberarStock = async (req, res) => {
 // 🆕 FUNCIÓN PARA LIBERAR TODAS LAS RESERVAS DE UNA SESIÓN
 const liberarTodasLasReservasDeSesion = async (req, res, sesionId, requestId) => {
   const usuarioId = req.user.userId;
-  
+
   console.log(`🧹 [${requestId}] Liberando todas las reservas de sesión: ${sesionId}`);
-  
+
   try {
     // 🧹 USAR NUEVO SERVICIO PARA LIBERACIÓN MASIVA
     const resultado = await stockService.liberarTodasLasReservasDeSesion(
@@ -427,7 +438,7 @@ const liberarTodasLasReservasDeSesion = async (req, res, sesionId, requestId) =>
       usuarioId,
       req.ip || req.connection.remoteAddress
     );
-    
+
     console.log(`✅ [${requestId}] Liberación masiva completada:`, resultado);
 
     sendSuccess(res, resultado, `${resultado.reservasLiberadas} reservas liberadas correctamente`);
@@ -456,7 +467,7 @@ const liberarTodasLasReservasDeSesion = async (req, res, sesionId, requestId) =>
 
       console.log(`📡 Eventos emitidos: ${resultado.reservasLiberadas} stock_liberado + inventario_actualizado`);
     }
-    
+
   } catch (error) {
     console.error(`❌ [${requestId}] Error en liberación masiva:`, error);
     sendError(res, 'Error interno en liberación masiva');
@@ -539,7 +550,7 @@ const guardarVentaEnEspera = async (req, res) => {
 
       // Crear los items de la venta en espera
       const itemsCreados = await Promise.all(
-        items.map(item => 
+        items.map(item =>
           tx.pendingSaleItem.create({
             data: {
               ventaEsperaId: venta.id,
@@ -558,7 +569,7 @@ const guardarVentaEnEspera = async (req, res) => {
       // Registrar auditoría del carrito
       if (sesionId) {
         await Promise.all(
-          items.map(item => 
+          items.map(item =>
             tx.carritoAuditoria.create({
               data: {
                 sesionId,
@@ -635,7 +646,7 @@ const obtenerVentasEnEspera = async (req, res) => {
     } else {
       // Si no se especifica, usar caja actual
       const cajaActual = await prisma.caja.findFirst({
-        where: { 
+        where: {
           estado: {
             in: ['ABIERTA', 'PENDIENTE_CIERRE_FISICO']
           }
@@ -693,7 +704,7 @@ const obtenerVentasEnEspera = async (req, res) => {
       const ahora = new Date();
       const tiempoRestante = Math.max(0, Math.floor((new Date(venta.fechaExpiracion) - ahora) / 1000 / 60)); // minutos
       const estaExpirada = ahora > new Date(venta.fechaExpiracion);
-      
+
       return {
         ...venta,
         subtotal: decimalToNumber(venta.subtotal),
@@ -707,8 +718,8 @@ const obtenerVentasEnEspera = async (req, res) => {
           precioUnitario: decimalToNumber(item.precioUnitario),
           descuento: decimalToNumber(item.descuento),
           subtotal: decimalToNumber(item.subtotal),
-          stockDisponible: item.producto ? 
-           item.producto.stock : null // (item.producto.stock - item.producto.stockReservado) : null
+          stockDisponible: item.producto ?
+            item.producto.stock : null // (item.producto.stock - item.producto.stockReservado) : null
         }))
       };
     });
@@ -753,7 +764,7 @@ const procesarVenta = async (req, res) => {
     console.log('📋 Body completo:', JSON.stringify(req.body, null, 2));
     console.log('👤 Usuario:', req.user?.userId, req.user?.nombre);
     console.log('=================================================');
-    
+
     const {
       clienteId,
       clienteNombre,
@@ -816,12 +827,12 @@ const procesarVenta = async (req, res) => {
       if (!pago.metodo || !pago.monto || !pago.moneda) {
         return sendError(res, 'Todos los pagos deben tener método, monto y moneda', 400);
       }
-      
-      const montoPago = parseFloat(pago.monto);
+
+      const montoPago = parseMontoVenezolano(pago.monto);
       if (montoPago <= 0) {
         return sendError(res, 'Todos los montos deben ser mayores a 0', 400);
       }
-      
+
       // Convertir a Bs para validación total
       if (pago.moneda === 'usd') {
         sumaTotalPagos += montoPago * tasaCambio;
@@ -831,34 +842,34 @@ const procesarVenta = async (req, res) => {
     }
 
     // 🆕 CALCULAR TOTALES DE VUELTOS PRIMERO
-      const totalVueltosBs = vueltos.reduce((total, vuelto) => {
-        const monto = parseFloat(vuelto.monto) || 0;
-        return total + (vuelto.moneda === 'bs' ? monto : monto * tasaCambio);
-      }, 0);
+    const totalVueltosBs = vueltos.reduce((total, vuelto) => {
+      const monto = parseMontoVenezolano(vuelto.monto) || 0;
+      return total + (vuelto.moneda === 'bs' ? monto : monto * tasaCambio);
+    }, 0);
 
-      // 💰 LÍMITES DE REGALÍAS ACEPTABLES
-      const LIMITE_REGALIA_BS = 50;  // 50 Bs
-      const LIMITE_REGALIA_USD = 2;  // $2
-      const limiteRegaliaTotalBs = LIMITE_REGALIA_BS + (LIMITE_REGALIA_USD * tasaCambio);
+    // 💰 LÍMITES DE REGALÍAS ACEPTABLES
+    const LIMITE_REGALIA_BS = 50;  // 50 Bs
+    const LIMITE_REGALIA_USD = 2;  // $2
+    const limiteRegaliaTotalBs = LIMITE_REGALIA_BS + (LIMITE_REGALIA_USD * tasaCambio);
 
-      // 🔧 TOLERANCIA PARA ERRORES DE REDONDEO - Ajustada para alta precisión
+    // 🔧 TOLERANCIA PARA ERRORES DE REDONDEO - Ajustada para alta precisión
     const TOLERANCIA_REDONDEO = 0.01; // 0.01 Bs de tolerancia (1 céntimo)
 
     // Calcular diferencia de pagos PRIMERO
     const diferenciaPagos = sumaTotalPagos - totalBs;
 
-      // ✅ CALCULAR EXCESO REAL (después de descontar vueltos configurados)
-      const excesoReal = Math.max(0, diferenciaPagos - totalVueltosBs);
+    // ✅ CALCULAR EXCESO REAL (después de descontar vueltos configurados)
+    const excesoReal = Math.max(0, diferenciaPagos - totalVueltosBs);
 
-      console.log('💰 Validación de regalía:', {
-        sumaTotalPagos,
-        totalBs,
-        diferenciaPagos,
-        totalVueltosBs,
-        excesoReal,
-        limiteRegaliaTotalBs
-      });
-    
+    console.log('💰 Validación de regalía:', {
+      sumaTotalPagos,
+      totalBs,
+      diferenciaPagos,
+      totalVueltosBs,
+      excesoReal,
+      limiteRegaliaTotalBs
+    });
+
     // Validar que la suma de pagos coincida o sea una regalía aceptable
     if (diferenciaPagos < -TOLERANCIA_REDONDEO) {
       // Faltan pagos (más allá de la tolerancia)
@@ -870,24 +881,24 @@ const procesarVenta = async (req, res) => {
     } else if (diferenciaPagos < 0 && diferenciaPagos >= -TOLERANCIA_REDONDEO) {
       // Diferencia menor dentro de tolerancia - ajustar automáticamente
       console.log('⚙️ Ajuste automático por redondeo:', diferenciaPagos.toFixed(2), 'Bs');
-      
+
       // Ajustar totales para compensar el redondeo
       totalBs = Math.round(sumaTotalPagos * 100) / 100;
       totalUsd = Math.round((totalBs / tasaCambio) * 100) / 100;
-      
+
       console.log('🔧 Totales ajustados por redondeo:', {
         totalBsAjustado: totalBs.toFixed(2),
         totalUsdAjustado: totalUsd.toFixed(2)
       });
-      } else if (excesoReal > limiteRegaliaTotalBs) {
-        // ✅ VALIDAR EXCESO REAL (no el exceso bruto)
-        return sendError(res, `Exceso real de ${excesoReal.toFixed(2)} Bs supera el límite de regalía (${limiteRegaliaTotalBs.toFixed(2)} Bs). El vuelto configurado (${totalVueltosBs.toFixed(2)} Bs) ya está siendo considerado.`, 400);
-      }
+    } else if (excesoReal > limiteRegaliaTotalBs) {
+      // ✅ VALIDAR EXCESO REAL (no el exceso bruto)
+      return sendError(res, `Exceso real de ${excesoReal.toFixed(2)} Bs supera el límite de regalía (${limiteRegaliaTotalBs.toFixed(2)} Bs). El vuelto configurado (${totalVueltosBs.toFixed(2)} Bs) ya está siendo considerado.`, 400);
+    }
 
-      // Registrar regalía si la hay (solo el exceso real)
-      if (excesoReal > 0.01 && excesoReal <= limiteRegaliaTotalBs) {
-        console.log(`💰 Regalía aceptada: ${excesoReal.toFixed(2)} Bs (después de vueltos)`);
-      }
+    // Registrar regalía si la hay (solo el exceso real)
+    if (excesoReal > 0.01 && excesoReal <= limiteRegaliaTotalBs) {
+      console.log(`💰 Regalía aceptada: ${excesoReal.toFixed(2)} Bs (después de vueltos)`);
+    }
 
     // Generar código de venta
     const codigoVenta = await generarCodigoVenta();
@@ -895,21 +906,24 @@ const procesarVenta = async (req, res) => {
 
     // Determinar método de pago principal (el de mayor monto)
     const metodoPagoPrincipal = pagos.reduce((max, pago) => {
-      const montoBs = pago.moneda === 'usd' ? pago.monto * tasaCambio : pago.monto;
-      const maxMontoBs = max.moneda === 'usd' ? max.monto * tasaCambio : max.monto;
+      const montoPago = parseMontoVenezolano(pago.monto);
+      const montoMax = parseMontoVenezolano(max.monto);
+
+      const montoBs = pago.moneda === 'usd' ? montoPago * tasaCambio : montoPago;
+      const maxMontoBs = max.moneda === 'usd' ? montoMax * tasaCambio : montoMax;
       return montoBs > maxMontoBs ? pago : max;
     }).metodo;
 
 
     const totalVueltosUsd = vueltos.reduce((total, vuelto) => {
-      const monto = parseFloat(vuelto.monto) || 0;
+      const monto = parseMontoVenezolano(vuelto.monto) || 0;
       return total + (vuelto.moneda === 'usd' ? monto : monto / tasaCambio);
     }, 0);
 
-    console.log('💰 Totales calculados:', { 
-      totalBs, 
-      totalVueltosBs, 
-      totalVueltosUsd 
+    console.log('💰 Totales calculados:', {
+      totalBs,
+      totalVueltosBs,
+      totalVueltosUsd
     });
 
     // Procesar venta en transacción
@@ -936,7 +950,7 @@ const procesarVenta = async (req, res) => {
                   decrement: item.cantidad
                 },
                 //stockReservado: {
-                  //decrement: item.cantidad // Liberar la reserva
+                //decrement: item.cantidad // Liberar la reserva
                 //},
                 ultimaVenta: new Date()
               }
@@ -957,7 +971,7 @@ const procesarVenta = async (req, res) => {
                 ipAddress: req.ip || req.connection.remoteAddress
               }
             });
-            
+
             // 📡 Emitir evento de inventario actualizado para actualización en tiempo real
             if (req.io) {
               req.io.emit('inventario_actualizado', {
@@ -1007,7 +1021,7 @@ const procesarVenta = async (req, res) => {
 
       // 3. Crear los items de la transacción
       const itemsCreados = await Promise.all(
-        items.map(item => 
+        items.map(item =>
           tx.transactionItem.create({
             data: {
               transaccionId: transaccion.id,
@@ -1031,7 +1045,7 @@ const procesarVenta = async (req, res) => {
             data: {
               transaccionId: transaccion.id,
               metodo: pago.metodo,
-              monto: toDecimal(pago.monto),
+              monto: toDecimal(parseMontoVenezolano(pago.monto)),
               moneda: pago.moneda,
               banco: pago.banco || null,
               referencia: pago.referencia || null
@@ -1049,7 +1063,7 @@ const procesarVenta = async (req, res) => {
       // Calcular total de pago móvil
       const totalPagoMovil = pagos
         .filter(pago => pago.metodo === 'pago_movil')
-        .reduce((total, pago) => total + parseFloat(pago.monto), 0);
+        .reduce((total, pago) => total + parseMontoVenezolano(pago.monto), 0);
 
       if (totalPagoMovil > 0) {
         updateData.totalPagoMovil = { increment: toDecimal(totalPagoMovil) };
@@ -1064,14 +1078,14 @@ const procesarVenta = async (req, res) => {
       const vueltosCreados = [];
       if (vueltos.length > 0 && totalVueltosBs > 0) {
         console.log('💸 Procesando vueltos:', vueltos.length);
-        
+
         for (const vuelto of vueltos) {
-          const montoVuelto = parseFloat(vuelto.monto) || 0;
+          const montoVuelto = parseMontoVenezolano(vuelto.monto) || 0;
           if (montoVuelto > 0) {
 
             // Generar código único para el vuelto
             const codigoVuelto = `${codigoVenta}-V${vueltosCreados.length + 1}`;
-            
+
             const transaccionVuelto = await tx.transaccion.create({
               data: {
                 cajaId: cajaAbierta.id,
@@ -1092,7 +1106,7 @@ const procesarVenta = async (req, res) => {
                 sesionId: sesionId
               }
             });
-            
+
             // 🔥 CREAR REGISTRO DE PAGO PARA EL VUELTO CON SU MONEDA ORIGINAL
             await tx.pago.create({
               data: {
@@ -1104,7 +1118,7 @@ const procesarVenta = async (req, res) => {
                 referencia: vuelto.referencia || null
               }
             });
-            
+
             vueltosCreados.push(transaccionVuelto);
             console.log('✅ Vuelto registrado:', montoVuelto, vuelto.moneda);
           }
@@ -1126,7 +1140,7 @@ const procesarVenta = async (req, res) => {
       // 8. Registrar auditoría del carrito (venta procesada)
       if (sesionId) {
         await Promise.all(
-          items.map(item => 
+          items.map(item =>
             tx.carritoAuditoria.create({
               data: {
                 sesionId,
@@ -1211,7 +1225,7 @@ const procesarVenta = async (req, res) => {
           usuario: req.user?.nombre || req.user?.email,
           timestamp: new Date().toISOString()
         });
-        
+
         // También emitir nueva_transaccion para que TransactionTable se actualice
         req.io.emit('nueva_transaccion', {
           transaccion: ventaConvertida,
@@ -1219,14 +1233,14 @@ const procesarVenta = async (req, res) => {
           timestamp: new Date().toISOString(),
           tipo: 'venta'
         });
-        
+
         // También emitir transaction-added para compatibilidad (usar emit en lugar de broadcast.emit)
         req.io.emit('transaction-added', {
           transaccion: ventaConvertida,
           usuario: req.user?.nombre || req.user?.email,
           timestamp: new Date().toISOString()
         });
-        
+
         console.log('📡 Notificaciones Socket.IO enviadas - venta procesada');
       }
     } catch (errorConversion) {
@@ -1254,7 +1268,7 @@ const procesarVenta = async (req, res) => {
       console.error('⚠️ Error limpiando reservas post-venta (no crítico):', errorLimpieza);
     }
 
-} catch (error) {
+  } catch (error) {
     console.error('❌ Error procesando venta:', error);
     sendError(res, `Error procesando venta: ${error.message}`);
   }
@@ -1363,7 +1377,7 @@ const retomarVentaEnEspera = async (req, res) => {
       // Registrar auditoría del carrito
       if (sesionId) {
         await Promise.all(
-          ventaEnEspera.items.map(item => 
+          ventaEnEspera.items.map(item =>
             tx.carritoAuditoria.create({
               data: {
                 sesionId,
@@ -1393,7 +1407,7 @@ const retomarVentaEnEspera = async (req, res) => {
           motivo: `Sesión: ${sesionId}`
         }
       });
-      
+
       console.log(`🗑️ Limpieza post-venta: ${reservasEliminadas.count} reservas temporales eliminadas para sesión ${sesionId}`);
     } catch (errorLimpieza) {
       console.error('⚠️ Error limpiando reservas post-venta (no crítico):', errorLimpieza);
@@ -1428,21 +1442,21 @@ const retomarVentaEnEspera = async (req, res) => {
     }
 
     // 📡 Notificar via Socket.IO
-      if (req.io) {
-        const eventData = {
-          venta: ventaConvertida,
-          usuario: req.user?.nombre || req.user?.email,
-          timestamp: new Date().toISOString()
-        };
-        
-        console.log('📡📡📡 BACKEND EMITIENDO venta_procesada 📡📡📡');
-        console.log('📊 Event data:', JSON.stringify(eventData, null, 2));
-        console.log('📊 Usuarios conectados:', req.io.engine.clientsCount);
-        
-        req.io.emit('venta_procesada', eventData);
-        console.log('✅ Evento venta_procesada EMITIDO');
-        console.log('📡 Notificación Socket.IO enviada - venta procesada');
-      }
+    if (req.io) {
+      const eventData = {
+        venta: ventaConvertida,
+        usuario: req.user?.nombre || req.user?.email,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('📡📡📡 BACKEND EMITIENDO venta_procesada 📡📡📡');
+      console.log('📊 Event data:', JSON.stringify(eventData, null, 2));
+      console.log('📊 Usuarios conectados:', req.io.engine.clientsCount);
+
+      req.io.emit('venta_procesada', eventData);
+      console.log('✅ Evento venta_procesada EMITIDO');
+      console.log('📡 Notificación Socket.IO enviada - venta procesada');
+    }
 
     sendSuccess(res, ventaConvertida, 'Venta en espera retomada correctamente');
 
@@ -1462,7 +1476,7 @@ const obtenerStockDisponible = async (req, res) => {
   try {
     const { id } = req.params;
     const { sesionId } = req.query; // 🆕 OBTENER SESION ID DE QUERY PARAMS
-    
+
     console.log('🔍 CONSULTA STOCK - ID:', id, 'SesionId:', sesionId);
     console.log('📊 Consultando stock disponible para producto:', id);
 
@@ -1475,12 +1489,12 @@ const obtenerStockDisponible = async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error consultando stock disponible:', error);
-    
+
     // Manejar errores específicos del servicio
     if (error.message.includes('Producto no encontrado')) {
       return sendError(res, error.message, 404);
     }
-    
+
     sendError(res, 'Error interno del servidor');
   }
 };
@@ -1525,20 +1539,20 @@ const heartbeatReservas = async (req, res) => {
   try {
     const { sesionId } = req.body;
     const usuarioId = req.user.userId;
-    
+
     console.log('💓 Heartbeat recibido para sesión:', sesionId);
-    
+
     if (!sesionId) {
       return sendError(res, 'SesionId requerido', 400);
     }
-    
+
     // 💓 USAR NUEVO SERVICIO PARA RENOVAR RESERVAS
     const resultado = await stockService.renovarReservas(sesionId, usuarioId);
-    
+
     console.log(`✅ Heartbeat procesado:`, resultado);
-    
+
     sendSuccess(res, resultado, resultado.renovado ? 'Reservas renovadas correctamente' : resultado.mensaje);
-    
+
   } catch (error) {
     console.error('❌ Error en heartbeat:', error);
     sendError(res, 'Error interno del servidor');

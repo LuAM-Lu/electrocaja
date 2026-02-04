@@ -34,7 +34,7 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
   const [descuento, setDescuento] = useState(datos.pagoInicial?.descuento || 0);
   const [showDescuentoModal, setShowDescuentoModal] = useState(false);
   const [solicitudDescuentoId, setSolicitudDescuentoId] = useState(null);
-  
+
   // Generar sesión ID para el modal de descuento
   const [sesionId] = useState(() => {
     return `sesion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -47,7 +47,7 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
     const handleAprobacionDescuento = (data) => {
       // Verificar que la solicitud corresponde a esta sesión
       if (data.solicitud?.sesionId === sesionId || data.solicitud?.id === solicitudDescuentoId) {
-        const montoDescuento = parseFloat(data.solicitud.montoDescuento);
+        const montoDescuento = parseMoney(data.solicitud.montoDescuento);
         setDescuento(roundMoney(montoDescuento));
         setSolicitudDescuentoId(null);
         toast.success(`Descuento aprobado por ${data.aprobadoPor?.nombre || 'Administrador'}`, {
@@ -267,141 +267,123 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
           <>
             {/* Opción 1: Pago Total Adelantado */}
             <button
-          type="button"
-          onClick={() => handleModalidadChange('TOTAL_ADELANTADO')}
-          className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
-            modalidadPago === 'TOTAL_ADELANTADO'
-              ? 'border-green-500 bg-green-600/20 shadow-lg shadow-green-900/20'
-              : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${
-                modalidadPago === 'TOTAL_ADELANTADO'
-                  ? 'bg-green-500/20 border border-green-600'
-                  : 'bg-gray-700 border border-gray-600'
-              }`}>
-                <Banknote className={`h-5 w-5 ${
-                  modalidadPago === 'TOTAL_ADELANTADO' ? 'text-green-300' : 'text-gray-400'
-                }`} />
-              </div>
-              <div>
-                <div className={`font-semibold text-base ${
-                  modalidadPago === 'TOTAL_ADELANTADO' ? 'text-green-100' : 'text-gray-300'
-                }`}>
-                  Pago Total Adelantado
+              type="button"
+              onClick={() => handleModalidadChange('TOTAL_ADELANTADO')}
+              className={`w-full p-3 rounded-xl border-2 transition-all text-left ${modalidadPago === 'TOTAL_ADELANTADO'
+                  ? 'border-green-500 bg-green-600/20 shadow-lg shadow-green-900/20'
+                  : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
+                }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${modalidadPago === 'TOTAL_ADELANTADO'
+                      ? 'bg-green-500/20 border border-green-600'
+                      : 'bg-gray-700 border border-gray-600'
+                    }`}>
+                    <Banknote className={`h-5 w-5 ${modalidadPago === 'TOTAL_ADELANTADO' ? 'text-green-300' : 'text-gray-400'
+                      }`} />
+                  </div>
+                  <div>
+                    <div className={`font-semibold text-base ${modalidadPago === 'TOTAL_ADELANTADO' ? 'text-green-100' : 'text-gray-300'
+                      }`}>
+                      Pago Total Adelantado
+                    </div>
+                    <div className={`text-xs ${modalidadPago === 'TOTAL_ADELANTADO' ? 'text-green-300/80' : 'text-gray-500'
+                      }`}>
+                      Cliente paga el total ahora ({(totalEstimado * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.) • Se registra ingreso completo
+                    </div>
+                  </div>
                 </div>
-                <div className={`text-xs ${
-                  modalidadPago === 'TOTAL_ADELANTADO' ? 'text-green-300/80' : 'text-gray-500'
-                }`}>
-                  Cliente paga el total ahora ({(totalEstimado * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.) • Se registra ingreso completo
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${modalidadPago === 'TOTAL_ADELANTADO'
+                    ? 'border-green-400 bg-green-500 scale-110'
+                    : 'border-gray-400'
+                  }`}>
+                  {modalidadPago === 'TOTAL_ADELANTADO' && (
+                    <CheckCircle className="h-3 w-3 text-white" />
+                  )}
                 </div>
               </div>
-            </div>
-            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-              modalidadPago === 'TOTAL_ADELANTADO'
-                ? 'border-green-400 bg-green-500 scale-110'
-                : 'border-gray-400'
-            }`}>
-              {modalidadPago === 'TOTAL_ADELANTADO' && (
-                <CheckCircle className="h-3 w-3 text-white" />
-              )}
-            </div>
-          </div>
-        </button>
+            </button>
 
-        {/* Opción 2: Abono Inicial */}
-        <button
-          type="button"
-          onClick={() => handleModalidadChange('ABONO')}
-          className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
-            modalidadPago === 'ABONO'
-              ? 'border-blue-500 bg-blue-600/20 shadow-lg shadow-blue-900/20'
-              : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
-              <div className={`p-2 rounded-lg ${
-                modalidadPago === 'ABONO'
-                  ? 'bg-blue-500/20 border border-blue-600'
-                  : 'bg-gray-700 border border-gray-600'
-              }`}>
-                <Coins className={`h-5 w-5 ${
-                  modalidadPago === 'ABONO' ? 'text-blue-300' : 'text-gray-400'
-                }`} />
-              </div>
-              <div className="flex-1">
-                <div className={`font-semibold text-base ${
-                  modalidadPago === 'ABONO' ? 'text-blue-100' : 'text-gray-300'
-                }`}>
-                  Abono Inicial + Saldo Pendiente
+            {/* Opción 2: Abono Inicial */}
+            <button
+              type="button"
+              onClick={() => handleModalidadChange('ABONO')}
+              className={`w-full p-3 rounded-xl border-2 transition-all text-left ${modalidadPago === 'ABONO'
+                  ? 'border-blue-500 bg-blue-600/20 shadow-lg shadow-blue-900/20'
+                  : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
+                }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className={`p-2 rounded-lg ${modalidadPago === 'ABONO'
+                      ? 'bg-blue-500/20 border border-blue-600'
+                      : 'bg-gray-700 border border-gray-600'
+                    }`}>
+                    <Coins className={`h-5 w-5 ${modalidadPago === 'ABONO' ? 'text-blue-300' : 'text-gray-400'
+                      }`} />
+                  </div>
+                  <div className="flex-1">
+                    <div className={`font-semibold text-base ${modalidadPago === 'ABONO' ? 'text-blue-100' : 'text-gray-300'
+                      }`}>
+                      Abono Inicial + Saldo Pendiente
+                    </div>
+                    <div className={`text-xs ${modalidadPago === 'ABONO' ? 'text-blue-300/80' : 'text-gray-500'
+                      }`}>
+                      Cliente paga parte ahora, el resto al entregar • Se registra abono en caja • Usa el panel de pagos abajo para ingresar el monto
+                    </div>
+                  </div>
                 </div>
-                <div className={`text-xs ${
-                  modalidadPago === 'ABONO' ? 'text-blue-300/80' : 'text-gray-500'
-                }`}>
-                  Cliente paga parte ahora, el resto al entregar • Se registra abono en caja • Usa el panel de pagos abajo para ingresar el monto
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${modalidadPago === 'ABONO'
+                    ? 'border-blue-400 bg-blue-500 scale-110'
+                    : 'border-gray-400'
+                  }`}>
+                  {modalidadPago === 'ABONO' && (
+                    <CheckCircle className="h-3 w-3 text-white" />
+                  )}
                 </div>
               </div>
-            </div>
-            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-              modalidadPago === 'ABONO'
-                ? 'border-blue-400 bg-blue-500 scale-110'
-                : 'border-gray-400'
-            }`}>
-              {modalidadPago === 'ABONO' && (
-                <CheckCircle className="h-3 w-3 text-white" />
-              )}
-            </div>
-          </div>
-        </button>
+            </button>
 
-        {/* Opción 3: Pago al Retiro */}
-        <button
-          type="button"
-          onClick={() => handleModalidadChange('PAGO_POSTERIOR')}
-          className={`w-full p-3 rounded-xl border-2 transition-all text-left ${
-            modalidadPago === 'PAGO_POSTERIOR'
-              ? 'border-orange-500 bg-orange-600/20 shadow-lg shadow-orange-900/20'
-              : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${
-                modalidadPago === 'PAGO_POSTERIOR'
-                  ? 'bg-orange-500/20 border border-orange-600'
-                  : 'bg-gray-700 border border-gray-600'
-              }`}>
-                <Clock className={`h-5 w-5 ${
-                  modalidadPago === 'PAGO_POSTERIOR' ? 'text-orange-300' : 'text-gray-400'
-                }`} />
-              </div>
-              <div>
-                <div className={`font-semibold text-base ${
-                  modalidadPago === 'PAGO_POSTERIOR' ? 'text-orange-100' : 'text-gray-300'
-                }`}>
-                  Pago al Finalizar Servicio
+            {/* Opción 3: Pago al Retiro */}
+            <button
+              type="button"
+              onClick={() => handleModalidadChange('PAGO_POSTERIOR')}
+              className={`w-full p-3 rounded-xl border-2 transition-all text-left ${modalidadPago === 'PAGO_POSTERIOR'
+                  ? 'border-orange-500 bg-orange-600/20 shadow-lg shadow-orange-900/20'
+                  : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
+                }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${modalidadPago === 'PAGO_POSTERIOR'
+                      ? 'bg-orange-500/20 border border-orange-600'
+                      : 'bg-gray-700 border border-gray-600'
+                    }`}>
+                    <Clock className={`h-5 w-5 ${modalidadPago === 'PAGO_POSTERIOR' ? 'text-orange-300' : 'text-gray-400'
+                      }`} />
+                  </div>
+                  <div>
+                    <div className={`font-semibold text-base ${modalidadPago === 'PAGO_POSTERIOR' ? 'text-orange-100' : 'text-gray-300'
+                      }`}>
+                      Pago al Finalizar Servicio
+                    </div>
+                    <div className={`text-xs ${modalidadPago === 'PAGO_POSTERIOR' ? 'text-orange-300/80' : 'text-gray-500'
+                      }`}>
+                      No se cobra ahora, se cobrará al entregar • No se registra ingreso hasta la entrega
+                    </div>
+                  </div>
                 </div>
-                <div className={`text-xs ${
-                  modalidadPago === 'PAGO_POSTERIOR' ? 'text-orange-300/80' : 'text-gray-500'
-                }`}>
-                  No se cobra ahora, se cobrará al entregar • No se registra ingreso hasta la entrega
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${modalidadPago === 'PAGO_POSTERIOR'
+                    ? 'border-orange-400 bg-orange-500 scale-110'
+                    : 'border-gray-400'
+                  }`}>
+                  {modalidadPago === 'PAGO_POSTERIOR' && (
+                    <CheckCircle className="h-3 w-3 text-white" />
+                  )}
                 </div>
               </div>
-            </div>
-            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-              modalidadPago === 'PAGO_POSTERIOR'
-                ? 'border-orange-400 bg-orange-500 scale-110'
-                : 'border-gray-400'
-            }`}>
-              {modalidadPago === 'PAGO_POSTERIOR' && (
-                <CheckCircle className="h-3 w-3 text-white" />
-              )}
-            </div>
-          </div>
-        </button>
+            </button>
           </>
         )}
       </div>
@@ -441,14 +423,14 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
             </div>
           )}
 
-            <PagosPanel
-              pagos={pagos}
-              vueltos={vueltos}
-              onPagosChange={handlePagosChange}
-              totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
+          <PagosPanel
+            pagos={pagos}
+            vueltos={vueltos}
+            onPagosChange={handlePagosChange}
+            totalVenta={modalidadPago === 'TOTAL_ADELANTADO'
               ? roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento) // ✅ Aplicar descuento
               : roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento)} // ✅ Para ABONO, permitir pagar hasta el total
-              tasaCambio={tasaCambio}
+            tasaCambio={tasaCambio}
             title={modalidadPago === 'TOTAL_ADELANTADO' ? "Métodos de Pago" : "Métodos de Pago del Abono"}
             descuento={descuento}
             onDescuentoChange={() => setShowDescuentoModal(true)}
@@ -470,27 +452,27 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
               setSolicitudDescuentoId(null);
               toast.success('Descuento eliminado');
             }}
-              onValidationChange={handleValidationChange}
-            />
+            onValidationChange={handleValidationChange}
+          />
         </div>
       )}
 
       {/* Advertencia si modalidad requiere pago pero no está completo */}
       {(modalidadPago === 'TOTAL_ADELANTADO' || modalidadPago === 'ABONO') &&
-       pagos.length > 0 &&
-       !pagoValido && (
-        <div className="p-3 bg-red-900/20 border border-red-700/50 rounded-xl flex items-start gap-2.5 animate-pulse">
-          <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <div className="font-medium text-red-200 text-sm">Pago Incompleto</div>
-            <div className="text-xs text-red-300/80 mt-0.5">
-              {modalidadPago === 'TOTAL_ADELANTADO' 
-                ? 'Debes registrar el pago completo antes de continuar al siguiente paso.'
-                : 'Debes registrar el abono antes de continuar al siguiente paso.'}
+        pagos.length > 0 &&
+        !pagoValido && (
+          <div className="p-3 bg-red-900/20 border border-red-700/50 rounded-xl flex items-start gap-2.5 animate-pulse">
+            <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium text-red-200 text-sm">Pago Incompleto</div>
+              <div className="text-xs text-red-300/80 mt-0.5">
+                {modalidadPago === 'TOTAL_ADELANTADO'
+                  ? 'Debes registrar el pago completo antes de continuar al siguiente paso.'
+                  : 'Debes registrar el abono antes de continuar al siguiente paso.'}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Info adicional */}
       {modalidadPago === 'PAGO_POSTERIOR' && (
@@ -511,7 +493,7 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
         <DescuentoModal
           isOpen={showDescuentoModal}
           onClose={() => setShowDescuentoModal(false)}
-          totalVenta={modalidadPago === 'TOTAL_ADELANTADO' 
+          totalVenta={modalidadPago === 'TOTAL_ADELANTADO'
             ? roundMoney(totalEstimado * tasaCambio)
             : roundMoney(totalEstimado * tasaCambio)}
           tasaCambio={tasaCambio}

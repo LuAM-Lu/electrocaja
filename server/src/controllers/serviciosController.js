@@ -765,9 +765,9 @@ const createServicio = async (req, res) => {
             }
           }
 
-          // Normalizar monto (convertir formato venezolano "13,00" a "13.00")
+          // Normalizar monto (convertir formato venezolano "1.000,00" a number)
           const montoNormalizado = typeof pago.monto === 'string'
-            ? parseFloat(pago.monto.replace(',', '.'))
+            ? parseFloat(pago.monto.replace(/\./g, '').replace(',', '.'))
             : parseFloat(pago.monto);
 
           await tx.pago.create({
