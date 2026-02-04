@@ -42,8 +42,8 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
 
     // API Key recién generada (solo se muestra una vez)
     const [generatedApiKey, setGeneratedApiKey] = useState(null);
-
-
+    // Webhook Secret recién generado (solo se muestra una vez)
+    const [generatedWebhookSecret, setGeneratedWebhookSecret] = useState(null);
 
     // Cargar estado de la API
     const fetchApiStatus = async () => {
@@ -136,6 +136,14 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
 
             if (response.data?.success) {
                 toast.success('✅ Webhook agregado exitosamente');
+                // Capturar el secreto generado por el backend
+                if (response.data.data.secreto) {
+                    setGeneratedWebhookSecret({
+                        secreto: response.data.data.secreto,
+                        url: response.data.data.url
+                    });
+                }
+
                 setShowNewWebhookForm(false);
                 setNewWebhook({
                     url: '',
@@ -305,6 +313,53 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
                                         </button>
                                         <button
                                             onClick={() => setGeneratedApiKey(null)}
+                                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                                        >
+                                            Entendido
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal de Webhook Secret generado (solo se muestra una vez) */}
+                    {generatedWebhookSecret && (
+                        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4">
+                            <div className="bg-white rounded-2xl p-6 max-w-lg w-full">
+                                <div className="text-center">
+                                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Shield className="h-8 w-8 text-purple-600" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">¡Webhook Configurado!</h3>
+                                    <p className="text-gray-500 mb-4 text-sm">
+                                        Para asegurar la conexión, añade este secreto en tu aplicación externa.
+                                    </p>
+
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left mb-4">
+                                        <h5 className="text-xs font-bold text-amber-800 uppercase mb-1">Instrucciones:</h5>
+                                        <p className="text-xs text-amber-900">
+                                            Copia este secreto en el archivo <code className="bg-amber-100 px-1 rounded">.env</code> de tu aplicación receptora:
+                                        </p>
+                                        <div className="mt-2 text-xs font-mono bg-white p-2 rounded border border-amber-200 overflow-x-auto">
+                                            SADES_WEBHOOK_SECRET="{generatedWebhookSecret.secreto}"
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-100 rounded-xl p-4 font-mono text-sm break-all text-left mb-4">
+                                        {generatedWebhookSecret.secreto}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => copyToClipboard(generatedWebhookSecret.secreto, 'Webhook Secret')}
+                                            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                            Copiar Secreto
+                                        </button>
+                                        <button
+                                            onClick={() => setGeneratedWebhookSecret(null)}
                                             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                                         >
                                             Entendido
