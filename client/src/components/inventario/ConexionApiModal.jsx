@@ -163,17 +163,23 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
     };
 
     // Probar webhook
+    // Probar webhook
     const testWebhook = async (webhookId) => {
         try {
             const response = await api.post(`/eweb/admin/webhooks/${webhookId}/test`);
 
             if (response.data?.success) {
-                toast.success(`✅ Webhook respondió correctamente (${response.data.duracionMs}ms)`);
+                // Verificar si 'data' existe en la respuesta, si no usar la respuesta directa o defaults
+                const duracion = response.data.data?.duracionMs || response.data.duracionMs || '0';
+                toast.success(`✅ Webhook respondió correctamente (${duracion}ms)`);
             } else {
-                toast.error(`❌ Webhook falló: ${response.data?.error}`);
+                const errorMsg = response.data?.error || response.data?.data?.error || 'Error desconocido';
+                toast.error(`❌ Webhook falló: ${errorMsg}`);
             }
         } catch (error) {
-            toast.error('Error probando webhook');
+            console.error('Error testeando webhook:', error);
+            const errorMsg = error.response?.data?.error || error.message || 'Error de conexión';
+            toast.error(`Error probando webhook: ${errorMsg}`);
         }
     };
 
