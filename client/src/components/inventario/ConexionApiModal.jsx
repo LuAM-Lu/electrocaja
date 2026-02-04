@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import toast from '../../utils/toast.jsx';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { api } from '../../config/api';
 
 const ConexionApiModal = ({ isOpen, onClose }) => {
     // Estado principal
@@ -43,21 +43,13 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
     // API Key recién generada (solo se muestra una vez)
     const [generatedApiKey, setGeneratedApiKey] = useState(null);
 
-    // Obtener token de auth
-    const getAuthHeaders = () => {
-        const token = localStorage.getItem('auth-token');
-        return {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        };
-    };
+
 
     // Cargar estado de la API
     const fetchApiStatus = async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/eweb/health`);
-            const data = await response.json();
-            setApiStatus(data);
+            const response = await api.get('/eweb/health');
+            setApiStatus(response.data);
         } catch (error) {
             console.error('Error fetching API status:', error);
             setApiStatus({ success: false, error: 'No se pudo conectar' });
@@ -68,19 +60,18 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
     const fetchClientes = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/eweb/admin/clientes`, {
-                headers: getAuthHeaders()
-            });
+            const response = await api.get('/eweb/admin/clientes');
 
-            if (response.ok) {
-                const data = await response.json();
-                setClientes(data.data || []);
-            } else if (response.status === 401) {
-                toast.error('Sesión expirada. Por favor, vuelve a iniciar sesión.');
+            if (response.data) {
+                setClientes(response.data.data || []);
             }
         } catch (error) {
             console.error('Error fetching clientes:', error);
-            toast.error('Error cargando clientes API');
+            if (error.response?.status === 401) {
+                toast.error('Sesión expirada. Por favor, vuelve a iniciar sesión.');
+            } else {
+                toast.error('Error cargando clientes API');
+            }
         } finally {
             setLoading(false);
         }
@@ -89,13 +80,10 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
     // Cargar logs de webhooks
     const fetchWebhookLogs = async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/eweb/admin/webhook-logs?pageSize=20`, {
-                headers: getAuthHeaders()
-            });
+            const response = await api.get('/eweb/admin/webhook-logs?pageSize=20');
 
-            if (response.ok) {
-                const data = await response.json();
-                setWebhookLogs(data.data || []);
+            if (response.data) {
+                setWebhookLogs(response.data.data || []);
             }
         } catch (error) {
             console.error('Error fetching webhook logs:', error);
@@ -111,17 +99,11 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
 
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/eweb/admin/clientes`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(newCliente)
-            });
+            const response = await api.post('/eweb/admin/clientes', newCliente);
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
+            if (response.data?.success) {
                 toast.success('✅ Cliente API creado exitosamente');
-                setGeneratedApiKey(data.data.apiKey); // Mostrar API Key una sola vez
+                setGeneratedApiKey(response.data.data.apiKey); // Mostrar API Key una sola vez
                 setShowNewClienteForm(false);
                 setNewCliente({
                     nombre: '',
@@ -131,11 +113,11 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
                 });
                 fetchClientes();
             } else {
-                toast.error(data.error?.message || 'Error creando cliente');
+                toast.error(response.data?.error?.message || 'Error creando cliente');
             }
         } catch (error) {
             console.error('Error creando cliente:', error);
-            toast.error('Error de conexión');
+            toast.error(error.response?.data?.error?.message || 'Error creando cliente');
         } finally {
             setLoading(false);
         }
@@ -150,15 +132,9 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
 
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/eweb/admin/clientes/${clienteId}/webhooks`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(newWebhook)
-            });
+            const response = await api.post(`/eweb/admin/clientes/${clienteId}/webhooks`, newWebhook);
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
+            if (response.data?.success) {
                 toast.success('✅ Webhook agregado exitosamente');
                 setShowNewWebhookForm(false);
                 setNewWebhook({
@@ -168,11 +144,11 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
                 });
                 fetchClientes();
             } else {
-                toast.error(data.error?.message || 'Error agregando webhook');
+                toast.error(response.data?.error?.message || 'Error agregando webhook');
             }
         } catch (error) {
             console.error('Error agregando webhook:', error);
-            toast.error('Error de conexión');
+            toast.error(error.response?.data?.error?.message || 'Error agregando webhook');
         } finally {
             setLoading(false);
         }
@@ -181,17 +157,12 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
     // Probar webhook
     const testWebhook = async (webhookId) => {
         try {
-            const response = await fetch(`${API_BASE}/api/eweb/admin/webhooks/${webhookId}/test`, {
-                method: 'POST',
-                headers: getAuthHeaders()
-            });
+            const response = await api.post(`/eweb/admin/webhooks/${webhookId}/test`);
 
-            const data = await response.json();
-
-            if (data.success) {
-                toast.success(`✅ Webhook respondió correctamente (${data.duracionMs}ms)`);
+            if (response.data?.success) {
+                toast.success(`✅ Webhook respondió correctamente (${response.data.duracionMs}ms)`);
             } else {
-                toast.error(`❌ Webhook falló: ${data.error}`);
+                toast.error(`❌ Webhook falló: ${response.data?.error}`);
             }
         } catch (error) {
             toast.error('Error probando webhook');
@@ -203,12 +174,9 @@ const ConexionApiModal = ({ isOpen, onClose }) => {
         if (!confirm('¿Estás seguro de eliminar este webhook?')) return;
 
         try {
-            const response = await fetch(`${API_BASE}/api/eweb/admin/webhooks/${webhookId}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
+            const response = await api.delete(`/eweb/admin/webhooks/${webhookId}`);
 
-            if (response.ok) {
+            if (response.status === 200 || response.status === 204) {
                 toast.success('Webhook eliminado');
                 fetchClientes();
             }
