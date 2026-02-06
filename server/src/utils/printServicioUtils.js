@@ -343,9 +343,36 @@ const generarHTMLTicketServicio = (servicio, usuario, linkSeguimiento, qrBase64 
         <div class="separator"></div>
         ` : ''}
         
-        <!-- TOTALES -->
+        <!-- CÁLCULO DE DESCUENTO Y TOTALES -->
+        ${(() => {
+            // Calcular suma de items para detectar descuento
+            const sumaItems = items.reduce((sum, item) => {
+                const precio = parseFloat(item.precioUnitario || item.precio_unitario || item.precio || 0);
+                const cant = parseFloat(item.cantidad || 0);
+                return sum + (precio * cant);
+            }, 0);
+
+            const montoDescuento = Math.max(0, sumaItems - totalEstimado);
+            const tieneDescuento = montoDescuento > 0.05; // Tolerancia pequeña para errores de redondeo
+
+            const sumaItemsBs = sumaItems * tasa;
+            const montoDescuentoBs = montoDescuento * tasa;
+
+            return `
         <div class="total-section" style="color: #000;">
-            <div class="center normal" style="color: #000;">Total Estimado: ${formatearDual(totalEstimadoBs)}</div>
+            ${items.length > 0 ? `
+            <div class="center normal" style="color: #000;">Subtotal: ${formatearDual(sumaItemsBs)}</div>
+            ` : ''}
+            
+            ${tieneDescuento ? `
+            <div class="center normal" style="color: #000;">Descuento: -${formatearDual(montoDescuentoBs)}</div>
+            <div class="separator" style="margin: 4px 0; border-top: 1px dashed #000;"></div>
+            ` : ''}
+            
+            <div class="center normal" style="font-weight: 700; font-size: 13px; color: #000;">Total a Pagar: ${formatearDual(totalEstimadoBs)}</div>
+            `;
+        })()}
+
             ${totalPagado > 0 ? `
                 <div class="center normal" style="color: #000;">Pago Inicial: ${formatearDual(totalPagadoBs)}</div>
                 ${metodosPago ? `

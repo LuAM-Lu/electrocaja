@@ -18,7 +18,7 @@ const useServiciosStore = create()(
       loading: false,
       error: null,
       conectado: false,
-      
+
       // 🆕 Sistema de caché
       cacheServicios: {
         data: [],
@@ -62,22 +62,23 @@ const useServiciosStore = create()(
 
         const state = get();
         const { cacheServicios, CACHE_DURATION } = state;
-        
+
         // Normalizar filtros para comparación (sin incluirRelaciones que es solo frontend)
         const filtrosNormalizados = {
           estado: filtros.estado || null,
           tecnicoId: filtros.tecnicoId || null,
           clienteId: filtros.clienteId || null,
           fechaDesde: filtros.fechaDesde || null,
-          fechaHasta: filtros.fechaHasta || null
+          fechaHasta: filtros.fechaHasta || null,
+          search: filtros.search || null
         };
-        
+
         // Verificar si hay caché válido y los filtros coinciden
         const ahora = Date.now();
-        const cacheValido = cacheServicios.timestamp && 
-                           (ahora - cacheServicios.timestamp) < CACHE_DURATION &&
-                           JSON.stringify(cacheServicios.filtros) === JSON.stringify(filtrosNormalizados);
-        
+        const cacheValido = cacheServicios.timestamp &&
+          (ahora - cacheServicios.timestamp) < CACHE_DURATION &&
+          JSON.stringify(cacheServicios.filtros) === JSON.stringify(filtrosNormalizados);
+
         if (cacheValido && !forzarRecarga) {
           // Usar datos del caché
           console.log('📦 Usando caché de servicios (válido por', Math.round((CACHE_DURATION - (ahora - cacheServicios.timestamp)) / 1000), 'segundos más)');
@@ -99,6 +100,7 @@ const useServiciosStore = create()(
           if (filtrosNormalizados.clienteId) params.append('clienteId', filtrosNormalizados.clienteId);
           if (filtrosNormalizados.fechaDesde) params.append('fechaDesde', filtrosNormalizados.fechaDesde);
           if (filtrosNormalizados.fechaHasta) params.append('fechaHasta', filtrosNormalizados.fechaHasta);
+          if (filtrosNormalizados.search) params.append('search', filtrosNormalizados.search);
 
           const queryString = params.toString() ? `?${params.toString()}` : '';
           const response = await apiWithRetry(() => api.get(`/servicios${queryString}`));
@@ -122,7 +124,7 @@ const useServiciosStore = create()(
           }
         } catch (error) {
           console.error('❌ Error al obtener servicios:', error);
-          
+
           // Si hay error pero tenemos caché, usar el caché como fallback
           if (cacheServicios.data && cacheServicios.data.length > 0) {
             console.warn('⚠️ Error al cargar servicios, usando caché como fallback');
@@ -134,7 +136,7 @@ const useServiciosStore = create()(
             });
             return cacheServicios.data;
           }
-          
+
           set({
             loading: false,
             error: error.message,
@@ -147,7 +149,7 @@ const useServiciosStore = create()(
           });
         }
       },
-      
+
       // ===================================
       //  INVALIDAR CACHÉ DE SERVICIOS
       // ===================================
@@ -229,10 +231,10 @@ const useServiciosStore = create()(
             }));
 
             // ✅ ELIMINADO: toast.success - Ahora se maneja con modal premium de procesamiento
-            
+
             // 🆕 NO IMPRIMIR AUTOMÁTICAMENTE - Se mostrará modal de acciones
             // El modal de acciones permitirá al usuario elegir si imprimir o enviar WhatsApp
-            
+
             return nuevoServicio;
           }
         } catch (error) {
@@ -315,17 +317,19 @@ const useServiciosStore = create()(
       // ===================================
       //  CAMBIAR ESTADO
       // ===================================
-      cambiarEstado: async (id, nuevoEstado, nota = null) => {
+      cambiarEstado: async (id, nuevoEstado, nota = null, esCancelacion = false) => {
         const conectado = await get().verificarConexion();
         if (!conectado) {
           throw new Error('Sin conexión al servidor');
         }
 
         try {
+          console.log('🔄 [serviciosStore] cambiarEstado args:', { id, nuevoEstado, nota, esCancelacion });
           const response = await apiWithRetry(() =>
             api.patch(`/servicios/${id}/estado`, {
               estado: nuevoEstado,
-              nota
+              nota: nota,
+              esCancelacion: esCancelacion
             })
           );
 

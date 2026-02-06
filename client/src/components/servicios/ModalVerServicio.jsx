@@ -54,8 +54,9 @@ const calcularDiasTranscurridos = (fechaIngreso) => {
 export default function ModalVerServicio({ servicio, onClose, actualizarEstado }) {
   if (!servicio) return null;
 
-  const { socket } = useAuthStore();
-  const { obtenerServicio } = useServiciosStore();
+  // ✅ FIX: El store usa 'usuario', no 'user'. Aliamos para mantener compatibilidad con el código existente.
+  const { socket, usuario: user } = useAuthStore();
+  const { obtenerServicio, cambiarEstado } = useServiciosStore();
   const { tasaCambio } = useCajaStore();
 
   const [imagenExpandida, setImagenExpandida] = useState(null);
@@ -68,8 +69,18 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const [showModalReimprimir, setShowModalReimprimir] = useState(false);
   const [showModalWhatsApp, setShowModalWhatsApp] = useState(false);
   const [showModalEntrega, setShowModalEntrega] = useState(false);
+  const [clienteExpandido, setClienteExpandido] = useState(false);
+  const [clienteDropdownPos, setClienteDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const [dispositivoExpandido, setDispositivoExpandido] = useState(false);
+  const [dispositivoDropdownPos, setDispositivoDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+
+  // Estado para cancelación
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+
   const tooltipButtonRef = useRef(null);
+  const clienteButtonRef = useRef(null);
+  const dispositivoButtonRef = useRef(null);
 
   // ✅ Usar refs para mantener referencias estables y evitar loops infinitos
   const servicioIdRef = useRef(servicio?.id);
@@ -195,6 +206,13 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
   const dispositivoColor = servicioActual.dispositivoColor || servicioActual.dispositivo?.color || null;
   const dispositivoImei = servicioActual.dispositivoImei || servicioActual.dispositivo?.imei || servicioActual.imei || '—';
   const dispositivoTipo = servicioActual.dispositivoTipo || servicioActual.dispositivo?.tipo || servicioActual.tipo || null;
+  const problemaReportado = (Array.isArray(servicioActual.problemas) && servicioActual.problemas.length > 0
+    ? servicioActual.problemas.join(', ')
+    : servicioActual.problemas) ||
+    servicioActual.fallaDeclarada ||
+    servicioActual.problema ||
+    '—';
+  const diagnosticoTecnico = servicioActual.diagnostico || servicioActual.comentarios || servicioActual.observaciones || '—';
 
   // 🔧 Extraer accesorios
   const accesorios = (() => {
@@ -555,6 +573,29 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
     }
   };
 
+  const handleConfirmarCancelacion = async () => {
+    if (!cancelReason.trim()) {
+      toast.error('Debes ingresar un motivo para la cancelación');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Pasa inmediatamente el servicio a "CANCELADO" y agrega la nota
+      await cambiarEstado(servicioActual.id, 'CANCELADO', `[ICON:FLAG] Orden Cancelada: ${cancelReason}`, true);
+
+      toast.success('Orden cancelada exitosamente');
+      setShowCancelModal(false);
+      setCancelReason('');
+
+    } catch (error) {
+      console.error('Error cancelando orden:', error);
+      toast.error('Error al cancelar la orden');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Calcular posición del tooltip cuando se abre
   useEffect(() => {
     if (tooltipAbierto && tooltipButtonRef.current) {
@@ -761,130 +802,271 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
             {/* COLUMNA IZQUIERDA */}
             <div className="flex flex-col gap-3 min-h-0">
 
-              {/* INFORMACIÓN DE CLIENTE - COMPACTA */}
-              <div className="bg-gray-800/70 rounded-xl p-2 border border-gray-700 flex-[0.3] flex flex-col min-h-0 shadow-lg overflow-hidden">
-                <h3 className="text-[10px] font-semibold text-gray-100 mb-1 flex items-center gap-1 flex-shrink-0">
-                  <User className="h-2.5 w-2.5 text-blue-400" />
-                  Información del Cliente
-                </h3>
-                <div className="flex-1 flex flex-col space-y-1 min-h-0 overflow-y-auto">
-                  <div className="flex items-center justify-between flex-shrink-0 pb-0.5">
-                    <span className="text-gray-400 text-[9px]">Cliente:</span>
-                    <div className="scale-90 origin-right">
-                      <ContactoTooltip />
-                    </div>
-                  </div>
+              {/* 🌟 INFORMACIÓN DE CLIENTE Y DISPOSITIVO - PREMIUM V2 */}
+              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl border border-gray-700/60 h-auto shrink-0 flex flex-col shadow-xl overflow-hidden group hover:shadow-2xl transition-all duration-300 relative">
+                {/* Efecto de fondo sutil */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
-                  {/* INFORMACIÓN DEL DISPOSITIVO - DESPLEGABLE */}
-                  <div className="bg-gray-900/50 rounded-lg border border-gray-700/50 flex-shrink-0">
-                    <button
-                      onClick={() => setDispositivoExpandido(!dispositivoExpandido)}
-                      className="w-full flex items-center justify-between p-1.5 hover:bg-gray-800/50 rounded-lg transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        <IconoTipo className="h-2.5 w-2.5 text-blue-400" />
-                        <span className="text-gray-400 text-[8px] font-medium">{etiquetaTipo}</span>
-                        <span className="text-gray-500 text-[8px]">• {dispositivoMarca} {dispositivoModelo}</span>
-                      </div>
-                      {dispositivoExpandido ? (
-                        <ChevronUp className="h-3 w-3 text-gray-400" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3 text-gray-400" />
-                      )}
-                    </button>
-                    {dispositivoExpandido && (
-                      <div className="px-1.5 pb-1.5 space-y-0.5 text-[9px] border-t border-gray-700/50 pt-1">
-                        <div className="flex justify-between items-center gap-1">
-                          <span className="text-gray-500 text-[8px] whitespace-nowrap">Marca:</span>
-                          <span className="text-gray-200 font-medium text-right truncate flex-1 ml-0.5 text-[8px]">{dispositivoMarca}</span>
-                        </div>
-                        <div className="flex justify-between items-center gap-1">
-                          <span className="text-gray-500 text-[8px] whitespace-nowrap">Modelo:</span>
-                          <span className="text-gray-200 font-medium text-right truncate flex-1 ml-0.5 text-[8px]">{dispositivoModelo}</span>
-                        </div>
-                        {dispositivoColor && (
-                          <div className="flex justify-between items-center gap-1">
-                            <span className="text-gray-500 text-[8px] whitespace-nowrap">Color:</span>
-                            <span className="text-gray-200 font-medium text-right truncate flex-1 ml-0.5 text-[8px]">{dispositivoColor}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-start gap-1">
-                          <span className="text-gray-500 text-[8px] whitespace-nowrap">IMEI:</span>
-                          <span className="text-gray-200 font-mono text-[8px] text-right break-all flex-1 ml-0.5 leading-tight">{dispositivoImei}</span>
-                        </div>
-                        {accesorios.length > 0 && (
-                          <div className="pt-0.5 border-t border-gray-700/50 mt-0.5">
-                            <div className="text-gray-500 text-[8px] mb-0.5">Accesorios:</div>
-                            <div className="flex flex-wrap gap-0.5">
-                              {accesorios.slice(0, 2).map((accesorio, idx) => (
-                                <span key={idx} className="inline-flex items-center px-0.5 py-0.5 bg-green-500/20 text-green-300 rounded text-[7px] border border-green-500/30 truncate max-w-[45%]">
-                                  {accesorio}
-                                </span>
-                              ))}
-                              {accesorios.length > 2 && (
-                                <span className="inline-flex items-center px-0.5 py-0.5 bg-gray-600/50 text-gray-400 rounded text-[7px]">
-                                  +{accesorios.length - 2}
-                                </span>
-                              )}
+                <div className="p-3 border-b border-white/5 flex items-center justify-between">
+                  <h3 className="text-[11px] font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                    <User className="h-3.5 w-3.5 text-blue-400" />
+                    Detalles del Cliente
+                  </h3>
+                  {/* ID Badge */}
+                  <span className="text-[9px] font-mono text-gray-500 bg-black/20 px-1.5 py-0.5 rounded border border-white/5">
+                    ID: {servicioActual.clienteId || 'N/A'}
+                  </span>
+                </div>
+
+                <div className="flex-1 flex flex-col p-3 space-y-3 overflow-y-auto custom-scrollbar">
+
+                  {/* Row: Cliente + Dispositivo */}
+                  <div className="flex flex-row gap-2 w-full">
+                    {/* 1. SECCIÓN CLIENTE (Portal Dropdown) */}
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-1">Cliente</h4>
+                      <div className="bg-gray-800/50 rounded-xl border border-gray-700/50">
+                        <button
+                          ref={clienteButtonRef}
+                          onClick={(e) => {
+                            if (clienteButtonRef.current) {
+                              const rect = clienteButtonRef.current.getBoundingClientRect();
+                              setClienteDropdownPos({
+                                top: rect.bottom + 5,
+                                left: rect.left,
+                                width: rect.width
+                              });
+                            }
+                            setClienteExpandido(!clienteExpandido);
+                            setDispositivoExpandido(false);
+                          }}
+                          className="w-full flex items-center justify-between p-2.5 hover:bg-gray-700/30 transition-colors rounded-xl"
+                        >
+                          <div className="flex items-center gap-2.5 overflow-hidden">
+                            <div className="p-1.5 rounded-lg bg-blue-500/10 flex-shrink-0">
+                              <User className="h-4 w-4 text-blue-300" />
+                            </div>
+                            <div className="text-left overflow-hidden">
+                              <span className="block text-sm font-medium text-gray-200 truncate">{clienteNombre}</span>
+                              <span className="block text-xs text-gray-400 truncate max-w-[120px]">{clienteTelefono || 'Sin teléfono'}</span>
                             </div>
                           </div>
+                          <div className="flex-shrink-0 ml-1">
+                            {clienteExpandido ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+                          </div>
+                        </button>
+
+                        {/* PORTAL PARA CLIENTE */}
+                        {clienteExpandido && createPortal(
+                          <div
+                            className="fixed z-[9999] animate-in fade-in zoom-in-95 duration-200"
+                            style={{
+                              top: `${clienteDropdownPos.top}px`,
+                              left: `${clienteDropdownPos.left}px`,
+                              minWidth: `${clienteDropdownPos.width}px`
+                            }}
+                          >
+                            <div className="bg-gray-800 border border-gray-600 rounded-xl shadow-2xl p-4 dropdown-portal">
+                              <div className="flex flex-col gap-3">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex items-center gap-2 text-xs text-gray-400 overflow-hidden">
+                                    <MapPin size={12} className="text-gray-500 flex-shrink-0" />
+                                    <span className="truncate">{clienteDireccion || 'Sin dirección'}</span>
+                                  </div>
+                                  <div className="flex gap-2 flex-shrink-0 ml-2">
+                                    <button
+                                      onClick={() => window.open(`tel:${clienteTelefono}`)}
+                                      className="w-7 h-7 flex items-center justify-center rounded bg-gray-700 hover:bg-green-500/20 text-gray-400 hover:text-green-400 border border-gray-600 hover:border-green-500/30 transition-all"
+                                      title="Llamar"
+                                    >
+                                      <Phone size={13} />
+                                    </button>
+                                    <button
+                                      onClick={() => window.open(`https://wa.me/${clienteTelefono?.replace(/\D/g, '')}`)}
+                                      className="w-7 h-7 flex items-center justify-center rounded bg-gray-700 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-400 border border-gray-600 hover:border-emerald-500/30 transition-all"
+                                      title="WhatsApp"
+                                    >
+                                      <FaWhatsapp size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                  <div className="flex items-center gap-2 text-xs overflow-hidden">
+                                    <Mail size={12} className="text-blue-400 flex-shrink-0" />
+                                    <span className="text-gray-300 truncate" title={clienteEmail}>{clienteEmail || '—'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="absolute -top-1.5 left-6 w-3 h-3 bg-gray-800 border-t border-l border-gray-600 rotate-45 transform"></div>
+                            </div>
+                            <div className="fixed inset-0 -z-10" onClick={() => setClienteExpandido(false)}></div>
+                          </div>,
+                          document.body
                         )}
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Días, Fecha Estimada y Estado en una sola fila compacta */}
-                  <div className="grid grid-cols-3 gap-1 text-[9px] flex-shrink-0">
-                    {/* Días */}
-                    <div className="flex flex-col">
-                      <span className="text-gray-400 text-[7px] mb-0.5">Días:</span>
-                      <div className={`font-bold flex items-center gap-0.5 text-[9px] ${estaVencido ? 'text-red-400' : 'text-gray-100'}`}>
-                        {estadoNormalizado === 'Entregado' ? '—' : `${diasTranscurridos}d`}
-                        {estaVencido && <Flag size={7} />}
+                    {/* 2. SECCIÓN DISPOSITIVO (Portal Dropdown) */}
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider pl-1">Dispositivo</h4>
+                      <div className="bg-gray-800/50 rounded-xl border border-gray-700/50">
+                        <button
+                          ref={dispositivoButtonRef}
+                          onClick={(e) => {
+                            if (dispositivoButtonRef.current) {
+                              const rect = dispositivoButtonRef.current.getBoundingClientRect();
+                              setDispositivoDropdownPos({
+                                top: rect.bottom + 5,
+                                left: rect.left,
+                                width: rect.width
+                              });
+                            }
+                            setDispositivoExpandido(!dispositivoExpandido);
+                            setClienteExpandido(false);
+                          }}
+                          className="w-full flex items-center justify-between p-2.5 hover:bg-gray-700/30 transition-colors rounded-xl"
+                        >
+                          <div className="flex items-center gap-2.5 overflow-hidden">
+                            <div className={`p-1.5 rounded-lg ${dispositivoTipo === 'Apple' ? 'bg-white/10' : 'bg-green-500/10'} flex-shrink-0`}>
+                              <IconoTipo className="h-4 w-4 text-green-300" />
+                            </div>
+                            <div className="text-left overflow-hidden">
+                              <span className="block text-sm font-medium text-gray-200 truncate">{etiquetaTipo}</span>
+                              <span className="block text-xs text-gray-400 truncate max-w-[120px]">{dispositivoMarca} {dispositivoModelo}</span>
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 ml-1">
+                            {dispositivoExpandido ? <ChevronUp size={16} className="text-gray-500" /> : <ChevronDown size={16} className="text-gray-500" />}
+                          </div>
+                        </button>
+
+                        {/* PORTAL PARA DISPOSITIVO (OSCURO) */}
+                        {dispositivoExpandido && createPortal(
+                          <div
+                            className="fixed z-[9999] animate-in fade-in zoom-in-95 duration-200"
+                            style={{
+                              top: `${dispositivoDropdownPos.top}px`,
+                              left: `${dispositivoDropdownPos.left}px`,
+                              minWidth: `${dispositivoDropdownPos.width}px`
+                            }}
+                          >
+                            <div className="bg-gray-800 border border-gray-600 rounded-xl shadow-2xl p-4 dropdown-portal space-y-3">
+                              <div className="space-y-2 pb-2 border-b border-gray-700">
+                                <div className="bg-red-500/10 rounded-lg p-2 border border-red-500/20">
+                                  <div className="flex items-center gap-1.5 mb-1 text-red-400">
+                                    <AlertTriangle size={12} />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Problema Reportado</span>
+                                  </div>
+                                  <p className="text-xs text-gray-300 leading-snug">
+                                    {(typeof servicioActual.descripcionProblema === 'string' ? servicioActual.descripcionProblema : servicioActual.descripcionProblema?.contenido) || problemaReportado || '—'}
+                                  </p>
+                                </div>
+                                <div className="bg-blue-500/10 rounded-lg p-2 border border-blue-500/20">
+                                  <div className="flex items-center gap-1.5 mb-1 text-blue-400">
+                                    <Stethoscope size={12} />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">Notas Técnicas</span>
+                                  </div>
+                                  <p className="text-xs text-gray-300 leading-snug">
+                                    Hay <span className="text-blue-300 font-bold">{notas.length}</span> notas técnicas
+                                  </p>
+                                </div>
+
+                                {/* 🆕 OBSERVACIONES / DIAGNÓSTICO INICIAL */}
+                                {(servicioActual.observaciones || diagnosticoTecnico) && (
+                                  <div className="bg-purple-500/10 rounded-lg p-2 border border-purple-500/20 col-span-2">
+                                    <div className="flex items-center gap-1.5 mb-1 text-purple-400">
+                                      <StickyNote size={12} />
+                                      <span className="text-[10px] font-bold uppercase tracking-wider">Diagnóstico Inicial / Observaciones</span>
+                                    </div>
+                                    <p className="text-xs text-gray-300 leading-snug">
+                                      {servicioActual.observaciones || diagnosticoTecnico}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                                <div>
+                                  <span className="block text-gray-500 text-[10px] mb-0.5">IMEI / Serial</span>
+                                  <span className="font-mono text-gray-200 break-all">{dispositivoImei}</span>
+                                </div>
+                                <div>
+                                  <span className="block text-gray-500 text-[10px] mb-0.5">Color</span>
+                                  <span className="text-gray-200">{dispositivoColor || '—'}</span>
+                                </div>
+                                {accesorios.length > 0 && (
+                                  <div className="col-span-2 mt-1 pt-2 border-t border-gray-700">
+                                    <span className="block text-gray-500 text-[10px] mb-1">Accesorios</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {accesorios.map((acc, i) => (
+                                        <span key={i} className="px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded text-[10px] border border-gray-600">
+                                          {acc}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="absolute -top-1.5 left-6 w-3 h-3 bg-gray-800 border-t border-l border-gray-600 rotate-45 transform"></div>
+                            </div>
+                            <div className="fixed inset-0 -z-10" onClick={() => setDispositivoExpandido(false)}></div>
+                          </div>,
+                          document.body
+                        )}
                       </div>
                     </div>
+                  </div>
 
-                    {/* Fecha Estimada */}
-                    <div className="flex flex-col">
-                      <span className="text-gray-400 text-[7px] mb-0.5">F. Est.:</span>
-                      <div className="font-bold text-gray-100 text-[8px]">{formatearFecha(fechaEntrega)}</div>
+                  {/* 3. METADATA (Fechas y Estado) */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-gray-800/50 rounded-lg p-2 border border-gray-700/30 flex flex-col items-center justify-center text-center">
+                      <span className="text-[9px] text-gray-500 mb-0.5">Ingreso</span>
+                      <span className="text-[10px] font-medium text-gray-300">{formatearFecha(servicioActual.fechaIngreso)}</span>
                     </div>
-
-                    {/* Estado */}
-                    <div className="flex flex-col">
-                      <span className="text-gray-400 text-[7px] mb-0.5">Estado:</span>
-                      <span className={`inline-flex items-center gap-0.5 px-1 py-0.5 text-[7px] rounded font-bold ${estado.color} ${estado.textColor}`}>
-                        {React.cloneElement(estado.icon, { size: 8 })}
-                        <span className="truncate">{estadoNormalizado}</span>
-                      </span>
+                    <div className="bg-gray-800/50 rounded-lg p-2 border border-gray-700/30 flex flex-col items-center justify-center text-center">
+                      <span className="text-[9px] text-gray-500 mb-0.5">Estimado</span>
+                      <span className="text-[10px] font-medium text-gray-300">{formatearFecha(fechaEntrega)}</span>
+                    </div>
+                    <div className="bg-gray-800/50 rounded-lg p-2 border border-gray-700/30 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                      <div className={`absolute inset-0 opacity-10 ${estaVencido ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                      <span className="text-[9px] text-gray-500 mb-0.5">Días Taller</span>
+                      <div className={`text-[10px] font-bold flex items-center gap-1 ${estaVencido ? 'text-red-400' : 'text-blue-300'}`}>
+                        {diasTranscurridos} días
+                        {estaVencido && <AlertTriangle size={10} />}
+                      </div>
                     </div>
                   </div>
+
                 </div>
               </div>
 
-              {/* INFORMACIÓN DE ITEMS - 70% ALTO */}
-              <div className="bg-gray-800/70 rounded-xl border border-gray-700 flex-[0.7] flex flex-col min-h-0 shadow-lg">
-                <div className="p-4 border-b border-gray-700 flex-shrink-0 bg-gradient-to-r from-gray-800 to-gray-800/50">
-                  <h3 className="text-sm font-semibold text-gray-100 flex items-center gap-2">
-                    <ShoppingCart className="h-4 w-4 text-emerald-400" />
+              {/* INFORMACIÓN DE ITEMS - PREMIUM REFINED */}
+              <div className="bg-gray-800/80 backdrop-blur-md rounded-2xl border border-gray-700/60 flex-1 flex flex-col min-h-0 shadow-xl overflow-hidden group hover:shadow-2xl transition-all duration-300">
+                <div className="p-4 border-b border-gray-700 flex-shrink-0 bg-gradient-to-r from-gray-900 to-gray-800 relative overflow-hidden">
+                  {/* Background decoration */}
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                  <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2 relative z-10 uppercase tracking-wide">
+                    <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                      <ShoppingCart className="h-4 w-4 text-emerald-400" />
+                    </div>
                     Productos y Servicios
-                    <span className="text-xs bg-emerald-900/30 px-2 py-0.5 rounded-full text-emerald-300 border border-emerald-700/50">
+                    <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-md text-emerald-300 border border-emerald-500/30 font-mono">
                       {items.length}
                     </span>
                   </h3>
                 </div>
-                <div className="flex-1 overflow-y-auto min-h-0 p-2 sm:p-3">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-[10px] sm:text-xs">
-                      <thead className="bg-gray-700/50 border-b-2 border-gray-600 sticky top-0 z-10">
+                <div className="flex-1 overflow-y-auto min-h-0 p-3 custom-scrollbar">
+                  <div className="overflow-x-auto rounded-xl border border-gray-700/50">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-900/80 border-b border-gray-700 sticky top-0 z-10 backdrop-blur-sm">
                         <tr>
-                          <th className="px-1.5 sm:px-2 py-1.5 text-left font-semibold text-gray-300">Descripción</th>
-                          <th className="px-1.5 sm:px-2 py-1.5 text-center font-semibold text-gray-300 w-12 sm:w-16">Cant.</th>
-                          <th className="px-1.5 sm:px-2 py-1.5 text-right font-semibold text-gray-300 w-20 sm:w-24">P. Unit.</th>
-                          <th className="px-1.5 sm:px-2 py-1.5 text-right font-semibold text-gray-300 w-24 sm:w-28">Subtotal</th>
+                          <th className="px-3 py-2.5 text-left font-bold text-gray-400 uppercase text-[10px] tracking-wider">Descripción</th>
+                          <th className="px-3 py-2.5 text-center font-bold text-gray-400 uppercase text-[10px] tracking-wider w-12 sm:w-16">Cant.</th>
+                          <th className="px-3 py-2.5 text-right font-bold text-gray-400 uppercase text-[10px] tracking-wider w-24">P. Unit.</th>
+                          <th className="px-3 py-2.5 text-right font-bold text-gray-400 uppercase text-[10px] tracking-wider w-28">Subtotal</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-700/50">
+                      <tbody className="divide-y divide-gray-700/40 bg-gray-800/30">
                         {items.length > 0 ? (
                           items.map((item, i) => {
                             const precioUnitario = Number((item.precioUnitario || item.precio_unitario || item.precio) ?? 0);
@@ -893,28 +1075,33 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                             const precioUnitarioBs = precioUnitario * tasa;
                             const subtotalBs = subtotal * tasa;
                             return (
-                              <tr key={i} className="hover:bg-gray-700/30 transition-colors">
-                                <td className="px-1.5 sm:px-2 py-1.5 text-gray-200 font-medium break-words max-w-[120px] sm:max-w-none">
-                                  <div className="truncate sm:break-words" title={item.descripcion || item.nombre || '—'}>
-                                    {item.descripcion || item.nombre || '—'}
+                              <tr key={i} className="hover:bg-white/5 transition-colors group/row">
+                                <td className="px-3 py-2.5 text-gray-300 font-medium break-words align-middle">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-600 group-hover/row:bg-emerald-400 transition-colors"></div>
+                                    <span title={item.descripcion || item.nombre || '—'}>{item.descripcion || item.nombre || '—'}</span>
                                   </div>
                                 </td>
-                                <td className="px-1.5 sm:px-2 py-1.5 text-center text-gray-300 whitespace-nowrap">{cantidad}</td>
-                                <td className="px-1.5 sm:px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[9px] sm:text-xs">
-                                  {formatearBs(precioUnitarioBs)} Bs
+                                <td className="px-3 py-2.5 text-center text-gray-400 font-mono align-middle">{cantidad}</td>
+                                <td className="px-3 py-2.5 text-right text-gray-400 whitespace-nowrap align-middle">
+                                  <div className="text-gray-300 font-medium">{formatearBs(precioUnitarioBs)} Bs</div>
+                                  <div className="text-[9px] text-gray-500">${precioUnitario.toFixed(2)}</div>
                                 </td>
-                                <td className="px-1.5 sm:px-2 py-1.5 text-right font-semibold text-emerald-400 whitespace-nowrap text-[9px] sm:text-xs">
-                                  {formatearBs(subtotalBs)} Bs
+                                <td className="px-3 py-2.5 text-right font-semibold text-emerald-400 whitespace-nowrap align-middle">
+                                  <div className="text-emerald-300">{formatearBs(subtotalBs)} Bs</div>
+                                  <div className="text-[9px] text-emerald-600/80">${subtotal.toFixed(2)}</div>
                                 </td>
                               </tr>
                             );
                           })
                         ) : (
                           <tr>
-                            <td colSpan="4" className="px-3 py-8 text-center text-gray-500 italic">
-                              <div className="flex flex-col items-center gap-2">
-                                <ShoppingCart className="h-10 w-10 text-gray-600 opacity-50" />
-                                <span className="text-xs">No hay productos registrados</span>
+                            <td colSpan="4" className="px-3 py-12 text-center text-gray-500 italic">
+                              <div className="flex flex-col items-center gap-3">
+                                <div className="p-3 bg-gray-800 rounded-full border border-gray-700">
+                                  <ShoppingCart className="h-6 w-6 text-gray-600" />
+                                </div>
+                                <span className="text-xs font-medium">No hay productos registrados</span>
                               </div>
                             </td>
                           </tr>
@@ -923,38 +1110,44 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                     </table>
                   </div>
                 </div>
-                <div className="p-2 sm:p-3 border-t-2 border-gray-600 bg-gradient-to-r from-emerald-900/20 to-emerald-800/10 flex-shrink-0">
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] sm:text-xs text-gray-400 font-medium">Subtotal:</span>
-                      <div className="text-[10px] sm:text-xs text-gray-100 font-semibold break-all text-right">{formatearBs(totalGeneralBs)} Bs</div>
+
+                {/* Footer Totales */}
+                <div className="p-3 border-t border-gray-700 bg-gray-900/50 flex-shrink-0 space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-400 font-medium">Subtotal</span>
+                      <div className="text-gray-100 font-bold tracking-tight">{formatearBs(totalGeneralBs)} Bs <span className="text-gray-500 text-xs font-normal ml-1">(${totalGeneral.toFixed(2)})</span></div>
                     </div>
+
                     {totalPagado > 0 && (
-                      <div className="flex justify-between items-center pt-1.5 border-t border-gray-700">
-                        <span className="text-[10px] sm:text-xs text-gray-400 font-medium">Total Pagado:</span>
-                        <div className="text-[10px] sm:text-xs text-emerald-400 font-semibold break-all text-right">{formatearBs(totalPagadoBs)} Bs</div>
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-700/50 text-xs">
+                        <span className="text-gray-400">Pagado</span>
+                        <div className="text-emerald-400 font-semibold">{formatearBs(totalPagadoBs)} Bs <span className="text-emerald-600/70 ml-1">(${parseFloat(totalPagado).toFixed(2)})</span></div>
                       </div>
                     )}
+
                     {saldoPendiente > 0 && (
-                      <div className="flex justify-between items-center pt-1.5 border-t-2 border-gray-600">
-                        <span className="text-[10px] sm:text-xs text-gray-300 font-bold">Saldo Pendiente:</span>
-                        <div className="text-[10px] sm:text-xs text-red-400 font-bold break-all text-right">{formatearBs(saldoPendienteBs)} Bs</div>
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-700/50 text-sm">
+                        <span className="text-gray-300 font-bold">Saldo Pendiente</span>
+                        <div className="text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 shadow-sm">{formatearBs(saldoPendienteBs)} Bs <span className="text-red-500/70 text-xs ml-1">(${parseFloat(saldoPendiente).toFixed(2)})</span></div>
                       </div>
                     )}
-                    <div className="pt-1.5 border-t border-gray-700 mt-1.5">
-                      <div className="text-[9px] sm:text-[10px] text-gray-500 text-center">
-                        Tasa: {formatearBs(tasa)} Bs/USD
+
+                    <div className="pt-2 border-t border-gray-700/50">
+                      <div className="flex justify-between items-center text-[10px] text-gray-500">
+                        <span>Tasa de cambio</span>
+                        <span className="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-400">{formatearBs(tasa)} Bs/USD</span>
                       </div>
                     </div>
 
                     {/* 💰 HISTORIAL DE PAGOS Y MÉTODOS */}
                     {(servicioActual.pagos && servicioActual.pagos.length > 0) && (
                       <div className="pt-3 border-t border-gray-700 mt-2">
-                        <div className="text-[10px] sm:text-xs text-gray-400 font-semibold mb-2 flex items-center gap-1">
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
                           <CreditCard className="h-3 w-3" />
-                          Métodos de Pago
+                          Historial de Pagos
                         </div>
-                        <div className="space-y-1.5 max-h-[200px] overflow-y-auto custom-scrollbar">
+                        <div className="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
                           {servicioActual.pagos.map((pago, pagoIdx) => {
                             // Parsear pagos si viene como string
                             const pagosParsed = typeof pago.pagos === 'string'
@@ -962,12 +1155,13 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                               : pago.pagos || [];
 
                             return (
-                              <div key={pagoIdx} className="bg-gray-700/30 rounded-md p-2 border border-gray-700/50">
-                                <div className="flex justify-between items-center mb-1.5">
-                                  <span className="text-[9px] text-gray-400">
-                                    {pago.tipo === 'PAGO_INICIAL' ? '💰 Inicial' : '✅ Final'}
+                              <div key={pagoIdx} className="bg-gray-800 rounded-lg p-2 border border-gray-700">
+                                <div className="flex justify-between items-center mb-1.5 pb-1 border-b border-gray-700/50">
+                                  <span className="text-[10px] font-medium text-gray-300 flex items-center gap-1">
+                                    {pago.tipo === 'PAGO_INICIAL' ? <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span> : <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>}
+                                    {pago.tipo === 'PAGO_INICIAL' ? 'Inicial' : 'Final'}
                                   </span>
-                                  <span className="text-[9px] font-bold text-emerald-400">
+                                  <span className="text-[10px] font-mono font-bold text-gray-200">
                                     ${parseFloat(pago.monto).toFixed(2)}
                                   </span>
                                 </div>
@@ -975,9 +1169,10 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                                   {pagosParsed.map((metodoPago, metodoIdx) => (
                                     <div
                                       key={metodoIdx}
-                                      className="flex items-center justify-between text-[9px] bg-gray-800/50 rounded px-1.5 py-1"
+                                      className="flex items-center justify-between text-[9px]"
                                     >
-                                      <span className="text-gray-300 truncate flex-1">
+                                      <span className="text-gray-400 truncate flex-1 flex items-center gap-1">
+                                        <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
                                         {(() => {
                                           const labelMap = {
                                             'efectivo_bs': 'Efectivo Bs',
@@ -991,7 +1186,7 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
                                           return labelMap[metodoPago.metodo] || metodoPago.metodo;
                                         })()}
                                       </span>
-                                      <span className="text-gray-100 font-medium ml-2">
+                                      <span className="text-gray-300 font-medium ml-2">
                                         {metodoPago.moneda === 'bs' ? 'Bs ' : '$'}
                                         {parseFloat(metodoPago.monto).toLocaleString('es-VE', {
                                           minimumFractionDigits: 2,
@@ -1442,65 +1637,69 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
           </div>
         </div>
 
-        {/* FOOTER OPTIMIZADO */}
-        <div className="flex-shrink-0 bg-gray-800 px-8 py-4 border-t border-gray-700">
-          <div className="flex justify-center items-center gap-3">
+        {/* FOOTER OPTIMIZADO - ESTILO PREMIUM */}
+        <div className="flex-shrink-0 bg-gradient-to-b from-gray-800 to-gray-900 px-6 py-5 border-t border-gray-700/50 shadow-[0_-4px_20px_rgba(0,0,0,0.4)] z-10 relative flex justify-between items-center">
+          {/* GRUPO IZQUIERDO: Herramientas y Acciones Secundarias */}
+          <div className="flex items-center gap-3">
+            {/* Cancelar */}
+            <button
+              onClick={() => setShowCancelModal(true)}
+              disabled={estadoNormalizado === 'Entregado' || estadoNormalizado === 'Cancelado' || user?.rol !== 'admin'}
+              className={`h-11 px-4 rounded-xl border flex items-center gap-2 font-medium transition-all duration-200 ${estadoNormalizado === 'Entregado' || estadoNormalizado === 'Cancelado' || user?.rol !== 'admin'
+                  ? 'bg-gray-800/50 border-gray-700 text-gray-600 cursor-not-allowed'
+                  : 'bg-gray-800 border-gray-600 text-gray-400 hover:text-red-400 hover:border-red-900/50 hover:bg-red-900/10'
+                }`}
+              title={user?.rol !== 'admin' ? "Solo administradores pueden cancelar" : "Cancelar Orden"}
+            >
+              <Flag size={16} />
+              <span className="hidden sm:inline">Cancelar</span>
+            </button>
 
-            {/* Acciones secundarias */}
+            {/* Reimprimir */}
             <button
               onClick={handleReimprimirOrden}
-              className="group px-4 py-2 bg-gray-700/50 border border-gray-600 hover:bg-blue-600/70 hover:border-blue-500 text-gray-200 hover:text-white rounded-lg transition-all duration-200 flex items-center gap-2 text-sm"
+              className="h-11 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white rounded-xl transition-all duration-200 flex items-center gap-2 font-medium"
             >
-              <Printer size={14} className="group-hover:text-white transition-colors" />
-              <span>Reimprimir</span>
+              <Printer size={16} />
+              <span className="hidden sm:inline">Reimprimir</span>
             </button>
 
+            {/* WhatsApp */}
             <button
               onClick={handleNotificarWhatsApp}
-              className="group px-4 py-2 bg-green-700/50 border border-green-600 hover:bg-green-600/70 hover:border-green-500 text-green-100 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm"
+              className="h-11 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-green-500/50 hover:text-green-400 text-gray-300 rounded-xl transition-all duration-200 flex items-center gap-2 font-medium"
             >
-              <FaWhatsapp size={14} className="group-hover:text-white transition-colors" />
-              <span>WhatsApp</span>
+              <FaWhatsapp size={16} />
+              <span className="hidden sm:inline">WhatsApp</span>
             </button>
+          </div>
 
-            {/* Acciones principales */}
-            {/* Siempre mostrar botón de pago si hay saldo pendiente */}
-            {tieneSaldoPendiente && (
+          {/* GRUPO DERECHO: Acción Principal */}
+          <div className="flex items-center gap-4">
+            {/* Info de actualización (oculta en móvil) */}
+            {servicio.ultimaActualizacion && (
+              <div className="hidden lg:flex items-center gap-2 text-xs text-gray-500 mr-2">
+                <Zap size={12} />
+                <span>Actualizado: {tiempoTranscurrido || 'Reciente'}</span>
+              </div>
+            )}
+
+            {/* Botón Principal (Pago o Entrega) */}
+            {(tieneSaldoPendiente || (estadoNormalizado === 'Listo para Retiro' && !tieneSaldoPendiente)) && (
               <button
-                onClick={() => setShowPagoModal(true)}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] ${estadoNormalizado === 'Listo para Retiro'
-                  ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white shadow-emerald-500/25'
-                  : 'bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-500 text-white shadow-blue-500/25'
+                onClick={tieneSaldoPendiente ? () => setShowPagoModal(true) : handleEntregarDispositivo}
+                className={`h-11 px-6 rounded-xl font-bold text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 ${!tieneSaldoPendiente && estadoNormalizado === 'Listo para Retiro'
+                    ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20'
+                    : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-blue-500/20'
                   }`}
               >
-                <CreditCard size={18} />
+                {tieneSaldoPendiente ? <CreditCard size={18} /> : <Truck size={18} />}
                 <span>
-                  {estadoNormalizado === 'Listo para Retiro'
-                    ? 'Pagar y Entregar'
-                    : 'Registrar Pago'}
+                  {tieneSaldoPendiente
+                    ? (estadoNormalizado === 'Listo para Retiro' ? 'Pagar y Entregar' : 'Registrar Pago')
+                    : 'Entregar Dispositivo'}
                 </span>
               </button>
-            )}
-
-            {/* Botón entregar solo si no hay saldo pendiente y está listo */}
-            {estadoNormalizado === 'Listo para Retiro' && !tieneSaldoPendiente && (
-              <button
-                onClick={handleEntregarDispositivo}
-                className="px-6 py-3 bg-gradient-to-r from-emerald-700 to-emerald-600 hover:from-emerald-600 hover:to-emerald-500 text-white rounded-xl font-semibold transition-all duration-200 flex items-center gap-3 shadow-lg hover:shadow-emerald-500/25 transform hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Truck size={18} />
-                <span>Entregar Dispositivo</span>
-              </button>
-            )}
-
-            {/* Información adicional en el footer */}
-            {servicio.ultimaActualizacion && (
-              <div className="hidden md:flex items-center gap-4 ml-4 text-xs text-gray-400">
-                <span className="flex items-center gap-1">
-                  <Zap size={12} />
-                  Actualizado: {tiempoTranscurrido || 'Reciente'}
-                </span>
-              </div>
             )}
           </div>
         </div>
@@ -1656,6 +1855,76 @@ export default function ModalVerServicio({ servicio, onClose, actualizarEstado }
             }, 1500);
           }}
         />
+      )}
+
+      {/* MODAL DE CANCELACIÓN DE ORDEN */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex justify-center items-center p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md border border-red-900/50 shadow-2xl overflow-hidden animate-modal-enter">
+            <div className="px-6 py-4 bg-gradient-to-r from-red-900/40 to-red-800/20 border-b border-red-900/30 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-red-100 flex items-center gap-2">
+                <Flag className="h-5 w-5 text-red-500" />
+                Cancelar Orden
+              </h3>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+                disabled={loading}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-red-900/10 border border-red-900/30 rounded-lg flex gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-200/80">
+                  Esta acción marcará la orden como <strong>Entregada</strong> y agregará una nota de cancelación. Esta acción es irreversible.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  Motivo de la cancelación <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Explique por qué se cancela la orden..."
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 resize-none h-24 text-sm"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-800/50 border-t border-gray-700 flex justify-end gap-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarCancelacion}
+                disabled={!cancelReason.trim() || loading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Flag size={16} />
+                    Confirmar Cancelación
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

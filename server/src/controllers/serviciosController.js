@@ -57,6 +57,7 @@ const getServicios = async (req, res) => {
       clienteId,
       fechaDesde,
       fechaHasta,
+      search, // 🆕 Búsqueda universal
       page = 1,
       limit = 200
     } = req.query;
@@ -81,55 +82,68 @@ const getServicios = async (req, res) => {
       if (fechaHasta) where.fechaIngreso.lte = new Date(fechaHasta);
     }
 
+    // 🆕 Búsqueda Universal (Server-side)
+    if (search) {
+      const searchTerms = search.trim().split(' ');
+      where.AND = searchTerms.map(term => ({
+        OR: [
+          { numeroServicio: { contains: term, mode: 'insensitive' } },
+          { clienteNombre: { contains: term, mode: 'insensitive' } },
+          { clienteTelefono: { contains: term, mode: 'insensitive' } },
+          { dispositivoMarca: { contains: term, mode: 'insensitive' } },
+          { dispositivoModelo: { contains: term, mode: 'insensitive' } },
+          { dispositivoImei: { contains: term, mode: 'insensitive' } }
+        ]
+      }));
+    }
+
+    // ⚡ CONSULTA OPTIMIZADA: Usar 'select' en lugar de 'include' para reducir payload
     const [servicios, total] = await Promise.all([
       prisma.servicioTecnico.findMany({
         where,
-        include: {
-          items: {
-            include: {
-              producto: {
-                select: {
-                  id: true,
-                  descripcion: true,
-                  codigoBarras: true
-                }
-              }
-            }
-          },
-          pagos: {
-            include: {
-              usuario: {
-                select: { nombre: true, email: true }
-              },
-              transaccion: {
-                select: { id: true, numeroComprobante: true }
-              }
-            },
-            orderBy: { fecha: 'desc' }
-          },
-          notas: {
-            orderBy: { fecha: 'desc' },
-            take: 10 // 🆕 Aumentar a 10 para asegurar que se incluya la fecha de cambio a LISTO_RETIRO
-          },
+        select: {
+          id: true,
+          numeroServicio: true,
+          estado: true,
+          fechaIngreso: true,
+          fechaEntregaEstimada: true,
+          fechaEntregaReal: true,
+          updatedAt: true,
+          // Datos del dispositivo
+          dispositivoMarca: true,
+          dispositivoModelo: true,
+          dispositivoColor: true,
+          dispositivoImei: true,
+          problemas: true,
+          observaciones: true,
+          accesorios: true,
+          // Datos del cliente
+          clienteId: true,
+          clienteNombre: true,
+          clienteTelefono: true,
+          clienteEmail: true,
+          clienteDireccion: true,
+          // Totales (sin necesidad de recalcular con items)
+          totalEstimado: true,
+          totalPagado: true,
+          saldoPendiente: true,
+          // Relaciones ligeras
           cliente: {
-            select: {
-              id: true,
-              nombre: true,
-              telefono: true,
-              email: true
-            }
+            select: { id: true, nombre: true, telefono: true }
           },
           tecnico: {
-            select: { id: true, nombre: true, email: true }
-          },
-          creadoPor: {
             select: { id: true, nombre: true }
           },
-          cajaIngreso: {
-            select: { id: true, fecha: true }
-          },
-          cajaEntrega: {
-            select: { id: true, fecha: true }
+          // ⚠️ NO incluir items ni pagos completos para la vista de lista (Performance Boost)
+          notas: {
+            where: { tipo: 'CAMBIO_ESTADO' },
+            select: {
+              tipo: true,
+              estadoNuevo: true,
+              fecha: true
+            },
+            orderBy: { fecha: 'desc' },
+            take: 20
           }
         },
         orderBy: { fechaIngreso: 'desc' },
@@ -441,7 +455,7 @@ const createServicio = async (req, res) => {
     }
 
     // Calcular totales con precisión (si hay items)
-    const totalEstimado = items && items.length > 0
+    const totalItems = items && items.length > 0
       ? parseFloat(
         items.reduce((sum, item) =>
           sum + (parseFloat(item.cantidad) * parseFloat(item.precio_unitario || item.precioUnitario)),
@@ -449,6 +463,18 @@ const createServicio = async (req, res) => {
         ).toFixed(2)
       )
       : 0;
+
+    // ✅ Obtener descuento si existe
+    const descuento = pagoInicial && pagoInicial.descuento ? parseFloat(pagoInicial.descuento) : 0;
+
+    // ✅ Aplicar descuento al total estimado
+    const totalEstimado = Math.max(0, parseFloat((totalItems - descuento).toFixed(2)));
+
+    console.log(`💰 [Backend] Totales calculados:`, {
+      totalItems,
+      descuento,
+      totalEstimado
+    });
 
     let totalPagado = 0;
     let saldoPendiente = totalEstimado;
@@ -463,8 +489,11 @@ const createServicio = async (req, res) => {
       totalPagado = parseFloat(pagoInicial.totalUsd || pagoInicial.totalUsdEquivalent || pagoInicial.monto || 0);
 
       // ✅ Validar que el total pagado no sea mayor al total estimado
-      if (totalPagado > totalEstimado) {
+      // (Puede ser ligeramente mayor por redondeo o propina, pero no debería exceder por mucho si es abono)
+      if (totalPagado > totalEstimado + 0.05) { // Margen de error pequeño
         console.warn(`⚠️ Total pagado (${totalPagado}) es mayor al total estimado (${totalEstimado}). Ajustando a total estimado.`);
+        // Si el usuario pagó de más, podría ser 'vuelto' o 'propina', pero para servicio lo capamos al total
+        // O dejamos que se registre sobrepago? Mejor ajustar para consistencia
         totalPagado = totalEstimado;
       }
 
@@ -727,7 +756,8 @@ const createServicio = async (req, res) => {
             clienteNombre: cliente.nombre,
             codigoVenta: numeroServicio,
             consecutivoDelDia: consecutivo,
-            servicioTecnicoId: servicio.id
+            servicioTecnicoId: servicio.id,
+            descuentoTotal: descuento // ✅ Guardar descuento en la transacción para referencia
           }
         });
 
@@ -1583,6 +1613,14 @@ const cambiarEstado = async (req, res) => {
     const { id } = req.params;
     const { estado, nota } = req.body;
 
+    console.log('📌 [serviciosController] cambiarEstado Request:', {
+      id,
+      estado,
+      nota,
+      esCancelacion: req.body.esCancelacion,
+      body: req.body
+    });
+
     if (!estado) {
       return res.status(400).json({
         success: false,
@@ -1602,7 +1640,12 @@ const cambiarEstado = async (req, res) => {
     }
 
     // Validar que si pasa a ENTREGADO, debe estar pagado
-    if (estado === 'ENTREGADO' && parseFloat(servicioActual.saldoPendiente) > 0) {
+    // Validar que si pasa a ENTREGADO, debe estar pagado
+    // EXCEPCIÓN: Si la nota indica que es una cancelación, permitir entregar con deuda (se asume pérdida o anulación)
+    console.log('📝 [serviciosController] nota:', nota);
+    const esCancelacion = (req.body.esCancelacion === true) || (nota && nota.includes('Orden Cancelada'));
+
+    if (estado === 'ENTREGADO' && parseFloat(servicioActual.saldoPendiente) > 0 && !esCancelacion) {
       return res.status(400).json({
         success: false,
         message: 'No se puede entregar el servicio con saldo pendiente. Debe registrar el pago final primero'
@@ -1615,7 +1658,8 @@ const cambiarEstado = async (req, res) => {
         where: { id: parseInt(id) },
         data: {
           estado,
-          fechaEntregaReal: estado === 'ENTREGADO' ? new Date() : servicioActual.fechaEntregaReal
+          fechaEntregaReal: estado === 'ENTREGADO' ? new Date() : servicioActual.fechaEntregaReal,
+          saldoPendiente: estado === 'CANCELADO' ? 0 : servicioActual.saldoPendiente
         },
         include: {
           items: true,
@@ -1631,17 +1675,25 @@ const cambiarEstado = async (req, res) => {
         'ESPERANDO_APROBACION': '[ICON:CLOCK]',
         'EN_REPARACION': '[ICON:WRENCH]',
         'LISTO_RETIRO': '[ICON:CHECK]',
-        'ENTREGADO': '[ICON:PACKAGE]'
+        'ENTREGADO': '[ICON:PACKAGE]',
+        'CANCELADO': '[ICON:X_CIRCLE]'
       };
 
       const iconEstado = estadoIconMap[estado] || '[ICON:FLAG]';
-      const contenidoNota = nota || `Estado cambiado de ${servicioActual.estado} a ${estado}`;
+
+      // Si la nota ya tiene un icono (ej: cancelación), no agregar el del estado
+      let contenidoFinal = '';
+      if (nota && nota.startsWith('[ICON:')) {
+        contenidoFinal = nota;
+      } else {
+        contenidoFinal = `${iconEstado} ${nota || `Estado cambiado de ${servicioActual.estado} a ${estado}`}`;
+      }
 
       await tx.servicioTecnicoNota.create({
         data: {
           servicioId: parseInt(id),
           tipo: 'CAMBIO_ESTADO',
-          contenido: `${iconEstado} ${contenidoNota}`,
+          contenido: contenidoFinal,
           tecnico: req.user?.nombre || req.user?.email || 'Sistema',
           estadoAnterior: servicioActual.estado,
           estadoNuevo: estado,
@@ -1795,7 +1847,7 @@ const cambiarEstado = async (req, res) => {
 const registrarPago = async (req, res) => {
   try {
     const { id } = req.params;
-    const { pagos, vueltos, tasaCambio, esAbono } = req.body;
+    const { pagos, vueltos, tasaCambio, esAbono, descuento } = req.body;
     const usuarioId = parseInt(req.user.userId || req.user.id);
 
     if (!pagos || pagos.length === 0) {
@@ -1835,6 +1887,10 @@ const registrarPago = async (req, res) => {
     let totalUsd = 0;
     let montoPago = 0;
     const tasa = parseFloat(tasaCambio);
+
+    // ✅ Calcular descuento en USD (viene en Bs usualmente)
+    const descuentoBs = descuento ? parseFloat(descuento) : 0;
+    const descuentoUsd = descuentoBs > 0 ? parseFloat((descuentoBs / tasa).toFixed(2)) : 0;
 
     // Mapeo de métodos de pago a monedas (fallback si no viene moneda explícita)
     const metodoMonedaMap = {
@@ -1886,19 +1942,22 @@ const registrarPago = async (req, res) => {
 
     // Determinar si es abono o pago final
     const esPagoFinal = servicio.estado === 'LISTO_RETIRO' || servicio.estado === 'Listo para Retiro';
-    const esAbonoReal = esAbono === true || (!esPagoFinal && montoPago < parseFloat(servicio.saldoPendiente) - 0.01);
+    // ✅ Considerar descuento al verificar si cubre el saldo
+    // Si (Pagos + Descuento) >= SaldoPendiente, es pago completo
+    const montoTotalAplicado = montoPago + descuentoUsd;
+    const esAbonoReal = esAbono === true || (!esPagoFinal && montoTotalAplicado < parseFloat(servicio.saldoPendiente) - 0.01);
 
     // Validar que no exceda saldo pendiente (con margen de 0.01 por redondeo)
     // Para abonos, permitir pagos parciales
-    if (!esAbonoReal && montoPago > parseFloat(servicio.saldoPendiente) + 0.01) {
+    if (!esAbonoReal && montoTotalAplicado > parseFloat(servicio.saldoPendiente) + 0.01) {
       return res.status(400).json({
         success: false,
-        message: `El monto ($${montoPago.toFixed(2)}) excede el saldo pendiente ($${parseFloat(servicio.saldoPendiente).toFixed(2)})`
+        message: `El monto total ($${montoTotalAplicado.toFixed(2)}) excede el saldo pendiente ($${parseFloat(servicio.saldoPendiente).toFixed(2)})`
       });
     }
 
     // Validar monto mínimo para abonos
-    if (esAbonoReal && montoPago <= 0) {
+    if (esAbonoReal && montoPago <= 0 && descuentoUsd <= 0) {
       return res.status(400).json({
         success: false,
         message: 'El monto del abono debe ser mayor a $0.00'
@@ -1960,7 +2019,7 @@ const registrarPago = async (req, res) => {
           cajaId: cajaActual.id,
           tipo: 'INGRESO',
           categoria: categoriaTransaccion,
-          observaciones: `${esAbonoReal ? 'Abono' : 'Pago'} - Orden #${servicio.id}`,
+          observaciones: `${esAbonoReal ? 'Abono' : 'Pago'} - Orden #${servicio.id}${descuentoUsd > 0 ? ` (Desc. $${descuentoUsd})` : ''}`,
           totalBs,
           totalUsd,
           tasaCambioUsada: tasa, // ✅ Guardar tasa de cambio para auditoría
@@ -1969,7 +2028,7 @@ const registrarPago = async (req, res) => {
           clienteNombre: servicio.clienteNombre,
           codigoVenta,
           consecutivoDelDia: servicio.consecutivoDelDia || 1,
-          descuentoTotal: 0,
+          descuentoTotal: descuentoUsd, // ✅ Guardar descuento en la transacción
           cantidadItems: 0,
           servicioTecnicoId: servicio.id
         }
@@ -2041,16 +2100,18 @@ const registrarPago = async (req, res) => {
           servicioId: servicio.id,
           transaccionId: transaccion.id,
           tipo: tipoPago,
-          monto: montoPago,
+          monto: montoPago, // El monto pagado en dinero
           pagos: pagosJson,
           vueltos: vueltosJson.length > 0 ? vueltosJson : null,
           usuarioId,
-          tasaCambioUsada: tasa // ✅ Guardar tasa de cambio en el registro de pago
+          tasaCambioUsada: tasa, // ✅ Guardar tasa de cambio en el registro de pago
+          // Nota: No guardamos el descuento aquí explícitamente porque campo no existe, pero está en la transacción
         }
       });
 
       // Actualizar servicio
-      const nuevoSaldo = parseFloat((parseFloat(servicio.saldoPendiente) - montoPago).toFixed(2));
+      // ✅ Restar TANTO el pago COMO el descuento del saldo pendiente
+      const nuevoSaldo = parseFloat((parseFloat(servicio.saldoPendiente) - montoPago - descuentoUsd).toFixed(2));
 
       // Solo actualizar estado a ENTREGADO si es pago final y saldo es 0
       const updateData = {

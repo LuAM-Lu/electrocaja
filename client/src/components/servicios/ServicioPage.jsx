@@ -73,7 +73,7 @@ const mapearServicio = (servicio) => {
   const clienteNombre = servicio.clienteNombre || servicio.cliente?.nombre || 'Sin nombre';
   const dispositivoTexto = `${servicio.dispositivoMarca || ''} ${servicio.dispositivoModelo || ''}`.trim() || 'Sin dispositivo';
   const estadoNormalizado = normalizarEstado(servicio.estado);
-  const fechaEntrega = servicio.fechaEntregaEstimada || servicio.fechaEntrega;
+  const fechaEntrega = servicio.fechaEntregaReal || servicio.fechaEntregaEstimada || servicio.fechaEntrega || servicio.updatedAt;
   const totalFormateado = servicio.totalEstimado ? `$${parseFloat(servicio.totalEstimado).toFixed(2)}` : '$0.00';
 
   return {
@@ -98,20 +98,27 @@ const mapearServicio = (servicio) => {
 // Función para formatear fechas
 const formatearFecha = (fecha) => {
   const date = new Date(fecha);
-  return date.toLocaleDateString('es-VE', {
+  if (isNaN(date.getTime())) return 'Fecha inválida';
+
+  return new Intl.DateTimeFormat('es-VE', {
     day: '2-digit',
-    month: '2-digit',
+    month: 'short',
     year: 'numeric'
-  });
+  }).format(date);
 };
 
-// Función para calcular diferencia en días
-const calcularDiasTranscurridos = (fechaEntrega) => {
+// Función para calcular días transcurridos
+const calcularDiasTranscurridos = (fecha) => {
+  if (!fecha) return 0;
+  const fechaObj = new Date(fecha);
   const hoy = new Date();
-  const entrega = new Date(fechaEntrega);
-  const diferencia = Math.floor((hoy - entrega) / (1000 * 60 * 60 * 24));
-  return diferencia;
+  const diferenciaTiempo = hoy - fechaObj;
+  // Convertir a días (milisegundos * segundos * minutos * horas)
+  const diferenciaDias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
+  return diferenciaDias;
 };
+
+
 
 // 🆕 Función para encontrar la fecha en que cambió a LISTO_RETIRO
 const encontrarFechaListoRetiro = (servicio) => {
@@ -372,6 +379,18 @@ export default function ServicioPage({
       s.dispositivoMarca?.toLowerCase().includes(busquedaLower) ||
       s.dispositivoModelo?.toLowerCase().includes(busquedaLower);
 
+    // Filtro por antigüedad (Entregado > 20 días)
+    // Se ocultan servicios entregados hace más de 20 días para limpiar la vista
+    if (s.estado === 'Entregado') {
+      const fechaParaCalculo = s.fechaEntrega || s.fechaEntregaEstimada;
+      if (fechaParaCalculo) {
+        const diasDesdeEntrega = calcularDiasTranscurridos(fechaParaCalculo);
+        if (diasDesdeEntrega > 20) {
+          return false;
+        }
+      }
+    }
+
     return cumpleEstado && (coincideOrden || coincideCliente || coincideDispositivo);
   });
 
@@ -379,12 +398,23 @@ export default function ServicioPage({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentItems = itemsFiltrados.slice(startIndex, startIndex + itemsPerPage);
 
+  const [debouncedSearch, setDebouncedSearch] = useState(busqueda);
+
+  // Debounce para búsqueda
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(busqueda);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [busqueda]);
+
   // Resetear página cuando cambie el filtro o búsqueda
   useEffect(() => {
     setCurrentPage(1);
-  }, [filtroEstado, busqueda]);
+  }, [filtroEstado, debouncedSearch]);
 
-  // 🔧 Recargar servicios cuando cambie el filtro de estado
+  // 🔧 Recargar servicios cuando cambie el filtro de estado o búsqueda
   useEffect(() => {
     const filtros = {};
     if (filtroEstado) {
@@ -400,8 +430,13 @@ export default function ServicioPage({
       };
       filtros.estado = estadoMap[filtroEstado] || filtroEstado;
     }
+
+    if (debouncedSearch) {
+      filtros.search = debouncedSearch;
+    }
+
     cargarServicios({ ...filtros, incluirRelaciones: true });
-  }, [filtroEstado, cargarServicios]);
+  }, [filtroEstado, debouncedSearch, cargarServicios]);
 
   const vencidos = serviciosMapeados.filter(s => {
     const diasTranscurridos = calcularDiasTranscurridos(s.fechaEntrega || s.fechaEntregaEstimada);
@@ -626,6 +661,15 @@ export default function ServicioPage({
                         const totalPagado = parseFloat(s.totalPagado || 0);
                         const saldoPendiente = parseFloat(s.saldoPendiente || 0);
 
+                        // 🆕 Si está cancelado, mostrar etiqueta específica
+                        if (estadoNormalizado === 'Cancelado') {
+                          return (
+                            <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-gray-700 text-gray-300 border border-gray-600">
+                              Cancelado
+                            </span>
+                          );
+                        }
+
                         if (totalEstimado === 0) {
                           return (
                             <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-gray-700 text-gray-300">
@@ -748,18 +792,61 @@ export default function ServicioPage({
                   </button>
 
                   <div className="flex items-center space-x-1 px-2 border-l border-r border-gray-700/50 mx-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
-                      <button
-                        key={num}
-                        onClick={() => setCurrentPage(num)}
-                        className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all ${currentPage === num
-                            ? 'bg-gray-200 text-gray-900 shadow-md transform scale-105'
-                            : 'text-gray-400 hover:bg-white/10'
-                          }`}
-                      >
-                        {num}
-                      </button>
-                    ))}
+                    {(() => {
+                      // 🧠 Paginación Inteligente con Elipsis
+                      const getVisiblePages = (curr, total) => {
+                        // Si son pocas páginas, mostrar todas
+                        if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+                        const pages = [];
+                        // Siempre mostrar la primera página
+                        pages.push(1);
+
+                        // Si estamos lejos del inicio, agregar elipsis
+                        if (curr > 3) {
+                          pages.push('...');
+                        }
+
+                        // Rango alrededor de la página actual
+                        // Si estamos cerca del final, mostrar más anteriores para mantener tamaño
+                        // Si estamos cerca del inicio, mostrar más siguientes
+                        const start = Math.max(2, curr - 1);
+                        const end = Math.min(total - 1, curr + 1);
+
+                        for (let i = start; i <= end; i++) {
+                          pages.push(i);
+                        }
+
+                        // Si estamos lejos del final, agregar elipsis
+                        if (curr < total - 2) {
+                          pages.push('...');
+                        }
+
+                        // Siempre mostrar la última página
+                        if (total > 1) {
+                          pages.push(total);
+                        }
+
+                        return pages;
+                      };
+
+                      return getVisiblePages(currentPage, totalPages).map((item, idx) => (
+                        item === '...' ? (
+                          <span key={`ellipsis-${idx}`} className="w-7 h-7 flex items-center justify-center text-gray-500 text-xs select-none">...</span>
+                        ) : (
+                          <button
+                            key={item}
+                            onClick={() => setCurrentPage(item)}
+                            className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold transition-all ${currentPage === item
+                              ? 'bg-gray-200 text-gray-900 shadow-md transform scale-105'
+                              : 'text-gray-400 hover:bg-white/10'
+                              }`}
+                          >
+                            {item}
+                          </button>
+                        )
+                      ));
+                    })()}
                   </div>
 
                   <button

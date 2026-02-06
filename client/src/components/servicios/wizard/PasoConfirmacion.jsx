@@ -31,7 +31,8 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
 
   const calcularTotal = () => {
     const totalItems = (datos.items || []).reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0);
-    return totalItems;
+    const descuento = datos.pagoInicial?.descuento ? parseFloat(datos.pagoInicial.descuento) : 0;
+    return Math.max(0, totalItems - descuento);
   };
 
   // Notificar cambios en las opciones al componente padre
@@ -699,22 +700,42 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
 
               <div className="space-y-3">
                 {datos.items && datos.items.length > 0 ? (
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-emerald-200 font-medium">Subtotal:</span>
-                    <div className="text-right">
-                      <span className="text-emerald-100 font-bold text-xs">
-                        {(total * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
-                      </span>
-                      <span className="text-emerald-300/70 text-[10px] ml-1.5">
-                        (${total.toFixed(2)} USD)
-                      </span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-emerald-200 font-medium">Subtotal:</span>
+                      <div className="text-right">
+                        <span className="text-emerald-100 font-bold text-xs">
+                          {((datos.items || []).reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0) * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                        </span>
+                        <span className="text-emerald-300/70 text-[10px] ml-1.5">
+                          (${((datos.items || []).reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0)).toFixed(2)} USD)
+                        </span>
+                      </div>
                     </div>
+
+                    {/* DESCUENTO SI EXISTE */}
+                    {datos.pagoInicial?.descuento > 0 && (
+                      <div className="flex justify-between items-center text-xs text-red-300">
+                        <span className="font-medium flex items-center gap-1">
+                          <span className="bg-red-500/20 p-0.5 rounded text-[10px]">-</span>
+                          Descuento:
+                        </span>
+                        <div className="text-right">
+                          <span className="font-bold text-xs">
+                            -{(datos.pagoInicial.descuento * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
+                          </span>
+                          <span className="text-red-400/70 text-[10px] ml-1.5">
+                            (-${parseFloat(datos.pagoInicial.descuento).toFixed(2)} USD)
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : null}
 
                 <div className="border-t-2 border-emerald-700/50 pt-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-emerald-100 font-bold text-sm">Total Estimado:</span>
+                    <span className="text-emerald-100 font-bold text-sm">Total a Pagar:</span>
                     <div className="text-right">
                       <span className="text-emerald-100 font-bold text-lg">
                         {(total * tasaCambio).toLocaleString('es-VE', { minimumFractionDigits: 2 })} Bs.
@@ -726,7 +747,7 @@ export default function PasoConfirmacion({ datos, onActualizar, loading, servici
                   </div>
                 </div>
 
-                {total === 0 && (
+                {total === 0 && datos.items?.length === 0 && (
                   <div className="text-center text-emerald-300 text-xs italic pt-1">
                     Sin costos estimados aún
                   </div>

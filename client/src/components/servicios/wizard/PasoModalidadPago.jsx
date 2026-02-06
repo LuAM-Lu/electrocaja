@@ -31,7 +31,13 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
   const [pagos, setPagos] = useState(datos.pagoInicial?.pagos || []);
   const [vueltos, setVueltos] = useState(datos.pagoInicial?.vueltos || []);
   const [pagoValido, setPagoValido] = useState(false);
-  const [descuento, setDescuento] = useState(datos.pagoInicial?.descuento || 0);
+  const [descuento, setDescuento] = useState(() => {
+    // Si viene del estado global (USD), convertir a Bs para visualización local
+    if (datos.pagoInicial?.descuento) {
+      return roundMoney(datos.pagoInicial.descuento * tasaCambio);
+    }
+    return 0;
+  });
   const [showDescuentoModal, setShowDescuentoModal] = useState(false);
   const [solicitudDescuentoId, setSolicitudDescuentoId] = useState(null);
 
@@ -153,7 +159,8 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
         monto: montoFinal,
         pagos,
         vueltos,
-        descuento: roundMoney(descuento),
+        // ✅ Convertir descuento de Bs a USD para consistencia global
+        descuento: roundMoney(descuento / tasaCambio),
         totalBs: roundMoney(totalBs),
         totalUsd: roundMoney(totalUsd),
         totalUsdEquivalent: roundMoney(totalUsdEquivalent),
@@ -270,15 +277,15 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
               type="button"
               onClick={() => handleModalidadChange('TOTAL_ADELANTADO')}
               className={`w-full p-3 rounded-xl border-2 transition-all text-left ${modalidadPago === 'TOTAL_ADELANTADO'
-                  ? 'border-green-500 bg-green-600/20 shadow-lg shadow-green-900/20'
-                  : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
+                ? 'border-green-500 bg-green-600/20 shadow-lg shadow-green-900/20'
+                : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
                 }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${modalidadPago === 'TOTAL_ADELANTADO'
-                      ? 'bg-green-500/20 border border-green-600'
-                      : 'bg-gray-700 border border-gray-600'
+                    ? 'bg-green-500/20 border border-green-600'
+                    : 'bg-gray-700 border border-gray-600'
                     }`}>
                     <Banknote className={`h-5 w-5 ${modalidadPago === 'TOTAL_ADELANTADO' ? 'text-green-300' : 'text-gray-400'
                       }`} />
@@ -295,8 +302,8 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
                   </div>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${modalidadPago === 'TOTAL_ADELANTADO'
-                    ? 'border-green-400 bg-green-500 scale-110'
-                    : 'border-gray-400'
+                  ? 'border-green-400 bg-green-500 scale-110'
+                  : 'border-gray-400'
                   }`}>
                   {modalidadPago === 'TOTAL_ADELANTADO' && (
                     <CheckCircle className="h-3 w-3 text-white" />
@@ -310,15 +317,15 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
               type="button"
               onClick={() => handleModalidadChange('ABONO')}
               className={`w-full p-3 rounded-xl border-2 transition-all text-left ${modalidadPago === 'ABONO'
-                  ? 'border-blue-500 bg-blue-600/20 shadow-lg shadow-blue-900/20'
-                  : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
+                ? 'border-blue-500 bg-blue-600/20 shadow-lg shadow-blue-900/20'
+                : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
                 }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
                   <div className={`p-2 rounded-lg ${modalidadPago === 'ABONO'
-                      ? 'bg-blue-500/20 border border-blue-600'
-                      : 'bg-gray-700 border border-gray-600'
+                    ? 'bg-blue-500/20 border border-blue-600'
+                    : 'bg-gray-700 border border-gray-600'
                     }`}>
                     <Coins className={`h-5 w-5 ${modalidadPago === 'ABONO' ? 'text-blue-300' : 'text-gray-400'
                       }`} />
@@ -335,8 +342,8 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
                   </div>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${modalidadPago === 'ABONO'
-                    ? 'border-blue-400 bg-blue-500 scale-110'
-                    : 'border-gray-400'
+                  ? 'border-blue-400 bg-blue-500 scale-110'
+                  : 'border-gray-400'
                   }`}>
                   {modalidadPago === 'ABONO' && (
                     <CheckCircle className="h-3 w-3 text-white" />
@@ -350,15 +357,15 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
               type="button"
               onClick={() => handleModalidadChange('PAGO_POSTERIOR')}
               className={`w-full p-3 rounded-xl border-2 transition-all text-left ${modalidadPago === 'PAGO_POSTERIOR'
-                  ? 'border-orange-500 bg-orange-600/20 shadow-lg shadow-orange-900/20'
-                  : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
+                ? 'border-orange-500 bg-orange-600/20 shadow-lg shadow-orange-900/20'
+                : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
                 }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${modalidadPago === 'PAGO_POSTERIOR'
-                      ? 'bg-orange-500/20 border border-orange-600'
-                      : 'bg-gray-700 border border-gray-600'
+                    ? 'bg-orange-500/20 border border-orange-600'
+                    : 'bg-gray-700 border border-gray-600'
                     }`}>
                     <Clock className={`h-5 w-5 ${modalidadPago === 'PAGO_POSTERIOR' ? 'text-orange-300' : 'text-gray-400'
                       }`} />
@@ -375,8 +382,8 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
                   </div>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${modalidadPago === 'PAGO_POSTERIOR'
-                    ? 'border-orange-400 bg-orange-500 scale-110'
-                    : 'border-gray-400'
+                  ? 'border-orange-400 bg-orange-500 scale-110'
+                  : 'border-gray-400'
                   }`}>
                   {modalidadPago === 'PAGO_POSTERIOR' && (
                     <CheckCircle className="h-3 w-3 text-white" />
@@ -427,9 +434,9 @@ export default function PasoModalidadPago({ datos, onActualizar, errores, cajaAb
             pagos={pagos}
             vueltos={vueltos}
             onPagosChange={handlePagosChange}
-            totalVenta={modalidadPago === 'TOTAL_ADELANTADO'
-              ? roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento) // ✅ Aplicar descuento
-              : roundMoney(totalEstimado * tasaCambio) - roundMoney(descuento)} // ✅ Para ABONO, permitir pagar hasta el total
+            totalVenta={roundMoney(totalEstimado * tasaCambio)} // ✅ PagosPanel resta el descuento internamente
+            permitirPagoParcial={modalidadPago === 'ABONO'} // ✅ Para ABONO, permitir pago parcial (validación UI)
+
             tasaCambio={tasaCambio}
             title={modalidadPago === 'TOTAL_ADELANTADO' ? "Métodos de Pago" : "Métodos de Pago del Abono"}
             descuento={descuento}
