@@ -1,6 +1,27 @@
 // components/TransactionTable.jsx (HEADER VERDE CORREGIDO)
 import React, { useState, useEffect } from 'react';
-import { Eye, Wrench, HandCoins, Trash2, Plus, Search, Filter, Calendar, Clock, TrendingUp, TrendingDown, CreditCard, DollarSign, Smartphone, ArrowUpDown, ChevronLeft, ChevronRight, FileText, Coffee, MonitorSmartphone, Package, User } from 'lucide-react';
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import HandCoins from 'lucide-react/dist/esm/icons/hand-coins'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import ArrowUpDown from 'lucide-react/dist/esm/icons/arrow-up-down'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Coffee from 'lucide-react/dist/esm/icons/coffee'
+import MonitorSmartphone from 'lucide-react/dist/esm/icons/monitor-smartphone'
+import Package from 'lucide-react/dist/esm/icons/package'
+import User from 'lucide-react/dist/esm/icons/user'
 import { FaCashRegister, FaLock } from 'react-icons/fa';
 import { useTransactionTable } from '../store/cajaStore';
 //import TransactionDetailModal from './TransactionDetailModal';

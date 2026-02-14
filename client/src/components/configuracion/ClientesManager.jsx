@@ -1,9 +1,22 @@
 // client/src/components/configuracion/ClientesManager.jsx
 import React, { useState, useEffect } from 'react';
-import {
-  Users, Plus, Search, Edit2, Trash2, Eye, UserCheck, UserX,
-  Phone, Mail, MapPin, User, Building, Filter, X, ChevronLeft, ChevronRight
-} from 'lucide-react';
+import Users from 'lucide-react/dist/esm/icons/users'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Edit2 from 'lucide-react/dist/esm/icons/edit-2'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import UserCheck from 'lucide-react/dist/esm/icons/user-check'
+import UserX from 'lucide-react/dist/esm/icons/user-x'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import User from 'lucide-react/dist/esm/icons/user'
+import Building from 'lucide-react/dist/esm/icons/building'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import X from 'lucide-react/dist/esm/icons/x'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
 import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';
 

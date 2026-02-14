@@ -2,10 +2,21 @@
 // 👤 Modal premium para crear/editar usuarios con todos los campos DB
 
 import React, { useState, useEffect } from 'react';
-import {
-  X, UserPlus, Save, Crown, Shield, UserCheck, Eye,
-  Mail, Lock, Building2, Clock, QrCode, RefreshCw, AlertCircle, Check
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import UserPlus from 'lucide-react/dist/esm/icons/user-plus'
+import Save from 'lucide-react/dist/esm/icons/save'
+import Crown from 'lucide-react/dist/esm/icons/crown'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import UserCheck from 'lucide-react/dist/esm/icons/user-check'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import Building2 from 'lucide-react/dist/esm/icons/building-2'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import QrCode from 'lucide-react/dist/esm/icons/qr-code'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Check from 'lucide-react/dist/esm/icons/check'
 import { useAuthStore } from '../../../store/authStore';
 import toast from '../../../utils/toast.jsx';
 import { api } from '../../../config/api';

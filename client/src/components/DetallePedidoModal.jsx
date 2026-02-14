@@ -1,12 +1,28 @@
 // components/DetallePedidoModal.jsx - Modal de detalle y gestión de pedido
 import React, { useState, useRef } from 'react';
-import {
-    X, Package, User, Phone, Mail, Calendar,
-    DollarSign, Printer, MessageCircle, Clock,
-    CheckCircle, Truck, Store, XCircle, FileText,
-    ChevronRight, Building, Tag, Link as LinkIcon,
-    History, Send, Monitor, Wallet
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Package from 'lucide-react/dist/esm/icons/package'
+import User from 'lucide-react/dist/esm/icons/user'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Truck from 'lucide-react/dist/esm/icons/truck'
+import Store from 'lucide-react/dist/esm/icons/store'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import Building from 'lucide-react/dist/esm/icons/building'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import LinkIcon from 'lucide-react/dist/esm/icons/link'
+import History from 'lucide-react/dist/esm/icons/history'
+import Send from 'lucide-react/dist/esm/icons/send'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
 import { api } from '../config/api';
 import toast from '../utils/toast.jsx';
 import { generarReciboPedidoHTML } from '../utils/printUtils';

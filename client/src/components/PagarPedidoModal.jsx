@@ -1,10 +1,19 @@
 // components/PagarPedidoModal.jsx - Modal para procesar pago de pedido existente
 import React, { useState, useEffect, useRef } from 'react';
-import {
-    X, DollarSign, CreditCard, CheckCircle,
-    Banknote, Wallet, Package, User, Phone, Mail,
-    Monitor, Truck, Building, Smartphone
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import Package from 'lucide-react/dist/esm/icons/package'
+import User from 'lucide-react/dist/esm/icons/user'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Truck from 'lucide-react/dist/esm/icons/truck'
+import Building from 'lucide-react/dist/esm/icons/building'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
 import { api } from '../config/api';
 import { useCajaStore } from '../store/cajaStore';
 import toast from '../utils/toast.jsx';

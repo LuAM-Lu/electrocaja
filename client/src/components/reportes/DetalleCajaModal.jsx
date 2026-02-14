@@ -1,10 +1,27 @@
 // components/reportes/DetalleCajaModal.jsx
 import React, { useEffect, useState } from 'react';
-import {
-  X, Download, FileText, Filter, Search, BarChart3, PieChart,
-  Clock, TrendingUp, TrendingDown, DollarSign, Smartphone, CreditCard,
-  Package, ShoppingBag, Wrench, AlertTriangle, CheckCircle, Calendar, User, Eye, Receipt
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Download from 'lucide-react/dist/esm/icons/download'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import Search from 'lucide-react/dist/esm/icons/search'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
+import PieChart from 'lucide-react/dist/esm/icons/pie-chart'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Package from 'lucide-react/dist/esm/icons/package'
+import ShoppingBag from 'lucide-react/dist/esm/icons/shopping-bag'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import User from 'lucide-react/dist/esm/icons/user'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Receipt from 'lucide-react/dist/esm/icons/receipt'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 

@@ -1,9 +1,15 @@
 // components/inventario/PriceCalculator.jsx
 import React, { useState, useEffect } from 'react';
-import {
-  Calculator, DollarSign, TrendingUp, Zap, RotateCcw,
-  Target, Percent, ArrowRightLeft, AlertTriangle, CheckCircle
-} from 'lucide-react';
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw'
+import Target from 'lucide-react/dist/esm/icons/target'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import ArrowRightLeft from 'lucide-react/dist/esm/icons/arrow-right-left'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
 import toast from '../../utils/toast.jsx';
 
 const PriceCalculator = ({

@@ -1,13 +1,44 @@
 // components/inventario/ConexionApiModal.jsx
 // Modal para gestionar clientes API y webhooks de sincronización con apps externas
 import React, { useState, useEffect } from 'react';
-import {
-    X, Globe, Wifi, WifiOff, Settings, Link2, Shield, Clock, CheckCircle,
-    AlertTriangle, RefreshCw, ExternalLink, Package, DollarSign, Boxes,
-    Image, Tag, Eye, EyeOff, Server, Database, ArrowRight, Check, Wrench,
-    Coffee, Plus, Trash2, Copy, Key, Bell, Activity, Users, Zap,
-    TestTube, Send, AlertCircle, ChevronDown, ChevronUp
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Globe from 'lucide-react/dist/esm/icons/globe'
+import Wifi from 'lucide-react/dist/esm/icons/wifi'
+import WifiOff from 'lucide-react/dist/esm/icons/wifi-off'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Link2 from 'lucide-react/dist/esm/icons/link-2'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link'
+import Package from 'lucide-react/dist/esm/icons/package'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Boxes from 'lucide-react/dist/esm/icons/boxes'
+import Image from 'lucide-react/dist/esm/icons/image'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off'
+import Server from 'lucide-react/dist/esm/icons/server'
+import Database from 'lucide-react/dist/esm/icons/database'
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right'
+import Check from 'lucide-react/dist/esm/icons/check'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Coffee from 'lucide-react/dist/esm/icons/coffee'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Copy from 'lucide-react/dist/esm/icons/copy'
+import Key from 'lucide-react/dist/esm/icons/key'
+import Bell from 'lucide-react/dist/esm/icons/bell'
+import Activity from 'lucide-react/dist/esm/icons/activity'
+import Users from 'lucide-react/dist/esm/icons/users'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import TestTube from 'lucide-react/dist/esm/icons/test-tube'
+import Send from 'lucide-react/dist/esm/icons/send'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
 import toast from '../../utils/toast.jsx';
 
 import { api } from '../../config/api';

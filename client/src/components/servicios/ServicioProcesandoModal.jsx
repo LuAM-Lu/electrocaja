@@ -1,7 +1,10 @@
 // components/servicios/ServicioProcesandoModal.jsx
 // Pantalla de carga premium para procesamiento de orden de servicio
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { CheckCircle, Loader2, Printer, Wrench } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
 import { FaWhatsapp } from 'react-icons/fa';
 
 const ServicioProcesandoModal = forwardRef(({ 

@@ -1,9 +1,14 @@
 // components/actividades/ActividadesModal.jsx - MODAL PRINCIPAL CON TABS
 import React, { useState, useEffect } from 'react';
-import {
-  X, Activity, Clock, Calendar, Users, 
-  ChevronRight, RefreshCw, Settings, BarChart3
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Activity from 'lucide-react/dist/esm/icons/activity'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Users from 'lucide-react/dist/esm/icons/users'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
 //import { useActividadesStore, TIPOS_ACTIVIDAD } from '../../store/actividadesStore';
 import { useAuthStore } from '../../store/authStore';
 import RecordatoriosPanel from './RecordatoriosPanel';

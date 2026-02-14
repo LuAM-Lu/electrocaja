@@ -1,6 +1,10 @@
 // components/BloqueoCojeModal.jsx
 import React, { useState } from 'react';
-import { AlertTriangle, Lock, Calendar, User, Shield } from 'lucide-react';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import User from 'lucide-react/dist/esm/icons/user'
+import Shield from 'lucide-react/dist/esm/icons/shield'
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
 import toast from '../utils/toast.jsx';

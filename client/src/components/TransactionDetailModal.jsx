@@ -1,11 +1,32 @@
 // components/TransactionDetailModal.jsx - FACTURA DIGITAL COMPLETA Y CORREGIDA
 import React, { useState } from 'react';
-import {
-  X, Receipt, Hash, Building2, DollarSign, User, Calendar, Clock,
-  Smartphone, CreditCard, TrendingUp, TrendingDown, Package,
-  ShoppingCart, FileText, MapPin, Phone, Mail, Star, Tag,
-  Loader2, AlertCircle, Printer, Send, ChevronDown, ChevronUp, Wrench
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Receipt from 'lucide-react/dist/esm/icons/receipt'
+import Hash from 'lucide-react/dist/esm/icons/hash'
+import Building2 from 'lucide-react/dist/esm/icons/building-2'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import Package from 'lucide-react/dist/esm/icons/package'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import Star from 'lucide-react/dist/esm/icons/star'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Send from 'lucide-react/dist/esm/icons/send'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
 import toast from '../utils/toast.jsx';
 import { imprimirFacturaTermica } from '../utils/printUtils';
 import { useWhatsApp } from '../hooks/useWhatsApp';

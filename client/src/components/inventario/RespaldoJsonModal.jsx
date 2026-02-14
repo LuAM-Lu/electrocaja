@@ -1,6 +1,23 @@
 // components/inventario/RespaldoJsonModal.jsx
 import React, { useState, useRef } from 'react';
-import { X, Download, Upload, FileJson, Check, CheckCircle, Package, DollarSign, Tag, Boxes, Store, Calendar, AlertTriangle, FileUp, Loader2, Database, ChevronRight, Eye } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Download from 'lucide-react/dist/esm/icons/download'
+import Upload from 'lucide-react/dist/esm/icons/upload'
+import FileJson from 'lucide-react/dist/esm/icons/file-json'
+import Check from 'lucide-react/dist/esm/icons/check'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Package from 'lucide-react/dist/esm/icons/package'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import Boxes from 'lucide-react/dist/esm/icons/boxes'
+import Store from 'lucide-react/dist/esm/icons/store'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import FileUp from 'lucide-react/dist/esm/icons/file-up'
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2'
+import Database from 'lucide-react/dist/esm/icons/database'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import Eye from 'lucide-react/dist/esm/icons/eye'
 import { useInventarioStore } from '../../store/inventarioStore';
 import toast from '../../utils/toast.jsx';
 

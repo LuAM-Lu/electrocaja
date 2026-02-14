@@ -39,6 +39,7 @@ client/mkcert.exe
 .DS_Store
 Thumbs.db
 .claude/
+.agents/
 
 # Otros temporales
 *.cache

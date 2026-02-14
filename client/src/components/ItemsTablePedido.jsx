@@ -1,10 +1,25 @@
 // components/ItemsTablePedido.jsx - Tabla de items para pedidos con notas internas
 import React, { useState } from 'react';
-import {
-    Plus, Trash2, Edit3, Save, X, Package,
-    FileText, Link as LinkIcon, Building, Tag, Monitor, Truck, Sparkles, DollarSign,
-    Wallet, PiggyBank, Mail, PackageCheck, AlertCircle, TrendingUp
-} from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import Save from 'lucide-react/dist/esm/icons/save'
+import X from 'lucide-react/dist/esm/icons/x'
+import Package from 'lucide-react/dist/esm/icons/package'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import LinkIcon from 'lucide-react/dist/esm/icons/link'
+import Building from 'lucide-react/dist/esm/icons/building'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Truck from 'lucide-react/dist/esm/icons/truck'
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import PiggyBank from 'lucide-react/dist/esm/icons/piggy-bank'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import PackageCheck from 'lucide-react/dist/esm/icons/package-check'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
 import toast from '../utils/toast.jsx';
 
 // Modal para agregar notas internas

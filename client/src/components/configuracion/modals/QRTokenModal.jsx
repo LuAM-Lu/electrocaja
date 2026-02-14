@@ -2,7 +2,11 @@
 // 📱 Modal para visualizar e imprimir QR del token de acceso rápido
 
 import React, { useRef } from 'react';
-import { X, Printer, QrCode, Download, User } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import QrCode from 'lucide-react/dist/esm/icons/qr-code'
+import Download from 'lucide-react/dist/esm/icons/download'
+import User from 'lucide-react/dist/esm/icons/user'
 import { QRCodeSVG } from 'qrcode.react';
 import { formatearToken } from '../../../utils/tokenGenerator';
 import toast from '../../../utils/toast.jsx';

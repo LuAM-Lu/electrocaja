@@ -1,6 +1,9 @@
 // components/ConfiguracionModal.jsx (MODULAR Y CORREGIDO)
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Building, Folder } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Building from 'lucide-react/dist/esm/icons/building'
+import Folder from 'lucide-react/dist/esm/icons/folder'
 import { useAuthStore } from '../store/authStore';
 import WhatsAppPanel from './configuracion/WhatsAppPanel';
 import UsuariosPanel from './configuracion/UsuariosPanel';

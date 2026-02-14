@@ -1,11 +1,24 @@
 // components/PresupuestoModal.jsx - VERSIÓN CON ALTURAS AMPLIADAS Y EXPORT ARREGLADO 
 import React, { useState, useEffect } from 'react';
-import {
-  X, Calculator, FileText, Send, Save,
-  User, Package, DollarSign, Calendar,
-  CheckCircle, AlertCircle, ArrowRight, ArrowLeft,
-  Check, Clock, TrendingUp, ChevronRight, QrCode, ShoppingCart
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Send from 'lucide-react/dist/esm/icons/send'
+import Save from 'lucide-react/dist/esm/icons/save'
+import User from 'lucide-react/dist/esm/icons/user'
+import Package from 'lucide-react/dist/esm/icons/package'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right'
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left'
+import Check from 'lucide-react/dist/esm/icons/check'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import QrCode from 'lucide-react/dist/esm/icons/qr-code'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
 import ClienteSelector from './presupuesto/ClienteSelector';

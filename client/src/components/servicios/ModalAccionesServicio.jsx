@@ -1,7 +1,9 @@
 // client/src/components/servicios/ModalAccionesServicio.jsx
 // Modal que muestra opciones de acción después de crear un servicio
 import React, { useState } from 'react';
-import { X, Printer, CheckCircle } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
 import { FaWhatsapp } from 'react-icons/fa';
 import toast from '../../utils/toast.jsx';
 import { imprimirTicketServicio } from '../../utils/printUtils.js';

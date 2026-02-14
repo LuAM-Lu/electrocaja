@@ -1,6 +1,12 @@
 // src/components/CompartirWhatsAppModal.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Phone, Send, MessageCircle, Sparkles, Image as ImageIcon, XCircle } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Send from 'lucide-react/dist/esm/icons/send'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle'
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles'
+import ImageIcon from 'lucide-react/dist/esm/icons/image'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
 import toast from '../utils/toast.jsx';
 
 const STORAGE_KEY = 'ultimoNumeroWhatsApp';

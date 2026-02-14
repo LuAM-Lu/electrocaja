@@ -1,10 +1,26 @@
 // components/servicios/wizard/PasoDispositivo.jsx - MEJORADO CON PRELLENADOS INTELIGENTES
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  Smartphone, Camera, X, Upload, User,
-  AlertCircle, CheckCircle, CameraIcon, FolderOpen, ChevronDown, Calendar,
-  Laptop, Monitor, Gamepad2, Tablet, Watch, Headphones, Zap, RotateCcw, AlertTriangle, Star
-} from 'lucide-react';
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import X from 'lucide-react/dist/esm/icons/x'
+import Upload from 'lucide-react/dist/esm/icons/upload'
+import User from 'lucide-react/dist/esm/icons/user'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import CameraIcon from 'lucide-react/dist/esm/icons/camera'
+import FolderOpen from 'lucide-react/dist/esm/icons/folder-open'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Laptop from 'lucide-react/dist/esm/icons/laptop'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Gamepad2 from 'lucide-react/dist/esm/icons/gamepad-2'
+import Tablet from 'lucide-react/dist/esm/icons/tablet'
+import Watch from 'lucide-react/dist/esm/icons/watch'
+import Headphones from 'lucide-react/dist/esm/icons/headphones'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Star from 'lucide-react/dist/esm/icons/star'
 import toast from '../../../utils/toast.jsx';
 import { useServiciosStore } from '../../../store/serviciosStore';
 import { api } from '../../../config/api';

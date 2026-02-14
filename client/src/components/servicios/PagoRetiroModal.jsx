@@ -1,6 +1,12 @@
 // components/servicios/PagoRetiroModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { X, CreditCard, Package, AlertTriangle, CheckCircle, User, Calendar } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Package from 'lucide-react/dist/esm/icons/package'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
 import PagosPanel from '../venta/PagosPanel';
 import DescuentoModal from '../DescuentoModal';
 import { useCajaStore } from '../../store/cajaStore';

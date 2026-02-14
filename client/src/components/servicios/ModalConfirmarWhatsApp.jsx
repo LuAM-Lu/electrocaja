@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
 import { FaWhatsapp } from 'react-icons/fa';
 
 const ModalConfirmarWhatsApp = ({ isOpen, onClose, onConfirmar, clienteNombre, numeroServicio }) => {

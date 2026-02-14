@@ -1,12 +1,41 @@
 // components/servicios/ModalVerServicio.jsx - VERSIÓN OPTIMIZADA CON MEJORAS ESPECÍFICAS
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  X, Flag, Inbox, Stethoscope, Clock, Wrench, CheckCircle, PackageCheck,
-  User, CalendarDays, DollarSign, StickyNote, ShoppingCart, AlertTriangle,
-  Printer, Camera, Truck, Phone, Mail, MapPin, Zap, CreditCard, Mic,
-  Banknote, Smartphone, Building2, Coins, Laptop, Monitor, Gamepad2, Tablet, Watch, Headphones, ChevronDown, ChevronUp
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Flag from 'lucide-react/dist/esm/icons/flag'
+import Inbox from 'lucide-react/dist/esm/icons/inbox'
+import Stethoscope from 'lucide-react/dist/esm/icons/stethoscope'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import PackageCheck from 'lucide-react/dist/esm/icons/package-check'
+import User from 'lucide-react/dist/esm/icons/user'
+import CalendarDays from 'lucide-react/dist/esm/icons/calendar-days'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import StickyNote from 'lucide-react/dist/esm/icons/sticky-note'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import Truck from 'lucide-react/dist/esm/icons/truck'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Mic from 'lucide-react/dist/esm/icons/mic'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Building2 from 'lucide-react/dist/esm/icons/building-2'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import Laptop from 'lucide-react/dist/esm/icons/laptop'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Gamepad2 from 'lucide-react/dist/esm/icons/gamepad-2'
+import Tablet from 'lucide-react/dist/esm/icons/tablet'
+import Watch from 'lucide-react/dist/esm/icons/watch'
+import Headphones from 'lucide-react/dist/esm/icons/headphones'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
 import { FaWhatsapp } from 'react-icons/fa';
 import toast from '../../utils/toast.jsx';
 import { imprimirTicketServicio } from '../../utils/printUtils.js';

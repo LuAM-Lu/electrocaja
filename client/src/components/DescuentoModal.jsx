@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Percent, AlertCircle, CheckCircle, Loader2, Banknote, Star, Heart, Trash2, Clock, XCircle } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import Star from 'lucide-react/dist/esm/icons/star'
+import Heart from 'lucide-react/dist/esm/icons/heart'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 import api from '../config/api';

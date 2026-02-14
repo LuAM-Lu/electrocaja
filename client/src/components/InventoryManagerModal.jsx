@@ -1,24 +1,57 @@
 // components/InventoryManagerModal.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 
-import {
-  X, Package, Plus, Edit2, Trash2, Search,
-  Eye, DollarSign, AlertCircle, Hash, Image, Camera,
-  Folder, Phone, CheckCircle, XCircle, BarChart3,
-  AlertTriangle, ShoppingCart, Wrench, Coffee, Tag, Boxes, Store, Circle, Settings, ChevronDown, ChevronUp, FileJson, Calculator, Globe, RefreshCw, Printer, MapPin, Clock, Star
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Edit2 from 'lucide-react/dist/esm/icons/edit-2'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Hash from 'lucide-react/dist/esm/icons/hash'
+import Image from 'lucide-react/dist/esm/icons/image'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import Folder from 'lucide-react/dist/esm/icons/folder'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Coffee from 'lucide-react/dist/esm/icons/coffee'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import Boxes from 'lucide-react/dist/esm/icons/boxes'
+import Store from 'lucide-react/dist/esm/icons/store'
+import Circle from 'lucide-react/dist/esm/icons/circle'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import FileJson from 'lucide-react/dist/esm/icons/file-json'
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import Globe from 'lucide-react/dist/esm/icons/globe'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Star from 'lucide-react/dist/esm/icons/star'
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
 import ItemFormModal from './inventario/ItemFormModal';
 import toast from '../utils/toast.jsx';
 import { useCajaStore } from '../store/cajaStore';
 import ProductViewModal from './ProductViewModal';
-import CargaMasivaModal from './inventario/CargaMasivaModal';
-import RespaldoJsonModal from './inventario/RespaldoJsonModal';
-import AjusteMasivoModal from './inventario/AjusteMasivoModal';
-import ConexionApiModal from './inventario/ConexionApiModal';
-import PrintInventarioModal from './inventario/PrintInventarioModal';
-import DisplayControlModal from './inventario/DisplayControlModal';
+
+// ✅ OPTIMIZACIÓN: Dynamic imports para modales pesados (reduce bundle inicial)
+const CargaMasivaModal = lazy(() => import('./inventario/CargaMasivaModal'));
+const RespaldoJsonModal = lazy(() => import('./inventario/RespaldoJsonModal'));
+const AjusteMasivoModal = lazy(() => import('./inventario/AjusteMasivoModal'));
+const ConexionApiModal = lazy(() => import('./inventario/ConexionApiModal'));
+const PrintInventarioModal = lazy(() => import('./inventario/PrintInventarioModal'));
+const DisplayControlModal = lazy(() => import('./inventario/DisplayControlModal'));
+
 import { getImageUrl, API_CONFIG, api } from '../config/api';
 
 const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) => {
@@ -256,19 +289,24 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
   useEffect(() => {
     const fetchApiStats = async () => {
       try {
-        // Health check (público) - BASE_URL ya incluye /api
-        const healthRes = await fetch(`${API_CONFIG.BASE_URL}/eweb/health`);
-        const healthData = await healthRes.json();
+        const token = localStorage.getItem('auth-token');
+
+        // ✅ OPTIMIZACIÓN: Parallel fetching - elimina waterfall
+        const [healthRes, clientsRes] = await Promise.all([
+          fetch(`${API_CONFIG.BASE_URL}/eweb/health`),
+          fetch(`${API_CONFIG.BASE_URL}/eweb/admin/clientes`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        // Parsear respuestas en paralelo
+        const [healthData, clientsData] = await Promise.all([
+          healthRes.json(),
+          clientsRes.ok ? clientsRes.json() : Promise.resolve(null)
+        ]);
 
         if (healthData.success) {
-          // Obtener lista de clientes (requiere auth)
-          const token = localStorage.getItem('auth-token');
-          const clientsRes = await fetch(`${API_CONFIG.BASE_URL}/eweb/admin/clientes`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-
-          if (clientsRes.ok) {
-            const clientsData = await clientsRes.json();
+          if (clientsData?.data) {
             const clientes = clientsData.data || [];
 
             // Calcular totales
@@ -637,38 +675,40 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
     });
   };
 
-  // Función para filtrar y ordenar items
-  const filteredItems = inventario
-    .filter(item => {
-      const matchesSearch = item.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.observaciones?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter = filterType === 'todos' || item.tipo === filterType;
-      const isActive = hideInactive ? item.activo !== false : true;
-      return matchesSearch && matchesFilter && isActive;
-    })
-    .sort((a, b) => {
-      if (sortConfig.length === 0) return 0;
+  // ✅ OPTIMIZACIÓN: useMemo para evitar recálculos costosos en cada render
+  const filteredItems = useMemo(() => {
+    return inventario
+      .filter(item => {
+        const matchesSearch = item.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.codigo_barras?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.observaciones?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesFilter = filterType === 'todos' || item.tipo === filterType;
+        const isActive = hideInactive ? item.activo !== false : true;
+        return matchesSearch && matchesFilter && isActive;
+      })
+      .sort((a, b) => {
+        if (sortConfig.length === 0) return 0;
 
-      for (const { key, direction } of sortConfig) {
-        let aVal = a[key];
-        let bVal = b[key];
+        for (const { key, direction } of sortConfig) {
+          let aVal = a[key];
+          let bVal = b[key];
 
-        // Manejar valores numéricos
-        if (['precio', 'precio_costo', 'stock', 'id'].includes(key)) {
-          aVal = parseFloat(aVal) || 0;
-          bVal = parseFloat(bVal) || 0;
-        } else {
-          // Manejar strings
-          aVal = (aVal || '').toString().toLowerCase();
-          bVal = (bVal || '').toString().toLowerCase();
+          // Manejar valores numéricos
+          if (['precio', 'precio_costo', 'stock', 'id'].includes(key)) {
+            aVal = parseFloat(aVal) || 0;
+            bVal = parseFloat(bVal) || 0;
+          } else {
+            // Manejar strings
+            aVal = (aVal || '').toString().toLowerCase();
+            bVal = (bVal || '').toString().toLowerCase();
+          }
+
+          if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+          if (aVal > bVal) return direction === 'asc' ? 1 : -1;
         }
-
-        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
+        return 0;
+      });
+  }, [inventario, searchTerm, filterType, hideInactive, sortConfig]);
 
   // Obtener estadísticas
   const stats = obtenerEstadisticas();
@@ -1694,47 +1734,59 @@ const InventoryManagerModal = ({ isOpen, onClose, className = '', onMinimize }) 
       />
 
       {/* Modal de carga masiva */}
-      <CargaMasivaModal
-        isOpen={showCargaMasiva}
-        onClose={() => setShowCargaMasiva(false)}
-        onSuccess={() => {
-          toast.success('Inventario actualizado');
-          //  FORZAR RECARGA DESPUÉS DE CARGA MASIVA
-          setTimeout(() => {
-            obtenerInventario();
-          }, 500);
-        }}
-      />
+      <Suspense fallback={<div />}>
+        <CargaMasivaModal
+          isOpen={showCargaMasiva}
+          onClose={() => setShowCargaMasiva(false)}
+          onSuccess={() => {
+            toast.success('Inventario actualizado');
+            //  FORZAR RECARGA DESPUÉS DE CARGA MASIVA
+            setTimeout(() => {
+              obtenerInventario();
+            }, 500);
+          }}
+        />
+      </Suspense>
 
       {/* Modal de Respaldo JSON */}
-      <RespaldoJsonModal
-        isOpen={showRespaldoJson}
-        onClose={() => setShowRespaldoJson(false)}
-      />
+      <Suspense fallback={<div />}>
+        <RespaldoJsonModal
+          isOpen={showRespaldoJson}
+          onClose={() => setShowRespaldoJson(false)}
+        />
+      </Suspense>
 
       {/* Modal de Ajuste Masivo */}
-      <AjusteMasivoModal
-        isOpen={showAjusteMasivo}
-        onClose={() => setShowAjusteMasivo(false)}
-      />
+      <Suspense fallback={<div />}>
+        <AjusteMasivoModal
+          isOpen={showAjusteMasivo}
+          onClose={() => setShowAjusteMasivo(false)}
+        />
+      </Suspense>
 
       {/* Modal de Conexión API */}
-      <ConexionApiModal
-        isOpen={showConexionApi}
-        onClose={() => setShowConexionApi(false)}
-      />
+      <Suspense fallback={<div />}>
+        <ConexionApiModal
+          isOpen={showConexionApi}
+          onClose={() => setShowConexionApi(false)}
+        />
+      </Suspense>
 
       {/* Modal de Impresión de Inventario */}
-      <PrintInventarioModal
-        isOpen={showPrintModal}
-        onClose={() => setShowPrintModal(false)}
-      />
+      <Suspense fallback={<div />}>
+        <PrintInventarioModal
+          isOpen={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+        />
+      </Suspense>
 
       {/* 📺 Modal de Control de Display/Publicidad */}
-      <DisplayControlModal
-        isOpen={showDisplayControl}
-        onClose={() => setShowDisplayControl(false)}
-      />
+      <Suspense fallback={<div />}>
+        <DisplayControlModal
+          isOpen={showDisplayControl}
+          onClose={() => setShowDisplayControl(false)}
+        />
+      </Suspense>
 
       {/* Input oculto para cambio rápido de imagen */}
       <input

@@ -1,10 +1,28 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  X, User, Clock, CheckCircle, StickyNote, Save, XCircle, Plus, CalendarDays, 
-  Edit3, Trash2, MessageSquarePlus, Camera, Mic, AlertTriangle, Eye, EyeOff,
-  History, Settings, FileText, Package, CameraIcon, Zap
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import User from 'lucide-react/dist/esm/icons/user'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import StickyNote from 'lucide-react/dist/esm/icons/sticky-note'
+import Save from 'lucide-react/dist/esm/icons/save'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import CalendarDays from 'lucide-react/dist/esm/icons/calendar-days'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import MessageSquarePlus from 'lucide-react/dist/esm/icons/message-square-plus'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import Mic from 'lucide-react/dist/esm/icons/mic'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off'
+import History from 'lucide-react/dist/esm/icons/history'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Package from 'lucide-react/dist/esm/icons/package'
+import CameraIcon from 'lucide-react/dist/esm/icons/camera'
+import Zap from 'lucide-react/dist/esm/icons/zap'
 import toast from '../../utils/toast.jsx';
 import { useServiciosStore } from '../../store/serviciosStore';
 import { useAuthStore } from '../../store/authStore';

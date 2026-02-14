@@ -1,11 +1,25 @@
 // components/actividades/CronometrosPanel.jsx - PANEL GAMING CON CRONÓMETROS
 import React, { useState, useEffect } from 'react';
-import {
-  Play, Pause, Square, Plus, Clock, DollarSign,
-  Gamepad2, Monitor, Headphones, Zap, User, Calendar,
-  AlertTriangle, TrendingUp, RotateCcw, Settings,
-  Timer, Trophy, Target, CheckCircle
-} from 'lucide-react';
+import Play from 'lucide-react/dist/esm/icons/play'
+import Pause from 'lucide-react/dist/esm/icons/pause'
+import Square from 'lucide-react/dist/esm/icons/square'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Gamepad2 from 'lucide-react/dist/esm/icons/gamepad-2'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Headphones from 'lucide-react/dist/esm/icons/headphones'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Timer from 'lucide-react/dist/esm/icons/timer'
+import Trophy from 'lucide-react/dist/esm/icons/trophy'
+import Target from 'lucide-react/dist/esm/icons/target'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
 import { 
   useActividadesStore, 
   TIPOS_ALQUILER, 

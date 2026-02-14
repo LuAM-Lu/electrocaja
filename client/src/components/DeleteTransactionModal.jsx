@@ -1,6 +1,14 @@
 // components/DeleteTransactionModal.jsx (ACTUALIZADO CON TOKEN ADMIN Y SOFT-DELETE)
 import React, { useState } from 'react';
-import { X, AlertTriangle, Package, ArrowLeft, TrendingUp, TrendingDown, Shield, Key, ScanLine } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Package from 'lucide-react/dist/esm/icons/package'
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Key from 'lucide-react/dist/esm/icons/key'
+import ScanLine from 'lucide-react/dist/esm/icons/scan-line'
 import { useInventarioStore } from '../store/inventarioStore';
 import { useAuthStore } from '../store/authStore';
 import { useTransactionTable } from '../store/cajaStore';

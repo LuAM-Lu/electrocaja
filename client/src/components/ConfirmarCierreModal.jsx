@@ -1,6 +1,11 @@
 // components/ConfirmarCierreModal.jsx
 import React, { useEffect } from 'react';
-import { Lock, AlertTriangle, X, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import X from 'lucide-react/dist/esm/icons/x'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
 
 const ConfirmarCierreModal = ({
   isOpen,

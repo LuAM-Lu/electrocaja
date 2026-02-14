@@ -1,12 +1,31 @@
 // components/CerrarCajaModal.jsx (VERSIÓN CORREGIDA COMPLETA - BUGS CRÍTICOS SOLUCIONADOS)
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  X, Lock, User, Calendar, Clock, Printer, AlertTriangle,
-  DollarSign, Coins, Smartphone, ChevronDown, ChevronUp,
-  TrendingUp, Shield, Eye, Camera, CameraOff, MessageCircle,
-  FileText, Send, CheckCircle, Loader, Banknote, CreditCard,
-  Download, Check
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import CameraOff from 'lucide-react/dist/esm/icons/camera-off'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Send from 'lucide-react/dist/esm/icons/send'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Loader from 'lucide-react/dist/esm/icons/loader'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Download from 'lucide-react/dist/esm/icons/download'
+import Check from 'lucide-react/dist/esm/icons/check'
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';

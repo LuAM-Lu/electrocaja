@@ -1,13 +1,24 @@
 // components/ProductViewModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  X, Package, Hash, Barcode,
-  Printer, Eye, MapPin, Calendar,
-  Tag, AlertCircle, Tags, Share2,
-  MessageCircle, Instagram, Music,
-  CheckCircle, XCircle, AlertTriangle,
-  FileText
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Hash from 'lucide-react/dist/esm/icons/hash'
+import Barcode from 'lucide-react/dist/esm/icons/barcode'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Tags from 'lucide-react/dist/esm/icons/tags'
+import Share2 from 'lucide-react/dist/esm/icons/share-2'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle'
+import Instagram from 'lucide-react/dist/esm/icons/instagram'
+import Music from 'lucide-react/dist/esm/icons/music'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
 import toast from '../utils/toast.jsx';
 import JsBarcode from 'jsbarcode';
 import { api, getImageUrl } from '../config/api';

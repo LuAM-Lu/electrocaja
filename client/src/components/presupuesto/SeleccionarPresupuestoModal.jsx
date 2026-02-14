@@ -1,6 +1,15 @@
 // components/presupuesto/SeleccionarPresupuestoModal.jsx - MODAL PARA SELECCIONAR PRESUPUESTOS EXISTENTES
 import React, { useState, useEffect } from 'react';
-import { X, Search, FileText, Calendar, User, Plus, Edit3, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Search from 'lucide-react/dist/esm/icons/search'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import User from 'lucide-react/dist/esm/icons/user'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
 import api from '../../config/api';
 import toast from '../../utils/toast.jsx';
 import { useAuthStore } from '../../store/authStore';

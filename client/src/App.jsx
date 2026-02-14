@@ -1,5 +1,5 @@
 // src/App.jsx (COMPLETO Y ORDENADO)
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -294,6 +294,13 @@ function App() {
     return () => clearInterval(interval);
   }, [isAuthenticated, verificarSesion]); //  AGREGAR showLogin
 
+  //  ✅ OPTIMIZACIÓN: useRef para evitar re-suscripciones de event listeners
+  const extenderSesionRef = useRef(extenderSesion);
+
+  useEffect(() => {
+    extenderSesionRef.current = extenderSesion;
+  }, [extenderSesion]);
+
   //  Extender sesión en actividad del usuario (CON DEBOUNCE)
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -303,23 +310,28 @@ function App() {
       //  DEBOUNCE: Solo ejecutar después de 5 segundos de inactividad
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        extenderSesion();
+        extenderSesionRef.current(); // ✅ Usa ref estable
       }, 5000);
     };
 
-    const eventos = ['click', 'keydown', 'mousemove', 'scroll'];
+    const eventos = [
+      { type: 'click', options: {} },
+      { type: 'keydown', options: {} },
+      { type: 'mousemove', options: { passive: true } }, // ✅ Passive listener
+      { type: 'scroll', options: { passive: true } }      // ✅ Passive listener
+    ];
 
-    eventos.forEach(evento => {
-      document.addEventListener(evento, handleActivity);
+    eventos.forEach(({ type, options }) => {
+      document.addEventListener(type, handleActivity, options);
     });
 
     return () => {
-      eventos.forEach(evento => {
-        document.removeEventListener(evento, handleActivity);
+      eventos.forEach(({ type }) => {
+        document.removeEventListener(type, handleActivity);
       });
-      clearTimeout(timeoutId); //  LIMPIAR TIMEOUT
+      clearTimeout(timeoutId);
     };
-  }, [isAuthenticated, extenderSesion]);
+  }, [isAuthenticated]); // ✅ Solo depende de isAuthenticated
 
   //  Verificar estado WhatsApp periódicamente
   useEffect(() => {

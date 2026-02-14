@@ -1,9 +1,12 @@
 // components/ResumenEstadosServicios.jsx (MEJORADO PARA TEMA DARK - COMPACTO 50%)
 import React from 'react';
-import {
-  Inbox, Stethoscope, Clock, Wrench,
-  CheckCircle, PackageCheck, Flag 
-} from 'lucide-react';
+import Inbox from 'lucide-react/dist/esm/icons/inbox'
+import Stethoscope from 'lucide-react/dist/esm/icons/stethoscope'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import PackageCheck from 'lucide-react/dist/esm/icons/package-check'
+import Flag from 'lucide-react/dist/esm/icons/flag'
 
 const estados = {
   'Recibido': {

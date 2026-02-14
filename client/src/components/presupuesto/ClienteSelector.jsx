@@ -1,10 +1,20 @@
 // components/presupuesto/ClienteSelector.jsx - VERSIÓN COMPLETA ACTUALIZADA 
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Search, UserPlus, X, User, Building, Phone,
-  Mail, MapPin, AlertTriangle, CheckCircle,
-  CreditCard, Globe, UserCheck, Building2, Landmark
-} from 'lucide-react';
+import Search from 'lucide-react/dist/esm/icons/search'
+import UserPlus from 'lucide-react/dist/esm/icons/user-plus'
+import X from 'lucide-react/dist/esm/icons/x'
+import User from 'lucide-react/dist/esm/icons/user'
+import Building from 'lucide-react/dist/esm/icons/building'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Globe from 'lucide-react/dist/esm/icons/globe'
+import UserCheck from 'lucide-react/dist/esm/icons/user-check'
+import Building2 from 'lucide-react/dist/esm/icons/building-2'
+import Landmark from 'lucide-react/dist/esm/icons/landmark'
 import toast from '../../utils/toast.jsx';
 import { api } from "../../config/api";
 

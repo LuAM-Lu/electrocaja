@@ -1,6 +1,20 @@
 // components/ChangelogModal.jsx - ACTUALIZADO CON NUEVAS FUNCIONALIDADES
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Bug, Zap, ShieldCheck, Wrench, Package, Star, Calendar, Clock, CheckCircle, Edit3, History, Camera, Smartphone } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles'
+import Bug from 'lucide-react/dist/esm/icons/bug'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import ShieldCheck from 'lucide-react/dist/esm/icons/shield-check'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Star from 'lucide-react/dist/esm/icons/star'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import History from 'lucide-react/dist/esm/icons/history'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
 import { useAuthStore } from '../store/authStore';
 
 const CHANGELOG_STORAGE_KEY = 'changelog-preferences';

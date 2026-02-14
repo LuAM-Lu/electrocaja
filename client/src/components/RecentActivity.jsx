@@ -1,6 +1,15 @@
 // components/RecentActivity.jsx (CÓDIGO COMPLETO - INVENTARIO Y MONTOS EN MISMA FILA)
 import React from 'react';
-import { Clock, TrendingUp, TrendingDown, Activity, Lock, User, Package, DollarSign, Coins, Smartphone } from 'lucide-react';
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import Activity from 'lucide-react/dist/esm/icons/activity'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import User from 'lucide-react/dist/esm/icons/user'
+import Package from 'lucide-react/dist/esm/icons/package'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
 import { useRecentActivity } from '../store/cajaStore';
 
 const RecentActivity = () => {

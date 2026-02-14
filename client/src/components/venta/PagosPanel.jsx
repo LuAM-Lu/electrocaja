@@ -1,11 +1,24 @@
 // components/venta/PagosPanel.jsx - SISTEMA DE PAGOS MODULAR (DISEÑO PREMIUM)
 import React, { useState, useEffect } from 'react';
-import {
-  X, Plus, CreditCard, DollarSign, RefreshCw,
-  AlertTriangle, CheckCircle, Percent, MousePointerClick, Trash2,
-  HandCoins, Banknote, Wallet, Landmark, Smartphone, ChevronDown,
-  AlertOctagon, History, CornerDownLeft
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import MousePointerClick from 'lucide-react/dist/esm/icons/mouse-pointer-click'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import HandCoins from 'lucide-react/dist/esm/icons/hand-coins'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import Landmark from 'lucide-react/dist/esm/icons/landmark'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import AlertOctagon from 'lucide-react/dist/esm/icons/alert-octagon'
+import History from 'lucide-react/dist/esm/icons/history'
+import CornerDownLeft from 'lucide-react/dist/esm/icons/corner-down-left'
 import toast from '../../utils/toast.jsx';
 import {
   generarPDFFactura,

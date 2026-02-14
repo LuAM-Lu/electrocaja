@@ -1,9 +1,21 @@
 // client/src/components/configuracion/ProveedoresManager.jsx
 import React, { useState, useEffect } from 'react';
-import {
-  Building, Plus, Search, Edit2, Trash2, Eye, Package,
-  Phone, Mail, MapPin, User, Filter, ExternalLink, X, ChevronLeft, ChevronRight
-} from 'lucide-react';
+import Building from 'lucide-react/dist/esm/icons/building'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Edit2 from 'lucide-react/dist/esm/icons/edit-2'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import User from 'lucide-react/dist/esm/icons/user'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import ExternalLink from 'lucide-react/dist/esm/icons/external-link'
+import X from 'lucide-react/dist/esm/icons/x'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
 import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';
 

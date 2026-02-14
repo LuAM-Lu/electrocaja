@@ -1,9 +1,16 @@
 // components/configuracion/WhatsAppPanel.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Smartphone, Wifi, WifiOff, QrCode as QrCodeIcon, Check,
-  Trash2, AlertTriangle, RefreshCw, Settings, ChevronUp, ChevronDown
-} from 'lucide-react';
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Wifi from 'lucide-react/dist/esm/icons/wifi'
+import WifiOff from 'lucide-react/dist/esm/icons/wifi-off'
+import QrCodeIcon from 'lucide-react/dist/esm/icons/qr-code'
+import Check from 'lucide-react/dist/esm/icons/check'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 import QRCode from 'qrcode';

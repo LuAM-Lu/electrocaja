@@ -1,11 +1,27 @@
 // components/venta/FinalizarVentaPanel.jsx - PANEL FINAL DE VENTA (DISEÑO PREMIUM)
 import React, { useState } from 'react';
-import {
-  CheckCircle, Receipt, Send, FileText, Printer,
-  Mail, MessageCircle, AlertTriangle, Info,
-  User, Package, DollarSign, Clock, ShoppingCart, FileDown,
-  Store, MapPin, ChevronDown, ChevronUp, Check, Smartphone, RefreshCw
-} from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Receipt from 'lucide-react/dist/esm/icons/receipt'
+import Send from 'lucide-react/dist/esm/icons/send'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Info from 'lucide-react/dist/esm/icons/info'
+import User from 'lucide-react/dist/esm/icons/user'
+import Package from 'lucide-react/dist/esm/icons/package'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import FileDown from 'lucide-react/dist/esm/icons/file-down'
+import Store from 'lucide-react/dist/esm/icons/store'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import Check from 'lucide-react/dist/esm/icons/check'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
 import { useAuthStore } from '../../store/authStore';
 
 //  FUNCIONES HELPER

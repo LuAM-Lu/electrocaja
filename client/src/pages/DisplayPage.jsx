@@ -1,10 +1,17 @@
 // pages/DisplayPage.jsx
 // 📺 Página pública de display/publicidad para mostrar productos
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    Package, QrCode, Info, Store, Wifi, WifiOff,
-    ChevronLeft, ChevronRight, Settings, Pause, Play
-} from 'lucide-react';
+import Package from 'lucide-react/dist/esm/icons/package'
+import QrCode from 'lucide-react/dist/esm/icons/qr-code'
+import Info from 'lucide-react/dist/esm/icons/info'
+import Store from 'lucide-react/dist/esm/icons/store'
+import Wifi from 'lucide-react/dist/esm/icons/wifi'
+import WifiOff from 'lucide-react/dist/esm/icons/wifi-off'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Pause from 'lucide-react/dist/esm/icons/pause'
+import Play from 'lucide-react/dist/esm/icons/play'
 import { API_CONFIG } from '../config/api';
 import io from 'socket.io-client';
 

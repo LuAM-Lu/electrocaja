@@ -1,5 +1,10 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Smartphone, BarChart3, Coins, DollarSign } from 'lucide-react';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
 import { FaCashRegister, FaLock } from 'react-icons/fa';
 import { useCajaStore } from '../store/cajaStore';
 import { useMontosEnCaja, formatearBolivares, formatearDolares } from '../hooks/useMontosEnCaja';

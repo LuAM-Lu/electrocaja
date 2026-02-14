@@ -40,6 +40,8 @@ model User {
   rechazosDescuento          DiscountRequest[]       @relation("RechazosDescuento")
   presupuestosCreados        Presupuesto[]          @relation("PresupuestosCreados")
   pedidosCreados             Pedido[]               @relation("PedidosCreados")
+  pagosTecnicoGenerados      PagoTecnicoGenerado[]  @relation("PagosTecnicoGenerados")
+  pagosTecnicoRegistrados    PagoTecnicoGenerado[]  @relation("PagosTecnicoRegistrados")
 
   @@map("users")
 }
@@ -709,6 +711,32 @@ model TecnicoConfig {
 
   @@map("tecnicos_config")
 }
+
+// Registro de pagos generados a técnicos (para marcar períodos ya pagados)
+model PagoTecnicoGenerado {
+  id                Int      @id @default(autoincrement())
+  tecnicoId         Int      @map("tecnico_id")
+  fechaInicio       DateTime @map("fecha_inicio") @db.Date
+  fechaFin          DateTime @map("fecha_fin") @db.Date
+  
+  // Totales del pago
+  totalServicios    Int      @map("total_servicios")
+  totalBs           Decimal  @map("total_bs") @db.Decimal(12, 2)
+  totalUsd          Decimal  @map("total_usd") @db.Decimal(12, 2)
+  
+  // Auditoría
+  generadoPorId     Int      @map("generado_por_id")
+  fechaGeneracion   DateTime @default(now()) @map("fecha_generacion")
+  
+  // Relaciones
+  tecnico           User     @relation("PagosTecnicoGenerados", fields: [tecnicoId], references: [id])
+  generadoPor       User     @relation("PagosTecnicoRegistrados", fields: [generadoPorId], references: [id])
+  
+  @@index([tecnicoId])
+  @@index([fechaInicio, fechaFin])
+  @@map("pagos_tecnicos_generados")
+}
+
 
 enum Role {
   admin

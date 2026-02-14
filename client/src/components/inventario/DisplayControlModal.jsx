@@ -1,11 +1,29 @@
 // components/inventario/DisplayControlModal.jsx
 // 📺 Modal de control para configurar el display de publicidad
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-    X, Monitor, Settings, Play, Pause, Eye, EyeOff, RefreshCw,
-    Clock, Filter, Package, Smartphone, Tv, Tablet, Wifi, WifiOff,
-    ChevronDown, Check, Save, RotateCcw, Globe, Trash2, AlertCircle
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Play from 'lucide-react/dist/esm/icons/play'
+import Pause from 'lucide-react/dist/esm/icons/pause'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Tv from 'lucide-react/dist/esm/icons/tv'
+import Tablet from 'lucide-react/dist/esm/icons/tablet'
+import Wifi from 'lucide-react/dist/esm/icons/wifi'
+import WifiOff from 'lucide-react/dist/esm/icons/wifi-off'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import Check from 'lucide-react/dist/esm/icons/check'
+import Save from 'lucide-react/dist/esm/icons/save'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw'
+import Globe from 'lucide-react/dist/esm/icons/globe'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
 import { API_CONFIG, api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 import { useAuthStore } from '../../store/authStore';

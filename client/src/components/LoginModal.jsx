@@ -1,6 +1,14 @@
 // components/LoginModal.jsx - Refactored Modern Luxury Login
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Eye, EyeOff, User, Lock, QrCode, ArrowLeft, Camera, X, Copyright } from 'lucide-react';
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import EyeOff from 'lucide-react/dist/esm/icons/eye-off'
+import User from 'lucide-react/dist/esm/icons/user'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import QrCode from 'lucide-react/dist/esm/icons/qr-code'
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import X from 'lucide-react/dist/esm/icons/x'
+import Copyright from 'lucide-react/dist/esm/icons/copyright'
 import { useAuthStore } from '../store/authStore';
 import toast from '../utils/toast.jsx';
 

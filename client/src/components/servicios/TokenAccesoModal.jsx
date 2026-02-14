@@ -1,6 +1,10 @@
 // components/servicios/TokenAccesoModal.jsx
 import React, { useState, useRef } from 'react';
-import { X, Shield, Key, Lock, AlertCircle } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Key from 'lucide-react/dist/esm/icons/key'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
 import { useAuthStore } from '../../store/authStore';
 import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';

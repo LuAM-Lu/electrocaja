@@ -1,9 +1,17 @@
 // components/configuracion/GeneralPanel.jsx
 import React, { useState } from 'react';
-import {
-  Settings, Database, Download, Upload, RefreshCw, Shield,
-  Server, HardDrive, Wifi, Clock, Bell, Palette
-} from 'lucide-react';
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Database from 'lucide-react/dist/esm/icons/database'
+import Download from 'lucide-react/dist/esm/icons/download'
+import Upload from 'lucide-react/dist/esm/icons/upload'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Server from 'lucide-react/dist/esm/icons/server'
+import HardDrive from 'lucide-react/dist/esm/icons/hard-drive'
+import Wifi from 'lucide-react/dist/esm/icons/wifi'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Bell from 'lucide-react/dist/esm/icons/bell'
+import Palette from 'lucide-react/dist/esm/icons/palette'
 import toast from '../../utils/toast.jsx';
 
 const GeneralPanel = () => {

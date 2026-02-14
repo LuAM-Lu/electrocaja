@@ -1,6 +1,11 @@
 // components/servicios/ModalConfirmarEntrega.jsx
 import React, { useState } from 'react';
-import { X, Truck, User, AlertTriangle, CheckCircle, UserCheck } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Truck from 'lucide-react/dist/esm/icons/truck'
+import User from 'lucide-react/dist/esm/icons/user'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import UserCheck from 'lucide-react/dist/esm/icons/user-check'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 

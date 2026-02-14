@@ -1,11 +1,25 @@
 // components/NuevoPedidoModal.jsx - Modal para crear nuevo pedido
 import React, { useState, useEffect, useRef } from 'react';
-import {
-    X, Package, User, ShoppingCart, DollarSign,
-    CreditCard, Save, CheckCircle, ChevronLeft, ChevronRight,
-    FileText, Send, ChevronDown, Building, AlertTriangle,
-    Banknote, Wallet, Truck, Monitor, PackageCheck
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Package from 'lucide-react/dist/esm/icons/package'
+import User from 'lucide-react/dist/esm/icons/user'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Save from 'lucide-react/dist/esm/icons/save'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Send from 'lucide-react/dist/esm/icons/send'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import Building from 'lucide-react/dist/esm/icons/building'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import Truck from 'lucide-react/dist/esm/icons/truck'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import PackageCheck from 'lucide-react/dist/esm/icons/package-check'
 import { api } from '../config/api';
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';

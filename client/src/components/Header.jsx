@@ -1,6 +1,17 @@
 // components/Header.jsx (FULL RESPONSIVE MOBILE + TEMAS DINÁMICOS + STICKY)
 import React, { useEffect, useState } from 'react';
-import { DollarSign, RefreshCw, LogOut, Loader2, Edit3, Bell, BellRing, RotateCcw, X, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import LogOut from 'lucide-react/dist/esm/icons/log-out'
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import Bell from 'lucide-react/dist/esm/icons/bell'
+import BellRing from 'lucide-react/dist/esm/icons/bell-ring'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw'
+import X from 'lucide-react/dist/esm/icons/x'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import { useDashboardStore } from '../store/dashboardStore';

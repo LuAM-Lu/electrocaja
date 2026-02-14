@@ -1,6 +1,12 @@
 // components/venta/ConfirmacionVentaModal.jsx - Modal de Confirmación de Venta
 import React from 'react';
-import { X, CheckCircle, AlertCircle, FileText, Printer, MessageSquare, Mail } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square'
+import Mail from 'lucide-react/dist/esm/icons/mail'
 
 const iconosOpciones = {
   'imprimirRecibo': FileText,

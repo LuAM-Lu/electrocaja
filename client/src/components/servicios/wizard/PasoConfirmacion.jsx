@@ -1,11 +1,22 @@
 // components/servicios/wizard/PasoConfirmacion.jsx
 import React, { useState, useEffect } from 'react';
-import {
-  User, Smartphone, Package, Calendar,
-  DollarSign, Clock, Star, Camera,
-  Printer, CheckCircle, Wrench,
-  CreditCard, AlertTriangle, ChevronDown, ChevronUp, FileText, Building2
-} from 'lucide-react';
+import User from 'lucide-react/dist/esm/icons/user'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Star from 'lucide-react/dist/esm/icons/star'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Building2 from 'lucide-react/dist/esm/icons/building-2'
 import { FaWhatsapp } from 'react-icons/fa';
 import { useCajaStore } from '../../../store/cajaStore';
 import { api } from '../../../config/api';

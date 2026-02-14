@@ -1,9 +1,16 @@
 // components/inventario/CargaMasivaModal.jsx
 import React, { useState, useCallback, useEffect } from 'react';
-import { 
-  X, Package, Plus, Save, AlertTriangle, CheckCircle,
-  Building2, Calendar, FileText, Trash2, Edit3
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Save from 'lucide-react/dist/esm/icons/save'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Building2 from 'lucide-react/dist/esm/icons/building-2'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
 import { useInventarioStore } from '../../store/inventarioStore';
 import BarcodeScanner from './BarcodeScanner';
 import toast from '../../utils/toast.jsx';

@@ -2,11 +2,29 @@
 // Vista pública para que el cliente vea el progreso de su orden (sin botones de acción)
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  Inbox, Stethoscope, Clock, Wrench, CheckCircle, PackageCheck,
-  User, CalendarDays, DollarSign, StickyNote, ShoppingCart, AlertTriangle,
-  Camera, Mic, CreditCard, Banknote, Smartphone, Building2, Coins, ChevronDown, ChevronUp, Zap, Flag
-} from 'lucide-react';
+import Inbox from 'lucide-react/dist/esm/icons/inbox'
+import Stethoscope from 'lucide-react/dist/esm/icons/stethoscope'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import PackageCheck from 'lucide-react/dist/esm/icons/package-check'
+import User from 'lucide-react/dist/esm/icons/user'
+import CalendarDays from 'lucide-react/dist/esm/icons/calendar-days'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import StickyNote from 'lucide-react/dist/esm/icons/sticky-note'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import Mic from 'lucide-react/dist/esm/icons/mic'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Building2 from 'lucide-react/dist/esm/icons/building-2'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import Flag from 'lucide-react/dist/esm/icons/flag'
 import { FaWhatsapp } from 'react-icons/fa';
 import { CgInstagram } from 'react-icons/cg';
 import { api } from '../../config/api';
@@ -25,9 +43,9 @@ const formatearFecha = (fecha) => {
   if (!fecha) return '—';
   const date = new Date(fecha);
   if (isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('es-VE', { 
-    day: '2-digit', 
-    month: '2-digit', 
+  return date.toLocaleDateString('es-VE', {
+    day: '2-digit',
+    month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
@@ -39,10 +57,10 @@ const calcularDiasTranscurridos = (fechaIngreso) => {
   const hoy = new Date();
   const ingreso = new Date(fechaIngreso);
   if (isNaN(ingreso.getTime())) return 0;
-  
+
   const hoyNormalizado = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
   const ingresoNormalizado = new Date(ingreso.getFullYear(), ingreso.getMonth(), ingreso.getDate());
-  
+
   const diff = Math.floor((hoyNormalizado - ingresoNormalizado) / (1000 * 60 * 60 * 24));
   return diff < 0 ? 0 : diff;
 };
@@ -143,7 +161,7 @@ export default function VistaPublicaServicio() {
 
   // ✅ Usar saldoPendiente del servicio (que viene del backend) o calcularlo
   const saldoPendiente = parseFloat(servicio.saldoPendiente ?? (totalGeneral - totalPagado));
-  
+
   // 🆕 Convertir montos a Bs usando la tasa de cambio del backend
   const tasa = tasaCambioBackend || 37.50;
   const totalGeneralBs = totalGeneral * tasa;
@@ -159,7 +177,7 @@ export default function VistaPublicaServicio() {
       maximumFractionDigits: 2
     });
   };
-  
+
   const notas = servicio.notas || [];
 
   // Función para renderizar contenido con iconos
@@ -205,7 +223,7 @@ export default function VistaPublicaServicio() {
   // Función para obtener configuración de estado por código
   const obtenerConfigEstado = (estadoCodigo) => {
     if (!estadoCodigo) return { color: 'bg-gray-600', textColor: 'text-gray-100', icon: <Flag size={12} />, label: 'Desconocido' };
-    
+
     const estadoUpper = estadoCodigo.toUpperCase();
     const mapaEstados = {
       'RECIBIDO': { color: 'bg-gradient-to-r from-purple-400 to-purple-600', textColor: 'text-gray-100', icon: <Inbox size={12} />, label: 'Recibido' },
@@ -219,18 +237,18 @@ export default function VistaPublicaServicio() {
       'LISTO RETIRO': { color: 'bg-gradient-to-r from-emerald-700 to-green-800', textColor: 'text-emerald-100', icon: <CheckCircle size={12} />, label: 'Listo para Retiro' },
       'ENTREGADO': { color: 'bg-gradient-to-r from-gray-800 to-gray-900', textColor: 'text-gray-200', icon: <PackageCheck size={12} />, label: 'Entregado' }
     };
-    
+
     // Buscar por código exacto primero
     if (mapaEstados[estadoUpper]) {
       return mapaEstados[estadoUpper];
     }
-    
+
     // Si no se encuentra, normalizar y buscar
     const estadoNormalizado = estadoUpper.replace(/_/g, ' ');
     if (mapaEstados[estadoNormalizado]) {
       return mapaEstados[estadoNormalizado];
     }
-    
+
     // Fallback
     return {
       color: 'bg-gray-600',
@@ -273,7 +291,7 @@ export default function VistaPublicaServicio() {
   const obtenerEstiloNota = (nota) => {
     const tipoNota = nota.tipo?.toLowerCase() || '';
     const contenidoNota = nota.contenido || '';
-    
+
     if (tipoNota === 'cambio_estado') {
       const estadoNuevo = nota.estadoNuevo || '';
       const estadoConfigMap = {
@@ -296,33 +314,33 @@ export default function VistaPublicaServicio() {
   // Función para extraer el nombre del archivo de una URL
   const obtenerNombreArchivo = (url) => {
     if (!url) return 'Imagen';
-    
+
     // Si es una data URL, retornar un nombre genérico
     if (url.startsWith('data:')) {
       return `Imagen ${new Date().getTime()}`;
     }
-    
+
     // Intentar extraer el nombre del archivo de la URL
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname;
       const nombre = pathname.split('/').pop() || 'Imagen';
-      
+
       // Si el nombre es muy largo o no tiene extensión, simplificarlo
       if (nombre.length > 30) {
         const extension = nombre.split('.').pop();
         return `Imagen.${extension || 'jpg'}`;
       }
-      
+
       return nombre || 'Imagen';
     } catch (e) {
       // Si falla el parsing, intentar extraer de la cadena directamente
       const partes = url.split('/');
       const nombre = partes[partes.length - 1] || 'Imagen';
-      
+
       // Limpiar parámetros de query si existen
       const nombreLimpio = nombre.split('?')[0];
-      
+
       return nombreLimpio || 'Imagen';
     }
   };
@@ -332,8 +350,8 @@ export default function VistaPublicaServicio() {
       {/* HEADER PÚBLICO */}
       <div className={`relative ${estado.color} overflow-hidden`}>
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{ 
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` 
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
           }} />
         </div>
 
@@ -384,23 +402,22 @@ export default function VistaPublicaServicio() {
                 <span className="text-white font-bold">{progreso}%</span>
               </div>
               <div className="w-full bg-white/20 rounded-full h-2 sm:h-3 shadow-inner relative overflow-hidden">
-                <div 
-                  className={`h-2 sm:h-3 rounded-full transition-all duration-1000 ease-out shadow-lg ${
-                    estadoNormalizado === 'RECIBIDO' 
+                <div
+                  className={`h-2 sm:h-3 rounded-full transition-all duration-1000 ease-out shadow-lg ${estadoNormalizado === 'RECIBIDO'
                       ? 'bg-gradient-to-r from-purple-400 to-purple-600'
                       : estadoNormalizado === 'EN_DIAGNOSTICO'
-                      ? 'bg-gradient-to-r from-amber-400 to-yellow-500'
-                      : estadoNormalizado === 'ESPERANDO_APROBACION'
-                      ? 'bg-gradient-to-r from-orange-400 to-red-500'
-                      : estadoNormalizado === 'EN_REPARACION'
-                      ? 'bg-gradient-to-r from-red-500 to-red-600'
-                      : estadoNormalizado === 'LISTO_RETIRO'
-                      ? 'bg-gradient-to-r from-emerald-400 to-green-500'
-                      : 'bg-gradient-to-r from-gray-400 to-gray-500'
-                  }`}
-                  style={{width: `${progreso}%`}}
+                        ? 'bg-gradient-to-r from-amber-400 to-yellow-500'
+                        : estadoNormalizado === 'ESPERANDO_APROBACION'
+                          ? 'bg-gradient-to-r from-orange-400 to-red-500'
+                          : estadoNormalizado === 'EN_REPARACION'
+                            ? 'bg-gradient-to-r from-red-500 to-red-600'
+                            : estadoNormalizado === 'LISTO_RETIRO'
+                              ? 'bg-gradient-to-r from-emerald-400 to-green-500'
+                              : 'bg-gradient-to-r from-gray-400 to-gray-500'
+                    }`}
+                  style={{ width: `${progreso}%` }}
                 >
-                  <div 
+                  <div
                     className="absolute inset-0 animate-shimmer"
                     style={{
                       background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)',
@@ -417,10 +434,10 @@ export default function VistaPublicaServicio() {
       {/* CONTENIDO PRINCIPAL */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-          
+
           {/* COLUMNA IZQUIERDA - INFORMACIÓN */}
           <div className="lg:col-span-1 space-y-4">
-            
+
             {/* Información del Cliente - DESPLEGABLE */}
             <div className="bg-gray-800/70 rounded-lg sm:rounded-xl border border-gray-700 shadow-lg overflow-hidden">
               <button
@@ -492,7 +509,7 @@ export default function VistaPublicaServicio() {
                   <div>
                     <span className="text-gray-400">Problemas:</span>
                     <div className="text-gray-100 mt-1">
-                      {Array.isArray(servicio.problemas) 
+                      {Array.isArray(servicio.problemas)
                         ? servicio.problemas.join(', ')
                         : servicio.problemas || '—'}
                     </div>
@@ -566,7 +583,7 @@ export default function VistaPublicaServicio() {
 
           {/* COLUMNA DERECHA - ITEMS Y NOTAS */}
           <div className="md:col-span-1 lg:col-span-2 space-y-4 sm:space-y-5 md:space-y-6">
-            
+
             {/* Productos, Servicios e Información Financiera - COMBINADO - ESTILO FACTURA */}
             {items.length > 0 && (
               <div className="bg-gray-800/70 rounded-lg sm:rounded-xl border border-gray-700 shadow-lg">
@@ -618,7 +635,7 @@ export default function VistaPublicaServicio() {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {/* Información Financiera Combinada - Estilo Factura Compacta */}
                   <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t-2 border-gray-600">
                     <div className="space-y-1.5 sm:space-y-2">
@@ -664,9 +681,9 @@ export default function VistaPublicaServicio() {
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-2 mb-2">
                         <div className="min-w-0 flex-1">
                           <div className="text-xs sm:text-sm text-gray-100 font-medium break-words">
-                            {pago.tipo === 'PAGO_INICIAL' ? 'Pago Inicial' : 
-                             pago.tipo === 'PAGO_ABONO' ? 'Abono' : 
-                             pago.tipo === 'PAGO_FINAL' ? 'Pago Final' : 'Pago'}
+                            {pago.tipo === 'PAGO_INICIAL' ? 'Pago Inicial' :
+                              pago.tipo === 'PAGO_ABONO' ? 'Abono' :
+                                pago.tipo === 'PAGO_FINAL' ? 'Pago Final' : 'Pago'}
                           </div>
                           <div className="text-xs text-gray-400 mt-0.5 sm:mt-1">{formatearFecha(pago.fecha)}</div>
                         </div>
@@ -726,20 +743,20 @@ export default function VistaPublicaServicio() {
                       notasGrupo.sort((a, b) => {
                         const tipoA = (a.tipo?.toLowerCase() || '');
                         const tipoB = (b.tipo?.toLowerCase() || '');
-                        
+
                         // Texto primero
                         if (tipoA === 'texto' && tipoB !== 'texto') return -1;
                         if (tipoA !== 'texto' && tipoB === 'texto') return 1;
-                        
+
                         // Luego por fecha (más antiguas primero dentro del grupo)
                         const fechaA = new Date(a.fecha || a.createdAt || a.updatedAt || 0);
                         const fechaB = new Date(b.fecha || b.createdAt || b.updatedAt || 0);
                         return fechaA - fechaB;
                       });
                     });
-                    
+
                     const notasAgrupadas = [];
-                    
+
                     // Agregar grupos (con grupoId)
                     gruposPorId.forEach((notasGrupo) => {
                       // Solo crear grupo si hay más de una nota o si hay texto + imágenes
@@ -752,7 +769,7 @@ export default function VistaPublicaServicio() {
                         const tipo = (n.tipo?.toLowerCase() || '');
                         return tipo === 'imagen';
                       });
-                      
+
                       if (notasGrupo.length > 1 || (tieneTexto && tieneImagenes)) {
                         notasAgrupadas.push({ tipo: 'grupo', notas: notasGrupo });
                       } else {
@@ -760,15 +777,15 @@ export default function VistaPublicaServicio() {
                         notasSinGrupo.push(notasGrupo[0]);
                       }
                     });
-                    
+
                     // Agregar notas sin grupo como individuales
                     notasSinGrupo.forEach((nota) => {
                       notasAgrupadas.push({ tipo: 'individual', nota: nota });
                     });
-                    
+
                     // Ordenar los grupos/notas finales por fecha (más recientes primero) para visualización
                     notasAgrupadas.sort((a, b) => {
-                      const fechaA = a.tipo === 'grupo' 
+                      const fechaA = a.tipo === 'grupo'
                         ? (a.notas[0].fecha || a.notas[0].createdAt || a.notas[0].updatedAt || 0)
                         : (a.nota.fecha || a.nota.createdAt || a.nota.updatedAt || 0);
                       const fechaB = b.tipo === 'grupo'
@@ -776,9 +793,9 @@ export default function VistaPublicaServicio() {
                         : (b.nota.fecha || b.nota.createdAt || b.nota.updatedAt || 0);
                       return new Date(fechaB) - new Date(fechaA); // Más recientes primero para visualización
                     });
-                    
+
                     return (
-                  <div className="space-y-3">
+                      <div className="space-y-3">
                         {notasAgrupadas.map((item, idx) => {
                           if (item.tipo === 'grupo') {
                             // Renderizar grupo: texto + imágenes o solo imágenes
@@ -905,152 +922,152 @@ export default function VistaPublicaServicio() {
                           } else {
                             // Renderizar nota individual normal
                             const nota = item.nota;
-                      const contenidoNota = nota.contenido || nota.mensaje || nota.texto || '';
-                      const fechaNota = nota.fecha || nota.createdAt || nota.updatedAt;
+                            const contenidoNota = nota.contenido || nota.mensaje || nota.texto || '';
+                            const fechaNota = nota.fecha || nota.createdAt || nota.updatedAt;
                             const tipoNota = (nota.tipo?.toLowerCase() || '');
-                      
-                      // ✅ MEJOR PRÁCTICA: Extraer URLs de imágenes de manera consistente
-                      let imagenes = [];
-                      if (tipoNota === 'imagen' && (nota.imagen || nota.archivoUrl)) {
-                        imagenes = [nota.imagen || nota.archivoUrl];
-                      } else if (Array.isArray(nota.imagenes) && nota.imagenes.length > 0) {
-                        imagenes = nota.imagenes;
-                      } else if ((nota.imagen || nota.archivoUrl) && tipoNota !== 'audio') {
-                        imagenes = [nota.imagen || nota.archivoUrl];
-                      }
 
-                      // 🐛 DEBUG: Log detallado para verificar imágenes individuales
-                      console.log(`📷 NOTA INDIVIDUAL ${idx}:`, {
-                        id: nota.id,
-                        tipo: tipoNota,
-                        grupoId: nota.grupoId,
-                        totalImagenes: imagenes.length,
-                        urls: imagenes,
-                        nota_completa: {
-                          imagen: nota.imagen,
-                          archivoUrl: nota.archivoUrl,
-                          imagenes: nota.imagenes,
-                          nombreArchivo: nota.nombreArchivo,
-                          contenido: nota.contenido?.substring(0, 30)
-                        }
-                      });
+                            // ✅ MEJOR PRÁCTICA: Extraer URLs de imágenes de manera consistente
+                            let imagenes = [];
+                            if (tipoNota === 'imagen' && (nota.imagen || nota.archivoUrl)) {
+                              imagenes = [nota.imagen || nota.archivoUrl];
+                            } else if (Array.isArray(nota.imagenes) && nota.imagenes.length > 0) {
+                              imagenes = nota.imagenes;
+                            } else if ((nota.imagen || nota.archivoUrl) && tipoNota !== 'audio') {
+                              imagenes = [nota.imagen || nota.archivoUrl];
+                            }
 
-                      const audioUrl = tipoNota === 'audio'
-                        ? (nota.archivoUrl || nota.audio)
-                        : null;
+                            // 🐛 DEBUG: Log detallado para verificar imágenes individuales
+                            console.log(`📷 NOTA INDIVIDUAL ${idx}:`, {
+                              id: nota.id,
+                              tipo: tipoNota,
+                              grupoId: nota.grupoId,
+                              totalImagenes: imagenes.length,
+                              urls: imagenes,
+                              nota_completa: {
+                                imagen: nota.imagen,
+                                archivoUrl: nota.archivoUrl,
+                                imagenes: nota.imagenes,
+                                nombreArchivo: nota.nombreArchivo,
+                                contenido: nota.contenido?.substring(0, 30)
+                              }
+                            });
 
-                      // ✅ Si es una nota de cambio_estado sin los campos necesarios, no renderizarla
-                      if (tipoNota === 'cambio_estado' && (!nota.estadoAnterior || !nota.estadoNuevo)) {
-                        // Si tampoco tiene contenido ni imágenes ni audio, no mostrar nada
-                        if (!contenidoNota && imagenes.length === 0 && !audioUrl) {
-                          return null;
-                        }
-                      }
+                            const audioUrl = tipoNota === 'audio'
+                              ? (nota.archivoUrl || nota.audio)
+                              : null;
 
-                      return (
-                        <div key={idx} className={`${obtenerEstiloNota(nota)} rounded-lg sm:rounded-xl p-3 sm:p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-gray-300 text-xs mb-2 sm:mb-3">
-                            <span className="font-medium">{formatearFecha(fechaNota)}</span>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {imagenes.length > 0 && (
-                                <span className="inline-flex items-center gap-1 text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">
-                                  <Camera size={11} className="sm:w-3 sm:h-3" />
-                                  {imagenes.length}
-                                </span>
-                              )}
-                              {audioUrl && (
-                                <span className="inline-flex items-center gap-1 text-purple-400 bg-purple-500/20 px-2 py-0.5 rounded-full">
-                                  <Mic size={11} className="sm:w-3 sm:h-3" />
-                                  Audio
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {/* Mostrar contenido solo si existe */}
-                          {/* ✅ Si es cambio_estado CON ambos campos (estadoAnterior Y estadoNuevo), no mostrar contenido (se muestra visualmente abajo) */}
-                          {/* ✅ Si es cambio_estado SIN ambos campos completos, SÍ mostrar contenido (es texto normal) */}
-                          {contenidoNota && (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) && (
-                            <div className="text-xs sm:text-sm text-gray-100 leading-relaxed mb-2 sm:mb-3 font-medium break-words">
-                              {renderizarContenidoConIconos(contenidoNota)}
-                            </div>
-                          )}
+                            // ✅ Si es una nota de cambio_estado sin los campos necesarios, no renderizarla
+                            if (tipoNota === 'cambio_estado' && (!nota.estadoAnterior || !nota.estadoNuevo)) {
+                              // Si tampoco tiene contenido ni imágenes ni audio, no mostrar nada
+                              if (!contenidoNota && imagenes.length === 0 && !audioUrl) {
+                                return null;
+                              }
+                            }
 
-                          {/* Renderizar cambio de estado visualmente (solo si tiene estadoAnterior/estadoNuevo) */}
-                          {renderizarCambioEstado(nota)}
-                          
-                          {audioUrl && (
-                            <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-gray-900/50 rounded-lg border border-purple-500/30">
-                              <audio 
-                                controls 
-                                src={audioUrl} 
-                                className="w-full h-8 sm:h-10"
-                                preload="metadata"
-                              >
-                                Tu navegador no soporta el elemento de audio.
-                              </audio>
-                            </div>
-                          )}
-                          
-                          {imagenes.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {imagenes.map((imagen, imgIdx) => {
-                                // 🐛 DEBUG: Log para cada imagen que se va a renderizar
-                                console.log(`🖼️ INDIVIDUAL ${idx} - IMAGEN ${imgIdx}:`, {
-                                  url: imagen,
-                                  tipo: typeof imagen,
-                                  longitud: imagen?.length,
-                                  esValida: !!imagen
-                                });
-
-                                // Validar que la imagen sea válida
-                                if (!imagen) {
-                                  console.warn(`⚠️ INDIVIDUAL ${idx} - IMAGEN ${imgIdx}: NO TIENE URL`);
-                                  return null;
-                                }
-
-                                return (
-                                  <div
-                                    key={imgIdx}
-                                    className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
-                                    style={{ width: '80px', height: '80px' }}
-                                    onClick={() => {
-                                      console.log(`🔍 EXPANDIR IMAGEN INDIVIDUAL ${idx} - ${imgIdx}:`, imagen);
-                                      setImagenExpandida(imagen);
-                                    }}
-                                  >
-                                    <div className="w-full h-full bg-gray-800">
-                                      <img
-                                        src={imagen}
-                                        alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-                                        loading="lazy"
-                                        onLoad={() => {
-                                          console.log(`✅ INDIVIDUAL ${idx} - IMAGEN ${imgIdx} CARGADA:`, imagen);
-                                        }}
-                                        onError={(e) => {
-                                          console.error(`❌ INDIVIDUAL ${idx} - ERROR CARGANDO IMAGEN ${imgIdx}:`, imagen);
-                                          if (e.target) e.target.style.display = 'none';
-                                          e.target.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs">Error</div>';
-                                        }}
-                                      />
-                                    </div>
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
-                                          <Camera size={12} className="text-white" />
-                                        </div>
-                                      </div>
-                                    </div>
+                            return (
+                              <div key={idx} className={`${obtenerEstiloNota(nota)} rounded-lg sm:rounded-xl p-3 sm:p-4 border-2 hover:shadow-lg transition-all duration-200 backdrop-blur-sm`}>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-gray-300 text-xs mb-2 sm:mb-3">
+                                  <span className="font-medium">{formatearFecha(fechaNota)}</span>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {imagenes.length > 0 && (
+                                      <span className="inline-flex items-center gap-1 text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">
+                                        <Camera size={11} className="sm:w-3 sm:h-3" />
+                                        {imagenes.length}
+                                      </span>
+                                    )}
+                                    {audioUrl && (
+                                      <span className="inline-flex items-center gap-1 text-purple-400 bg-purple-500/20 px-2 py-0.5 rounded-full">
+                                        <Mic size={11} className="sm:w-3 sm:h-3" />
+                                        Audio
+                                      </span>
+                                    )}
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
+                                </div>
+                                {/* Mostrar contenido solo si existe */}
+                                {/* ✅ Si es cambio_estado CON ambos campos (estadoAnterior Y estadoNuevo), no mostrar contenido (se muestra visualmente abajo) */}
+                                {/* ✅ Si es cambio_estado SIN ambos campos completos, SÍ mostrar contenido (es texto normal) */}
+                                {contenidoNota && (tipoNota !== 'cambio_estado' || !nota.estadoAnterior || !nota.estadoNuevo) && (
+                                  <div className="text-xs sm:text-sm text-gray-100 leading-relaxed mb-2 sm:mb-3 font-medium break-words">
+                                    {renderizarContenidoConIconos(contenidoNota)}
+                                  </div>
+                                )}
+
+                                {/* Renderizar cambio de estado visualmente (solo si tiene estadoAnterior/estadoNuevo) */}
+                                {renderizarCambioEstado(nota)}
+
+                                {audioUrl && (
+                                  <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-gray-900/50 rounded-lg border border-purple-500/30">
+                                    <audio
+                                      controls
+                                      src={audioUrl}
+                                      className="w-full h-8 sm:h-10"
+                                      preload="metadata"
+                                    >
+                                      Tu navegador no soporta el elemento de audio.
+                                    </audio>
+                                  </div>
+                                )}
+
+                                {imagenes.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {imagenes.map((imagen, imgIdx) => {
+                                      // 🐛 DEBUG: Log para cada imagen que se va a renderizar
+                                      console.log(`🖼️ INDIVIDUAL ${idx} - IMAGEN ${imgIdx}:`, {
+                                        url: imagen,
+                                        tipo: typeof imagen,
+                                        longitud: imagen?.length,
+                                        esValida: !!imagen
+                                      });
+
+                                      // Validar que la imagen sea válida
+                                      if (!imagen) {
+                                        console.warn(`⚠️ INDIVIDUAL ${idx} - IMAGEN ${imgIdx}: NO TIENE URL`);
+                                        return null;
+                                      }
+
+                                      return (
+                                        <div
+                                          key={imgIdx}
+                                          className="relative group cursor-pointer overflow-hidden rounded-lg border border-gray-600 hover:border-blue-400 transition-all duration-200"
+                                          style={{ width: '80px', height: '80px' }}
+                                          onClick={() => {
+                                            console.log(`🔍 EXPANDIR IMAGEN INDIVIDUAL ${idx} - ${imgIdx}:`, imagen);
+                                            setImagenExpandida(imagen);
+                                          }}
+                                        >
+                                          <div className="w-full h-full bg-gray-800">
+                                            <img
+                                              src={imagen}
+                                              alt={`Evidencia ${idx + 1}-${imgIdx + 1}`}
+                                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                                              loading="lazy"
+                                              onLoad={() => {
+                                                console.log(`✅ INDIVIDUAL ${idx} - IMAGEN ${imgIdx} CARGADA:`, imagen);
+                                              }}
+                                              onError={(e) => {
+                                                console.error(`❌ INDIVIDUAL ${idx} - ERROR CARGANDO IMAGEN ${imgIdx}:`, imagen);
+                                                if (e.target) e.target.style.display = 'none';
+                                                e.target.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs">Error</div>';
+                                              }}
+                                            />
+                                          </div>
+                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <div className="bg-white/20 backdrop-blur-sm rounded-full p-1.5">
+                                                <Camera size={12} className="text-white" />
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
                           }
-                    })}
-                  </div>
+                        })}
+                      </div>
                     );
                   })()
                 ) : (

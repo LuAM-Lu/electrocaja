@@ -1,9 +1,13 @@
 // components/servicios/wizard/PasoModalidadPago.jsx
 import React, { useState, useEffect } from 'react';
-import {
-  CreditCard, DollarSign, Clock, CheckCircle,
-  AlertCircle, Coins, Banknote, TrendingUp
-} from 'lucide-react';
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
 import PagosPanel from '../../venta/PagosPanel';
 import DescuentoModal from '../../DescuentoModal';
 import { useCajaStore } from '../../../store/cajaStore';

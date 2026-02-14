@@ -1,6 +1,17 @@
 // components/inventario/TabNavigation.jsx
 import React from 'react';
-import { FileText, DollarSign, Package, Upload, Phone, Activity, CheckCircle, AlertTriangle, Building2, BarChart3, Wrench, Coffee } from 'lucide-react';
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Upload from 'lucide-react/dist/esm/icons/upload'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Activity from 'lucide-react/dist/esm/icons/activity'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Building2 from 'lucide-react/dist/esm/icons/building-2'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Coffee from 'lucide-react/dist/esm/icons/coffee'
 
 const TabNavigation = ({
   activeTab,

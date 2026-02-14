@@ -1,6 +1,14 @@
 // client/src/components/configuracion/AdministracionPanel.jsx
 import React, { useState } from 'react';
-import { Users, Building, Plus, Search, Edit2, Trash2, Eye, UserCheck, UserX } from 'lucide-react';
+import Users from 'lucide-react/dist/esm/icons/users'
+import Building from 'lucide-react/dist/esm/icons/building'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Edit2 from 'lucide-react/dist/esm/icons/edit-2'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import UserCheck from 'lucide-react/dist/esm/icons/user-check'
+import UserX from 'lucide-react/dist/esm/icons/user-x'
 import ClientesManager from './ClientesManager';
 import ProveedoresManager from './ProveedoresManager';
 

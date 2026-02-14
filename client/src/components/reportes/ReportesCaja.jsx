@@ -1,10 +1,24 @@
 // components/reportes/ReportesCaja.jsx
 import React, { useEffect, useState } from 'react';
-import {
-  Calendar, User, Eye, Package, DollarSign, Camera, X, ChevronLeft, ChevronRight,
-  Download, Filter, Search, Smartphone, ArrowRight, AlertTriangle, CheckCircle, FileText,
-  TrendingUp, TrendingDown
-} from 'lucide-react';
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import User from 'lucide-react/dist/esm/icons/user'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Package from 'lucide-react/dist/esm/icons/package'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import X from 'lucide-react/dist/esm/icons/x'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import Download from 'lucide-react/dist/esm/icons/download'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 import DetalleCajaModal from './DetalleCajaModal';

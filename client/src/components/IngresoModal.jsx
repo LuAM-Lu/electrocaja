@@ -1,12 +1,30 @@
 // components/IngresoModalV2.jsx - ESTRUCTURA BASE CON PESTAÑAS
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 // ✅ REMOVIDO flushSync - usando alternativa más segura
-import {
-  X, ShoppingCart, User, Package, CreditCard, CheckCircle,
-  AlertCircle, ArrowRight, ArrowLeft, Clock, DollarSign,
-  Receipt, Send, FileText, Printer, Percent, AlertTriangle,
-  Banknote, Star, Heart, Trash2, Lock, Info, Lightbulb
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import User from 'lucide-react/dist/esm/icons/user'
+import Package from 'lucide-react/dist/esm/icons/package'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right'
+import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Receipt from 'lucide-react/dist/esm/icons/receipt'
+import Send from 'lucide-react/dist/esm/icons/send'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import Star from 'lucide-react/dist/esm/icons/star'
+import Heart from 'lucide-react/dist/esm/icons/heart'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import Info from 'lucide-react/dist/esm/icons/info'
+import Lightbulb from 'lucide-react/dist/esm/icons/lightbulb'
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
 import { useInventarioStore } from '../store/inventarioStore';

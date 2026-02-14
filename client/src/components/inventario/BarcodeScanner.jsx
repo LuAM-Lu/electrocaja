@@ -1,6 +1,10 @@
 // components/inventario/BarcodeScanner.jsx
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Scan, Zap, X, CheckCircle, AlertTriangle } from 'lucide-react';
+import Scan from 'lucide-react/dist/esm/icons/scan'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import X from 'lucide-react/dist/esm/icons/x'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
 
 const BarcodeScanner = ({ 
   value, 

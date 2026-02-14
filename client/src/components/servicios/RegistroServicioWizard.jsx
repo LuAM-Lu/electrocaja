@@ -1,9 +1,15 @@
 // components/servicios/RegistroServicioWizard.jsx - COMPLETO CON MODO EDICIÓN
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  X, User, Smartphone, ShoppingCart, CheckCircle,
-  ChevronLeft, ChevronRight, Save, Edit3, Eye
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import User from 'lucide-react/dist/esm/icons/user'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import Save from 'lucide-react/dist/esm/icons/save'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import Eye from 'lucide-react/dist/esm/icons/eye'
 import ClienteSelector from '../presupuesto/ClienteSelector';
 import ItemsTable from '../presupuesto/ItemsTable';
 import toast from '../../utils/toast.jsx';
@@ -16,7 +22,7 @@ import PasoDispositivo from './wizard/PasoDispositivo';
 import PasoModalidadPago from './wizard/PasoModalidadPago';
 import PasoConfirmacion from './wizard/PasoConfirmacion';
 import ServicioProcesandoModal from './ServicioProcesandoModal';
-import { CreditCard } from 'lucide-react';
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
 import { delay, waitForRef } from '../../utils/saleProcessingHelpers';
 import { PROCESSING_CONFIG } from '../../constants/processingConstants';
 

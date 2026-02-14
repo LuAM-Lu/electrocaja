@@ -1,7 +1,21 @@
 // components/AbrirCajaModal.jsx (COMPLETO CON ESTILO CERRAR CAJA)
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Unlock, User, Calendar, Clock, Smartphone, CheckCircle, AlertCircle, Camera, CameraOff, ChevronDown, ChevronUp, TrendingUp, Coins, DollarSign } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Unlock from 'lucide-react/dist/esm/icons/unlock'
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import CameraOff from 'lucide-react/dist/esm/icons/camera-off'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';

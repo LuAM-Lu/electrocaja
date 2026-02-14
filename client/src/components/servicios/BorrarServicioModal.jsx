@@ -1,8 +1,11 @@
 // components/servicios/BorrarServicioModal.jsx (SOLO ADMIN - ESTILO ELECTRO CAJA)
 import React, { useState } from 'react';
-import {
-  X, Trash2, AlertTriangle, Shield, Key, ScanLine
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Key from 'lucide-react/dist/esm/icons/key'
+import ScanLine from 'lucide-react/dist/esm/icons/scan-line'
 import { useAuthStore } from '../../store/authStore';
 import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';

@@ -1,6 +1,15 @@
 // components/reportes/ReportesModal.jsx
 import React, { useState, useEffect } from 'react';
-import { X, BarChart, Package, TrendingDown, DollarSign, Search, Users, FileText, Calendar, Wrench } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import BarChart from 'lucide-react/dist/esm/icons/bar-chart'
+import Package from 'lucide-react/dist/esm/icons/package'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Users from 'lucide-react/dist/esm/icons/users'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
 import { useAuthStore } from '../../store/authStore';
 import toast from '../../utils/toast.jsx';
 

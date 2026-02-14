@@ -1,11 +1,32 @@
 // components/reportes/ReporteTecnico.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-    User, Calendar, Settings, Wrench, Smartphone, Search, RefreshCw,
-    ChevronDown, ChevronRight, AlertCircle, Briefcase, Trophy, Percent,
-    Clock, Wallet, CheckCircle, Banknote, X, Printer, Monitor,
-    Plus, Minus, RotateCcw, Trash2, TrendingUp, TrendingDown, FileText
-} from 'lucide-react';
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Search from 'lucide-react/dist/esm/icons/search'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Briefcase from 'lucide-react/dist/esm/icons/briefcase'
+import Trophy from 'lucide-react/dist/esm/icons/trophy'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import X from 'lucide-react/dist/esm/icons/x'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Minus from 'lucide-react/dist/esm/icons/minus'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 
@@ -106,7 +127,7 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
     const usuarioNombre = tecnicosList.find(u => u.id == usuarioId)?.nombre;
 
     // PRINT FUNCTION
-    const handlePrint = () => {
+    const handlePrint = async () => {
         const code = `PAY-TECH-${Date.now().toString().slice(-6)}`;
         const dateStr = new Date().toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true });
 
@@ -177,15 +198,37 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
       </html>
     `;
 
+        // 1. Abrir ventana de impresión
         const printWindow = window.open('', 'PRINT', 'height=600,width=400');
         if (printWindow) {
             printWindow.document.write(htmlContent);
             printWindow.document.close();
             printWindow.focus();
+
+            // 2. Registrar el pago generado en el backend
+            try {
+                await api.post('/reportes/pago-tecnico/registrar', {
+                    tecnicoId: usuarioId,
+                    fechaInicio: fechaInicio,
+                    fechaFin: fechaFin,
+                    totalServicios: calculos.countServicios,
+                    totalBs: calculos.netoBs,
+                    totalUsd: calculos.netoUsd
+                });
+                toast.success('✅ Pago registrado exitosamente');
+                // 3. Cerrar modal y recargar períodos en componente padre
+                setTimeout(() => {
+                    onClose(true); // true indica que se registró un pago
+                }, 1000);
+            } catch (error) {
+                console.error('Error registrando pago:', error);
+                toast.error('⚠️ Impresión exitosa, pero no se pudo registrar el período');
+            }
         } else {
             toast.error('Habilita las ventanas emergentes para imprimir');
         }
     };
+
 
     const TicketPreview = () => (
         <div className="bg-white p-4 border border-gray-300 shadow-sm font-mono text-xs w-[300px] mx-auto leading-tight relative">
@@ -235,7 +278,7 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
                                     </div>
                                     {isAddingIngreso && (<div className="bg-indigo-50/50 p-2 border-b border-indigo-100 animate-in slide-in-from-top-2"><div className="flex gap-2 mb-2"><input autoFocus type="text" placeholder="Motivo ingreso extra" className="flex-1 text-xs px-2 py-1 rounded border outline-none" value={newIngreso.desc} onChange={e => setNewIngreso({ ...newIngreso, desc: e.target.value })} /></div><div className="flex gap-2"><input type="number" placeholder="Monto Bs" className="w-24 text-xs px-2 py-1 rounded border outline-none" value={newIngreso.amountBs} onChange={e => setNewIngreso({ ...newIngreso, amountBs: e.target.value })} /><input type="number" placeholder="Monto USD" className="w-24 text-xs px-2 py-1 rounded border outline-none" value={newIngreso.amountUsd} onChange={e => setNewIngreso({ ...newIngreso, amountUsd: e.target.value })} /><div className="flex-1 flex justify-end gap-1"><button onClick={() => setIsAddingIngreso(false)} className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-200 rounded">Cancel</button><button onClick={addCustomIngreso} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">Guardar</button></div></div></div>)}
                                     <div className="overflow-y-auto custom-scrollbar">
-                                        <table className="w-full text-xs"><thead className="bg-white text-gray-500 sticky top-0 shadow-sm"><tr className="border-b"><th className="px-2 py-2 w-8 bg-gray-50"></th><th className="px-3 py-2 text-left bg-gray-50">Fecha</th><th className="px-3 py-2 text-left bg-gray-50">N°/Código</th><th className="px-3 py-2 text-left bg-gray-50">Equipo/Falla</th><th className="px-3 py-2 text-right bg-gray-50">Monto</th></tr></thead>
+                                        <table className="w-full text-xs"><thead className="bg-white text-gray-500 sticky top-0 shadow-sm"><tr className="border-b"><th className="px-2 py-2 w-8 bg-gray-50"></th><th className="px-3 py-2 text-left bg-gray-50">Fecha</th><th className="px-3 py-2 text-left bg-gray-50">N°/Código</th><th className="px-3 py-2 text-left bg-gray-50">Servicios Aplicados</th><th className="px-3 py-2 text-right bg-gray-50">Monto</th></tr></thead>
                                             <tbody className="divide-y relative z-0">
                                                 {customIngresos.map(t => (<tr key={t.id} className="bg-emerald-50/50 hover:bg-emerald-50"><td className="px-2 py-2 text-center"><button onClick={() => removeCustomIngreso(t.id)} className="p-1 rounded bg-indigo-100 text-indigo-600"><X className="h-3 w-3" /></button></td><td className="px-3 py-2 text-gray-600">Manual</td><td className="px-3 py-2 font-mono text-emerald-600">EXTRA</td><td className="px-3 py-2 text-gray-700">{t.descripcion}</td><td className="px-3 py-2 text-right font-mono text-emerald-600">{t.totalBs > 0 && <div>{formatCurrency(t.totalBs)}</div>}{t.totalUsd > 0 && <div>{formatCurrency(t.totalUsd, 'USD')}</div>}</td></tr>))}
                                                 {data.ventas.lista.map(t => { const isExcluded = serviciosExcluidos.has(t.id); return (<tr key={t.id} className={`transition-colors ${isExcluded ? 'bg-gray-100 opacity-50' : 'hover:bg-gray-50'}`}><td className="px-2 py-2 text-center"><button onClick={() => toggleServicioDb(t.id)} className={`p-1 rounded ${isExcluded ? 'bg-gray-300 text-gray-500' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>{isExcluded ? <RotateCcw className="h-3 w-3" /> : <Trash2 className="h-3 w-3" />}</button></td><td className="px-3 py-2 text-gray-600 whitespace-nowrap">{new Date(t.fechaHora).toLocaleString('es-VE', { day: '2-digit', month: '2-digit' })}</td><td className="px-3 py-2 font-mono text-gray-500">{t.codigoVenta}</td><td className="px-3 py-2 truncate max-w-[120px]" title={t.descripcion}>{t.descripcion}</td><td className="px-3 py-2 text-right font-mono"><div className="flex flex-col">{t.totalBs > 0 && <span>{formatCurrency(t.totalBs)}</span>}{t.totalUsd > 0 && <span className="text-emerald-600">{formatCurrency(t.totalUsd, 'USD')}</span>}</div></td></tr>) })}
@@ -291,6 +334,7 @@ const ReporteTecnico = () => {
     const [datos, setDatos] = useState(null);
     const [showPagoModal, setShowPagoModal] = useState(false);
     const [activeSection, setActiveSection] = useState('servicios');
+    const [periodosPagados, setPeriodosPagados] = useState([]); // 📅 Períodos ya pagados
 
     useEffect(() => {
         cargarTecnicos();
@@ -300,6 +344,39 @@ const ReporteTecnico = () => {
         setFechaFin(hoy.toISOString().split('T')[0]);
         setFechaInicio(haceUnMes.toISOString().split('T')[0]);
     }, []);
+
+    // 📅 Cargar períodos pagados cuando se selecciona un técnico
+    useEffect(() => {
+        if (tecnicoSeleccionado) {
+            cargarPeriodosPagados();
+        } else {
+            setPeriodosPagados([]);
+        }
+    }, [tecnicoSeleccionado]);
+
+    // 📅 Función para cargar períodos ya pagados
+    const cargarPeriodosPagados = async () => {
+        try {
+            const response = await api.get(`/reportes/pago-tecnico/periodos-pagados?tecnicoId=${tecnicoSeleccionado}`);
+            if (response.data?.success) {
+                setPeriodosPagados(response.data.data || []);
+            }
+        } catch (error) {
+            console.error('Error cargando períodos pagados:', error);
+        }
+    };
+
+    // 📅 Verificar si una fecha está en un período ya pagado
+    const isFechaPagada = (fecha) => {
+        if (!fecha) return false;
+        return periodosPagados.some(periodo => {
+            const inicio = new Date(periodo.fechaInicio);
+            const fin = new Date(periodo.fechaFin);
+            const fechaCheck = new Date(fecha);
+            return fechaCheck >= inicio && fechaCheck <= fin;
+        });
+    };
+
 
     const cargarTecnicos = async () => {
         try {
@@ -336,7 +413,44 @@ const ReporteTecnico = () => {
                 <div className="flex justify-between items-center mb-1"><h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Wrench className="h-5 w-5 text-indigo-500" /> Reporte Técnico</h3></div>
                 <div className="flex flex-col xl:flex-row gap-3 items-center">
                     <div className="relative flex-1 w-full xl:w-auto min-w-[200px]"><User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" /><select value={tecnicoSeleccionado} onChange={e => setTecnicoSeleccionado(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"><option value="">Seleccionar Técnico...</option>{tecnicos.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div>
-                    <div className="flex gap-3 w-full xl:w-auto"><div className="relative flex-1 xl:w-40"><Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" /><input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" /></div><div className="relative flex-1 xl:w-40"><Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" /><input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500" /></div></div>
+                    <div className="flex gap-3 w-full xl:w-auto">
+                        <div className="relative flex-1 xl:w-40">
+                            <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                            <input
+                                type="date"
+                                value={fechaInicio}
+                                onChange={e => setFechaInicio(e.target.value)}
+                                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 ${isFechaPagada(fechaInicio)
+                                        ? 'bg-amber-50 border-amber-300 focus:ring-amber-500'
+                                        : 'bg-gray-50 border-gray-200 focus:ring-indigo-500'
+                                    }`}
+                                title={isFechaPagada(fechaInicio) ? '⚠️ Esta fecha está en un período ya pagado' : ''}
+                            />
+                            {isFechaPagada(fechaInicio) && (
+                                <div className="absolute right-2 top-2.5 bg-amber-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                                    PAGADO
+                                </div>
+                            )}
+                        </div>
+                        <div className="relative flex-1 xl:w-40">
+                            <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                            <input
+                                type="date"
+                                value={fechaFin}
+                                onChange={e => setFechaFin(e.target.value)}
+                                className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 ${isFechaPagada(fechaFin)
+                                        ? 'bg-amber-50 border-amber-300 focus:ring-amber-500'
+                                        : 'bg-gray-50 border-gray-200 focus:ring-indigo-500'
+                                    }`}
+                                title={isFechaPagada(fechaFin) ? '⚠️ Esta fecha está en un período ya pagado' : ''}
+                            />
+                            {isFechaPagada(fechaFin) && (
+                                <div className="absolute right-2 top-2.5 bg-amber-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                                    PAGADO
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     <div className="flex gap-3 w-full xl:w-auto mt-2 xl:mt-0"><button onClick={cargarReporte} disabled={!tecnicoSeleccionado} className="flex-1 xl:flex-none bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm">{loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Generar</button><button onClick={() => setShowPagoModal(true)} disabled={!tecnicoSeleccionado} className="flex-1 xl:flex-none bg-emerald-50 text-emerald-600 border border-emerald-100 px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-100 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"><Banknote className="h-4 w-4" /> Generar Pago</button></div>
                 </div>
             </div>
@@ -387,7 +501,19 @@ const ReporteTecnico = () => {
                     </div>
                 </div>
             ) : <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300"><div className="bg-gray-50 p-4 rounded-full mb-4"> <Wrench className="h-10 w-10 text-gray-300" /> </div><p className="text-gray-500 font-medium">Selecciona un técnico para ver sus servicios entregados</p></div>}
-            {showPagoModal && <GenerarPagoTecnicoModal usuarioId={tecnicoSeleccionado} fechaInicio={fechaInicio} fechaFin={fechaFin} tecnicosList={tecnicos} onClose={() => setShowPagoModal(false)} />}
+            {showPagoModal && <GenerarPagoTecnicoModal
+                usuarioId={tecnicoSeleccionado}
+                fechaInicio={fechaInicio}
+                fechaFin={fechaFin}
+                tecnicosList={tecnicos}
+                onClose={(reload) => {
+                    setShowPagoModal(false);
+                    if (reload) {
+                        // Recargar períodos pagados si se registró un pago
+                        cargarPeriodosPagados();
+                    }
+                }}
+            />}
         </div>
     );
 };

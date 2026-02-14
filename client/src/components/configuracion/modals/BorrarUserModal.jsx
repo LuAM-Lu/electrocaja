@@ -1,6 +1,9 @@
 // components/BorrarUserModal.jsx
 import React, { useState } from 'react';
-import { AlertTriangle, Shield, Trash2, AlertCircle } from 'lucide-react';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
 import toast from '../../../utils/toast.jsx';
 
 const BorrarUserModal = ({ isOpen, usuario, onConfirm, onCancel }) => {

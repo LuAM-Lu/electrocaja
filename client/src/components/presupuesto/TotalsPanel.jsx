@@ -1,10 +1,18 @@
 // components/presupuesto/TotalsPanel.jsx - VERSIÓN REORGANIZADA Y COMPACTA 
 import React, { useState, useEffect } from 'react';
-import { 
-  Calculator, DollarSign, Percent, TrendingUp, 
-  Info, Plus, X, ChevronDown, ChevronUp,
-  Tag, Edit3, Check, MessageSquare
-} from 'lucide-react';
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import Info from 'lucide-react/dist/esm/icons/info'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import X from 'lucide-react/dist/esm/icons/x'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import Check from 'lucide-react/dist/esm/icons/check'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square'
 import toast from '../../utils/toast.jsx';
 
 //  OBSERVACIONES PREDEFINIDAS

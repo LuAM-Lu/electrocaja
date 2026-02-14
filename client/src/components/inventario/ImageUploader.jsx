@@ -1,6 +1,12 @@
 // components/inventario/ImageUploader.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, X, Camera, Image, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
+import Upload from 'lucide-react/dist/esm/icons/upload'
+import X from 'lucide-react/dist/esm/icons/x'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import Image from 'lucide-react/dist/esm/icons/image'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Loader from 'lucide-react/dist/esm/icons/loader'
 import toast from '../../utils/toast.jsx';
 import { API_CONFIG, getImageUrl } from '../../config/api';
 

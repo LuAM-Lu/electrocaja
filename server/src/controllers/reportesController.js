@@ -1483,7 +1483,77 @@ class ReportesController {
     }
   }
 
+  // 📅 REGISTRAR PAGO TÉCNICO GENERADO (para marcar períodos pagados)
+  static async registrarPagoTecnico(req, res) {
+    try {
+      const { tecnicoId, fechaInicio, fechaFin, totalServicios, totalBs, totalUsd } = req.body;
+      const generadoPorId = req.user?.id;
+
+      if (!tecnicoId || !fechaInicio || !fechaFin) {
+        return errorResponse(res, 'Datos requeridos: tecnicoId, fechaInicio, fechaFin', 400);
+      }
+
+      // Crear registro de pago generado
+      const pagoGenerado = await prisma.pagoTecnicoGenerado.create({
+        data: {
+          tecnicoId: parseInt(tecnicoId),
+          fechaInicio: new Date(fechaInicio),
+          fechaFin: new Date(fechaFin),
+          totalServicios: parseInt(totalServicios) || 0,
+          totalBs: parseFloat(totalBs) || 0,
+          totalUsd: parseFloat(totalUsd) || 0,
+          generadoPorId: generadoPorId || 1 // Fallback si no hay req.user
+        },
+        include: {
+          tecnico: { select: { nombre: true } },
+          generadoPor: { select: { nombre: true } }
+        }
+      });
+
+      return successResponse(res, pagoGenerado, 'Pago técnico registrado exitosamente');
+
+    } catch (error) {
+      console.error('Error en registrarPagoTecnico:', error);
+      return errorResponse(res, 'Error al registrar pago técnico', 500);
+    }
+  }
+
+  // 📅 CONSULTAR PERÍODOS YA PAGADOS (para marcar en el selector de fechas)
+  static async getPeriodosPagados(req, res) {
+    try {
+      const { tecnicoId } = req.query;
+
+      if (!tecnicoId) {
+        return errorResponse(res, 'tecnicoId es requerido', 400);
+      }
+
+      const periodosPagados = await prisma.pagoTecnicoGenerado.findMany({
+        where: {
+          tecnicoId: parseInt(tecnicoId)
+        },
+        select: {
+          id: true,
+          fechaInicio: true,
+          fechaFin: true,
+          totalServicios: true,
+          totalBs: true,
+          totalUsd: true,
+          fechaGeneracion: true,
+          generadoPor: { select: { nombre: true } }
+        },
+        orderBy: { fechaGeneracion: 'desc' }
+      });
+
+      return successResponse(res, periodosPagados, `${periodosPagados.length} período(s) encontrado(s)`);
+
+    } catch (error) {
+      console.error('Error en getPeriodosPagados:', error);
+      return errorResponse(res, 'Error al consultar períodos pagados', 500);
+    }
+  }
+
 }
+
 
 
 

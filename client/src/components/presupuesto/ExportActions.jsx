@@ -1,10 +1,16 @@
 // components/presupuesto/ExportActions.jsx - SOLO CONFIGURACIÓN 
 import React, { useState } from 'react';
-import {
-  FileText, Mail, Download,
-  CheckCircle, Eye, AlertTriangle, Check,
-  ChevronDown, Wifi, WifiOff, X
-} from 'lucide-react';
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import Download from 'lucide-react/dist/esm/icons/download'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Check from 'lucide-react/dist/esm/icons/check'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import Wifi from 'lucide-react/dist/esm/icons/wifi'
+import WifiOff from 'lucide-react/dist/esm/icons/wifi-off'
+import X from 'lucide-react/dist/esm/icons/x'
 import { FaWhatsapp } from 'react-icons/fa';
 import toast from '../../utils/toast.jsx';
 import { calcularTotales } from '../../utils/presupuestoUtils';

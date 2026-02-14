@@ -1,9 +1,17 @@
 // components/reportes/ReportesEgresos.jsx
 import React, { useState, useEffect } from 'react';
-import {
-  Search, Filter, TrendingDown, User, Calendar, DollarSign,
-  FileText, ArrowDownRight, Wallet, PieChart, Users, ArrowRight
-} from 'lucide-react';
+import Search from 'lucide-react/dist/esm/icons/search'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import ArrowDownRight from 'lucide-react/dist/esm/icons/arrow-down-right'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import PieChart from 'lucide-react/dist/esm/icons/pie-chart'
+import Users from 'lucide-react/dist/esm/icons/users'
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 

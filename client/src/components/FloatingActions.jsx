@@ -1,6 +1,22 @@
 // components/FloatingActions.jsx (VERSIÓN CORREGIDA COMPLETA)
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Minus, Menu, X, Lock, Zap, Package, Calculator, Users, Settings, Search, Scan, FileText, /* Activity, */ DollarSign, Camera, XCircle, ClipboardList } from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Minus from 'lucide-react/dist/esm/icons/minus'
+import Menu from 'lucide-react/dist/esm/icons/menu'
+import X from 'lucide-react/dist/esm/icons/x'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import Users from 'lucide-react/dist/esm/icons/users'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Scan from 'lucide-react/dist/esm/icons/scan'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
+import ClipboardList from 'lucide-react/dist/esm/icons/clipboard-list'
 import { TbTruckDelivery } from 'react-icons/tb';
 import { useAuthStore } from '../store/authStore';
 import { useInventarioStore } from '../store/inventarioStore';

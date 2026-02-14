@@ -1,11 +1,28 @@
 // components/PedidosModal.jsx - Modal principal de gestión de pedidos
 import React, { useState, useEffect } from 'react';
-import {
-    X, Package, Search, Filter, Plus, Eye, Edit,
-    DollarSign, Phone, Clock, CheckCircle, Truck,
-    Store, XCircle, RefreshCw, MessageCircle, Monitor, Wallet,
-    Trash2, ClipboardCheck, ChevronDown, ChevronLeft, ChevronRight
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Edit from 'lucide-react/dist/esm/icons/edit'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Truck from 'lucide-react/dist/esm/icons/truck'
+import Store from 'lucide-react/dist/esm/icons/store'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import ClipboardCheck from 'lucide-react/dist/esm/icons/clipboard-check'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
 import { TbTruckDelivery } from 'react-icons/tb';
 import { api } from '../config/api';
 import toast from '../utils/toast.jsx';

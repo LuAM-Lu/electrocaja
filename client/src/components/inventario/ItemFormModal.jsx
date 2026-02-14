@@ -1,10 +1,21 @@
 // components/inventario/ItemModal.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  X, Save, AlertTriangle, CheckCircle, Loader,
-  Zap, RotateCcw, Package, Wrench, Search,
-  Coffee, DollarSign, BarChart3, Camera, MapPin, Truck
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Save from 'lucide-react/dist/esm/icons/save'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Loader from 'lucide-react/dist/esm/icons/loader'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Coffee from 'lucide-react/dist/esm/icons/coffee'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import Truck from 'lucide-react/dist/esm/icons/truck'
 import { useInventarioStore } from '../../store/inventarioStore';
 import BarcodeScanner from './BarcodeScanner';
 import ImageUploader from './ImageUploader';

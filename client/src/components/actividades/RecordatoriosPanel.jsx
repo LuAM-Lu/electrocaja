@@ -1,11 +1,26 @@
 // components/actividades/RecordatoriosPanel.jsx - PANEL DE RECORDATORIOS CON @MENCIONES
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Plus, Calendar, User, Users, Clock, CheckCircle, 
-  AlertTriangle, Search, Filter, MessageSquare, Bell,
-  Edit3, Trash2, MoreVertical, X, Send, AtSign,
-  Flag, Target, Zap, Archive
-} from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import User from 'lucide-react/dist/esm/icons/user'
+import Users from 'lucide-react/dist/esm/icons/users'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import MessageSquare from 'lucide-react/dist/esm/icons/message-square'
+import Bell from 'lucide-react/dist/esm/icons/bell'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import MoreVertical from 'lucide-react/dist/esm/icons/more-vertical'
+import X from 'lucide-react/dist/esm/icons/x'
+import Send from 'lucide-react/dist/esm/icons/send'
+import AtSign from 'lucide-react/dist/esm/icons/at-sign'
+import Flag from 'lucide-react/dist/esm/icons/flag'
+import Target from 'lucide-react/dist/esm/icons/target'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import Archive from 'lucide-react/dist/esm/icons/archive'
 import { 
   useActividadesStore, 
   PRIORIDADES, 

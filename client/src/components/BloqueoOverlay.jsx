@@ -1,6 +1,9 @@
 // components/BloqueoOverlay.jsx (CORREGIDO - NO BLOQUEAR AL QUE CIERRA)
 import React from 'react';
-import { Shield, Clock, User, AlertTriangle } from 'lucide-react';
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import User from 'lucide-react/dist/esm/icons/user'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
 import { useAuthStore } from '../store/authStore';
 
 const BloqueoOverlay = ({ usuariosBloqueados, motivoBloqueo, usuarioCerrando }) => {

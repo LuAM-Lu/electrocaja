@@ -1,6 +1,14 @@
 // components/Footer.jsx (FULL RESPONSIVE MOBILE + TEMAS DINÁMICOS + STICKY)
 import React, { useState, useEffect } from 'react';
-import { Users, Activity, Wifi, WifiOff, Zap, MessageCircle, Calendar, Clock, Package } from 'lucide-react';
+import Users from 'lucide-react/dist/esm/icons/users'
+import Activity from 'lucide-react/dist/esm/icons/activity'
+import Wifi from 'lucide-react/dist/esm/icons/wifi'
+import WifiOff from 'lucide-react/dist/esm/icons/wifi-off'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import MessageCircle from 'lucide-react/dist/esm/icons/message-circle'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Package from 'lucide-react/dist/esm/icons/package'
 import { useAuthStore } from '../store/authStore';
 import { useCajaStore } from '../store/cajaStore';
 import { useDashboardStore } from '../store/dashboardStore';

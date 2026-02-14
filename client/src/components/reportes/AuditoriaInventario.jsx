@@ -1,6 +1,20 @@
 // components/reportes/AuditoriaInventario.jsx
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Package, Check, X, AlertTriangle, Eye, Download, FileText, Plus, Minus, Camera, User, RefreshCw, Layers } from 'lucide-react';
+import Search from 'lucide-react/dist/esm/icons/search'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Check from 'lucide-react/dist/esm/icons/check'
+import X from 'lucide-react/dist/esm/icons/x'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Download from 'lucide-react/dist/esm/icons/download'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Minus from 'lucide-react/dist/esm/icons/minus'
+import Camera from 'lucide-react/dist/esm/icons/camera'
+import User from 'lucide-react/dist/esm/icons/user'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import Layers from 'lucide-react/dist/esm/icons/layers'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 

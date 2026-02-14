@@ -1,10 +1,28 @@
 // components/inventario/PrintInventarioModal.jsx
 import React, { useState, useRef } from 'react';
-import {
-    X, Printer, Eye, Filter, Package, ShoppingCart, Wrench, Coffee,
-    DollarSign, MapPin, Store, Tag, Hash, Boxes, CheckCircle, XCircle,
-    ChevronDown, ChevronUp, FileText, Image, Plus, Trash2, GripVertical
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Filter from 'lucide-react/dist/esm/icons/filter'
+import Package from 'lucide-react/dist/esm/icons/package'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Coffee from 'lucide-react/dist/esm/icons/coffee'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import Store from 'lucide-react/dist/esm/icons/store'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import Hash from 'lucide-react/dist/esm/icons/hash'
+import Boxes from 'lucide-react/dist/esm/icons/boxes'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Image from 'lucide-react/dist/esm/icons/image'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import GripVertical from 'lucide-react/dist/esm/icons/grip-vertical'
 import { useInventarioStore } from '../../store/inventarioStore';
 import { useAuthStore } from '../../store/authStore';
 import { getImageUrl } from '../../config/api';

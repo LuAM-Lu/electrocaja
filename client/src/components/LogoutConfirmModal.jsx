@@ -1,6 +1,9 @@
 // components/LogoutConfirmModal.jsx
 import React, { useEffect } from 'react';
-import { LogOut, AlertTriangle, X, User } from 'lucide-react';
+import LogOut from 'lucide-react/dist/esm/icons/log-out'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import X from 'lucide-react/dist/esm/icons/x'
+import User from 'lucide-react/dist/esm/icons/user'
 
 const LogoutConfirmModal = ({ 
   isOpen, 

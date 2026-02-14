@@ -1,5 +1,8 @@
 import React from 'react';
-import { Printer, X, User, Package } from 'lucide-react';
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import X from 'lucide-react/dist/esm/icons/x'
+import User from 'lucide-react/dist/esm/icons/user'
+import Package from 'lucide-react/dist/esm/icons/package'
 
 const ModalReimprimirTicket = ({ isOpen, onClose, onImprimirCliente, onImprimirInterno }) => {
   if (!isOpen) return null;

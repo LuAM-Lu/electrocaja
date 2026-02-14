@@ -1,9 +1,17 @@
 // components/venta/PagosPanel.jsx - SISTEMA DE PAGOS MODULAR CON HYBRID CHIPS 
 import React from 'react';
-import { 
- X, Plus, CreditCard, DollarSign, RefreshCw,
- AlertTriangle, CheckCircle, Percent, MousePointerClick, Trash2, HandCoins, BanknoteArrowUp
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import MousePointerClick from 'lucide-react/dist/esm/icons/mouse-pointer-click'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import HandCoins from 'lucide-react/dist/esm/icons/hand-coins'
+import BanknoteArrowUp from 'lucide-react/dist/esm/icons/banknote-arrow-up'
 import toast from '../../utils/toast.jsx';
 
 // ===================================

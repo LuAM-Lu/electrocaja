@@ -1,9 +1,13 @@
 // components/UserMenu.jsx (OPCIONAL - Menu más completo)
 import React, { useState } from 'react';
-import { 
-  User, LogOut, Settings, Clock, Shield, 
-  ChevronDown, Bell, Activity 
-} from 'lucide-react';
+import User from 'lucide-react/dist/esm/icons/user'
+import LogOut from 'lucide-react/dist/esm/icons/log-out'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import Bell from 'lucide-react/dist/esm/icons/bell'
+import Activity from 'lucide-react/dist/esm/icons/activity'
 import { useAuthStore } from '../store/authStore';
 import toast from '../utils/toast.jsx';
 

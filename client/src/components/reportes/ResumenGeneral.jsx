@@ -1,6 +1,16 @@
 // components/reportes/ResumenGeneral.jsx
 import React, { useState, useEffect } from 'react';
-import { BarChart, TrendingUp, TrendingDown, DollarSign, Package, Users, Activity, RefreshCw, ArrowUpRight, ArrowDownRight, CircleDollarSign } from 'lucide-react';
+import BarChart from 'lucide-react/dist/esm/icons/bar-chart'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Users from 'lucide-react/dist/esm/icons/users'
+import Activity from 'lucide-react/dist/esm/icons/activity'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import ArrowUpRight from 'lucide-react/dist/esm/icons/arrow-up-right'
+import ArrowDownRight from 'lucide-react/dist/esm/icons/arrow-down-right'
+import CircleDollarSign from 'lucide-react/dist/esm/icons/circle-dollar-sign'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 import { formatMoney } from '../../utils/moneyUtils';

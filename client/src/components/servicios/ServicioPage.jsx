@@ -1,10 +1,24 @@
 // components/servicios/ServicioPage.jsx (ACTUALIZADO - CON BOTÓN HISTORIAL Y DATOS ORIGINALES)
 import React, { useState, useEffect } from 'react';
-import {
-  PlusCircle, Eye, Pencil, Trash2, Inbox, Stethoscope, Clock,
-  Wrench, CheckCircle, PackageCheck, Flag, Info, History, Search, X, Lock, ClipboardList,
-  ChevronLeft, ChevronRight
-} from 'lucide-react';
+import PlusCircle from 'lucide-react/dist/esm/icons/plus-circle'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Pencil from 'lucide-react/dist/esm/icons/pencil'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Inbox from 'lucide-react/dist/esm/icons/inbox'
+import Stethoscope from 'lucide-react/dist/esm/icons/stethoscope'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import PackageCheck from 'lucide-react/dist/esm/icons/package-check'
+import Flag from 'lucide-react/dist/esm/icons/flag'
+import Info from 'lucide-react/dist/esm/icons/info'
+import History from 'lucide-react/dist/esm/icons/history'
+import Search from 'lucide-react/dist/esm/icons/search'
+import X from 'lucide-react/dist/esm/icons/x'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import ClipboardList from 'lucide-react/dist/esm/icons/clipboard-list'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
 import { useAuthStore } from '../../store/authStore';
 import { useServiciosStore } from '../../store/serviciosStore';
 import toast from '../../utils/toast.jsx'; //  IMPORT AGREGADO

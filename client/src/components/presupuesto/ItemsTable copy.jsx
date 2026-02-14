@@ -1,12 +1,28 @@
 // components/ItemsTable.jsx - VERSIÓN MEJORADA MODULAR 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Plus, Search, Edit3, Trash2, Save, X, 
-  Package, Scan, Calculator, AlertTriangle, Settings,
-  ChevronUp, ChevronDown, GripVertical, Check,
-  Zap, ShoppingCart, Tag, DollarSign, Eye,
-  Barcode, Info, Star
-} from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Save from 'lucide-react/dist/esm/icons/save'
+import X from 'lucide-react/dist/esm/icons/x'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Scan from 'lucide-react/dist/esm/icons/scan'
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import GripVertical from 'lucide-react/dist/esm/icons/grip-vertical'
+import Check from 'lucide-react/dist/esm/icons/check'
+import Zap from 'lucide-react/dist/esm/icons/zap'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
+import Tag from 'lucide-react/dist/esm/icons/tag'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Barcode from 'lucide-react/dist/esm/icons/barcode'
+import Info from 'lucide-react/dist/esm/icons/info'
+import Star from 'lucide-react/dist/esm/icons/star'
 import { useInventarioStore } from "../../store/inventarioStore";
 import toast from '../../utils/toast.jsx';
 import { api } from '../../config/api';

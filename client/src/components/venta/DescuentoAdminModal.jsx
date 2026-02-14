@@ -1,8 +1,12 @@
 // components/venta/DescuentoAdminModal.jsx - Modal de Descuentos con Validación Admin
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  X, Percent, CheckCircle, Banknote, Star, Heart, Trash2
-} from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import Star from 'lucide-react/dist/esm/icons/star'
+import Heart from 'lucide-react/dist/esm/icons/heart'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
 import { useAuthStore } from '../../store/authStore';
 import toast from '../../utils/toast.jsx';
 

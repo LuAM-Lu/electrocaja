@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-    Folder, File, Download, Trash2, Upload, Plus, ChevronRight,
-    ArrowUp, Search, RefreshCw, Image as ImageIcon, FileText, AlertCircle,
-    HardDrive, List, Grid, LayoutGrid, ArrowUpDown
-} from 'lucide-react';
+import Folder from 'lucide-react/dist/esm/icons/folder'
+import File from 'lucide-react/dist/esm/icons/file'
+import Download from 'lucide-react/dist/esm/icons/download'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import Upload from 'lucide-react/dist/esm/icons/upload'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import ArrowUp from 'lucide-react/dist/esm/icons/arrow-up'
+import Search from 'lucide-react/dist/esm/icons/search'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import ImageIcon from 'lucide-react/dist/esm/icons/image'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import HardDrive from 'lucide-react/dist/esm/icons/hard-drive'
+import List from 'lucide-react/dist/esm/icons/list'
+import Grid from 'lucide-react/dist/esm/icons/grid'
+import LayoutGrid from 'lucide-react/dist/esm/icons/layout-grid'
+import ArrowUpDown from 'lucide-react/dist/esm/icons/arrow-up-down'
 import { api } from '../../config/api';
 import toast from '../../utils/toast';
 

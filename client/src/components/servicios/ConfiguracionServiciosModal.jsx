@@ -1,6 +1,13 @@
 // components/servicios/ConfiguracionServiciosModal.jsx
 import React, { useState, useEffect } from 'react';
-import { X, Users, Phone, Settings, Save, AlertCircle, AlertTriangle, Star } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Users from 'lucide-react/dist/esm/icons/users'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import Save from 'lucide-react/dist/esm/icons/save'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Star from 'lucide-react/dist/esm/icons/star'
 import { useAuthStore } from '../../store/authStore';
 import { useServiciosStore } from '../../store/serviciosStore';
 import { api } from '../../config/api';

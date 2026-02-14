@@ -1,6 +1,17 @@
 // components/EgresoModal.jsx - HEADER MODERNIZADO
 import React, { useState, useEffect } from 'react';
-import { X, Minus, Calculator, Trash2, DollarSign, Smartphone, CreditCard, Coins, ChevronDown, ChevronUp, Plus, Settings } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Minus from 'lucide-react/dist/esm/icons/minus'
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Settings from 'lucide-react/dist/esm/icons/settings'
 import { useCajaStore } from '../store/cajaStore';
 import toast from '../utils/toast.jsx';
 import PagosPanel from './venta/PagosPanel';

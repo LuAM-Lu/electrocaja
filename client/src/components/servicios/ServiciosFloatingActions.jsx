@@ -1,6 +1,10 @@
 // components/servicios/ServiciosFloatingActions.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, PlusCircle, Wrench, Settings, BarChart3 } from 'lucide-react';
+import Menu from 'lucide-react/dist/esm/icons/menu'
+import PlusCircle from 'lucide-react/dist/esm/icons/plus-circle'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Settings from 'lucide-react/dist/esm/icons/settings'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
 import { useAuthStore } from '../../store/authStore';
 
 const ServiciosFloatingActions = ({ onNewService, onSettings, onReports }) => {

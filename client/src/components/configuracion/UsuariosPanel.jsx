@@ -1,9 +1,25 @@
 // components/configuracion/UsuariosPanel.jsx - REFACTORIZADO CON MEJORES PRÁCTICAS
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import {
-  Users, ChevronDown, ChevronUp, UserPlus, UserX, Shield, Crown, RefreshCw, UserCheck,
-  Monitor, Activity, Globe, Trash2, X, AlertCircle, Eye, Edit, QrCode, ChevronLeft, ChevronRight
-} from 'lucide-react';
+import Users from 'lucide-react/dist/esm/icons/users'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import UserPlus from 'lucide-react/dist/esm/icons/user-plus'
+import UserX from 'lucide-react/dist/esm/icons/user-x'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import Crown from 'lucide-react/dist/esm/icons/crown'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import UserCheck from 'lucide-react/dist/esm/icons/user-check'
+import Monitor from 'lucide-react/dist/esm/icons/monitor'
+import Activity from 'lucide-react/dist/esm/icons/activity'
+import Globe from 'lucide-react/dist/esm/icons/globe'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import X from 'lucide-react/dist/esm/icons/x'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Edit from 'lucide-react/dist/esm/icons/edit'
+import QrCode from 'lucide-react/dist/esm/icons/qr-code'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 import UsuarioFormModal from './modals/UsuarioFormModal';

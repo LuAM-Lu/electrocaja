@@ -1,6 +1,15 @@
 // components/inventario/AjusteMasivoModal.jsx
 import React, { useState, useMemo } from 'react';
-import { X, DollarSign, Percent, Calculator, AlertTriangle, CheckCircle, RefreshCw, Package, Wrench, Coffee } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Coffee from 'lucide-react/dist/esm/icons/coffee'
 import { useInventarioStore } from '../../store/inventarioStore';
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';

@@ -1,6 +1,18 @@
 // components/CajaStatus.jsx (FORMATO TABLA 3 COLUMNAS x 2 FILAS)
 import React, { useState } from 'react';
-import { Store, DollarSign, Coins, Smartphone, Unlock, Package, AlertTriangle, User, Calendar, Clock, MonitorSmartphone, Wrench, Coffee } from 'lucide-react';
+import Store from 'lucide-react/dist/esm/icons/store'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Unlock from 'lucide-react/dist/esm/icons/unlock'
+import Package from 'lucide-react/dist/esm/icons/package'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import MonitorSmartphone from 'lucide-react/dist/esm/icons/monitor-smartphone'
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Coffee from 'lucide-react/dist/esm/icons/coffee'
 import { FaCashRegister, FaUnlock } from "react-icons/fa";
 import { useCajaStore } from '../store/cajaStore';
 import { useInventarioStore } from '../store/inventarioStore';

@@ -1,7 +1,13 @@
 // components/PedidoProcesandoModal.jsx
 // Pantalla de carga premium para procesamiento de pedidos
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { CheckCircle, Loader2, FileText, Printer, Package, CreditCard, AlertTriangle } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Package from 'lucide-react/dist/esm/icons/package'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
 import { FaWhatsapp } from 'react-icons/fa';
 
 const PedidoProcesandoModal = forwardRef(({

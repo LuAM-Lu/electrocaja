@@ -1,7 +1,12 @@
 // components/venta/VentaProcesandoModal.jsx
 // Pantalla de carga premium para procesamiento de venta
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { CheckCircle, Loader2, FileText, Printer, Mail, ShoppingCart } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Loader2 from 'lucide-react/dist/esm/icons/loader-2'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
 import { FaWhatsapp } from 'react-icons/fa';
 
 const VentaProcesandoModal = forwardRef(({ 

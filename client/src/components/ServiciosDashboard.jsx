@@ -1,6 +1,8 @@
 // components/ServiciosDashboard.jsx - COMPLETO CON FUNCIONALIDAD DE EDICIÓN
 import React, { useState, useEffect } from 'react';
-import { Wrench, Store, BarChart3 } from 'lucide-react';
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import Store from 'lucide-react/dist/esm/icons/store'
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3'
 import { useDashboardStore } from '../store/dashboardStore';
 import { useAuthStore } from '../store/authStore';
 import { useServiciosStore } from '../store/serviciosStore';

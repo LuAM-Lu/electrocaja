@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
-import { X, Trash2, AlertTriangle } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
 
 const ConfirmarEliminarNotaModal = ({ 
   isOpen, 

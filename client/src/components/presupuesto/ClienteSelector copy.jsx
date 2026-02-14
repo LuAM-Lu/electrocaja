@@ -1,9 +1,15 @@
 // components/ClienteSelector.jsx - VERSIÓN MEJORADA MODULAR 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, UserPlus, X, User, Building, Phone, 
-  Mail, MapPin, AlertCircle, CheckCircle 
-} from 'lucide-react';
+import Search from 'lucide-react/dist/esm/icons/search'
+import UserPlus from 'lucide-react/dist/esm/icons/user-plus'
+import X from 'lucide-react/dist/esm/icons/x'
+import User from 'lucide-react/dist/esm/icons/user'
+import Building from 'lucide-react/dist/esm/icons/building'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import Mail from 'lucide-react/dist/esm/icons/mail'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
 import toast from '../../utils/toast.jsx';
 import { api } from "../../config/api";
 

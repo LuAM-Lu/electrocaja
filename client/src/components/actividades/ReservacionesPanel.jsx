@@ -1,12 +1,30 @@
 // components/actividades/ReservacionesPanel.jsx - PANEL DE RESERVACIONES CON CALENDARIO
 import React, { useState, useEffect } from 'react';
-import {
-  Plus, Calendar, MapPin, User, Phone, DollarSign,
-  Clock, PartyPopper, Gift, ChevronLeft, ChevronRight,
-  Eye, Edit3, Trash2, CheckCircle, AlertTriangle,
-  CreditCard, CalendarDays, Users, Star, Package,
-  X, MoreVertical, Search, Filter
-} from 'lucide-react';
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import MapPin from 'lucide-react/dist/esm/icons/map-pin'
+import User from 'lucide-react/dist/esm/icons/user'
+import Phone from 'lucide-react/dist/esm/icons/phone'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import PartyPopper from 'lucide-react/dist/esm/icons/party-popper'
+import Gift from 'lucide-react/dist/esm/icons/gift'
+import ChevronLeft from 'lucide-react/dist/esm/icons/chevron-left'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Edit3 from 'lucide-react/dist/esm/icons/edit-3'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import CalendarDays from 'lucide-react/dist/esm/icons/calendar-days'
+import Users from 'lucide-react/dist/esm/icons/users'
+import Star from 'lucide-react/dist/esm/icons/star'
+import Package from 'lucide-react/dist/esm/icons/package'
+import X from 'lucide-react/dist/esm/icons/x'
+import MoreVertical from 'lucide-react/dist/esm/icons/more-vertical'
+import Search from 'lucide-react/dist/esm/icons/search'
+import Filter from 'lucide-react/dist/esm/icons/filter'
 import { 
   useActividadesStore, 
   TIPOS_RESERVACION, 

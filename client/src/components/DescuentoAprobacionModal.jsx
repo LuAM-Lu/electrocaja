@@ -1,6 +1,10 @@
 // components/DescuentoAprobacionModal.jsx - Modal de aprobación de descuentos para admins
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, Percent, User, ShoppingCart } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import XCircle from 'lucide-react/dist/esm/icons/x-circle'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import User from 'lucide-react/dist/esm/icons/user'
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart'
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 import api from '../config/api';

@@ -1,11 +1,35 @@
 // components/reportes/ReporteEmpleado.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  User, Calendar, TrendingUp, TrendingDown, DollarSign,
-  Package, Users, Eye, Search, RefreshCw, Download,
-  CreditCard, Smartphone, ChevronDown, ChevronRight, AlertCircle,
-  Briefcase, Trophy, Percent, Clock, Wallet, CheckCircle, Banknote, X, Printer, Trash2, RotateCcw, Plus, Minus, FileText
-} from 'lucide-react';
+import User from 'lucide-react/dist/esm/icons/user'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Package from 'lucide-react/dist/esm/icons/package'
+import Users from 'lucide-react/dist/esm/icons/users'
+import Eye from 'lucide-react/dist/esm/icons/eye'
+import Search from 'lucide-react/dist/esm/icons/search'
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw'
+import Download from 'lucide-react/dist/esm/icons/download'
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right'
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle'
+import Briefcase from 'lucide-react/dist/esm/icons/briefcase'
+import Trophy from 'lucide-react/dist/esm/icons/trophy'
+import Percent from 'lucide-react/dist/esm/icons/percent'
+import Clock from 'lucide-react/dist/esm/icons/clock'
+import Wallet from 'lucide-react/dist/esm/icons/wallet'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Banknote from 'lucide-react/dist/esm/icons/banknote'
+import X from 'lucide-react/dist/esm/icons/x'
+import Printer from 'lucide-react/dist/esm/icons/printer'
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2'
+import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw'
+import Plus from 'lucide-react/dist/esm/icons/plus'
+import Minus from 'lucide-react/dist/esm/icons/minus'
+import FileText from 'lucide-react/dist/esm/icons/file-text'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
 

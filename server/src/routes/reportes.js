@@ -111,6 +111,22 @@ router.get('/pago-vendedor/calculo', ReportesController.getPagoVendedorCalculo);
 router.get('/pago-tecnico/calculo', ReportesController.getPagoTecnicoCalculo);
 
 /**
+ * @route   POST /api/reportes/pago-tecnico/registrar
+ * @desc    Registrar un pago técnico generado (al imprimir)
+ * @body    { tecnicoId, fechaInicio, fechaFin, totalServicios, totalBs, totalUsd }
+ * @access  Admin only
+ */
+router.post('/pago-tecnico/registrar', ReportesController.registrarPagoTecnico);
+
+/**
+ * @route   GET /api/reportes/pago-tecnico/periodos-pagados
+ * @desc    Consultar períodos ya pagados de un técnico (para marcar en calendario)
+ * @params  ?tecnicoId=number
+ * @access  Admin only
+ */
+router.get('/pago-tecnico/periodos-pagados', ReportesController.getPeriodosPagados);
+
+/**
  * @route   GET /api/reportes/tecnico
  * @desc    Reporte de servicios entregados por técnico
  * @params  ?usuarioId=number&fechaInicio=date&fechaFin=date

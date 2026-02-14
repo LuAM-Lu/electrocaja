@@ -1,6 +1,22 @@
 // components/ConteoDirectoModal.jsx - INTEGRADO CON useMontosEnCaja Y PDF + BLOQUEO DE USUARIOS
 import React, { useState, useEffect, useRef } from 'react';
-import { X, DollarSign, Coins, Smartphone, Calculator, Shield, AlertTriangle, Lock, Calendar, User, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Loader, CheckCircle } from 'lucide-react';
+import X from 'lucide-react/dist/esm/icons/x'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import Coins from 'lucide-react/dist/esm/icons/coins'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import Calculator from 'lucide-react/dist/esm/icons/calculator'
+import Shield from 'lucide-react/dist/esm/icons/shield'
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle'
+import Lock from 'lucide-react/dist/esm/icons/lock'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import User from 'lucide-react/dist/esm/icons/user'
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up'
+import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
+import Minus from 'lucide-react/dist/esm/icons/minus'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import Loader from 'lucide-react/dist/esm/icons/loader'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
 import { useCajaStore } from '../store/cajaStore';
 import { useAuthStore } from '../store/authStore';
 import { useSocketEvents } from '../hooks/useSocketEvents';

@@ -1,6 +1,12 @@
 // components/servicios/HistorialPagosPanel.jsx
 import React from 'react';
-import { CreditCard, Calendar, User, Smartphone, DollarSign, CheckCircle, Clock } from 'lucide-react';
+import CreditCard from 'lucide-react/dist/esm/icons/credit-card'
+import Calendar from 'lucide-react/dist/esm/icons/calendar'
+import User from 'lucide-react/dist/esm/icons/user'
+import Smartphone from 'lucide-react/dist/esm/icons/smartphone'
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign'
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle'
+import Clock from 'lucide-react/dist/esm/icons/clock'
 
 export default function HistorialPagosPanel({ servicio }) {
   if (!servicio || !servicio.pagos || servicio.pagos.length === 0) {

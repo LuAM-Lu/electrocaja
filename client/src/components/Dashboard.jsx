@@ -8,7 +8,9 @@ import IngresoModal from './IngresoModal';
 import EgresoModal from './EgresoModal';
 import InventoryManagerModal from './InventoryManagerModal';
 import ArqueoModal from './ArqueoModal';
-import { Wrench, ChevronUp, ChevronDown } from 'lucide-react';
+import Wrench from 'lucide-react/dist/esm/icons/wrench'
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up'
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down'
 import { TbTruckDelivery } from 'react-icons/tb';
 import FloatingActions from './FloatingActions';
 import CerrarCajaModal from './CerrarCajaModal';
