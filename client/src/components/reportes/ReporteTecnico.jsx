@@ -29,6 +29,7 @@ import TrendingDown from 'lucide-react/dist/esm/icons/trending-down'
 import FileText from 'lucide-react/dist/esm/icons/file-text'
 import { api } from '../../config/api';
 import toast from '../../utils/toast.jsx';
+import TransactionDetailModal from '../TransactionDetailModal.jsx';
 
 // Helper for currency formatting
 const formatCurrency = (amount, currency = 'Bs') => {
@@ -49,6 +50,10 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
     const [customEgresos, setCustomEgresos] = useState([]);
     const [isAddingDeduction, setIsAddingDeduction] = useState(false);
     const [newDeduction, setNewDeduction] = useState({ desc: '', amountBs: '', amountUsd: '' });
+
+    // Estado para el modal de detalle de servicio
+    const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
+    const [mostrarModalDetalle, setMostrarModalDetalle] = useState(false);
 
     const [serviciosExcluidos, setServiciosExcluidos] = useState(new Set());
     const [customIngresos, setCustomIngresos] = useState([]);
@@ -281,7 +286,65 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
                                         <table className="w-full text-xs"><thead className="bg-white text-gray-500 sticky top-0 shadow-sm"><tr className="border-b"><th className="px-2 py-2 w-8 bg-gray-50"></th><th className="px-3 py-2 text-left bg-gray-50">Fecha</th><th className="px-3 py-2 text-left bg-gray-50">N°/Código</th><th className="px-3 py-2 text-left bg-gray-50">Servicios Aplicados</th><th className="px-3 py-2 text-right bg-gray-50">Monto</th></tr></thead>
                                             <tbody className="divide-y relative z-0">
                                                 {customIngresos.map(t => (<tr key={t.id} className="bg-emerald-50/50 hover:bg-emerald-50"><td className="px-2 py-2 text-center"><button onClick={() => removeCustomIngreso(t.id)} className="p-1 rounded bg-indigo-100 text-indigo-600"><X className="h-3 w-3" /></button></td><td className="px-3 py-2 text-gray-600">Manual</td><td className="px-3 py-2 font-mono text-emerald-600">EXTRA</td><td className="px-3 py-2 text-gray-700">{t.descripcion}</td><td className="px-3 py-2 text-right font-mono text-emerald-600">{t.totalBs > 0 && <div>{formatCurrency(t.totalBs)}</div>}{t.totalUsd > 0 && <div>{formatCurrency(t.totalUsd, 'USD')}</div>}</td></tr>))}
-                                                {data.ventas.lista.map(t => { const isExcluded = serviciosExcluidos.has(t.id); return (<tr key={t.id} className={`transition-colors ${isExcluded ? 'bg-gray-100 opacity-50' : 'hover:bg-gray-50'}`}><td className="px-2 py-2 text-center"><button onClick={() => toggleServicioDb(t.id)} className={`p-1 rounded ${isExcluded ? 'bg-gray-300 text-gray-500' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>{isExcluded ? <RotateCcw className="h-3 w-3" /> : <Trash2 className="h-3 w-3" />}</button></td><td className="px-3 py-2 text-gray-600 whitespace-nowrap">{new Date(t.fechaHora).toLocaleString('es-VE', { day: '2-digit', month: '2-digit' })}</td><td className="px-3 py-2 font-mono text-gray-500">{t.codigoVenta}</td><td className="px-3 py-2 truncate max-w-[120px]" title={t.descripcion}>{t.descripcion}</td><td className="px-3 py-2 text-right font-mono"><div className="flex flex-col">{t.totalBs > 0 && <span>{formatCurrency(t.totalBs)}</span>}{t.totalUsd > 0 && <span className="text-emerald-600">{formatCurrency(t.totalUsd, 'USD')}</span>}</div></td></tr>) })}
+                                                {data.ventas.lista.map(t => {
+                                                    const isExcluded = serviciosExcluidos.has(t.id);
+
+                                                    // Función para abrir el modal de detalle
+                                                    const handleVerDetalle = async () => {
+                                                        try {
+                                                            // Cargar la transacción completa del servicio
+                                                            const response = await api.get(`/servicios/${t.servicioId || t.id}`);
+                                                            if (response.data?.success) {
+                                                                setServicioSeleccionado(response.data.data);
+                                                                setMostrarModalDetalle(true);
+                                                            }
+                                                        } catch (error) {
+                                                            console.error('Error cargando servicio:', error);
+                                                            toast.error('Error al cargar detalles del servicio');
+                                                        }
+                                                    };
+
+                                                    return (
+                                                        <tr key={t.id} className={`transition-colors ${isExcluded ? 'bg-gray-100 opacity-50' : 'hover:bg-gray-50'}`}>
+                                                            <td className="px-2 py-2 text-center">
+                                                                <button
+                                                                    onClick={() => toggleServicioDb(t.id)}
+                                                                    className={`p-1 rounded ${isExcluded ? 'bg-gray-300 text-gray-500' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                                >
+                                                                    {isExcluded ? <RotateCcw className="h-3 w-3" /> : <Trash2 className="h-3 w-3" />}
+                                                                </button>
+                                                            </td>
+                                                            <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                                                                {new Date(t.fechaHora).toLocaleString('es-VE', { day: '2-digit', month: '2-digit' })}
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <button
+                                                                    onClick={handleVerDetalle}
+                                                                    className="font-mono text-indigo-600 hover:text-indigo-800 hover:underline font-bold transition-colors cursor-pointer"
+                                                                    title="Click para ver detalles"
+                                                                >
+                                                                    {t.codigoVenta}
+                                                                </button>
+                                                            </td>
+                                                            <td className="px-3 py-2 truncate max-w-[120px]" title={t.descripcion}>
+                                                                {t.descripcion}
+                                                            </td>
+                                                            <td className="px-3 py-2 text-right font-mono">
+                                                                <div className="flex flex-col">
+                                                                    {t.totalBs > 0 && (
+                                                                        <span className="text-blue-600">{formatCurrency(t.totalBs)}</span>
+                                                                    )}
+                                                                    {t.totalUsd > 0 && (
+                                                                        <span className="text-emerald-600">{formatCurrency(t.totalUsd, 'USD')}</span>
+                                                                    )}
+                                                                    {t.totalBs === 0 && t.totalUsd === 0 && (
+                                                                        <span className="text-gray-400 italic">Sin pago</span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>
@@ -321,6 +384,18 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
                     <div className="flex gap-3"><button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg">Cancelar</button><button onClick={handlePrint} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm flex items-center gap-2"><Printer className="h-4 w-4" /> Imprimir</button></div>
                 </div>
             </div>
+
+            {/* Modal de detalles del servicio */}
+            {mostrarModalDetalle && servicioSeleccionado && (
+                <TransactionDetailModal
+                    isOpen={mostrarModalDetalle}
+                    onClose={() => {
+                        setMostrarModalDetalle(false);
+                        setServicioSeleccionado(null);
+                    }}
+                    transaccion={servicioSeleccionado}
+                />
+            )}
         </div>
     );
 };
@@ -421,8 +496,8 @@ const ReporteTecnico = () => {
                                 value={fechaInicio}
                                 onChange={e => setFechaInicio(e.target.value)}
                                 className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 ${isFechaPagada(fechaInicio)
-                                        ? 'bg-amber-50 border-amber-300 focus:ring-amber-500'
-                                        : 'bg-gray-50 border-gray-200 focus:ring-indigo-500'
+                                    ? 'bg-amber-50 border-amber-300 focus:ring-amber-500'
+                                    : 'bg-gray-50 border-gray-200 focus:ring-indigo-500'
                                     }`}
                                 title={isFechaPagada(fechaInicio) ? '⚠️ Esta fecha está en un período ya pagado' : ''}
                             />
@@ -439,8 +514,8 @@ const ReporteTecnico = () => {
                                 value={fechaFin}
                                 onChange={e => setFechaFin(e.target.value)}
                                 className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 ${isFechaPagada(fechaFin)
-                                        ? 'bg-amber-50 border-amber-300 focus:ring-amber-500'
-                                        : 'bg-gray-50 border-gray-200 focus:ring-indigo-500'
+                                    ? 'bg-amber-50 border-amber-300 focus:ring-amber-500'
+                                    : 'bg-gray-50 border-gray-200 focus:ring-indigo-500'
                                     }`}
                                 title={isFechaPagada(fechaFin) ? '⚠️ Esta fecha está en un período ya pagado' : ''}
                             />

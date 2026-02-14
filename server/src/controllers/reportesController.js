@@ -1410,24 +1410,55 @@ class ReportesController {
         let totalBs = 0;
         let totalUsd = 0;
 
-        if (s.pagos) {
-          s.pagos.forEach(p => {
-            if (p.transaccion) {
-              totalBs += Number(p.transaccion.totalBs || 0);
-              totalUsd += Number(p.transaccion.totalUsd || 0);
+        // 💰 CALCULAR MONTOS REALES DESDE LOS PAGOS RESPETANDO LA MONEDA ORIGINAL
+        if (s.pagos && s.pagos.length > 0) {
+          s.pagos.forEach(pagoServicio => {
+            // `pagos` en ServicioTecnicoPago tiene un campo JSON con array de pagos
+            // Ejemplo: {metodo: 'efectivo_bs', monto: 100, moneda: 'bs', ...}
+            try {
+              const pagosArray = typeof pagoServicio.pagos === 'string'
+                ? JSON.parse(pagoServicio.pagos)
+                : pagoServicio.pagos;
+
+              if (Array.isArray(pagosArray)) {
+                pagosArray.forEach(pago => {
+                  const monto = Number(pago.monto || 0);
+                  if (pago.moneda === 'usd') {
+                    totalUsd += monto;
+                  } else {
+                    totalBs += monto;
+                  }
+                });
+              }
+            } catch (error) {
+              console.error('Error parsing pagos:', error);
+              // Fallback: usar totales de la transacción si existe
+              if (pagoServicio.transaccion) {
+                totalBs += Number(pagoServicio.transaccion.totalBs || 0);
+                totalUsd += Number(pagoServicio.transaccion.totalUsd || 0);
+              }
             }
           });
         }
 
         return {
           id: s.id,
+          servicioId: s.id, // ID del servicio para abrir el modal
+          numeroServicio: s.numeroServicio,
           fechaHora: s.updatedAt,
           codigoVenta: s.numeroServicio,
           totalBs,
           totalUsd,
           descripcion: `${s.dispositivoMarca} ${s.dispositivoModelo}`,
           items: s.items.map(i => ({ descripcion: i.descripcion })),
-          pagos: s.pagos
+          pagos: s.pagos,
+          // Info adicional para el modal
+          cliente: s.cliente,
+          dispositivo: {
+            marca: s.dispositivoMarca,
+            modelo: s.dispositivoModelo,
+            imei: s.dispositivoImei
+          }
         };
       });
 
