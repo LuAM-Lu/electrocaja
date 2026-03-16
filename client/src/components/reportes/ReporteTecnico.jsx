@@ -275,24 +275,103 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                                <div className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col max-h-[400px]">
-                                    <div className="px-4 py-3 bg-gray-50 border-b flex justify-between items-center sticky top-0 bg-gray-50 z-10">
-                                        <h5 className="font-bold text-gray-700 text-sm">Detalle servicios ({calculos.countServicios})</h5>
-                                        <button onClick={() => setIsAddingIngreso(true)} className="px-2 py-1 bg-white border border-indigo-200 text-indigo-600 text-xs rounded hover:bg-indigo-50 flex items-center gap-1"><Plus className="h-3 w-3" /> Agregar</button>
+                            <div className="grid grid-cols-1 gap-6 items-start">
+                                {/* 📊 TABLA DE DETALLES DE SERVICIOS - MEJORADA */}
+                                <div className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col">
+                                    <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 border-b flex justify-between items-center sticky top-0 z-10">
+                                        <div>
+                                            <h5 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                                <Wrench className="h-4 w-4 text-indigo-600" />
+                                                Detalle de Servicios y Pagos
+                                            </h5>
+                                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                                {calculos.countServicios} servicios aplicados • Click en la fila para ver detalles completos
+                                            </p>
+                                        </div>
+                                        <button onClick={() => setIsAddingIngreso(true)} className="px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 flex items-center gap-1.5 shadow-sm transition-colors">
+                                            <Plus className="h-3.5 w-3.5" /> Agregar Extra
+                                        </button>
                                     </div>
-                                    {isAddingIngreso && (<div className="bg-indigo-50/50 p-2 border-b border-indigo-100 animate-in slide-in-from-top-2"><div className="flex gap-2 mb-2"><input autoFocus type="text" placeholder="Motivo ingreso extra" className="flex-1 text-xs px-2 py-1 rounded border outline-none" value={newIngreso.desc} onChange={e => setNewIngreso({ ...newIngreso, desc: e.target.value })} /></div><div className="flex gap-2"><input type="number" placeholder="Monto Bs" className="w-24 text-xs px-2 py-1 rounded border outline-none" value={newIngreso.amountBs} onChange={e => setNewIngreso({ ...newIngreso, amountBs: e.target.value })} /><input type="number" placeholder="Monto USD" className="w-24 text-xs px-2 py-1 rounded border outline-none" value={newIngreso.amountUsd} onChange={e => setNewIngreso({ ...newIngreso, amountUsd: e.target.value })} /><div className="flex-1 flex justify-end gap-1"><button onClick={() => setIsAddingIngreso(false)} className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-200 rounded">Cancel</button><button onClick={addCustomIngreso} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">Guardar</button></div></div></div>)}
-                                    <div className="overflow-y-auto custom-scrollbar">
-                                        <table className="w-full text-xs"><thead className="bg-white text-gray-500 sticky top-0 shadow-sm"><tr className="border-b"><th className="px-2 py-2 w-8 bg-gray-50"></th><th className="px-3 py-2 text-left bg-gray-50">Fecha</th><th className="px-3 py-2 text-left bg-gray-50">N°/Código</th><th className="px-3 py-2 text-left bg-gray-50">Servicios Aplicados</th><th className="px-3 py-2 text-right bg-gray-50">Monto</th></tr></thead>
-                                            <tbody className="divide-y relative z-0">
-                                                {customIngresos.map(t => (<tr key={t.id} className="bg-emerald-50/50 hover:bg-emerald-50"><td className="px-2 py-2 text-center"><button onClick={() => removeCustomIngreso(t.id)} className="p-1 rounded bg-indigo-100 text-indigo-600"><X className="h-3 w-3" /></button></td><td className="px-3 py-2 text-gray-600">Manual</td><td className="px-3 py-2 font-mono text-emerald-600">EXTRA</td><td className="px-3 py-2 text-gray-700">{t.descripcion}</td><td className="px-3 py-2 text-right font-mono text-emerald-600">{t.totalBs > 0 && <div>{formatCurrency(t.totalBs)}</div>}{t.totalUsd > 0 && <div>{formatCurrency(t.totalUsd, 'USD')}</div>}</td></tr>))}
+
+                                    {isAddingIngreso && (
+                                        <div className="bg-indigo-50/50 p-3 border-b border-indigo-100 animate-in slide-in-from-top-2">
+                                            <div className="flex gap-2 mb-2">
+                                                <input autoFocus type="text" placeholder="Motivo ingreso extra" className="flex-1 text-xs px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-indigo-500" value={newIngreso.desc} onChange={e => setNewIngreso({ ...newIngreso, desc: e.target.value })} />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <input type="number" placeholder="Monto Bs" className="w-28 text-xs px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-indigo-500" value={newIngreso.amountBs} onChange={e => setNewIngreso({ ...newIngreso, amountBs: e.target.value })} />
+                                                <input type="number" placeholder="Monto USD" className="w-28 text-xs px-3 py-2 rounded-lg border outline-none focus:ring-2 focus:ring-indigo-500" value={newIngreso.amountUsd} onChange={e => setNewIngreso({ ...newIngreso, amountUsd: e.target.value })} />
+                                                <div className="flex-1 flex justify-end gap-2">
+                                                    <button onClick={() => setIsAddingIngreso(false)} className="px-3 py-2 text-xs text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Cancelar</button>
+                                                    <button onClick={addCustomIngreso} className="px-4 py-2 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors">Guardar</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="overflow-auto custom-scrollbar max-h-[500px]">
+                                        <table className="w-full text-xs">
+                                            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600 sticky top-0 shadow-sm font-semibold">
+                                                <tr className="border-b border-gray-200">
+                                                    <th className="px-2 py-3 w-10 bg-gray-50"></th>
+                                                    <th className="px-3 py-3 text-left bg-gray-50">Fecha</th>
+                                                    <th className="px-3 py-3 text-left bg-gray-50">Orden</th>
+                                                    <th className="px-3 py-3 text-left bg-gray-50">Servicio Aplicado</th>
+                                                    <th className="px-3 py-3 text-center bg-gray-50">Tipo</th>
+                                                    <th className="px-3 py-3 text-center bg-gray-50">Cant.</th>
+                                                    <th className="px-3 py-3 text-right bg-gray-50">P. Unit.</th>
+                                                    <th className="px-3 py-3 text-right bg-gray-50">Subtotal</th>
+                                                    <th className="px-3 py-3 text-left bg-gray-50">Método Pago</th>
+                                                    <th className="px-3 py-3 text-right bg-gray-50 font-bold">Monto Pagado</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100 relative z-0">
+                                                {/* Ingresos manuales */}
+                                                {customIngresos.map(t => (
+                                                    <tr key={t.id} className="bg-emerald-50/50 hover:bg-emerald-50 transition-colors">
+                                                        <td className="px-2 py-2.5 text-center">
+                                                            <button onClick={() => removeCustomIngreso(t.id)} className="p-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors">
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-gray-600 font-mono text-[10px]">Manual</td>
+                                                        <td className="px-3 py-2.5 font-mono text-emerald-600 font-bold">EXTRA</td>
+                                                        <td className="px-3 py-2.5 text-gray-800 font-medium" colSpan="5">{t.descripcion}</td>
+                                                        <td className="px-3 py-2.5 text-gray-600">Manual</td>
+                                                        <td className="px-3 py-2.5 text-right font-mono font-bold">
+                                                            {t.totalBs > 0 && <div className="text-blue-600">{formatCurrency(t.totalBs)}</div>}
+                                                            {t.totalUsd > 0 && <div className="text-emerald-600">{formatCurrency(t.totalUsd, 'USD')}</div>}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+
+                                                {/* Servicios de la base de datos */}
                                                 {data.ventas.lista.map(t => {
                                                     const isExcluded = serviciosExcluidos.has(t.id);
+                                                    const servicioCompleto = t.servicioCompleto || {};
+                                                    const pagos = servicioCompleto.pagos || [];
+
+                                                    // Agrupar pagos por método
+                                                    const pagosPorMetodo = pagos.reduce((acc, pago) => {
+                                                        const key = `${pago.metodo}-${pago.moneda}`;
+                                                        if (!acc[key]) {
+                                                            acc[key] = { metodo: pago.metodo, moneda: pago.moneda, total: 0 };
+                                                        }
+                                                        acc[key].total += Number(pago.monto || 0);
+                                                        return acc;
+                                                    }, {});
+
+                                                    const metodosText = Object.values(pagosPorMetodo).map(p => {
+                                                        const monedaIcon = p.moneda === 'usd' ? '$' : 'Bs';
+                                                        return `${p.metodo} (${monedaIcon})`;
+                                                    }).join(', ') || 'Sin especificar';
 
                                                     // Función para abrir el modal de detalle
-                                                    const handleVerDetalle = async () => {
+                                                    const handleVerDetalle = async (e) => {
+                                                        // Si el click es en el botón de excluir, no abrir modal
+                                                        if (e.target.closest('button')) return;
+
                                                         try {
-                                                            // Cargar la transacción completa del servicio
                                                             const response = await api.get(`/servicios/${t.servicioId || t.id}`);
                                                             if (response.data?.success) {
                                                                 setServicioSeleccionado(response.data.data);
@@ -305,32 +384,63 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
                                                     };
 
                                                     return (
-                                                        <tr key={t.id} className={`transition-colors ${isExcluded ? 'bg-gray-100 opacity-50' : 'hover:bg-gray-50'}`}>
-                                                            <td className="px-2 py-2 text-center">
+                                                        <tr
+                                                            key={t.id}
+                                                            onClick={handleVerDetalle}
+                                                            className={`transition-all cursor-pointer ${isExcluded
+                                                                    ? 'bg-gray-100 opacity-50'
+                                                                    : 'hover:bg-indigo-50/30 hover:shadow-sm'
+                                                                }`}
+                                                            title="Click para ver detalles completos del servicio"
+                                                        >
+                                                            <td className="px-2 py-2.5 text-center">
                                                                 <button
-                                                                    onClick={() => toggleServicioDb(t.id)}
-                                                                    className={`p-1 rounded ${isExcluded ? 'bg-gray-300 text-gray-500' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        toggleServicioDb(t.id);
+                                                                    }}
+                                                                    className={`p-1 rounded transition-colors ${isExcluded
+                                                                            ? 'bg-gray-300 text-gray-500 hover:bg-gray-400'
+                                                                            : 'bg-gray-100 text-gray-400 hover:bg-rose-100 hover:text-rose-600'
+                                                                        }`}
+                                                                    title={isExcluded ? 'Incluir' : 'Excluir'}
                                                                 >
-                                                                    {isExcluded ? <RotateCcw className="h-3 w-3" /> : <Trash2 className="h-3 w-3" />}
+                                                                    {isExcluded ? <RotateCcw className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
                                                                 </button>
                                                             </td>
-                                                            <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
-                                                                {new Date(t.fechaHora).toLocaleString('es-VE', { day: '2-digit', month: '2-digit' })}
+                                                            <td className="px-3 py-2.5 text-gray-600 whitespace-nowrap font-mono text-[10px]">
+                                                                {new Date(t.fechaHora).toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                                                             </td>
-                                                            <td className="px-3 py-2">
-                                                                <button
-                                                                    onClick={handleVerDetalle}
-                                                                    className="font-mono text-indigo-600 hover:text-indigo-800 hover:underline font-bold transition-colors cursor-pointer"
-                                                                    title="Click para ver detalles"
-                                                                >
+                                                            <td className="px-3 py-2.5">
+                                                                <span className="font-mono text-indigo-600 hover:text-indigo-800 font-bold text-xs">
                                                                     {t.codigoVenta}
-                                                                </button>
+                                                                </span>
                                                             </td>
-                                                            <td className="px-3 py-2 truncate max-w-[120px]" title={t.descripcion}>
+                                                            <td className="px-3 py-2.5 text-gray-800 font-medium max-w-[180px] truncate" title={t.descripcion}>
                                                                 {t.descripcion}
                                                             </td>
-                                                            <td className="px-3 py-2 text-right font-mono">
-                                                                <div className="flex flex-col">
+                                                            <td className="px-3 py-2.5 text-center">
+                                                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${t.tipo === 'SERVICIO'
+                                                                        ? 'bg-blue-100 text-blue-700'
+                                                                        : 'bg-purple-100 text-purple-700'
+                                                                    }`}>
+                                                                    {t.tipo || 'SERVICIO'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-3 py-2.5 text-center font-mono text-gray-700">
+                                                                {t.cantidad || 1}
+                                                            </td>
+                                                            <td className="px-3 py-2.5 text-right font-mono text-gray-600 text-[11px]">
+                                                                ${Number(t.precioUnitario || 0).toFixed(2)}
+                                                            </td>
+                                                            <td className="px-3 py-2.5 text-right font-mono text-gray-700 font-semibold">
+                                                                ${Number(t.subtotal || 0).toFixed(2)}
+                                                            </td>
+                                                            <td className="px-3 py-2.5 text-gray-600 max-w-[120px] truncate text-[10px]" title={metodosText}>
+                                                                {metodosText}
+                                                            </td>
+                                                            <td className="px-3 py-2.5 text-right font-mono font-bold">
+                                                                <div className="flex flex-col gap-0.5">
                                                                     {t.totalBs > 0 && (
                                                                         <span className="text-blue-600">{formatCurrency(t.totalBs)}</span>
                                                                     )}
@@ -338,7 +448,7 @@ const GenerarPagoTecnicoModal = ({ usuarioId, fechaInicio, fechaFin, onClose, te
                                                                         <span className="text-emerald-600">{formatCurrency(t.totalUsd, 'USD')}</span>
                                                                     )}
                                                                     {t.totalBs === 0 && t.totalUsd === 0 && (
-                                                                        <span className="text-gray-400 italic">Sin pago</span>
+                                                                        <span className="text-amber-500 italic text-[10px]">Sin pago</span>
                                                                     )}
                                                                 </div>
                                                             </td>

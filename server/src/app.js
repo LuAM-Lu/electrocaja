@@ -910,18 +910,23 @@ io.on('connection', (socket) => {
 
   // 📺 EVENTOS DE DISPLAY/PUBLICIDAD
   socket.on('display:connect', (data) => {
-    console.log('📺 Display conectado:', socket.id);
+    console.log(`📺 Display conectado: ${socket.id} [${data.screenId || 'unknown'}]`);
 
     const clientInfo = {
       id: socket.id,
+      screenId: data.screenId || 'main',
       userAgent: data.userAgent || 'Desconocido',
+      resolution: data.resolution || null,
+      platform: data.platform || null,
+      language: data.language || null,
       ip: socket.handshake.address,
       connectedAt: new Date().toISOString(),
       lastPing: new Date().toISOString()
     };
 
-    // Agregar a la lista de clientes display
+    // Agregar a la lista de clientes display (reemplazar si ya existe)
     if (!io.displayClients) io.displayClients = [];
+    io.displayClients = io.displayClients.filter(c => c.id !== socket.id);
     io.displayClients.push(clientInfo);
 
     // Unirse a sala de display

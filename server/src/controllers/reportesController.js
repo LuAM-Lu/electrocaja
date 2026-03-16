@@ -1376,10 +1376,15 @@ class ReportesController {
       if (!usuario) return errorResponse(res, 'Usuario no encontrado', 404);
 
       // 1. BUSCAR SERVICIOS ENTREGADOS (EQUIVALENTE A VENTAS)
+      // 🚫 FILTRAR: Cancelados, Borrados y Sin Pago
       const servicios = await prisma.servicioTecnico.findMany({
         where: {
           tecnicoId: parseInt(usuarioId),
-          estado: 'ENTREGADO',
+          estado: 'ENTREGADO', // Solo entregados
+          deletedAt: null, // ❌ EXCLUIR borrados (soft delete)
+          NOT: {
+            totalPagado: 0 // ❌ EXCLUIR sin pago
+          },
           updatedAt: { gte: fechaStart, lte: endOfDay }
         },
         include: {
@@ -1405,16 +1410,17 @@ class ReportesController {
         orderBy: { fechaHora: 'desc' }
       });
 
-      // Formatear servicios como "Ventas" para compatibilidad frontend
-      const serviciosFormatted = servicios.map(s => {
-        let totalBs = 0;
-        let totalUsd = 0;
+      // 📋 FORMATEAR SERVICIOS - DESGLOSAR POR ITEMS (SERVICIOS APLICADOS) CON INFO COMPLETA
+      const serviciosFormatted = [];
 
-        // 💰 CALCULAR MONTOS REALES DESDE LOS PAGOS RESPETANDO LA MONEDA ORIGINAL
+      servicios.forEach(s => {
+        // 💰 CALCULAR MONTOS TOTALES DEL SERVICIO Y EXTRAER MÉTODOS DE PAGO
+        let totalServicioBs = 0;
+        let totalServicioUsd = 0;
+        let pagosDetalladosArray = []; // Array de pagos con método, moneda, monto
+
         if (s.pagos && s.pagos.length > 0) {
           s.pagos.forEach(pagoServicio => {
-            // `pagos` en ServicioTecnicoPago tiene un campo JSON con array de pagos
-            // Ejemplo: {metodo: 'efectivo_bs', monto: 100, moneda: 'bs', ...}
             try {
               const pagosArray = typeof pagoServicio.pagos === 'string'
                 ? JSON.parse(pagoServicio.pagos)
@@ -1423,43 +1429,145 @@ class ReportesController {
               if (Array.isArray(pagosArray)) {
                 pagosArray.forEach(pago => {
                   const monto = Number(pago.monto || 0);
-                  if (pago.moneda === 'usd') {
-                    totalUsd += monto;
-                  } else {
-                    totalBs += monto;
+                  const moneda = pago.moneda || 'bs';
+
+                  // Validar el método de pago (manejar undefined, null, o strings "undefined"/"null")
+                  let metodo = pago.metodo;
+                  if (!metodo || metodo === 'undefined' || metodo === 'null' || metodo.trim() === '') {
+                    metodo = 'efectivo'; // Valor por defecto
                   }
+
+                  if (moneda === 'usd') {
+                    totalServicioUsd += monto;
+                  } else {
+                    totalServicioBs += monto;
+                  }
+
+                  // Guardar el detalle del pago
+                  pagosDetalladosArray.push({
+                    metodo: metodo,
+                    moneda: moneda,
+                    monto: monto,
+                    banco: pago.banco || null,
+                    referencia: pago.referencia || null
+                  });
                 });
               }
             } catch (error) {
               console.error('Error parsing pagos:', error);
-              // Fallback: usar totales de la transacción si existe
               if (pagoServicio.transaccion) {
-                totalBs += Number(pagoServicio.transaccion.totalBs || 0);
-                totalUsd += Number(pagoServicio.transaccion.totalUsd || 0);
+                totalServicioBs += Number(pagoServicio.transaccion.totalBs || 0);
+                totalServicioUsd += Number(pagoServicio.transaccion.totalUsd || 0);
               }
             }
           });
         }
 
-        return {
-          id: s.id,
-          servicioId: s.id, // ID del servicio para abrir el modal
-          numeroServicio: s.numeroServicio,
-          fechaHora: s.updatedAt,
-          codigoVenta: s.numeroServicio,
-          totalBs,
-          totalUsd,
-          descripcion: `${s.dispositivoMarca} ${s.dispositivoModelo}`,
-          items: s.items.map(i => ({ descripcion: i.descripcion })),
-          pagos: s.pagos,
-          // Info adicional para el modal
-          cliente: s.cliente,
-          dispositivo: {
-            marca: s.dispositivoMarca,
-            modelo: s.dispositivoModelo,
-            imei: s.dispositivoImei
-          }
-        };
+        // 🔧 SI EL SERVICIO TIENE ITEMS, CREAR UNA ENTRADA POR CADA ITEM
+        if (s.items && s.items.length > 0) {
+          // Calcular el total del servicio en USD para prorratear
+          const totalServicioUsdCalculado = s.items.reduce((sum, item) =>
+            sum + Number(item.subtotal || 0), 0
+          );
+
+          s.items.forEach(item => {
+            const itemSubtotal = Number(item.subtotal || 0);
+
+            // Calcular proporción de este item respecto al total
+            const proporcion = totalServicioUsdCalculado > 0
+              ? itemSubtotal / totalServicioUsdCalculado
+              : 0;
+
+            // Asignar montos proporcionalmente
+            const itemTotalBs = totalServicioBs * proporcion;
+            const itemTotalUsd = totalServicioUsd * proporcion;
+
+            serviciosFormatted.push({
+              id: `${s.id}-item-${item.id}`, // ID único para cada item
+              servicioId: s.id,
+              numeroServicio: s.numeroServicio,
+              fechaHora: s.updatedAt,
+              codigoVenta: s.numeroServicio,
+              totalBs: itemTotalBs,
+              totalUsd: itemTotalUsd,
+              descripcion: item.descripcion, // ✅ SERVICIO APLICADO (no el equipo)
+              cantidad: item.cantidad,
+              precioUnitario: Number(item.precioUnitario || 0),
+              subtotal: itemSubtotal,
+              tipo: item.tipo || 'SERVICIO', // Tipo de item (SERVICIO o PRODUCTO)
+              codigo: item.codigo || '',
+              esItem: true,
+              // Info del servicio completo para el modal
+              servicioCompleto: {
+                id: s.id,
+                numeroServicio: s.numeroServicio,
+                cliente: s.cliente,
+                clienteNombre: s.cliente?.nombre || s.clienteNombre || 'Sin Cliente',
+                clienteCedula: s.cliente?.cedula_rif || 'N/A',
+                dispositivo: {
+                  marca: s.dispositivoMarca,
+                  modelo: s.dispositivoModelo,
+                  imei: s.dispositivoImei,
+                  completo: `${s.dispositivoMarca} ${s.dispositivoModelo}`.trim()
+                },
+                problemas: Array.isArray(s.problemas) ? s.problemas : (s.problemas ? [s.problemas] : []),
+                observaciones: s.observaciones || '',
+                fechaIngreso: s.createdAt,
+                fechaEntrega: s.updatedAt,
+                items: s.items.map(itm => ({
+                  id: itm.id,
+                  descripcion: itm.descripcion,
+                  tipo: itm.tipo || 'SERVICIO',
+                  codigo: itm.codigo || '',
+                  cantidad: itm.cantidad,
+                  precioUnitario: Number(itm.precioUnitario || 0),
+                  subtotal: Number(itm.subtotal || 0)
+                })),
+                pagos: pagosDetalladosArray, // Array detallado de pagos
+                totalBs: totalServicioBs,
+                totalUsd: totalServicioUsd,
+                totalGeneral: totalServicioBs + totalServicioUsd // Para referencia si es necesario
+              }
+            });
+          });
+        } else {
+          // Si no tiene items, crear una entrada con el servicio completo
+          serviciosFormatted.push({
+            id: s.id,
+            servicioId: s.id,
+            numeroServicio: s.numeroServicio,
+            fechaHora: s.updatedAt,
+            codigoVenta: s.numeroServicio,
+            totalBs: totalServicioBs,
+            totalUsd: totalServicioUsd,
+            descripcion: `${s.dispositivoMarca} ${s.dispositivoModelo}`.trim(),
+            tipo: 'SERVICIO',
+            codigo: '',
+            esItem: false,
+            servicioCompleto: {
+              id: s.id,
+              numeroServicio: s.numeroServicio,
+              cliente: s.cliente,
+              clienteNombre: s.cliente?.nombre || s.clienteNombre || 'Sin Cliente',
+              clienteCedula: s.cliente?.cedula_rif || 'N/A',
+              dispositivo: {
+                marca: s.dispositivoMarca,
+                modelo: s.dispositivoModelo,
+                imei: s.dispositivoImei,
+                completo: `${s.dispositivoMarca} ${s.dispositivoModelo}`.trim()
+              },
+              problemas: Array.isArray(s.problemas) ? s.problemas : (s.problemas ? [s.problemas] : []),
+              observaciones: s.observaciones || '',
+              fechaIngreso: s.createdAt,
+              fechaEntrega: s.updatedAt,
+              items: [],
+              pagos: pagosDetalladosArray,
+              totalBs: totalServicioBs,
+              totalUsd: totalServicioUsd,
+              totalGeneral: totalServicioBs + totalServicioUsd
+            }
+          });
+        }
       });
 
       // Totales Servicios

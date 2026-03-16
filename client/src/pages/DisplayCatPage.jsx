@@ -1,5 +1,5 @@
-// pages/DisplayPage.jsx
-// 📺 Pantalla 1 – Todos los productos (con rotación CSS en tiempo real)
+// pages/DisplayCatPage.jsx
+// 📺 Pantalla 2 – Productos filtrados (con rotación CSS en tiempo real)
 import React, { useState, useEffect } from 'react';
 import Package from 'lucide-react/dist/esm/icons/package';
 import QrCode from 'lucide-react/dist/esm/icons/qr-code';
@@ -16,10 +16,6 @@ import { useDisplayData, buildRotationStyle } from '../hooks/useDisplayData';
 
 const GOOGLE_FONTS_LINK = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap';
 
-// ── Detectar orientación vertical por query param ?v=1
-const isVerticalMode = () => new URLSearchParams(window.location.search).get('v') === '1';
-
-// ── Estilos de animación compartidos
 const ANIMATION_STYLES = `
 @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
@@ -35,7 +31,12 @@ const ANIMATION_STYLES = `
 .animate-slideOutRight { animation: slideOutRight 0.3s ease-in forwards; }
 `;
 
-const DisplayPage = () => {
+// Color de acento para Pantalla 2 (naranja/amber – diferenciado visualmente de Pantalla 1)
+const ACCENT = '#F97316'; // orange-500
+
+const isVerticalMode = () => new URLSearchParams(window.location.search).get('v') === '1';
+
+const DisplayCatPage = () => {
     const [showControls, setShowControls] = useState(false);
 
     const {
@@ -43,9 +44,8 @@ const DisplayPage = () => {
         isPaused, setIsPaused, isOnline, tasaCambio,
         animationClass, loadingPhrase, goToNext, goToPrev,
         formatPrecioBs, getImageUrl, rotation
-    } = useDisplayData({ configEndpoint: '/display/config', screenId: 'main' });
+    } = useDisplayData({ configEndpoint: '/display/screen2/config', screenId: 'cat' });
 
-    // Prevenir scroll cuando rotación es 90°/270°
     useEffect(() => {
         document.body.style.overflow = (rotation === 90 || rotation === 270) ? 'hidden' : '';
         return () => { document.body.style.overflow = ''; };
@@ -59,10 +59,8 @@ const DisplayPage = () => {
         return (
             <div className="h-screen w-full bg-gray-900 flex items-center justify-center">
                 <div className="text-center">
-                    <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Settings className="w-12 h-12 text-gray-600 animate-spin" style={{ animationDuration: '3s' }} />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-400">{config.nombre || 'Display'} – Desactivado</h1>
+                    <Settings className="w-16 h-16 text-gray-600 mx-auto mb-4 animate-spin" style={{ animationDuration: '3s' }} />
+                    <h1 className="text-2xl font-bold text-gray-400">{config.nombre || 'Pantalla 2'} – Desactivado</h1>
                     <p className="text-gray-600 mt-2">Contacte al administrador</p>
                 </div>
             </div>
@@ -72,19 +70,16 @@ const DisplayPage = () => {
     // ── Loading
     if (loading) {
         return (
-            <div className="h-screen w-full bg-gradient-to-br from-blue-600 to-purple-800 flex items-center justify-center overflow-hidden relative">
-                <div className="text-center flex flex-col items-center relative z-10 w-full max-w-2xl px-4">
+            <div className="h-screen w-full flex items-center justify-center overflow-hidden"
+                style={{ background: `linear-gradient(135deg, ${ACCENT}, #c2410c)` }}>
+                <div className="text-center flex flex-col items-center w-full max-w-2xl px-4">
                     <img src="/android-chrome-512x5129.png" alt="Cargando"
-                        className="w-64 h-64 lg:w-80 lg:h-80 object-contain mb-8 animate-pulse drop-shadow-2xl" />
-                    <div className="h-2 w-64 bg-white/20 rounded-full overflow-hidden mb-4 relative">
-                        <div className="absolute top-0 left-0 h-full w-1/3 bg-white blur-sm rounded-full animate-slideInRight"
+                        className="w-64 h-64 object-contain mb-8 animate-pulse drop-shadow-2xl" />
+                    <div className="h-2 w-64 bg-white/20 rounded-full overflow-hidden mb-4">
+                        <div className="h-full w-1/3 bg-white blur-sm rounded-full animate-slideInRight"
                             style={{ animationDuration: '1s', animationIterationCount: 'infinite' }} />
                     </div>
-                    <div className="h-12 flex items-center justify-center overflow-hidden w-full">
-                        <p key={loadingPhrase} className="text-2xl lg:text-3xl font-light text-white tracking-wider animate-fadeIn">
-                            {loadingPhrase}
-                        </p>
-                    </div>
+                    <p key={loadingPhrase} className="text-2xl font-light text-white tracking-wider animate-fadeIn">{loadingPhrase}</p>
                 </div>
             </div>
         );
@@ -96,8 +91,8 @@ const DisplayPage = () => {
             <div className="h-screen w-full bg-gray-100 flex items-center justify-center">
                 <div className="text-center">
                     <Package className="w-24 h-24 text-gray-300 mx-auto mb-6" />
-                    <h1 className="text-2xl font-bold text-gray-500">Sin productos para mostrar</h1>
-                    <p className="text-gray-400 mt-2">Configure los productos destacados</p>
+                    <h1 className="text-2xl font-bold text-gray-500">Sin productos en "{config.nombre}"</h1>
+                    <p className="text-gray-400 mt-2">Configure los filtros en el panel de control</p>
                 </div>
             </div>
         );
@@ -106,32 +101,28 @@ const DisplayPage = () => {
     const precioBs = formatPrecioBs(producto.precioVenta);
 
 
+
+
     // ══════════════════════════════════════════════════════════════════
-    // 🖥️ LAYOUT HORIZONTAL (por defecto)
+    // 🖥️ LAYOUT HORIZONTAL
     // ══════════════════════════════════════════════════════════════════
     return (
-        <div
-            className="h-screen w-full flex flex-col bg-gray-100 overflow-hidden select-none"
+        <div className="h-screen w-full flex flex-col bg-gray-100 overflow-hidden select-none"
             onMouseMove={() => setShowControls(true)}
             onMouseLeave={() => setShowControls(false)}
-            style={{ ...rotStyle, fontFamily: "'Inter', sans-serif" }}
-        >
+            style={{ ...rotStyle, fontFamily: "'Inter', sans-serif" }}>
             <link href={GOOGLE_FONTS_LINK} rel="stylesheet" />
             <style>{ANIMATION_STYLES}</style>
 
-            {/* Header */}
-            <header className="bg-[#0061F2] text-white shadow-xl h-[8vh] flex-none z-50 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0061F2] to-blue-600" />
+            <header className="text-white shadow-xl h-[8vh] flex-none z-50 relative overflow-hidden" style={{ background: ACCENT }}>
                 <div className="h-full px-6 flex justify-center items-center relative z-10 w-full">
                     <div className="flex items-center gap-4">
-                        <img src="/android-chrome-512x5129.png" alt="Logo"
-                            className="h-12 w-auto object-contain drop-shadow-lg" />
+                        <img src="/android-chrome-512x5129.png" alt="Logo" className="h-12 w-auto object-contain drop-shadow-lg" />
                         <div className="text-left">
                             <h1 className="text-2xl font-extrabold leading-none tracking-tight">{config.titulo || 'Electro Shop'}</h1>
-                            <p className="text-xs text-blue-100 font-medium tracking-wide opacity-90 mt-1">{config.nombre || 'Pantalla Principal'}</p>
+                            <p className="text-xs text-orange-100 font-medium tracking-wide opacity-90 mt-1">{config.nombre || 'Pantalla 2'}</p>
                         </div>
                     </div>
-                    {/* Indicador */}
                     <div className="absolute right-6 flex items-center">
                         {productos.length > 20 ? (
                             <div className="flex flex-col items-end gap-0.5">
@@ -139,7 +130,7 @@ const DisplayPage = () => {
                                     {String(currentIndex + 1).padStart(2, '0')}/{productos.length}
                                 </span>
                                 <div className="w-20 lg:w-28 h-1 bg-black/20 rounded-full overflow-hidden">
-                                    <div className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all duration-500 ease-out"
+                                    <div className="h-full bg-white transition-all duration-500"
                                         style={{ width: `${((currentIndex + 1) / productos.length) * 100}%` }} />
                                 </div>
                             </div>
@@ -147,7 +138,7 @@ const DisplayPage = () => {
                             <div className="flex items-center gap-1">
                                 {productos.map((_, idx) => (
                                     <div key={idx}
-                                        className={`h-1 rounded-full transition-all duration-500 cursor-pointer ${idx === currentIndex ? 'w-5 bg-white opacity-100' : 'w-1 bg-white/40'}`}
+                                        className={`h-1 rounded-full transition-all duration-500 cursor-pointer ${idx === currentIndex ? 'w-5 bg-white' : 'w-1 bg-white/40'}`}
                                         onClick={() => setCurrentIndex(idx)} />
                                 ))}
                             </div>
@@ -156,25 +147,20 @@ const DisplayPage = () => {
                 </div>
             </header>
 
-            {/* Main */}
             <main className="flex-grow flex flex-col h-[84vh] w-full relative overflow-hidden bg-gray-50/30 items-center">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[#0061F2]/5 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2" />
-                <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl -z-10 -translate-x-1/2 translate-y-1/4" />
-
                 <div className="w-full max-w-[1100px] h-full flex flex-col p-4 gap-3 pb-4 relative z-10">
-                    {/* Título */}
                     <div className={`flex-none w-full text-center py-1 px-4 ${animationClass}`}>
                         <h2 className="font-black text-gray-800 leading-none tracking-tight line-clamp-1"
-                            style={{ fontSize: 'clamp(1.5rem, 4vw, 3.5rem)', fontFamily: "'Inter', sans-serif" }}>
+                            style={{ fontSize: 'clamp(1.5rem, 4vw, 3.5rem)' }}>
                             {producto.descripcion}
                         </h2>
                     </div>
 
-                    {/* Imagen */}
                     <div className={`flex-[55] flex flex-col relative shrink-0 min-h-0 ${animationClass}`}>
                         <div className="bg-white rounded-3xl shadow-sm border border-gray-200 w-full h-full p-3 flex flex-col items-center justify-center relative overflow-hidden group">
                             <div className="absolute -top-2 -left-2 w-28 h-28 overflow-hidden z-20">
-                                <div className="absolute bg-[#0061F2] text-white text-[10px] font-bold py-1 text-center transform -rotate-45 w-40 -left-10 top-6 shadow-md uppercase tracking-wider">
+                                <div className="absolute text-white text-[10px] font-bold py-1 text-center transform -rotate-45 w-40 -left-10 top-6 shadow-md uppercase tracking-wider"
+                                    style={{ background: ACCENT }}>
                                     {producto.tipo || 'Producto'}
                                 </div>
                             </div>
@@ -191,16 +177,16 @@ const DisplayPage = () => {
                         </div>
                     </div>
 
-                    {/* Fila: Precio + Stock + Código */}
                     <div className={`flex-[20] flex gap-3 w-full min-h-0 ${animationClass}`} style={{ animationDelay: '0.1s' }}>
-                        {/* Precio */}
-                        <div className="flex-[6] bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-2 border-emerald-200 rounded-3xl p-3 relative overflow-visible shadow-lg flex flex-col justify-center items-center text-center h-full">
+                        <div className="flex-[6] rounded-3xl p-3 relative overflow-visible shadow-lg flex flex-col justify-center items-center text-center h-full border-2"
+                            style={{ background: '#fff7ed', borderColor: '#fed7aa' }}>
                             <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20">
-                                <div className="bg-emerald-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-md uppercase tracking-wider">Precio de Venta</div>
+                                <div className="text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-md uppercase tracking-wider"
+                                    style={{ background: ACCENT }}>Precio de Venta</div>
                             </div>
                             <div className="flex flex-col items-center relative z-10 w-full mt-0.5">
-                                <h2 className="font-black text-emerald-600 tracking-tighter leading-none drop-shadow-sm" style={{ fontSize: 'clamp(3rem, 6vw, 5.5rem)' }}>
-                                    <span className="font-bold text-emerald-700 mr-2" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2.5rem)' }}>Bs.</span>
+                                <h2 className="font-black tracking-tighter leading-none" style={{ fontSize: 'clamp(3rem, 6vw, 5.5rem)', color: ACCENT }}>
+                                    <span className="font-bold mr-2" style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2.5rem)' }}>Bs.</span>
                                     {precioBs.entero}<span className="align-top mt-1 inline-block" style={{ fontSize: '60%' }}>,{precioBs.decimal}</span>
                                 </h2>
                                 <span className="font-semibold text-slate-500 tracking-wide mt-2" style={{ fontSize: 'clamp(0.875rem, 1.4vw, 1.25rem)' }}>
@@ -209,46 +195,47 @@ const DisplayPage = () => {
                             </div>
                         </div>
 
-                        {/* Stock */}
-                        <div className="flex-[2] bg-white border-2 border-blue-200 rounded-3xl p-3 flex flex-col justify-center items-center text-center shadow-lg h-full relative overflow-visible">
+                        <div className="flex-[2] bg-white border-2 rounded-3xl p-3 flex flex-col justify-center items-center text-center shadow-lg h-full relative overflow-visible"
+                            style={{ borderColor: '#fed7aa' }}>
                             <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20">
-                                <div className="bg-blue-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-md uppercase tracking-wider">Stock</div>
+                                <div className="text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-md uppercase tracking-wider"
+                                    style={{ background: ACCENT }}>Stock</div>
                             </div>
                             <div className="flex flex-col items-center justify-center gap-1 mt-1">
-                                <Package className="w-10 h-10 text-blue-600" strokeWidth={2.5} />
+                                <Package className="w-10 h-10" strokeWidth={2.5} style={{ color: ACCENT }} />
                                 <span className="font-extrabold text-gray-800 leading-none" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 3rem)' }}>{producto.stock || 0}</span>
                             </div>
                         </div>
 
-                        {/* Código */}
                         <div className="flex-[2] bg-white border-2 border-gray-300 rounded-3xl p-3 flex flex-col justify-center items-center text-center shadow-lg h-full relative overflow-visible">
                             <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20">
                                 <div className="bg-gray-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-md uppercase tracking-wider">Código</div>
                             </div>
                             <div className="flex flex-col items-center justify-center gap-1 mt-1">
                                 <QrCode className="w-10 h-10 text-gray-600" strokeWidth={2.5} />
-                                <span className="font-mono font-extrabold text-gray-800 truncate w-full text-center line-clamp-2 break-all px-1" style={{ fontSize: 'clamp(1rem, 2vw, 1.75rem)' }}>
+                                <span className="font-mono font-extrabold text-gray-800 truncate w-full text-center break-all px-1"
+                                    style={{ fontSize: 'clamp(1rem, 2vw, 1.75rem)' }}>
                                     {producto.codigoBarras || producto.codigoInterno || 'N/A'}
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Descripción (opcional) */}
                     {producto.observaciones && (
-                        <div className={`flex-[8] bg-white border-2 border-purple-200 rounded-3xl p-4 shadow-lg w-full relative overflow-visible ${animationClass}`} style={{ animationDelay: '0.2s' }}>
+                        <div className={`flex-[8] bg-white border-2 border-orange-200 rounded-3xl p-4 shadow-lg w-full relative overflow-visible ${animationClass}`}
+                            style={{ animationDelay: '0.2s' }}>
                             <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20">
-                                <div className="bg-purple-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-md uppercase tracking-wider">Detalles del Producto</div>
+                                <div className="text-white text-[10px] font-bold px-3 py-0.5 rounded-full shadow-md uppercase tracking-wider"
+                                    style={{ background: ACCENT }}>Detalles</div>
                             </div>
                             <div className="h-full flex flex-col justify-center items-center text-center mt-1">
-                                <Info className="w-8 h-8 text-purple-500 mb-1" strokeWidth={2.5} />
+                                <Info className="w-8 h-8 mb-1" style={{ color: ACCENT }} strokeWidth={2.5} />
                                 <p className="text-base text-gray-700 leading-snug font-medium line-clamp-2 px-2">{producto.observaciones}</p>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Controles */}
                 {showControls && (
                     <div className="absolute inset-x-0 bottom-20 flex justify-center gap-4 z-50">
                         <button onClick={goToPrev} className="bg-black/50 hover:bg-black/70 text-white p-3 rounded-full backdrop-blur-sm"><ChevronLeft className="w-6 h-6" /></button>
@@ -258,16 +245,11 @@ const DisplayPage = () => {
                 )}
             </main>
 
-            {/* Footer */}
-            <footer className="bg-[#0061F2] text-white h-[8vh] flex-none z-10 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0061F2] to-blue-600" />
+            <footer className="text-white h-[8vh] flex-none z-10 relative overflow-hidden" style={{ background: ACCENT }}>
                 <div className="h-full px-6 flex justify-between items-center text-xs font-medium relative z-10">
                     <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1.5 font-bold">
-                            <Store className="w-4 h-4" />
-                            <span>Electro Caja</span>
-                        </div>
-                        <span className="opacity-80 text-blue-100">Sistema de Inventario</span>
+                        <div className="flex items-center gap-1.5 font-bold"><Store className="w-4 h-4" /><span>Electro Caja</span></div>
+                        <span className="opacity-80 text-orange-100">Sistema de Inventario</span>
                     </div>
                     {tasaCambio && (
                         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
@@ -280,12 +262,12 @@ const DisplayPage = () => {
                         </div>
                     )}
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1 bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/10">
-                            {isOnline ? <><Wifi className="w-4 h-4" /><span>En Línea</span></> : <><WifiOff className="w-4 h-4 text-red-300" /><span>Sin conexión</span></>}
+                        <div className="flex items-center gap-1 bg-white/20 px-3 py-1.5 rounded-full border border-white/10">
+                            {isOnline ? <><Wifi className="w-4 h-4" /><span>En Línea</span></> : <><WifiOff className="w-4 h-4 text-red-200" /><span>Sin conexión</span></>}
                         </div>
                         <div className="text-right">
                             <div className="font-bold">{new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'short' }).toUpperCase()}</div>
-                            <div className="text-[10px] opacity-80 text-blue-100">{new Date().getFullYear()}</div>
+                            <div className="text-[10px] opacity-80">{new Date().getFullYear()}</div>
                         </div>
                     </div>
                 </div>
@@ -294,4 +276,4 @@ const DisplayPage = () => {
     );
 };
 
-export default DisplayPage;
+export default DisplayCatPage;

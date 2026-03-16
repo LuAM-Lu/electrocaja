@@ -8,7 +8,9 @@ import LoginModal from './components/LoginModal';
 import BloqueoOverlay from './components/BloqueoOverlay';
 import BloqueoCojeModal from './components/BloqueoCojeModal';
 import VistaPublicaServicio from './components/servicios/VistaPublicaServicio';
-import DisplayPage from './pages/DisplayPage'; // 📺 Página de display/publicidad
+import DisplayPage from './pages/DisplayPage';         // 📺 Pantalla 1 – Todos los productos
+import DisplayCatPage from './pages/DisplayCatPage';   // 📺 Pantalla 2 – Por categoría
+import DisplaySlidesPage from './pages/DisplaySlidesPage'; // 📺 Pantalla 3 – Imágenes/Videos
 import { useCajaStore } from './store/cajaStore';
 import { useAuthStore } from './store/authStore';
 import { useSocketEvents } from './hooks/useSocketEvents';
@@ -431,7 +433,11 @@ function App() {
 
   // Verificar si estamos en una ruta pública (no requiere autenticación)
   const location = window.location.pathname;
-  const esRutaPublica = location.startsWith('/servicio/') || location === '/display';
+  const esRutaPublica =
+    location.startsWith('/servicio/') ||
+    location === '/display' ||
+    location === '/display/cat' ||
+    location === '/display/slides';
 
   //  Mostrar login si no está autenticado y no es ruta pública
   if ((!isAuthenticated || showLogin) && !esRutaPublica) {
@@ -472,8 +478,14 @@ function App() {
         {/* Ruta pública para seguimiento de servicios */}
         <Route path="/servicio/:token" element={<VistaPublicaServicio />} />
 
-        {/* 📺 Ruta pública para display/publicidad en TV */}
+        {/* 📺 Pantalla 1 – Todos los productos */}
         <Route path="/display" element={<DisplayPage />} />
+
+        {/* 📺 Pantalla 2 – Productos por categoría */}
+        <Route path="/display/cat" element={<DisplayCatPage />} />
+
+        {/* 📺 Pantalla 3 – Slideshow de imágenes y videos */}
+        <Route path="/display/slides" element={<DisplaySlidesPage />} />
 
         {/* Ruta principal de la aplicación */}
         <Route path="*" element={
